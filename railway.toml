@@ -1,0 +1,18 @@
+# Railway — deploy the API service from repo root
+# Docs: https://docs.railway.app/guides/fastapi
+#
+# Setup:
+#   1. railway login && railway init
+#   2. Add volume mount at /app/backend/data (optional, for SQLite persistence)
+#   3. Set env vars from .env.staging.example in Railway dashboard
+#   4. Deploy web separately (Dockerfile.web or Cloudflare Pages) pointing /api to Railway URL
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

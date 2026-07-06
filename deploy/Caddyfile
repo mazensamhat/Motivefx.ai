@@ -1,0 +1,19 @@
+# HTTPS reverse proxy for MotiveFX.AI on motivefxai.com
+# Requires Caddy 2.x. Install: https://caddyserver.com/docs/install
+#
+# 1. Point DNS A record: motivefxai.com → your server IP
+# 2. Optional: www CNAME → motivefxai.com (redirect below)
+# 3. docker compose -f docker-compose.staging.yml up -d --build  (port 8080)
+# 4. caddy run --config deploy/Caddyfile
+#
+# Set on API container:
+#   APP_PUBLIC_URL=https://motivefxai.com
+#   CORS_ORIGINS=https://motivefxai.com,https://www.motivefxai.com
+
+motivefxai.com {
+	reverse_proxy localhost:8080
+}
+
+www.motivefxai.com {
+	redir https://motivefxai.com{uri} permanent
+}

@@ -1,0 +1,17 @@
+# Staging / production compose — build web separately and serve via CDN or nginx
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - motivefx_data:/app/backend/motivefx.db
+    restart: unless-stopped
+
+volumes:
+  motivefx_data:

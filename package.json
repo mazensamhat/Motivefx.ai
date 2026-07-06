@@ -1,0 +1,18 @@
+{
+  "name": "motivefx",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @motivefx/site dev",
+    "build": "pnpm --filter @motivefx/site build",
+    "db:generate": "pnpm --filter @motivefx/database db:generate",
+    "db:push": "pnpm --filter @motivefx/database db:push"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

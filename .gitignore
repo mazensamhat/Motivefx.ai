@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+web/dist/
+mobile/.expo/
+mobile/dist/
+apps/site/.next/
+.next/
+build-log.txt
+err.html
+
+# Database local
+packages/database/.env
+
+# Lock / package managers (keep pnpm-lock.yaml committed)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
