@@ -130,6 +130,8 @@ export interface Recommendation {
   headline: string;
   reasoning: string;
   signals: string[];
+  /** Detailed score breakdown for Why? — preferred over raw signal tags. */
+  reasons?: string[];
   riskLevel?: "low" | "medium" | "high" | "extreme";
 }
 

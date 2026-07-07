@@ -92,10 +92,27 @@ export function formatMotiveSignalScore(score: number): string {
   return `${score} / 100`;
 }
 
-/** Normalize backend signal names into readable reason lines. */
-export function formatSignalReasons(signals: string[], reasoning?: string, limit = 5): string[] {
-  const fromSignals = signals.filter(Boolean).slice(0, limit);
-  if (fromSignals.length) return fromSignals;
+/** Prefer explicit reasons from the advisor engine; otherwise expand signals/reasoning into readable lines. */
+export function formatSignalReasons(
+  signals: string[],
+  reasoning?: string,
+  limit = 5,
+  explicitReasons?: string[]
+): string[] {
+  if (explicitReasons?.length) return explicitReasons.slice(0, limit);
+
+  const fromReasoning = reasoning
+    ? reasoning
+        .split(/[.;\n]/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 12)
+    : [];
+
+  if (fromReasoning.length >= 2) return fromReasoning.slice(0, limit);
+
+  const expanded = signals.filter(Boolean).map((s) => expandSignalToReason(s));
+  if (expanded.length) return expanded.slice(0, limit);
+
   if (reasoning) {
     return reasoning
       .split(/[.;\n]/)
@@ -104,6 +121,29 @@ export function formatSignalReasons(signals: string[], reasoning?: string, limit
       .slice(0, limit);
   }
   return [];
+}
+
+function expandSignalToReason(signal: string): string {
+  const s = signal.toLowerCase();
+  if (s.includes("vol/oi") || s.includes("unusual")) {
+    return `${signal} — options volume exceeded typical open-interest ranges, a common precursor to directional positioning.`;
+  }
+  if (s.includes("whale")) {
+    return `${signal} — large on-chain transfer flagged; monitor exchange reserves and spot liquidity.`;
+  }
+  if (s.includes("sharp")) {
+    return `${signal} — professional handle diverges from public ticket count on this matchup.`;
+  }
+  if (s.includes("volume") || s.includes("microcap") || s.includes("pink")) {
+    return `${signal} — relative volume spike on a sub-$5 name; elevated volatility context.`;
+  }
+  if (s.includes("congress") || s.includes("insider")) {
+    return `${signal} — recent disclosure cross-referenced with price and flow activity.`;
+  }
+  if (s.includes("event market") || s.includes("polymarket")) {
+    return `${signal} — implied odds from prediction market; reflects crowd consensus, not a forecast.`;
+  }
+  return `${signal} — flagged by MotiveFX desk scanners and cross-referenced with live feeds.`;
 }
 
 export function sentimentBadgeClass(tier: MotiveRating["tier"]): string {

@@ -100,7 +100,7 @@ export function AiAdvisor({
   }
 
   const topRating = top ? resolveMotiveRating(top.action, top.confidence, ratingContext) : null;
-  const topReasons = top ? formatSignalReasons(top.signals, top.reasoning) : [];
+  const topReasons = top ? formatSignalReasons(top.signals, top.reasoning, 5, top.reasons) : [];
 
   return (
     <>
@@ -171,7 +171,7 @@ export function AiAdvisor({
                       symbol: top.symbol,
                       confidence: top.confidence,
                       action: top.action,
-                      reasons: topReasons.length ? topReasons : [top.reasoning],
+                      reasons: topReasons.length ? topReasons : top.reasons?.length ? top.reasons : [top.reasoning],
                       signals: top.signals,
                     })
                   }
@@ -228,7 +228,7 @@ function AdvisorRow({
   }) => void;
 }) {
   const rating = resolveMotiveRating(rec.action, rec.confidence, ratingContext);
-  const reasons = formatSignalReasons(rec.signals, rec.reasoning, 3);
+  const reasons = formatSignalReasons(rec.signals, rec.reasoning, 5, rec.reasons);
   const risk = rec.riskLevel ?? riskFromConfidence(rec.confidence);
 
   return (
@@ -261,7 +261,7 @@ function AdvisorRow({
                 symbol: rec.symbol,
                 confidence: rec.confidence,
                 action: rec.action,
-                reasons: reasons.length ? reasons : [rec.reasoning],
+                reasons: reasons.length ? reasons : rec.reasons?.length ? rec.reasons : [rec.reasoning],
                 signals: rec.signals,
               })
             }

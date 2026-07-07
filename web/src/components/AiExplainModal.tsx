@@ -36,8 +36,7 @@ export function AiExplainModal({
   onClose,
 }: Props) {
   const rating = resolveMotiveRating(action, confidence, ratingContext);
-  const reasonLines = formatSignalReasons(signals ?? [], reasons.join(". "), 6);
-  const displayReasons = reasonLines.length ? reasonLines : reasons;
+  const displayReasons = formatSignalReasons(signals ?? [], reasons.join(". "), 8, reasons);
 
   const shareText = formatSignalShareText({
     title,
@@ -78,28 +77,31 @@ export function AiExplainModal({
             </span>
           </div>
         </div>
-        {signals && signals.length > 0 && (
-          <div className="ai-explain-signals">
-            {signals.map((s) => (
-              <SignalChip
-                key={s}
-                label={s}
-                className="signal-tag"
-                detail={{ symbol, confidence }}
-              />
-            ))}
-          </div>
-        )}
         <div className="ai-explain-confidence">
           <HelpCircle size={14} />
           Algorithmic signal strength — not a prediction or recommendation.
         </div>
-        <p className="ai-explain-reasons-label">Reasons</p>
+        <p className="ai-explain-reasons-label">Why this score</p>
         <ul className="ai-explain-list motive-reason-list">
           {displayReasons.map((r, i) => (
             <li key={i}>{r}</li>
           ))}
         </ul>
+        {signals && signals.length > 0 && (
+          <>
+            <p className="ai-explain-reasons-label ai-explain-signals-label">Data inputs flagged</p>
+            <div className="ai-explain-signals ai-explain-signals-foot">
+              {signals.map((s) => (
+                <SignalChip
+                  key={s}
+                  label={s}
+                  className="signal-tag"
+                  detail={{ symbol, confidence }}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
         <IntelActionBar
           shareText={shareText}

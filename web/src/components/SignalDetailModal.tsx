@@ -1,6 +1,6 @@
 import { BookOpen, X } from "lucide-react";
-import type { SignalDetailPayload } from "../utils/signalIntel";
-import { formatSignalShareText } from "../utils/shareSignal";
+import { createPortal } from "react-dom";
+import type { SignalDetailPayload } from "../utils/signalIntel";import { formatSignalShareText } from "../utils/shareSignal";
 import { IntelActionBar } from "./IntelActionBar";
 
 interface Props extends SignalDetailPayload {
@@ -28,10 +28,9 @@ export function SignalDetailModal({
     confidence,
   });
 
-  return (
+  return createPortal(
     <div className="modal-overlay signal-detail-overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="signal-detail-modal glass-card" onClick={(e) => e.stopPropagation()}>
-        <header className="signal-detail-header">
+      <div className="signal-detail-modal glass-card" onClick={(e) => e.stopPropagation()}>        <header className="signal-detail-header">
           <div>
             <span className="signal-detail-label">
               <BookOpen size={14} /> Signal intel
@@ -73,6 +72,7 @@ export function SignalDetailModal({
 
         <p className="signal-detail-footer">Educational intel only — not financial advice.</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
