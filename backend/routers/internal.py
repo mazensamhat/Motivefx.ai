@@ -50,20 +50,30 @@ async def sync_site_user(
     """Provision or refresh SQLite user from Supabase site session."""
     _verify_sync_secret(x_backend_sync_secret)
     result = auth_service.provision_site_user(body.email, display_name=body.display_name)
+    entitlements_synced = False
+    entitlements_error: str | None = None
+    plan: dict | None = None
     try:
-        sync_site_user_entitlements(
+        plan = sync_site_user_entitlements(
             result["user_id"],
             intelligence_tier=body.intelligence_tier or "lite",
             selected_markets=body.selected_markets,
             subscription_active=body.subscription_active,
         )
-    except Exception:
+        entitlements_synced = True
+    except Exception as exc:
         import logging
 
+        entitlements_error = str(exc)
         logging.getLogger(__name__).exception(
             "entitlements sync failed for %s — tokens still issued", body.email
         )
-    return result
+    return {
+        **result,
+        "entitlements_synced": entitlements_synced,
+        "entitlements_error": entitlements_error,
+        "plan": plan,
+    }
 
 
 @router.post("/feedback")

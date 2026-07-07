@@ -1,6 +1,7 @@
-import { setSession, type AuthUser } from "./api";
+import type { AuthUser } from "./api";
+import { ensureBackendReady, SITE_EMBED } from "./backendBridge";
 
-export const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
+export { SITE_EMBED } from "./backendBridge";
 
 export interface SiteSessionUser extends AuthUser {
   isAdmin?: boolean;
@@ -28,36 +29,15 @@ export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
 }
 
 /** Push latest site plan (Ops grants, Stripe, comp) into the FastAPI backend. */
-export async function syncSiteEntitlementsFromServer(): Promise<{
+export async function syncSiteEntitlementsFromServer(force = false): Promise<{
   ok: boolean;
   isAdmin: boolean;
+  entitlementsSynced?: boolean;
 }> {
   if (!SITE_EMBED) return { ok: false, isAdmin: false };
-  try {
-    const res = await fetch("/api/app/session", { cache: "no-store" });
-    if (!res.ok) {
-      const siteUser = await fetchSiteSessionUser();
-      return { ok: false, isAdmin: Boolean(siteUser?.isAdmin) };
-    }
-    const data = (await res.json()) as {
-      ok?: boolean;
-      userId?: string;
-      email?: string;
-      accessToken?: string;
-      refreshToken?: string;
-      isAdmin?: boolean;
-    };
-    if (!data.ok || !data.accessToken || !data.refreshToken || !data.userId || !data.email) {
-      const siteUser = await fetchSiteSessionUser();
-      return { ok: false, isAdmin: Boolean(siteUser?.isAdmin) };
-    }
-    setSession(data.accessToken, data.refreshToken, {
-      userId: data.userId,
-      email: data.email,
-    });
-    return { ok: true, isAdmin: Boolean(data.isAdmin) };
-  } catch {
-    const siteUser = await fetchSiteSessionUser();
-    return { ok: false, isAdmin: Boolean(siteUser?.isAdmin) };
-  }
+  const result = await ensureBackendReady(force);
+  if (result.ok) return result;
+
+  const siteUser = await fetchSiteSessionUser();
+  return { ok: false, isAdmin: Boolean(siteUser?.isAdmin), entitlementsSynced: false };
 }

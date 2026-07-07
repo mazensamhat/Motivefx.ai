@@ -103,29 +103,59 @@ async function fetchWithAuth(input: string, init: RequestInit, retry = true): Pr
   return res;
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetchWithAuth(`/api${path}`, {
-    method: "POST",
-    headers: buildHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const detail = err.detail;
-    const msg = typeof detail === "object" ? detail.message : detail;
-    throw new Error(msg ?? `Request failed: ${res.status}`);
+async function parseApiError(res: Response): Promise<string> {
+  const err = await res.json().catch(() => ({}));
+  const detail = (err as { detail?: unknown }).detail;
+  if (typeof detail === "object" && detail && "message" in detail) {
+    return String((detail as { message: string }).message);
   }
-  return res.json();
+  if (typeof detail === "string") return detail;
+  return `Request failed: ${res.status}`;
+}
+
+async function embeddedPreflight(path: string, force = false): Promise<void> {
+  if (import.meta.env.BASE_URL !== "/terminal/" || !path.startsWith("/advisor/")) return;
+  const { ensureBackendReady } = await import("./backendBridge");
+  await ensureBackendReady(force);
+}
+
+async function embeddedRetryOnLock<T>(path: string, run: () => Promise<T>): Promise<T> {
+  if (import.meta.env.BASE_URL !== "/terminal/" || !path.startsWith("/advisor/")) return run();
+  const { ensureBackendReady, isModuleLockMessage } = await import("./backendBridge");
+  try {
+    return await run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (!isModuleLockMessage(msg)) throw e;
+    await ensureBackendReady(true);
+    return run();
+  }
+}
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  await embeddedPreflight(path);
+  return embeddedRetryOnLock(path, async () => {
+    const res = await fetchWithAuth(`/api${path}`, {
+      method: "POST",
+      headers: buildHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await parseApiError(res));
+    return res.json() as Promise<T>;
+  });
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const sep = path.includes("?") ? "&" : "?";
-  const withUser = path.includes("user_id=") ? path : `${path}${sep}user_id=${encodeURIComponent(getUserId())}`;
-  const res = await fetchWithAuth(`/api${withUser}`, {
-    headers: buildHeaders({ "Content-Type": "application/json" }),
+  await embeddedPreflight(path);
+  return embeddedRetryOnLock(path, async () => {
+    const sep = path.includes("?") ? "&" : "?";
+    const withUser = path.includes("user_id=") ? path : `${path}${sep}user_id=${encodeURIComponent(getUserId())}`;
+    const res = await fetchWithAuth(`/api${withUser}`, {
+      headers: buildHeaders({ "Content-Type": "application/json" }),
+    });
+    if (!res.ok) throw new Error(await parseApiError(res));
+    return res.json() as Promise<T>;
   });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json();
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {

@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const sync = await syncSiteEntitlementsFromServer();
+      const sync = await syncSiteEntitlementsFromServer(true);
       if (sync.isAdmin) setIsAdmin(true);
       await refreshUser();
       if (sync.ok) {

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { apiPost, getUserId, hasAuthSession } from "../lib/api";
-import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
+import { SITE_EMBED } from "../lib/siteSession";
+import { ensureBackendReady } from "../lib/backendBridge";
 import type { AdvisorResult, DeepScan } from "../types";
 
 const MODULE_LOCK_MSG = "Subscribe to unlock this intelligence market";
@@ -19,7 +20,7 @@ export function useAutoAnalyze(module: "trades" | "crypto" | "betting" | "penny"
     if (!enabled) return false;
 
     if (SITE_EMBED) {
-      await syncSiteEntitlementsFromServer();
+      await ensureBackendReady(true);
     }
     if (!hasAuthSession()) return false;
 
@@ -51,7 +52,7 @@ export function useAutoAnalyze(module: "trades" | "crypto" | "betting" | "penny"
 
       // After Ops sync, retry once if backend modules were stale.
       if (SITE_EMBED && isModuleLockError(msg)) {
-        const retry = await syncSiteEntitlementsFromServer();
+        const retry = await ensureBackendReady(true);
         if (retry.ok) {
           try {
             const userId = getUserId();

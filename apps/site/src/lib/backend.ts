@@ -24,6 +24,33 @@ export interface BackendSession {
   accessToken: string;
   refreshToken: string;
   email: string;
+  entitlementsSynced?: boolean;
+}
+
+const sessionCache = new Map<string, { at: number; session: BackendSession }>();
+const SESSION_CACHE_MS = 45_000;
+
+export function invalidateBackendSession(email: string) {
+  sessionCache.delete(email.trim().toLowerCase());
+}
+
+export async function getBackendSession(
+  email: string,
+  opts?: { force?: boolean }
+): Promise<BackendSession | null> {
+  const key = email.trim().toLowerCase();
+  if (!opts?.force) {
+    const cached = sessionCache.get(key);
+    if (cached && Date.now() - cached.at < SESSION_CACHE_MS) {
+      return cached.session;
+    }
+  }
+
+  const session = await syncBackendUser(email);
+  if (session) {
+    sessionCache.set(key, { at: Date.now(), session });
+  }
+  return session;
 }
 
 export async function syncBackendUser(email: string): Promise<BackendSession | null> {
@@ -69,6 +96,7 @@ export async function syncBackendUser(email: string): Promise<BackendSession | n
       subscription_active: userHasActiveSubscription(user),
     }),
     cache: "no-store",
+    signal: AbortSignal.timeout(25_000),
   });
 
   if (!res.ok) {
@@ -81,13 +109,25 @@ export async function syncBackendUser(email: string): Promise<BackendSession | n
     access_token: string;
     refresh_token: string;
     email: string;
+    entitlements_synced?: boolean;
+    entitlements_error?: string | null;
+    plan?: { tier?: string; allowedMarkets?: string[] } | null;
   };
+
+  if (data.entitlements_synced === false) {
+    console.error(
+      "[backend] entitlements not applied for",
+      user.email,
+      data.entitlements_error ?? "unknown error"
+    );
+  }
 
   return {
     userId: data.user_id,
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     email: data.email,
+    entitlementsSynced: data.entitlements_synced !== false,
   };
 }
 

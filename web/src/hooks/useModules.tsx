@@ -127,7 +127,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (SITE_EMBED) {
-      await syncSiteEntitlementsFromServer();
+      await syncSiteEntitlementsFromServer(true);
     }
     const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
 
@@ -269,18 +269,11 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
     const onEntitlements = () => {
       refresh();
     };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void refresh();
-      }
-    };
     window.addEventListener("motivefx:auth-changed", onAuth);
     window.addEventListener("motivefx:entitlements-changed", onEntitlements);
-    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("motivefx:auth-changed", onAuth);
       window.removeEventListener("motivefx:entitlements-changed", onEntitlements);
-      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refresh]);
 
@@ -290,7 +283,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
       setLoading(true);
       if (SITE_EMBED) {
-        await syncSiteEntitlementsFromServer();
+        await syncSiteEntitlementsFromServer(true);
       }
       const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
 

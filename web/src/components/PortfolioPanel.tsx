@@ -142,6 +142,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
     if (module === "crypto") h.amount = parseFloat(qty);
     else h.shares = parseFloat(qty);
 
+    setFormError(null);
     try {
       await persistHoldings([...holdings, h], holdings);
     } catch (e) {
@@ -149,7 +150,6 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
       return;
     }
 
-    setFormError(null);
     setSymbol("");
     setQty("");
     setCost("");
@@ -209,6 +209,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
 
   async function analyze() {
     setAnalyzing(true);
+    setFormError(null);
     try {
       const analyzePaths: Record<string, string> = {
         trades: "/advisor/trades/analyze",
@@ -221,7 +222,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
       });
       onAnalyzed(data);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Analysis failed");
+      setFormError(e instanceof Error ? e.message : "Analysis failed");
     } finally {
       setAnalyzing(false);
     }

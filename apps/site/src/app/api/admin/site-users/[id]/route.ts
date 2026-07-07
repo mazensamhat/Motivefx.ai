@@ -5,7 +5,7 @@ import { isAdminEmail, requireAdmin } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { computeAccessExpiresAt, type CompAccessDuration } from "@/lib/comp-access";
 import { clearPasswordResetTokens } from "@/lib/password-reset";
-import { syncBackendUser } from "@/lib/backend";
+import { syncBackendUser, invalidateBackendSession } from "@/lib/backend";
 import type { PricingTierId } from "@/lib/tiers";
 
 const tierSchema = z.enum(["lite", "pro", "ultra", "ultra_plus", "elite"]);
@@ -143,6 +143,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       console.error("[admin/site-users PATCH] backend sync failed", err);
       return false;
     });
+    invalidateBackendSession(user.email);
 
     return json({
       ok: true,
