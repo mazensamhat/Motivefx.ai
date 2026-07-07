@@ -113,49 +113,46 @@ async function parseApiError(res: Response): Promise<string> {
   return `Request failed: ${res.status}`;
 }
 
-async function embeddedPreflight(path: string, force = false): Promise<void> {
-  if (import.meta.env.BASE_URL !== "/terminal/" || !path.startsWith("/advisor/")) return;
-  const { ensureBackendReady } = await import("./backendBridge");
-  await ensureBackendReady(force);
+function siteEmbedApiPath(path: string): string {
+  if (import.meta.env.BASE_URL !== "/terminal/") return `/api${path}`;
+  if (
+    path.startsWith("/advisor/") ||
+    path.startsWith("/home/") ||
+    path.startsWith("/track/")
+  ) {
+    return `/api/backend/proxy?path=${encodeURIComponent(`/api${path}`)}`;
+  }
+  return `/api${path}`;
 }
 
-async function embeddedRetryOnLock<T>(path: string, run: () => Promise<T>): Promise<T> {
-  if (import.meta.env.BASE_URL !== "/terminal/" || !path.startsWith("/advisor/")) return run();
-  const { ensureBackendReady, isModuleLockMessage } = await import("./backendBridge");
-  try {
-    return await run();
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (!isModuleLockMessage(msg)) throw e;
-    await ensureBackendReady(true);
-    return run();
-  }
+function usesSiteProxy(path: string): boolean {
+  return siteEmbedApiPath(path).includes("/api/backend/proxy");
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  await embeddedPreflight(path);
-  return embeddedRetryOnLock(path, async () => {
-    const res = await fetchWithAuth(`/api${path}`, {
-      method: "POST",
-      headers: buildHeaders(),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(await parseApiError(res));
-    return res.json() as Promise<T>;
+  const url = siteEmbedApiPath(path);
+  const res = await fetchWithAuth(url, {
+    method: "POST",
+    headers: usesSiteProxy(path) ? { "Content-Type": "application/json" } : buildHeaders(),
+    body: JSON.stringify(body),
+    credentials: "same-origin",
   });
+  if (!res.ok) throw new Error(await parseApiError(res));
+  return res.json() as Promise<T>;
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  await embeddedPreflight(path);
-  return embeddedRetryOnLock(path, async () => {
-    const sep = path.includes("?") ? "&" : "?";
-    const withUser = path.includes("user_id=") ? path : `${path}${sep}user_id=${encodeURIComponent(getUserId())}`;
-    const res = await fetchWithAuth(`/api${withUser}`, {
-      headers: buildHeaders({ "Content-Type": "application/json" }),
-    });
-    if (!res.ok) throw new Error(await parseApiError(res));
-    return res.json() as Promise<T>;
+  const sep = path.includes("?") ? "&" : "?";
+  const withUser = path.includes("user_id=") ? path : `${path}${sep}user_id=${encodeURIComponent(getUserId())}`;
+  const url = siteEmbedApiPath(withUser);
+  const res = await fetchWithAuth(url, {
+    headers: usesSiteProxy(path)
+      ? { "Content-Type": "application/json" }
+      : buildHeaders({ "Content-Type": "application/json" }),
+    credentials: "same-origin",
   });
+  if (!res.ok) throw new Error(await parseApiError(res));
+  return res.json() as Promise<T>;
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
