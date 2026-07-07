@@ -110,6 +110,8 @@ async function parseApiError(res: Response): Promise<string> {
     return String((detail as { message: string }).message);
   }
   if (typeof detail === "string") return detail;
+  const error = (err as { error?: unknown }).error;
+  if (typeof error === "string" && error) return error;
   return `Request failed: ${res.status}`;
 }
 
