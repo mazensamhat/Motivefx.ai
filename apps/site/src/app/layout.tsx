@@ -28,6 +28,10 @@ export const metadata: Metadata = {
     description: "Five intelligence markets. One terminal. Pick your tier.",
     siteName: "MotiveFX.AI",
   },
+  icons: {
+    icon: "/brand/motivefx-icon.png",
+    apple: "/brand/motivefx-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

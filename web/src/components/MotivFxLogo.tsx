@@ -1,5 +1,6 @@
 import type { BrandModuleId } from "../brand/moduleBrand";
 import { MODULE_BRAND } from "../brand/moduleBrand";
+import { MOTIVEFX_LOGO_URL } from "../lib/brandAssets";
 
 interface Props {
   module: BrandModuleId;
@@ -10,7 +11,7 @@ interface Props {
 
 export const BRAND_TAGLINE = "TRADE SMARTER. MOVE FASTER.";
 
-/** Official MotiveFX lockup — SVG/text (no external PNG asset required). */
+/** Official MotiveFX lockup — PNG brand asset. */
 export function MotiveFxBrandLogo({
   className = "",
   compact = false,
@@ -21,20 +22,11 @@ export function MotiveFxBrandLogo({
   alt?: string;
 }) {
   return (
-    <div
-      className={`motivfx-brand-lockup ${compact ? "motivfx-brand-lockup-compact" : ""} ${className}`.trim()}
-      role="img"
-      aria-label={alt}
-    >
-      <MotivFxLogo module="home" size={compact ? 28 : 36} />
-      <div className="motivfx-brand-text">
-        <span className="motivfx-brand-title">
-          MOTIVE<span className="brand-gradient-text">FX</span>
-          <span className="motivfx-wordmark-ai">.AI</span>
-        </span>
-        {!compact && <span className="motivfx-brand-tagline-inline">{BRAND_TAGLINE}</span>}
-      </div>
-    </div>
+    <img
+      src={MOTIVEFX_LOGO_URL}
+      alt={alt}
+      className={`motivfx-brand-image ${compact ? "motivfx-brand-image-compact" : ""} ${className}`.trim()}
+    />
   );
 }
 

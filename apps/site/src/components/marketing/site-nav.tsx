@@ -81,18 +81,32 @@ export function SiteNav() {
           </Button>
         </div>
 
-        <button
-          type="button"
-          className="lg:hidden text-slate-300 p-2"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:hidden">
+          <Button href="/login" variant="ghost" size="sm" className="px-2.5 sm:px-3">
+            Sign in
+          </Button>
+          <button
+            type="button"
+            className="text-slate-300 p-2"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-expanded={mobileOpen}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (
         <div className="mobile-nav lg:hidden border-t border-white/10 px-4 py-4">
+          <div className="mobile-nav-actions">
+            <Button href="/login" variant="ghost" className="flex-1" onClick={() => setMobileOpen(false)}>
+              Sign in
+            </Button>
+            <Button href="/app" className="flex-1" onClick={() => setMobileOpen(false)}>
+              Open app
+            </Button>
+          </div>
           {[...PRODUCT_LINKS, ...MARKET_ROUTES.map((m) => ({ href: m.href, label: m.label })), ...RESOURCE_LINKS].map(
             (l) => (
               <Link key={l.href + l.label} href={l.href} className="mobile-nav-link" onClick={() => setMobileOpen(false)}>
@@ -100,9 +114,6 @@ export function SiteNav() {
               </Link>
             )
           )}
-          <Button href="/register" className="w-full mt-4">
-            Open app
-          </Button>
         </div>
       )}
     </header>
