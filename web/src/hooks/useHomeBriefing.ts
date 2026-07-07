@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "../lib/api";
-import { SITE_EMBED } from "../lib/siteSession";
 import type { HomeBriefing } from "../types";
-
-async function fetchEmbeddedBriefing(): Promise<HomeBriefing | null> {
-  const res = await fetch("/api/backend/briefing", { cache: "no-store" });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { briefing?: HomeBriefing };
-  return data.briefing ?? null;
-}
 
 export function useHomeBriefing(intervalMs = 60_000) {
   const [data, setData] = useState<HomeBriefing | null>(null);
@@ -17,14 +9,6 @@ export function useHomeBriefing(intervalMs = 60_000) {
 
   const refresh = useCallback(async () => {
     try {
-      if (SITE_EMBED) {
-        const embedded = await fetchEmbeddedBriefing();
-        if (embedded) {
-          setData(embedded);
-          setError(null);
-          return;
-        }
-      }
       const result = await apiGet<HomeBriefing>("/home/briefing");
       setData(result);
       setError(null);

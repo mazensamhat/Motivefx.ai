@@ -114,26 +114,18 @@ async function parseApiError(res: Response): Promise<string> {
 }
 
 function siteEmbedApiPath(path: string): string {
-  if (import.meta.env.BASE_URL !== "/terminal/") return `/api${path}`;
-  if (
-    path.startsWith("/advisor/") ||
-    path.startsWith("/home/") ||
-    path.startsWith("/track/")
-  ) {
-    return `/api/backend/proxy?path=${encodeURIComponent(`/api${path}`)}`;
-  }
   return `/api${path}`;
 }
 
-function usesSiteProxy(path: string): boolean {
-  return siteEmbedApiPath(path).includes("/api/backend/proxy");
+function usesSiteCookieAuth(_path: string): boolean {
+  return import.meta.env.BASE_URL === "/terminal/";
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const url = siteEmbedApiPath(path);
   const res = await fetchWithAuth(url, {
     method: "POST",
-    headers: usesSiteProxy(path) ? { "Content-Type": "application/json" } : buildHeaders(),
+    headers: usesSiteCookieAuth(path) ? { "Content-Type": "application/json" } : buildHeaders(),
     body: JSON.stringify(body),
     credentials: "same-origin",
   });
@@ -146,7 +138,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   const withUser = path.includes("user_id=") ? path : `${path}${sep}user_id=${encodeURIComponent(getUserId())}`;
   const url = siteEmbedApiPath(withUser);
   const res = await fetchWithAuth(url, {
-    headers: usesSiteProxy(path)
+    headers: usesSiteCookieAuth(path)
       ? { "Content-Type": "application/json" }
       : buildHeaders({ "Content-Type": "application/json" }),
     credentials: "same-origin",
@@ -156,9 +148,10 @@ export async function apiGet<T>(path: string): Promise<T> {
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
-  const res = await fetchWithAuth(`/api${path}`, {
+  const res = await fetchWithAuth(siteEmbedApiPath(path), {
     method: "DELETE",
-    headers: buildHeaders(),
+    headers: usesSiteCookieAuth(path) ? { "Content-Type": "application/json" } : buildHeaders(),
+    credentials: "same-origin",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

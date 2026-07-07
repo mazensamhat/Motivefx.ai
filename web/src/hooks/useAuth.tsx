@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (SITE_EMBED) {
       const siteUser = await fetchSiteSessionUser();
       if (siteUser) {
+        syncAuthUserId({ userId: siteUser.userId, email: siteUser.email });
         setUser({ userId: siteUser.userId, email: siteUser.email });
         setIsAdmin(Boolean(siteUser.isAdmin));
         return;

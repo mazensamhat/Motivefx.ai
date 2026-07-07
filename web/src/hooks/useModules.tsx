@@ -126,19 +126,12 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refresh = useCallback(async () => {
-    if (SITE_EMBED) {
-      await syncSiteEntitlementsFromServer(true);
-    }
     const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
 
-    if (!getAccessToken()) {
-      if (SITE_EMBED) {
-        applySitePlanOnly(sitePlan);
-      } else {
-        setActive([]);
-        setSimulation(null);
-        setPlan(DEFAULT_PLAN);
-      }
+    if (!getAccessToken() && !SITE_EMBED) {
+      setActive([]);
+      setSimulation(null);
+      setPlan(DEFAULT_PLAN);
       setLoading(false);
       return;
     }

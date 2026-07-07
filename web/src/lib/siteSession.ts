@@ -1,5 +1,5 @@
 import type { AuthUser } from "./api";
-import { ensureBackendReady, SITE_EMBED } from "./backendBridge";
+import { SITE_EMBED } from "./backendBridge";
 
 export { SITE_EMBED } from "./backendBridge";
 
@@ -28,16 +28,13 @@ export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
   }
 }
 
-/** Push latest site plan (Ops grants, Stripe, comp) into the FastAPI backend. */
-export async function syncSiteEntitlementsFromServer(force = false): Promise<{
+/** Site cookie session — Postgres is the source of truth for entitlements. */
+export async function syncSiteEntitlementsFromServer(_force = false): Promise<{
   ok: boolean;
   isAdmin: boolean;
   entitlementsSynced?: boolean;
 }> {
   if (!SITE_EMBED) return { ok: false, isAdmin: false };
-  const result = await ensureBackendReady(force);
-  if (result.ok) return result;
-
   const siteUser = await fetchSiteSessionUser();
-  return { ok: false, isAdmin: Boolean(siteUser?.isAdmin), entitlementsSynced: false };
+  return { ok: Boolean(siteUser), isAdmin: Boolean(siteUser?.isAdmin), entitlementsSynced: true };
 }

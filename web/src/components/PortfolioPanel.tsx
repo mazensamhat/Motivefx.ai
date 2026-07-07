@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Briefcase, Star, Trash2, Wand2 } from "lucide-react";
-import { apiGet, apiPost, getAccessToken, getUserId, hasAuthSession } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import type { BrandModuleId } from "../brand/moduleBrand";
 import type { AdvisorResult } from "../types";
 import type { AssetDeepDivePayload } from "../utils/assetDeepDive";
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, onHoldingsChange }: Props) {
+  const { isAuthenticated, user } = useAuth();
   const [symbol, setSymbol] = useState("");
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
@@ -59,7 +61,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
     setHoldings(next);
     onHoldingsChangeRef.current?.(next.length);
     try {
-      await apiPost(savePaths[module], { user_id: getUserId(), holdings: next });
+      await apiPost(savePaths[module], { user_id: user?.userId ?? getUserId(), holdings: next });
     } catch (e) {
       localWriteEpoch.current++;
       const restore = rollback ?? next;
@@ -79,17 +81,18 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
       onHoldingsChangeRef.current?.(list.length);
     }
 
-    if (!hasAuthSession()) {
+    if (!isAuthenticated) {
       applyHoldings([]);
       return () => {
         cancelled = true;
       };
     }
 
+    const userId = user?.userId ?? getUserId();
     const paths: Record<string, string> = {
-      trades: `/advisor/trades/portfolio/${getUserId()}`,
-      crypto: `/advisor/crypto/portfolio/${getUserId()}`,
-      penny: `/advisor/penny/portfolio/${getUserId()}`,
+      trades: `/advisor/trades/portfolio/${userId}`,
+      crypto: `/advisor/crypto/portfolio/${userId}`,
+      penny: `/advisor/penny/portfolio/${userId}`,
     };
 
     apiGet<{ holdings: Holding[] }>(paths[module])
@@ -98,7 +101,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
 
     const onAuth = () => {
       const authFetchEpoch = localWriteEpoch.current;
-      if (!getAccessToken()) {
+      if (!isAuthenticated) {
         localWriteEpoch.current++;
         setHoldings([]);
         onHoldingsChangeRef.current?.(0);
@@ -121,10 +124,10 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
       cancelled = true;
       window.removeEventListener("motivefx:auth-changed", onAuth);
     };
-  }, [module]);
+  }, [module, isAuthenticated, user?.userId]);
 
   async function addHolding() {
-    if (!hasAuthSession()) return;
+    if (!isAuthenticated) return;
     if (!symbol || !qty) return;
 
     if (module === "trades" || module === "penny") {
@@ -156,7 +159,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
   }
 
   async function starHolding(h: Holding) {
-    if (!hasAuthSession()) return;
+    if (!isAuthenticated) return;
     const sym = h.symbol;
     const onRadar = watchlistItems.some((w) => w.module === module && w.symbol === sym);
     if (onRadar) return;
@@ -171,7 +174,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
   }
 
   async function removeHolding(index: number) {
-    if (!hasAuthSession()) return;
+    if (!isAuthenticated) return;
     const sym = holdings[index]?.symbol;
     if (!sym) return;
     setRemoving(sym);
@@ -217,7 +220,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
         penny: "/advisor/penny/analyze",
       };
       const data = await apiPost<AdvisorResult>(analyzePaths[module], {
-        user_id: getUserId(),
+        user_id: user?.userId ?? getUserId(),
         holdings,
       });
       onAnalyzed(data);
