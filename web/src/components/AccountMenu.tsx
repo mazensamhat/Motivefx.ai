@@ -1,10 +1,12 @@
-import { LayoutDashboard, LogIn, LogOut, User } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, Settings2, User } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
 
 const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
 
 export function AccountMenu() {
   const { user, isAuthenticated, isAdmin, openAuth, openAccount, logout, loading } = useAuth();
+  const { openSetup } = usePlatformPrefs();
 
   if (loading) {
     return <span className="account-menu-loading">…</span>;
@@ -34,6 +36,9 @@ export function AccountMenu() {
           <LayoutDashboard size={14} /> Ops
         </a>
       )}
+      <button type="button" className="btn admin-btn account-btn account-apps-btn" onClick={openSetup}>
+        <Settings2 size={14} /> Apps
+      </button>
       <button type="button" className="btn admin-btn account-btn" onClick={openAccount}>
         <User size={14} /> Account
       </button>

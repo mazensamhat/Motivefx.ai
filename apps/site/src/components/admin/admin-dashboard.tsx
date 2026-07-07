@@ -5,8 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   BarChart3,
-  Brain,
-  Database,
   ExternalLink,
   LayoutDashboard,
   LogOut,
@@ -21,7 +19,7 @@ import { FeedbackInboxPanel } from "@/components/admin/feedback-inbox-panel";
 import { PlatformMonitorPanel } from "@/components/admin/platform-monitor-panel";
 import { SignupMap, type SignupMapData } from "@/components/admin/signup-map";
 import { SiteUsersPanel } from "@/components/admin/site-users-panel";
-import { adminGet, adminPost, type AdminAiAnalysis, type AdminDashboard } from "@/lib/admin-api";
+import { adminGet, type AdminDashboard } from "@/lib/admin-api";
 import { clientLogout } from "@/lib/auth-client";
 import { MOTIVELIFE_OPS_URL } from "@/lib/ops-links";
 
@@ -42,9 +40,6 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AdminDashboard | null>(null);
   const [siteData, setSiteData] = useState<SiteDashboard | null>(null);
-  const [seeding, setSeeding] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<AdminAiAnalysis["analysis"] | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,31 +63,6 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   useEffect(() => {
     load();
   }, [load]);
-
-  async function runAiAnalysis() {
-    setAiLoading(true);
-    try {
-      const res = await adminGet<AdminAiAnalysis>("/ai-analysis");
-      setData(res.snapshot);
-      setAiAnalysis(res.analysis);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "AI analysis failed");
-    } finally {
-      setAiLoading(false);
-    }
-  }
-
-  async function seedDemo() {
-    setSeeding(true);
-    try {
-      const res = await adminPost<{ dashboard: AdminDashboard }>("/seed-demo-analytics?user_count=48");
-      setData(res.dashboard);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Seed failed");
-    } finally {
-      setSeeding(false);
-    }
-  }
 
   if (loading && !data) {
     return (
@@ -135,14 +105,8 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <Link href="/app" className="admin-btn">
             <LayoutDashboard className="h-3.5 w-3.5" /> Terminal
           </Link>
-          <button type="button" className="admin-btn admin-btn-ai" onClick={runAiAnalysis} disabled={aiLoading}>
-            <Brain className="h-3.5 w-3.5" /> {aiLoading ? "Analyzing…" : "AI analysis"}
-          </button>
           <button type="button" className="admin-btn" onClick={load} disabled={loading}>
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </button>
-          <button type="button" className="admin-btn" onClick={seedDemo} disabled={seeding}>
-            <Database className="h-3.5 w-3.5" /> {seeding ? "Seeding…" : "Seed demo"}
           </button>
           <button type="button" className="admin-btn" onClick={() => clientLogout()}>
             <LogOut className="h-3.5 w-3.5" /> Sign out
@@ -182,26 +146,6 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <strong>{kpis.churnEvents30d}</strong>
         </div>
       </section>
-
-      {aiAnalysis && (
-        <section className="admin-panel app-panel admin-ai-panel">
-          <div className="admin-ai-header">
-            <Brain className="h-5 w-5 text-[#d500f9]" />
-            <div>
-              <h2>AI Ops Analysis</h2>
-              <p className="admin-ai-meta">Model: {aiAnalysis.model}</p>
-            </div>
-          </div>
-          {aiAnalysis.highlights.length > 0 && (
-            <div className="admin-ai-highlights">
-              {aiAnalysis.highlights.map((h) => (
-                <span key={h.text} className="admin-ai-chip">{h.text}</span>
-              ))}
-            </div>
-          )}
-          <pre className="admin-ai-narrative">{aiAnalysis.narrative}</pre>
-        </section>
-      )}
 
       <PlatformMonitorPanel />
       <SiteUsersPanel />
@@ -353,7 +297,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <BarList items={payments.byPlanTier} labelKey="plan_tier" valueKey="revenue" />
         </section>
         <section className="admin-panel app-panel">
-          <h2>Top locations (backend users)</h2>
+          <h2>Top locations</h2>
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -376,7 +320,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       <FeedbackInboxPanel />
 
       <section className="admin-panel app-panel">
-        <h2>Recent backend users</h2>
+        <h2>Recent users</h2>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>

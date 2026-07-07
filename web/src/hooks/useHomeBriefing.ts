@@ -24,7 +24,14 @@ export function useHomeBriefing(intervalMs = 60_000) {
     setLoading(true);
     refresh();
     const id = setInterval(refresh, intervalMs);
-    return () => clearInterval(id);
+    const onRefresh = () => {
+      void refresh();
+    };
+    window.addEventListener("motivefx:briefing-refresh", onRefresh);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("motivefx:briefing-refresh", onRefresh);
+    };
   }, [refresh, intervalMs]);
 
   return { data, loading, error, refresh };

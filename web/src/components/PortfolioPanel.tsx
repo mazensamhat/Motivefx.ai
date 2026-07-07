@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Briefcase, Star, Trash2, Wand2 } from "lucide-react";
+import { Briefcase, Pencil, Star, Trash2, Wand2, X } from "lucide-react";
 import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import type { BrandModuleId } from "../brand/moduleBrand";
@@ -42,6 +42,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [deepDive, setDeepDive] = useState<AssetDeepDivePayload | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [starring, setStarring] = useState<string | null>(null);
   const { items: watchlistItems, addItem: addToWatchlist } = useWatchlist();
   const qtyLabel = module === "crypto" ? "Amount" : "Shares";
@@ -62,6 +63,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
     onHoldingsChangeRef.current?.(next.length);
     try {
       await apiPost(savePaths[module], { user_id: user?.userId ?? getUserId(), holdings: next });
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
     } catch (e) {
       localWriteEpoch.current++;
       const restore = rollback ?? next;
@@ -126,7 +128,25 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
     };
   }, [module, isAuthenticated, user?.userId]);
 
-  async function addHolding() {
+  function resetForm() {
+    setSymbol("");
+    setQty("");
+    setCost("");
+    setEditingIndex(null);
+    setFormError(null);
+  }
+
+  function startEdit(index: number) {
+    const holding = holdings[index];
+    if (!holding) return;
+    setEditingIndex(index);
+    setSymbol(holding.symbol);
+    setQty(String(module === "crypto" ? holding.amount ?? "" : holding.shares ?? ""));
+    setCost(holding.avg_cost != null ? String(holding.avg_cost) : "");
+    setFormError(null);
+  }
+
+  async function saveHolding() {
     if (!isAuthenticated) return;
     if (!symbol || !qty) return;
 
@@ -147,15 +167,21 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
 
     setFormError(null);
     try {
-      await persistHoldings([...holdings, h], holdings);
+      const next =
+        editingIndex != null
+          ? holdings.map((row, i) => (i === editingIndex ? h : row))
+          : [...holdings, h];
+      await persistHoldings(next, holdings);
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Could not save holding");
       return;
     }
 
-    setSymbol("");
-    setQty("");
-    setCost("");
+    resetForm();
+  }
+
+  async function addHolding() {
+    await saveHolding();
   }
 
   async function starHolding(h: Holding) {
@@ -186,6 +212,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
         setSelectedSymbol(null);
         setDeepDive(null);
       }
+      if (editingIndex === index) resetForm();
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Could not remove holding");
     } finally {
@@ -298,8 +325,17 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
             onClick={addHolding}
             disabled={!symbol || !qty}
           >
-            + Add holding
+            {editingIndex != null ? "Save changes" : "+ Add holding"}
           </button>
+          {editingIndex != null && (
+            <button
+              className="btn btn-ghost btn-sm pf-span-12"
+              type="button"
+              onClick={resetForm}
+            >
+              <X size={12} /> Cancel edit
+            </button>
+          )}
         </div>
 
         {formError && <div className="portfolio-form-error">{formError}</div>}
@@ -309,7 +345,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
             <div className="empty">Type a symbol and shares, then add to your live ledger.</div>
           ) : (
             <>
-              <p className="ledger-hint">Tap a holding for details · use trash to remove</p>
+              <p className="ledger-hint">Tap a holding for details · pencil to edit · trash to remove</p>
               {holdings.map((h, i) => (
                 <TerminalRow
                   key={`${h.symbol}-${i}`}
@@ -325,6 +361,19 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
                   onClick={() => openHoldingDetail(h)}
                   actions={
                     <>
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        aria-label={`Edit ${h.symbol}`}
+                        disabled={editingIndex === i}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          startEdit(i);
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </button>
                       <button
                         type="button"
                         className={`btn-icon ${watchlistItems.some((w) => w.module === module && w.symbol === h.symbol) ? "btn-icon-starred" : ""}`}

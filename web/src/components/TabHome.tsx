@@ -311,10 +311,14 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                 <span className="module-pulse-label">{m.label}</span>
                 <span className="module-pulse-count">{m.count}</span>
                 <span className="module-pulse-sub">
-                  {m.count === 1 ? "signal" : "signals"} live
+                  {m.count === 0
+                    ? "No positions yet"
+                    : `${m.count} ${m.count === 1 ? "position" : "positions"} in ledger`}
                 </span>
                 {(m.newSignals ?? 0) > 0 && (
-                  <span className="module-pulse-new">{m.newSignals} active</span>
+                  <span className="module-pulse-new">
+                    {m.newSignals} live match{m.newSignals === 1 ? "" : "es"}
+                  </span>
                 )}
               </button>
               <button

@@ -103,15 +103,10 @@ export function SiteUsersPanel() {
       });
       const data = (await res.json()) as {
         error?: string;
-        backendSynced?: boolean;
         user?: { id: string; tier: string; subscriptionStatus: string };
       };
       if (!res.ok) throw new Error(data.error ?? "Update failed");
-      if (data.backendSynced === false) {
-        setMessage("User saved in site DB, but terminal backend sync failed — check MOTIVEFX_API_URL and BACKEND_SYNC_SECRET on Vercel.");
-      } else {
-        setMessage("User updated.");
-      }
+      setMessage("User updated.");
       if (data.user) {
         setUsers((prev) =>
           prev.map((u) =>

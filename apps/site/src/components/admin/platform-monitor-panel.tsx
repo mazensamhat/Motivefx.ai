@@ -96,7 +96,7 @@ export function PlatformMonitorPanel() {
           <Server className="h-4 w-4 text-[#00e676]" />
           <div>
             <h2>Platform monitor</h2>
-            <p className="text-sm text-slate-400">Vercel · Supabase · Stripe · Resend · Render</p>
+            <p className="text-sm text-slate-400">Vercel · Supabase · Stripe · Resend · Terminal API</p>
           </div>
         </div>
         <button type="button" className="admin-btn" onClick={load} disabled={loading}>

@@ -1,4 +1,4 @@
-import { countAllHoldings } from "./portfolio";
+import { countAllHoldings, portfolioSnapshot } from "./portfolio";
 import { listBets } from "./bets";
 import { listPredictions } from "./predictions";
 import { listWatchlist, userTrackedSymbols } from "./watchlist";
@@ -36,6 +36,55 @@ function symbolMatch(tracked: Set<string>, opportunitySymbol: string): boolean {
     if (t.includes(sym) || sym.includes(t)) return true;
   }
   return false;
+}
+
+function matchedFeedSignals(
+  module: string,
+  symbols: string[],
+  opportunities: Array<Record<string, unknown>>
+): number {
+  if (!symbols.length) return 0;
+  const tracked = new Set(symbols.map((s) => s.toUpperCase()));
+  return opportunities.filter(
+    (o) => o.module === module && symbolMatch(tracked, String(o.symbol ?? ""))
+  ).length;
+}
+
+async function ledgerPulse(userId: string | null, opportunities: Array<Record<string, unknown>>) {
+  if (!userId || userId === "demo") {
+    return {
+      trades: 0,
+      penny: 0,
+      crypto: 0,
+      betting: 0,
+      predictions: 0,
+      matched: { trades: 0, penny: 0, crypto: 0, betting: 0, predictions: 0 },
+    };
+  }
+
+  const [{ counts, symbols }, bets, preds] = await Promise.all([
+    portfolioSnapshot(userId),
+    listBets(userId),
+    listPredictions(userId),
+  ]);
+
+  const realBets = bets.filter((b) => !b.is_simulation);
+  const realPreds = preds.filter((p) => !p.is_simulation);
+
+  return {
+    trades: counts.trades,
+    penny: counts.penny,
+    crypto: counts.crypto,
+    betting: realBets.length,
+    predictions: realPreds.length,
+    matched: {
+      trades: matchedFeedSignals("trades", symbols.trades, opportunities),
+      penny: matchedFeedSignals("penny", symbols.penny, opportunities),
+      crypto: matchedFeedSignals("crypto", symbols.crypto, opportunities),
+      betting: 0,
+      predictions: 0,
+    },
+  };
 }
 
 async function personalizedIntel(userId: string | null, opportunities: Array<Record<string, unknown>>) {
@@ -273,6 +322,8 @@ export async function buildHomeBriefing(opts: {
     predictions: top8.filter((o) => o.module === "predictions").length,
   };
 
+  const ledger = await ledgerPulse(opts.userId ?? null, top8);
+
   const top = top8[0];
   const congressBuy = congressTrades.find((t) => String(t.transaction).toLowerCase().includes("purchase"));
   const personalized = await personalizedIntel(opts.userId ?? null, top8);
@@ -315,11 +366,17 @@ export async function buildHomeBriefing(opts: {
     biggestOpportunity: top?.symbol ?? "Scanning…",
     topAiTip: top ? `Intel lens: $${top.symbol} — ${(top.signals as string[])?.[0]}.` : personalized.intelNote,
     moduleSummaries: [
-      { module: "trades", label: "Trades", count: moduleCounts.trades, tab: "stocks", newSignals: moduleCounts.trades },
-      { module: "penny", label: "Pink Slips", count: moduleCounts.penny, tab: "penny", newSignals: moduleCounts.penny },
-      { module: "crypto", label: "Crypto", count: moduleCounts.crypto, tab: "crypto", newSignals: moduleCounts.crypto },
-      { module: "betting", label: "Betting", count: moduleCounts.betting, tab: "betting", newSignals: moduleCounts.betting },
-      { module: "predictions", label: "Predictions", count: moduleCounts.predictions, tab: "predictions", newSignals: moduleCounts.predictions },
+      { module: "trades", label: "Trades", count: ledger.trades, tab: "stocks", newSignals: ledger.matched.trades },
+      { module: "penny", label: "Pink Slips", count: ledger.penny, tab: "penny", newSignals: ledger.matched.penny },
+      { module: "crypto", label: "Crypto", count: ledger.crypto, tab: "crypto", newSignals: ledger.matched.crypto },
+      { module: "betting", label: "Betting", count: ledger.betting, tab: "betting", newSignals: ledger.matched.betting },
+      {
+        module: "predictions",
+        label: "Predictions",
+        count: ledger.predictions,
+        tab: "predictions",
+        newSignals: ledger.matched.predictions,
+      },
     ],
     opportunities: top8,
     personalized,

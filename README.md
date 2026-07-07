@@ -4,107 +4,66 @@
 
 Pure SaaS. No trading. No betting. Just intelligence.
 
-## Port isolation (MotiveIQ vs MotiveFX)
-
-These projects run side-by-side with **separate ports** — no shared processes or URLs.
-
-| Service | MotiveIQ | MotiveFX.AI |
-|---------|----------|-------------|
-| Web dashboard | http://127.0.0.1:**5173** | http://127.0.0.1:**5280** |
-| Backend API | http://127.0.0.1:**8000** | http://127.0.0.1:**8001** |
-
-Both can run at the same time without conflict.
-
 ## Architecture
 
 ```
 motivefx-ai/
-├── backend/     FastAPI — aggregates Finnhub, CoinStats, The Odds API
-├── web/         React + Vite dashboard (primary MVP surface)
+├── apps/site/   Next.js — production site, billing, terminal APIs (Vercel)
+├── packages/database/  Prisma + Postgres (Supabase)
+├── web/         React + Vite terminal (embedded at /terminal/)
 └── mobile/      Expo React Native app (iOS + Android)
 ```
 
-## Modular subscriptions
+Production runs entirely on **Vercel + Supabase + Stripe**. Market feeds and advisor logic live in native Next.js API routes under `apps/site/src/app/api/*`.
 
-Subscribe à la carte — each module is **$29/mo** with a 3-day trial, or **$69/mo** for all three:
+## Quick Start (local)
 
-| Module | What you get |
-|--------|----------------|
-| **Trades** | Portfolio AI (buy/sell/hold), unusual options (yfinance), Senate congress disclosures |
-| **Crypto** | Portfolio AI, CoinGecko trending, Polymarket odds, whale alerts |
-| **Betting** | Bet tracker + AI grader, sharp/public picks, line movement |
-
-### AI Advisor endpoints
-
-- `POST /api/advisor/trades/analyze` — portfolio + free signal fusion
-- `POST /api/advisor/crypto/analyze` — crypto holdings + trending/Polymarket
-- `POST /api/advisor/betting/analyze` — grade your bets vs sharp money
-- `GET /api/advisor/betting/picks` — top AI picks today
-
-Free data sources wired in: **yfinance**, **Senate EFTS**, **Polymarket Gamma**, **CoinGecko**, **The Odds API** (when key set).
-
-## MVP Roadmap
-
-| Week | Goal |
-|------|------|
-| 1 | Sign up for API keys → paste into `.env` |
-| 2–3 | Polish dashboard UI, alert preferences |
-| 4 | Stripe billing + 3-day free trial |
-
-## Quick Start
-
-### 1. Backend
-
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-pip install -r requirements.txt
-copy ..\.env.example ..\.env  # add API keys when ready
-uvicorn main:app --reload --host 127.0.0.1 --port 8001
+```powershell
+cd C:\Users\Mazen\Documents\motivefx-ai
+npx pnpm@9.15.0 install
+# Copy apps/site/.env.local.example → apps/site/.env.local
+# Copy packages/database/.env.example → packages/database/.env
+npx pnpm@9.15.0 db:generate
+npx pnpm@9.15.0 db:push
+npx pnpm@9.15.0 dev
 ```
 
-API docs: http://127.0.0.1:8001/docs
+Open http://localhost:3010 — terminal at http://localhost:3010/terminal/
 
-### 2. Web Dashboard
+## Intelligence tiers
 
-```bash
-cd web
-npm install
-npm run dev
-```
+| Plan | Markets | Highlights |
+|------|---------|------------|
+| Lite | Preview | Sample signals |
+| Pro | 1 market | Live feeds + AI advisor |
+| Ultra | 3 markets | Full terminal access |
+| Ultra+ | 5 markets | All markets + simulation |
+| Elite | All | Annual flagship tier |
 
-Open http://127.0.0.1:5280
+See `/pricing` on the site for current Stripe pricing.
 
-### 3. Mobile (optional)
+## API routes (native)
 
-```bash
-cd mobile
-npm install
-npx expo start
-```
+- `GET /api/home/briefing` — personalized intel briefing
+- `POST /api/advisor/*/analyze` — portfolio AI per market
+- `GET /api/stocks|crypto|betting|penny|predictions/*` — live feeds
+- `POST /api/billing/checkout` — Stripe checkout
+- `GET /api/health` — feed key status
 
-## Data Feeds (Week 1)
+## Data feeds
 
-| Tab | Provider | Env var | What you get |
-|-----|----------|---------|--------------|
-| Stocks | [Finnhub](https://finnhub.io) | `FINNHUB_API_KEY` | Unusual options, congress trades |
-| Crypto | [CoinStats](https://coinstats.app/api) | `COINSTATS_API_KEY` | Whale wallet alerts |
-| Betting | [The Odds API](https://the-odds-api.com) | `THE_ODDS_API_KEY` | Line movement across books |
+| Tab | Provider | Env var |
+|-----|----------|---------|
+| Stocks | Finnhub | `FINNHUB_API_KEY` |
+| Crypto | CoinStats | `COINSTATS_API_KEY` |
+| Betting | The Odds API | `THE_ODDS_API_KEY` |
 
 Without API keys the app runs in **demo mode** with realistic sample data.
 
-## Pricing Tiers
+## Deploy
 
-- **Basic** — $29/mo — Full dashboard access
-- **Alpha** — $99/mo — Instant push alerts (Stripe + FCM/APNs in Week 4)
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for Vercel + Supabase + Stripe production setup.
 
-## Legal Position
+## Legal
 
-MotiveFX.AI is an **information and analytics provider**. It does not execute trades, accept bets, or hold user funds. No broker-dealer or sports betting license required.
-
-## Stripe Setup (Week 4)
-
-1. Create products in Stripe Dashboard (Basic $29, Alpha $99)
-2. Copy price IDs to `.env` (`STRIPE_PRICE_BASIC`, `STRIPE_PRICE_ALPHA`)
-3. Set webhook endpoint to `POST /api/billing/webhook`
+MotiveFX.AI is an **information and analytics provider**. It does not execute trades, accept bets, or hold user funds.

@@ -48,3 +48,27 @@ export async function countAllHoldings(userId: string): Promise<number> {
   }
   return total;
 }
+
+export async function portfolioSnapshot(userId: string): Promise<{
+  counts: Record<PortfolioModule, number>;
+  symbols: Record<PortfolioModule, string[]>;
+}> {
+  const rows = await prisma.userPortfolio.findMany({ where: { userId } });
+  const counts: Record<PortfolioModule, number> = { trades: 0, crypto: 0, penny: 0 };
+  const symbols: Record<PortfolioModule, string[]> = { trades: [], crypto: [], penny: [] };
+
+  for (const row of rows) {
+    if (!isPortfolioModule(row.module)) continue;
+    try {
+      const parsed = JSON.parse(row.holdingsJson) as unknown;
+      if (!Array.isArray(parsed)) continue;
+      const holdings = parsed as Holding[];
+      counts[row.module] = holdings.length;
+      symbols[row.module] = holdings.map((h) => h.symbol.toUpperCase());
+    } catch {
+      /* ok */
+    }
+  }
+
+  return { counts, symbols };
+}

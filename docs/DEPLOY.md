@@ -32,7 +32,7 @@ Estimated time: ~45 minutes.
 | Stripe webhooks as API routes | Same: `/api/webhooks/stripe` |
 | One Vercel project per product | **New** Vercel project; same Vercel **account** as Motive Life is fine |
 
-The existing **`web/`** (Vite) + **`backend/`** (FastAPI + SQLite) stack stays for local dev and will be ported into Next.js over time. Production billing and the public site go through **`apps/site`** first — same pattern you already used for Motive Life.
+The **`web/`** Vite terminal is embedded in **`apps/site`** at `/terminal/`. All production APIs, billing, and Postgres live in the Next.js app — same pattern as Motive Life.
 
 ---
 
@@ -99,8 +99,7 @@ git push -u origin main
 | `STRIPE_PRICE_ULTRA_PLUS` | Live price — Ultra+ $149.99/mo |
 | `STRIPE_PRICE_ELITE` | Live price — Elite $999/yr (annual price in Stripe) |
 | `AUTH_SECRET` | Random 32+ char string for session cookies |
-| `MOTIVEFX_API_URL` | FastAPI URL (local: `http://127.0.0.1:8001`; prod: Render URL) |
-| `BACKEND_SYNC_SECRET` | Same value on Vercel **and** FastAPI backend |
+| `ADMIN_EMAILS` | Comma-separated ops console admins |
 | `RESEND_API_KEY` | Same `re_...` as Motive Life (shared account) |
 | `EMAIL_FROM` | `MotiveFX <hello@mymotivelife.com>` |
 
@@ -158,65 +157,12 @@ After first deploy, set `NEXT_PUBLIC_APP_URL` to the final URL and redeploy if y
 - [ ] Enter email → Lite → pick 1 market → Stripe Checkout opens
 - [ ] After payment, webhook fires (check Vercel logs for `/api/webhooks/stripe`)
 - [ ] User row in Supabase has `intelligenceTier` and `selectedMarkets` set
-- [ ] Billing portal: `POST /api/billing/portal` with `{ "email": "..." }` returns Stripe portal URL
+- [ ] `GET /api/health` returns `status: ok`
+- [ ] `GET /api/system/health` returns `ok: true`
 
 ---
 
-## 7. FastAPI backend (intelligence tools)
-
-The Next.js site proxies market APIs to FastAPI and syncs users via an internal bridge.
-
-### Local (two terminals)
-
-```powershell
-# Terminal 1 — FastAPI
-cd C:\Users\Mazen\Documents\motivefx-ai\backend
-.\.venv\Scripts\uvicorn.exe main:app --reload --host 127.0.0.1 --port 8001
-
-# Terminal 2 — Next.js site
-cd C:\Users\Mazen\Documents\motivefx-ai
-npx pnpm@9.15.0 dev
-```
-
-Set in `apps/site/.env.local` and `backend/.env`:
-
-```env
-MOTIVEFX_API_URL=http://127.0.0.1:8001
-BACKEND_SYNC_SECRET=your-shared-secret
-```
-
-### Production (Render)
-
-See **[docs/FASTAPI-RENDER.md](../FASTAPI-RENDER.md)** for the full guide.
-
-**Blueprint:** https://dashboard.render.com/blueprint/new?repo=https://github.com/mazensamhat/Motivefx.ai
-
-1. Run `.\scripts\generate-production-secrets.ps1` for `JWT_SECRET_KEY` + `BACKEND_SYNC_SECRET`
-2. Apply Blueprint → set secrets when prompted
-3. Copy Render URL → Vercel `MOTIVEFX_API_URL`
-4. Set same `BACKEND_SYNC_SECRET` on Vercel → redeploy
-
-Health check: `GET https://www.motivefxai.com/api/system/health` should show `backend: true` when both are up.
-
-**Billing stays on Vercel** — do not rely on FastAPI `/api/billing/webhook` in production.
-
----
-
-## 8. What comes next (dashboard)
-
-Phase 2: move the full Vite dashboard from `web/` into `apps/site`. The Python `backend/` powers live feeds until those APIs are fully ported.
-
-For local dev of the **legacy** Vite dashboard (unchanged):
-
-```powershell
-cd C:\Users\Mazen\Documents\motivefx-ai\web
-npm run dev
-
-cd C:\Users\Mazen\Documents\motivefx-ai\backend
-.\.venv\Scripts\uvicorn.exe main:app --reload --host 127.0.0.1 --port 8001
-```
-
-For local dev of the **Vercel site**:
+## 7. Local development
 
 ```powershell
 cd C:\Users\Mazen\Documents\motivefx-ai
@@ -225,7 +171,15 @@ npx pnpm@9.15.0 install
 npx pnpm@9.15.0 dev
 ```
 
-Open `http://localhost:3010`.
+Open `http://localhost:3010`. Terminal: `http://localhost:3010/terminal/`
+
+---
+
+## 8. What comes next
+
+- Wire OpenAI for deep LLM analysis (optional `OPENAI_API_KEY`)
+- Expand ops analytics (Stripe revenue, channel attribution) in Postgres
+- Port remaining routes (`/api/news/*`, short links) if needed
 
 ---
 
@@ -250,8 +204,6 @@ DATABASE_URL="postgresql://..."
 DIRECT_URL="postgresql://..."
 NEXT_PUBLIC_APP_URL="http://localhost:3010"
 AUTH_SECRET="..."
-MOTIVEFX_API_URL="http://127.0.0.1:8001"
-BACKEND_SYNC_SECRET="..."
 RESEND_API_KEY="re_..."   # same as Motive Life
 EMAIL_FROM="MotiveFX <hello@mymotivelife.com>"
 STRIPE_SECRET_KEY="sk_test_..."

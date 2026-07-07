@@ -1,7 +1,7 @@
 import type { AuthUser } from "./api";
-import { SITE_EMBED } from "./backendBridge";
+import { SITE_EMBED } from "./embed";
 
-export { SITE_EMBED } from "./backendBridge";
+export { SITE_EMBED } from "./embed";
 
 export interface SiteSessionUser extends AuthUser {
   isAdmin?: boolean;

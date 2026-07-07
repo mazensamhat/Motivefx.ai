@@ -1,6 +1,5 @@
 import { prisma } from "@motivefx/database";
 import { getEmailConfigStatus, hasResendApiKey } from "@/lib/email";
-import { getBackendApiUrl } from "@/lib/backend";
 import { getStripe } from "@/lib/stripe";
 
 export type PlatformCheck = { ok: boolean; label: string; detail?: string };
@@ -120,33 +119,35 @@ async function supabaseCard(): Promise<PlatformCard> {
   };
 }
 
-async function renderCard(): Promise<PlatformCard> {
-  const url = getBackendApiUrl();
+async function terminalApiCard(): Promise<PlatformCard> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://127.0.0.1:3010";
   try {
-    const res = await fetch(`${url}/api/health`, { cache: "no-store" });
-    const body = res.ok ? ((await res.json()) as { status?: string; feeds?: Record<string, boolean> }) : null;
+    const res = await fetch(`${appUrl}/api/health`, { cache: "no-store" });
+    const body = res.ok
+      ? ((await res.json()) as { status?: string; feeds?: Record<string, boolean> })
+      : null;
     const feeds = body?.feeds ?? {};
     const feedOk = Object.values(feeds).filter(Boolean).length;
     const feedTotal = Object.keys(feeds).length;
     return {
-      id: "render",
-      name: "Render API",
+      id: "terminal-api",
+      name: "Terminal API",
       status: res.ok ? "healthy" : "error",
-      summary: res.ok ? `FastAPI online · ${feedOk}/${feedTotal} feeds` : `HTTP ${res.status}`,
-      metrics: [{ label: "URL", value: url.replace("https://", "") }],
-      checklist: Object.entries(feeds).map(([k, v]) => ({ ok: v, label: `${k} feed` })),
-      dashboardUrl: "https://dashboard.render.com",
-      billingUrl: "https://dashboard.render.com/billing",
+      summary: res.ok ? `Native API online · ${feedOk}/${feedTotal} feeds configured` : `HTTP ${res.status}`,
+      metrics: [{ label: "Host", value: appUrl.replace("https://", "") }],
+      checklist: Object.entries(feeds).map(([key, value]) => ({ ok: value, label: `${key} feed` })),
+      dashboardUrl: "https://vercel.com/dashboard",
+      billingUrl: null,
     };
-  } catch (e) {
+  } catch (error) {
     return {
-      id: "render",
-      name: "Render API",
+      id: "terminal-api",
+      name: "Terminal API",
       status: "error",
-      summary: e instanceof Error ? e.message.slice(0, 60) : "Unreachable",
-      metrics: [{ label: "URL", value: url.replace("https://", "") }],
+      summary: error instanceof Error ? error.message.slice(0, 60) : "Unreachable",
+      metrics: [{ label: "Host", value: appUrl.replace("https://", "") }],
       checklist: [{ ok: false, label: "Health check failed" }],
-      dashboardUrl: "https://dashboard.render.com",
+      dashboardUrl: "https://vercel.com/dashboard",
       billingUrl: null,
     };
   }
@@ -189,10 +190,14 @@ function vercelCard(): PlatformCard {
 }
 
 export async function getPlatformMonitorSnapshot() {
-  const [stripe, supabase, render] = await Promise.all([stripeCard(), supabaseCard(), renderCard()]);
+  const [stripe, supabase, terminalApi] = await Promise.all([
+    stripeCard(),
+    supabaseCard(),
+    terminalApiCard(),
+  ]);
   return {
     generatedAt: new Date().toISOString(),
-    platforms: [vercelCard(), supabase, stripe, resendCard(), render],
+    platforms: [vercelCard(), supabase, stripe, resendCard(), terminalApi],
   };
 }
 

@@ -198,7 +198,7 @@ export function AccountSettings({
 
       <section className="app-panel">
         <h2 className="font-semibold text-white">Send feedback</h2>
-        <p className="mt-1 text-sm text-slate-400">Report bugs or request features (saved to backend ops log).</p>
+        <p className="mt-1 text-sm text-slate-400">Report bugs or request features (saved to ops inbox).</p>
         <form onSubmit={submitFeedback} className="mt-4 space-y-4 max-w-md">
           <div>
             <label className="auth-label" htmlFor="feedback-kind">Type</label>
