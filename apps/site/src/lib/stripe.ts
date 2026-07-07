@@ -3,16 +3,40 @@ import type { PricingTierId } from "./tiers";
 
 let stripeClient: Stripe | null = null;
 
+function normalizeEnvSecret(value: string | undefined): string {
+  if (!value?.trim()) return "";
+  return value.trim().replace(/^["']|["']$/g, "");
+}
+
 export function isValidStripeSecretKey(key: string | undefined): boolean {
-  if (!key?.trim()) return false;
-  const trimmed = key.trim();
-  if (trimmed.includes("...") || trimmed.endsWith("_")) return false;
-  if (trimmed.startsWith("pk_")) return false;
-  return /^sk_(test|live)_[A-Za-z0-9]+$/.test(trimmed) && trimmed.length >= 24;
+  const trimmed = normalizeEnvSecret(key);
+  if (!trimmed) return false;
+  if (trimmed.includes("...") || trimmed.startsWith("pk_") || trimmed.startsWith("whsec_")) return false;
+  return (trimmed.startsWith("sk_test_") || trimmed.startsWith("sk_live_")) && trimmed.length >= 24;
+}
+
+export function stripeConfigHint(): string {
+  const key = normalizeEnvSecret(process.env.STRIPE_SECRET_KEY);
+  if (!key) {
+    return "STRIPE_SECRET_KEY is missing in Vercel → Settings → Environment Variables (Production). Redeploy after saving.";
+  }
+  if (key.startsWith("pk_")) {
+    return "STRIPE_SECRET_KEY is a publishable key (pk_). Use the Secret key (sk_test_ or sk_live_) from Stripe → Developers → API keys.";
+  }
+  if (key.startsWith("whsec_")) {
+    return "STRIPE_SECRET_KEY is set to the webhook signing secret (whsec_). That belongs in STRIPE_WEBHOOK_SECRET. Use sk_test_ or sk_live_ for STRIPE_SECRET_KEY.";
+  }
+  if (key.startsWith("rk_")) {
+    return "STRIPE_SECRET_KEY is a restricted key (rk_). Use the full Secret key (sk_test_ or sk_live_) instead.";
+  }
+  if (!isValidStripeSecretKey(key)) {
+    return "STRIPE_SECRET_KEY format looks invalid. Copy the full Secret key from Stripe Dashboard with no quotes or extra spaces, then redeploy.";
+  }
+  return "";
 }
 
 export function getStripe(): Stripe | null {
-  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  const key = normalizeEnvSecret(process.env.STRIPE_SECRET_KEY);
   if (!key || !isValidStripeSecretKey(key)) return null;
   if (!stripeClient) {
     stripeClient = new Stripe(key, { apiVersion: "2025-08-27.basil" });

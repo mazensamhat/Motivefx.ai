@@ -8,6 +8,7 @@ import {
   getTierPriceId,
   isStripeConfigured,
   resolveStripeCustomerId,
+  stripeConfigHint,
 } from "@/lib/stripe";
 import {
   validateSelectedMarkets,
@@ -24,8 +25,10 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   try {
     if (!isStripeConfigured()) {
+      const hint = stripeConfigHint();
       return badRequest(
-        "Stripe is not configured. Add STRIPE_SECRET_KEY and tier price IDs (STRIPE_PRICE_LITE, etc.) in Vercel."
+        hint ||
+          "Stripe is not configured. Add STRIPE_SECRET_KEY in Vercel (Production), then redeploy."
       );
     }
 
