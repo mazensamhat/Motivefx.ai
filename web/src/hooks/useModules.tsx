@@ -3,7 +3,11 @@ import { WinHookModal } from "../components/WinHookModal";
 import { useAuth } from "./useAuth";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
 import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
-import { syncSiteEntitlementsFromServer } from "../lib/siteSession";
+import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
+import {
+  applySitePlanToModulesPayload,
+  fetchSitePlan,
+} from "../lib/sitePlan";
 import {
   DEFAULT_PLAN,
   EntitlementFeature,
@@ -115,7 +119,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    await syncSiteEntitlementsFromServer();
+    if (SITE_EMBED) {
+      await syncSiteEntitlementsFromServer();
+    }
+    const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
     try {
       const data = await apiGet<{
         active: string[];
@@ -129,11 +136,20 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
         features?: Record<string, boolean>;
         entitlements?: string[];
       }>(`/advisor/modules/${getUserId()}`);
-      applyModulesPayload(data);
+      applyModulesPayload(applySitePlanToModulesPayload(data, sitePlan));
     } catch {
-      setActive([]);
-      setSimulation(null);
-      setPlan(DEFAULT_PLAN);
+      if (sitePlan?.hasSubscription) {
+        applyModulesPayload(
+          applySitePlanToModulesPayload(
+            { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
+            sitePlan
+          )
+        );
+      } else {
+        setActive([]);
+        setSimulation(null);
+        setPlan(DEFAULT_PLAN);
+      }
     } finally {
       setLoading(false);
     }
@@ -257,7 +273,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       }
 
       setLoading(true);
-      await syncSiteEntitlementsFromServer();
+      if (SITE_EMBED) {
+        await syncSiteEntitlementsFromServer();
+      }
+      const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
 
       try {
         await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
@@ -272,9 +291,9 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
         window.history.replaceState({}, "", window.location.pathname);
       }
 
-      let isAnnual = false;
+      let isAnnual = Boolean(sitePlan?.hasSubscription && sitePlan.tier === "elite");
       try {
-        let data = await apiGet<{
+        const data = await apiGet<{
           active: string[];
           catalog: ModuleCatalog;
           hasAnnual?: boolean;
@@ -287,10 +306,20 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
           entitlements?: string[];
         }>(`/advisor/modules/${getUserId()}`);
 
-        applyModulesPayload(data);
-        isAnnual = data.hasAnnual ?? false;
+        const merged = applySitePlanToModulesPayload(data, sitePlan);
+        applyModulesPayload(merged);
+        isAnnual = merged.hasAnnual ?? isAnnual;
       } catch {
-        setActive([]);
+        if (sitePlan?.hasSubscription) {
+          const merged = applySitePlanToModulesPayload(
+            { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
+            sitePlan
+          );
+          applyModulesPayload(merged);
+          isAnnual = merged.hasAnnual ?? isAnnual;
+        } else {
+          setActive([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -299,7 +328,11 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
         /* refresh already applied via annual checkout */
       } else if (sub && !isAnnual) {
         triggerWinHook(sub);
-      } else if (!isAnnual && !sessionStorage.getItem("motivefx_welcome_hook")) {
+      } else if (
+        !isAnnual &&
+        !sitePlan?.hasSubscription &&
+        !sessionStorage.getItem("motivefx_welcome_hook")
+      ) {
         sessionStorage.setItem("motivefx_welcome_hook", "1");
         setTimeout(() => triggerWinHook("betting"), 2500);
       }

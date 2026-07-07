@@ -50,12 +50,19 @@ async def sync_site_user(
     """Provision or refresh SQLite user from Supabase site session."""
     _verify_sync_secret(x_backend_sync_secret)
     result = auth_service.provision_site_user(body.email, display_name=body.display_name)
-    sync_site_user_entitlements(
-        result["user_id"],
-        intelligence_tier=body.intelligence_tier or "lite",
-        selected_markets=body.selected_markets,
-        subscription_active=body.subscription_active,
-    )
+    try:
+        sync_site_user_entitlements(
+            result["user_id"],
+            intelligence_tier=body.intelligence_tier or "lite",
+            selected_markets=body.selected_markets,
+            subscription_active=body.subscription_active,
+        )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "entitlements sync failed for %s — tokens still issued", body.email
+        )
     return result
 
 
