@@ -28,3 +28,6 @@
 -p:apps/site/node_modules/bcryptjs
 -p:apps/site/node_modules/jose
 -p:*packages/database/node_modules/bcryptjs
+-p:*apps/site/node_modules/@types/leaflet
+-p:*apps/site/node_modules/leaflet
+-p:apps/site/node_modules/react-leaflet

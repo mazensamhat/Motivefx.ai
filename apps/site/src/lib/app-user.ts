@@ -1,6 +1,7 @@
 import { prisma } from "@motivefx/database";
 import { parseUserMarkets } from "./entitlements";
 import { getSession } from "./session";
+import { userHasActiveSubscription } from "./subscription-access";
 
 export async function getAppUser() {
   const session = await getSession();
@@ -15,17 +16,20 @@ export async function getAppUser() {
       selectedMarkets: true,
       stripeCustomerId: true,
       stripeSubscriptionId: true,
+      subscriptionStatus: true,
+      accessExpiresAt: true,
+      disabledAt: true,
     },
   });
 
-  if (!user) return null;
+  if (!user || user.disabledAt) return null;
 
   return {
     id: user.id,
     email: user.email,
     tier: user.intelligenceTier,
     markets: parseUserMarkets(user.selectedMarkets),
-    hasSubscription: Boolean(user.stripeSubscriptionId),
+    hasSubscription: userHasActiveSubscription(user),
     hasBillingAccount: Boolean(user.stripeCustomerId),
   };
 }

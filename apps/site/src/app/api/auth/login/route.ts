@@ -17,6 +17,9 @@ export async function POST(request: Request) {
     const email = parsed.data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return unauthorized("Invalid email or password.");
+    if (user.disabledAt) {
+      return unauthorized("This account is disabled. Contact support.");
+    }
     if (!user.passwordHash) {
       return unauthorized(
         "No password on this account yet. Use Create account on /register or complete checkout first."

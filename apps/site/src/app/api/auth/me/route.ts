@@ -1,6 +1,7 @@
 import { prisma } from "@motivefx/database";
 import { json, unauthorized } from "@/lib/api";
 import { getSession } from "@/lib/session";
+import { userHasActiveSubscription } from "@/lib/subscription-access";
 
 export async function GET() {
   const session = await getSession();
@@ -14,16 +15,19 @@ export async function GET() {
       intelligenceTier: true,
       selectedMarkets: true,
       stripeSubscriptionId: true,
+      subscriptionStatus: true,
+      accessExpiresAt: true,
+      disabledAt: true,
     },
   });
 
-  if (!user) return unauthorized();
+  if (!user || user.disabledAt) return unauthorized();
 
   return json({
     user: {
       ...user,
       selectedMarkets: user.selectedMarkets ? JSON.parse(user.selectedMarkets) : [],
-      hasSubscription: Boolean(user.stripeSubscriptionId),
+      hasSubscription: userHasActiveSubscription(user),
     },
   });
 }

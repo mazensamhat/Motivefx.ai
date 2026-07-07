@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
 import { getBackendApiUrl } from "@/lib/backend";
 import { getSession } from "@/lib/session";
@@ -19,6 +20,16 @@ export async function POST(request: Request) {
       return badRequest("Please write at least a few words describing your feedback.");
     }
 
+    await prisma.productFeedback.create({
+      data: {
+        userId: session.id,
+        email: session.email,
+        kind: parsed.data.kind,
+        message: parsed.data.message,
+        pagePath: parsed.data.pagePath ?? null,
+      },
+    });
+
     const secret = process.env.BACKEND_SYNC_SECRET?.trim();
     if (secret) {
       await fetch(`${getBackendApiUrl()}/api/internal/feedback`, {
@@ -35,13 +46,6 @@ export async function POST(request: Request) {
         }),
       }).catch((err) => console.error("[feedback] backend forward failed", err));
     }
-
-    console.info("[feedback]", {
-      email: session.email,
-      kind: parsed.data.kind,
-      message: parsed.data.message.slice(0, 200),
-      pagePath: parsed.data.pagePath,
-    });
 
     return json({ ok: true }, 201);
   } catch (error) {

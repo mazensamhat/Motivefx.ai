@@ -26,6 +26,21 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(parsed.data.password);
     const now = new Date();
+    const country = request.headers.get("x-vercel-ip-country")?.trim().toUpperCase() || null;
+    const city = request.headers.get("x-vercel-ip-city")?.trim() || null;
+    const region = request.headers.get("x-vercel-ip-country-region")?.trim() || null;
+    const latRaw = request.headers.get("x-vercel-ip-latitude");
+    const lngRaw = request.headers.get("x-vercel-ip-longitude");
+    const signupLatitude = latRaw ? Number(latRaw) : null;
+    const signupLongitude = lngRaw ? Number(lngRaw) : null;
+
+    const geoData = {
+      signupCountry: country,
+      signupCity: city,
+      signupRegion: region,
+      signupLatitude: Number.isFinite(signupLatitude) ? signupLatitude : null,
+      signupLongitude: Number.isFinite(signupLongitude) ? signupLongitude : null,
+    };
 
     const user = existing
       ? await prisma.user.update({
@@ -34,6 +49,7 @@ export async function POST(request: Request) {
             passwordHash,
             termsAcceptedAt: now,
             privacyAcceptedAt: now,
+            ...(!existing.signupCountry && country ? geoData : {}),
           },
         })
       : await prisma.user.create({
@@ -42,6 +58,7 @@ export async function POST(request: Request) {
             passwordHash,
             termsAcceptedAt: now,
             privacyAcceptedAt: now,
+            ...geoData,
           },
         });
 

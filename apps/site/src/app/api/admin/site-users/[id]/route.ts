@@ -1,6 +1,148 @@
+import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "@motivefx/database";
-import { requireAdmin } from "@/lib/admin";
+import { isAdminEmail, requireAdmin } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
+import { computeAccessExpiresAt, type CompAccessDuration } from "@/lib/comp-access";
+import { clearPasswordResetTokens } from "@/lib/password-reset";
+import type { PricingTierId } from "@/lib/tiers";
+
+const tierSchema = z.enum(["lite", "pro", "ultra", "ultra_plus", "elite"]);
+
+const patchSchema = z.object({
+  intelligenceTier: tierSchema.optional(),
+  grantAccessDuration: z.enum(["1_month", "2_months", "3_months", "lifetime"]).optional(),
+  revokeAccess: z.boolean().optional(),
+  password: z.string().min(8).optional(),
+  disabled: z.boolean().optional(),
+  subscriptionStatus: z.enum(["active", "paused", "cancelled"]).optional(),
+  cancelAccount: z.boolean().optional(),
+});
+
+export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin();
+  if (!auth.ok) {
+    if (auth.status === 401) return unauthorized(auth.error);
+    return forbidden(auth.error);
+  }
+
+  try {
+    const { id } = await ctx.params;
+    const body = await request.json();
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) return badRequest("Invalid input.");
+
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        stripeSubscriptionId: true,
+        accessExpiresAt: true,
+        intelligenceTier: true,
+      },
+    });
+    if (!target) return badRequest("User not found.");
+
+    if (parsed.data.disabled === true && isAdminEmail(target.email)) {
+      return badRequest("Cannot disable an admin account.");
+    }
+
+    if (parsed.data.revokeAccess && target.stripeSubscriptionId) {
+      return badRequest("This user pays via Stripe — cancel in the billing portal instead.");
+    }
+
+    if (parsed.data.grantAccessDuration && target.stripeSubscriptionId) {
+      return badRequest("This user has Stripe billing — change tier in Stripe or revoke subscription first.");
+    }
+
+    const data: {
+      intelligenceTier?: string;
+      subscriptionStatus?: string;
+      accessExpiresAt?: Date | null;
+      disabledAt?: Date | null;
+      passwordHash?: string;
+      stripeSubscriptionId?: null;
+      stripeCustomerId?: null;
+    } = {};
+
+    if (parsed.data.disabled === true) data.disabledAt = new Date();
+    if (parsed.data.disabled === false) data.disabledAt = null;
+
+    if (parsed.data.password) {
+      data.passwordHash = await bcrypt.hash(parsed.data.password, 12);
+      await clearPasswordResetTokens(id);
+    }
+
+    if (parsed.data.grantAccessDuration) {
+      const tier = parsed.data.intelligenceTier ?? (target.intelligenceTier as PricingTierId);
+      data.intelligenceTier = tier;
+      data.subscriptionStatus = "comp";
+      data.accessExpiresAt = computeAccessExpiresAt(parsed.data.grantAccessDuration as CompAccessDuration);
+    } else if (parsed.data.revokeAccess) {
+      data.intelligenceTier = "lite";
+      data.subscriptionStatus = "none";
+      data.accessExpiresAt = null;
+    } else if (parsed.data.cancelAccount) {
+      data.intelligenceTier = "lite";
+      data.subscriptionStatus = "cancelled";
+      data.accessExpiresAt = null;
+      if (!target.stripeSubscriptionId) {
+        data.stripeSubscriptionId = null;
+      }
+    } else {
+      if (parsed.data.intelligenceTier) {
+        if (target.stripeSubscriptionId) {
+          return badRequest("Tier changes for Stripe subscribers must go through billing.");
+        }
+        data.intelligenceTier = parsed.data.intelligenceTier;
+      }
+      if (parsed.data.subscriptionStatus) {
+        data.subscriptionStatus = parsed.data.subscriptionStatus;
+        if (parsed.data.subscriptionStatus === "cancelled") {
+          data.intelligenceTier = "lite";
+          data.accessExpiresAt = null;
+        }
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return badRequest("No changes requested.");
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        intelligenceTier: true,
+        subscriptionStatus: true,
+        accessExpiresAt: true,
+        disabledAt: true,
+        stripeCustomerId: true,
+        stripeSubscriptionId: true,
+      },
+    });
+
+    return json({
+      ok: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        tier: user.intelligenceTier,
+        subscriptionStatus: user.subscriptionStatus,
+        accessExpiresAt: user.accessExpiresAt?.toISOString() ?? null,
+        disabled: Boolean(user.disabledAt),
+        hasStripe: Boolean(user.stripeCustomerId),
+        hasSubscription: Boolean(user.stripeSubscriptionId),
+      },
+    });
+  } catch (error) {
+    console.error("[admin/site-users PATCH]", error);
+    return serverError("Could not update user.");
+  }
+}
 
 export async function DELETE(_request: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin();

@@ -2100,8 +2100,16 @@ body {
   margin-bottom: 1rem;
 }
 
+.admin-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 @media (max-width: 900px) {
-  .admin-grid-2 {
+  .admin-grid-2,
+  .admin-grid-3 {
     grid-template-columns: 1fr;
   }
 }

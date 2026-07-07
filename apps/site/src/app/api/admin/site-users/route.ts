@@ -2,7 +2,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@motivefx/database";
 import { requireAdmin } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
-
+import { formatAccessExpiry } from "@/lib/comp-access";
+import { subscriptionStatusLabel, userHasActiveSubscription } from "@/lib/subscription-access";
 export async function GET(request: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) {
@@ -26,6 +27,9 @@ export async function GET(request: Request) {
         selectedMarkets: true,
         stripeCustomerId: true,
         stripeSubscriptionId: true,
+        subscriptionStatus: true,
+        accessExpiresAt: true,
+        disabledAt: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -37,8 +41,18 @@ export async function GET(request: Request) {
         email: u.email,
         tier: u.intelligenceTier,
         markets: u.selectedMarkets,
+        subscriptionStatus: u.subscriptionStatus,
+        accessExpiresAt: u.accessExpiresAt?.toISOString() ?? null,
+        accessLabel: u.stripeSubscriptionId
+          ? "Paid (Stripe)"
+          : u.subscriptionStatus === "comp" || u.subscriptionStatus === "active"
+            ? formatAccessExpiry(u.accessExpiresAt)
+            : "—",
+        disabled: Boolean(u.disabledAt),
         hasStripe: Boolean(u.stripeCustomerId),
-        hasSubscription: Boolean(u.stripeSubscriptionId),
+        hasSubscription: userHasActiveSubscription(u),
+        hasStripeSubscription: Boolean(u.stripeSubscriptionId),
+        statusLabel: u.stripeSubscriptionId ? "Stripe" : subscriptionStatusLabel(u.subscriptionStatus),
         createdAt: u.createdAt.toISOString(),
         updatedAt: u.updatedAt.toISOString(),
       })),

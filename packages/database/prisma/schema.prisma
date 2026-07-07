@@ -9,19 +9,43 @@ datasource db {
 }
 
 model User {
-  id                   String   @id @default(cuid())
-  email                String   @unique
+  id                   String    @id @default(cuid())
+  email                String    @unique
   passwordHash         String?
-  intelligenceTier     String   @default("lite")
+  intelligenceTier     String    @default("lite")
   selectedMarkets      String?
   stripeCustomerId     String?
   stripeSubscriptionId String?
+  subscriptionStatus   String    @default("none")
+  accessExpiresAt      DateTime?
+  disabledAt           DateTime?
+  signupCountry        String?
+  signupRegion         String?
+  signupCity           String?
+  signupLatitude       Float?
+  signupLongitude      Float?
   termsAcceptedAt      DateTime?
   privacyAcceptedAt    DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   passwordResetTokens PasswordResetToken[]
+  productFeedback     ProductFeedback[]
+
+  @@index([subscriptionStatus])
+}
+
+model ProductFeedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email     String
+  kind      String
+  message   String
+  pagePath  String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model PasswordResetToken {
