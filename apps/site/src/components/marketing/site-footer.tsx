@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/logo";
 import { FOOTER_MARKETS, FOOTER_RESOURCES } from "@/lib/marketing-copy";
+import { SITE } from "@/lib/site-config";
 
 export function SiteFooter() {
   return (
@@ -55,7 +56,7 @@ export function SiteFooter() {
               <li><Link href="/why-motivefx">Why MotiveFX</Link></li>
               <li><Link href="/research-team">Research team</Link></li>
               <li><Link href="/data-sources">Data sources</Link></li>
-              <li><a href="mailto:hello@motivefxai.com">Contact</a></li>
+              <li><a href={`mailto:${SITE.email}`}>Contact</a></li>
             </ul>
           </div>
         </div>

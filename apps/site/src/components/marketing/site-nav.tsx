@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
-import { MARKET_ROUTES } from "@/lib/site-config";
+import { MARKET_ROUTES, SITE } from "@/lib/site-config";
 
 const PRODUCT_LINKS = [
   { href: "#features", label: "Features" },
@@ -27,7 +27,7 @@ const COMPANY_LINKS = [
   { href: "/why-motivefx", label: "Why MotiveFX" },
   { href: "/research-team", label: "Research team" },
   { href: "/data-sources", label: "Data sources" },
-  { href: "mailto:hello@motivefxai.com", label: "Contact" },
+  { href: `mailto:${SITE.email}`, label: "Contact" },
 ];
 
 function NavDropdown({

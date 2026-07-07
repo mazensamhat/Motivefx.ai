@@ -5,7 +5,7 @@ import time
 
 from config import settings
 from db import init_db, record_channel_visit, record_usage_event
-from routers import admin, advisor, auth, betting, core, crypto, home, news, penny, predictions, stocks
+from routers import admin, advisor, auth, betting, core, crypto, home, internal, news, penny, predictions, stocks
 from services.short_links import landing_url, resolve_slug
 from services.usage_tracking import action_for_request, module_for_path
 
@@ -26,6 +26,7 @@ app.add_middleware(
 init_db()
 
 app.include_router(auth.router)
+app.include_router(internal.router)
 app.include_router(admin.router)
 app.include_router(core.router)
 app.include_router(stocks.router)
@@ -41,7 +42,7 @@ app.include_router(advisor.router)
 @app.middleware("http")
 async def usage_telemetry_middleware(request: Request, call_next):
     path = request.url.path
-    skip = path.startswith("/api/admin") or path in ("/", "/docs", "/openapi.json", "/redoc")
+    skip = path.startswith("/api/admin") or path.startswith("/api/internal") or path in ("/", "/docs", "/openapi.json", "/redoc")
     start = time.perf_counter()
     response = await call_next(request)
     if skip or not path.startswith("/api/"):

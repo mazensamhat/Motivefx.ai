@@ -84,9 +84,16 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
           />
         </div>
         <div>
-          <label className="auth-label" htmlFor="password">
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="auth-label" htmlFor="password">
+              Password
+            </label>
+            {mode === "login" && (
+              <Link href="/forgot-password" className="text-xs text-[#00e676] hover:underline">
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <input
             id="password"
             type="password"

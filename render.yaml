@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: motivefx-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: MOTIVEFX_DATA_DIR
+        value: /var/data
+      - key: CORS_ORIGINS
+        value: https://motivefxai.com,https://www.motivefxai.com
+      - key: APP_PUBLIC_URL
+        value: https://www.motivefxai.com
+      - key: AUTH_ENFORCE
+        value: "true"
+    disk:
+      name: motivefx-data
+      mountPath: /var/data
+      sizeGB: 1

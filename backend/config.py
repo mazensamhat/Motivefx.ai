@@ -48,9 +48,10 @@ class Settings(BaseSettings):
 
     api_host: str = "127.0.0.1"
     api_port: int = 8001
-    cors_origins: str = "http://localhost:5280,http://127.0.0.1:5280"
+    cors_origins: str = "http://localhost:5280,http://127.0.0.1:5280,http://localhost:3010,http://127.0.0.1:3010,https://motivefxai.com,https://www.motivefxai.com"
 
     admin_api_key: str = "motivefx-admin-dev"
+    backend_sync_secret: str = "motivefx-backend-sync-dev"
     app_public_url: str = "http://127.0.0.1:5280"
     """Public URL where users open the app (no trailing slash). Used for Stripe redirect + webhooks."""
 

@@ -1,43 +1,33 @@
-import { prisma } from "@motivefx/database";
 import { DashboardHome } from "@/components/app/dashboard-home";
-import { getSession } from "@/lib/session";
+import { getAppUser } from "@/lib/app-user";
+import { fetchBackendJson, syncBackendUser } from "@/lib/backend";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Terminal — MotiveFX.AI",
 };
 
-function parseMarkets(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((m) => typeof m === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
 export default async function AppPage() {
-  const session = await getSession();
-  if (!session) return null;
+  const user = await getAppUser();
+  if (!user) redirect("/login?next=/app");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.id },
-    select: {
-      email: true,
-      intelligenceTier: true,
-      selectedMarkets: true,
-      stripeSubscriptionId: true,
-    },
-  });
-
-  if (!user) return null;
+  const backend = await syncBackendUser(user.email);
+  let briefing: Record<string, unknown> | null = null;
+  if (backend) {
+    briefing = await fetchBackendJson<Record<string, unknown>>(
+      `/api/home/briefing?user_id=${encodeURIComponent(backend.userId)}`,
+      backend
+    );
+  }
 
   return (
     <DashboardHome
       email={user.email}
-      tier={user.intelligenceTier}
-      markets={parseMarkets(user.selectedMarkets)}
-      hasSubscription={Boolean(user.stripeSubscriptionId)}
+      tier={user.tier}
+      markets={user.markets}
+      hasSubscription={user.hasSubscription}
+      briefing={briefing}
+      backendConnected={Boolean(backend)}
     />
   );
 }

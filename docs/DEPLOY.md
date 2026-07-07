@@ -98,6 +98,13 @@ git push -u origin main
 | `STRIPE_PRICE_ULTRA` | Live price — Ultra $99.99/mo |
 | `STRIPE_PRICE_ULTRA_PLUS` | Live price — Ultra+ $149.99/mo |
 | `STRIPE_PRICE_ELITE` | Live price — Elite $999/yr (annual price in Stripe) |
+| `AUTH_SECRET` | Random 32+ char string for session cookies |
+| `MOTIVEFX_API_URL` | FastAPI URL (local: `http://127.0.0.1:8001`; prod: Render URL) |
+| `BACKEND_SYNC_SECRET` | Same value on Vercel **and** FastAPI backend |
+| `RESEND_API_KEY` | Same `re_...` as Motive Life (shared account) |
+| `EMAIL_FROM` | `MotiveFX <hello@mymotivelife.com>` |
+
+See **[docs/RESEND-SETUP.md](../RESEND-SETUP.md)** — no new Resend domain required.
 
 5. **Deploy**
 
@@ -155,11 +162,52 @@ After first deploy, set `NEXT_PUBLIC_APP_URL` to the final URL and redeploy if y
 
 ---
 
-## 7. What comes next (dashboard)
+## 7. FastAPI backend (intelligence tools)
 
-Phase 2: move the Vite dashboard from `web/` into `apps/site` (or serve it at `app.motivefxai.com`). The Python `backend/` can stay for local data feeds until those APIs are ported to Next.js route handlers.
+The Next.js site proxies market APIs to FastAPI and syncs users via an internal bridge.
 
-For local dev of the **legacy** dashboard (unchanged):
+### Local (two terminals)
+
+```powershell
+# Terminal 1 — FastAPI
+cd C:\Users\Mazen\Documents\motivefx-ai\backend
+.\.venv\Scripts\uvicorn.exe main:app --reload --host 127.0.0.1 --port 8001
+
+# Terminal 2 — Next.js site
+cd C:\Users\Mazen\Documents\motivefx-ai
+npx pnpm@9.15.0 dev
+```
+
+Set in `apps/site/.env.local` and `backend/.env`:
+
+```env
+MOTIVEFX_API_URL=http://127.0.0.1:8001
+BACKEND_SYNC_SECRET=your-shared-secret
+```
+
+### Production (Render)
+
+1. [render.com](https://render.com) → **New Web Service** → connect `motivefx-ai` repo
+2. Use `render.yaml` (Docker, root `Dockerfile`)
+3. Add env vars:
+   - `JWT_SECRET_KEY` — random 32+ bytes
+   - `BACKEND_SYNC_SECRET` — **same** as Vercel
+   - `CORS_ORIGINS` — `https://motivefxai.com,https://www.motivefxai.com`
+   - `APP_PUBLIC_URL` — `https://www.motivefxai.com`
+4. Copy the Render service URL → Vercel `MOTIVEFX_API_URL` (e.g. `https://motivefx-api.onrender.com`)
+5. Redeploy Vercel
+
+Health check: `GET https://www.motivefxai.com/api/system/health` should show `backend: true` when both are up.
+
+**Billing stays on Vercel** — do not rely on FastAPI `/api/billing/webhook` in production.
+
+---
+
+## 8. What comes next (dashboard)
+
+Phase 2: move the full Vite dashboard from `web/` into `apps/site`. The Python `backend/` powers live feeds until those APIs are fully ported.
+
+For local dev of the **legacy** Vite dashboard (unchanged):
 
 ```powershell
 cd C:\Users\Mazen\Documents\motivefx-ai\web
@@ -202,6 +250,11 @@ Open `http://localhost:3010`.
 DATABASE_URL="postgresql://..."
 DIRECT_URL="postgresql://..."
 NEXT_PUBLIC_APP_URL="http://localhost:3010"
+AUTH_SECRET="..."
+MOTIVEFX_API_URL="http://127.0.0.1:8001"
+BACKEND_SYNC_SECRET="..."
+RESEND_API_KEY="re_..."   # same as Motive Life
+EMAIL_FROM="MotiveFX <hello@mymotivelife.com>"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 STRIPE_PRICE_LITE="price_..."

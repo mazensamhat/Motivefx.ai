@@ -1,10 +1,11 @@
 import { prisma } from "@motivefx/database";
-import { badRequest, json, serverError } from "@/lib/api";
+import { badRequest, json, serverError, unauthorized } from "@/lib/api";
 import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
+import { getSession } from "@/lib/session";
 import { z } from "zod";
 
 const bodySchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().optional(),
 });
 
 export async function POST(request: Request) {
@@ -13,23 +14,24 @@ export async function POST(request: Request) {
       return badRequest("Stripe is not configured.");
     }
 
-    const parsed = bodySchema.safeParse(await request.json());
-    if (!parsed.success) return badRequest("Valid email required.");
+    const session = await getSession();
+    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
+    const email = (session?.email ?? parsed.data?.email)?.trim().toLowerCase();
+    if (!email) return unauthorized("Sign in to manage billing.");
 
-    const email = parsed.data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
       where: { email },
       select: { stripeCustomerId: true },
     });
     if (!user?.stripeCustomerId) {
-      return badRequest("No billing account found for this email.");
+      return badRequest("No active subscription found. Subscribe on Pricing first.");
     }
 
     const stripe = getStripe()!;
     const appUrl = getAppUrl();
     const portal = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${appUrl}/pricing`,
+      return_url: `${appUrl}/app/settings`,
     });
 
     return json({ url: portal.url });

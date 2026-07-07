@@ -318,3 +318,32 @@ def delete_account(user_id: str, password: str, confirmation: str) -> None:
         raise ValueError("Invalid password")
     revoke_all_refresh_tokens(user_id)
     delete_user_account(user_id)
+
+
+def provision_site_user(email: str, *, display_name: str | None = None) -> dict:
+    """Create or load a backend user for the Next.js site (no password login on FastAPI)."""
+    normalized = email.strip().lower()
+    user = get_user_by_email(normalized)
+    if not user:
+        user_id = new_user_id()
+        now = _utc_now().isoformat()
+        create_auth_user(
+            user_id,
+            normalized,
+            hash_password(secrets.token_urlsafe(24)),
+            display_name=display_name or normalized.split("@")[0],
+            privacy_accepted_at=now,
+            terms_accepted_at=now,
+            acquisition_channel="motivefx_site",
+        )
+        user = get_user_record(user_id)
+    if not user:
+        raise ValueError("Could not provision user")
+    access = create_access_token(user["user_id"], normalized)
+    refresh = create_refresh_token(user["user_id"])
+    return {
+        "user_id": user["user_id"],
+        "email": normalized,
+        "access_token": access,
+        "refresh_token": refresh,
+    }

@@ -27,3 +27,4 @@
 -p:apps/site/node_modules/@types/bcryptjs
 -p:apps/site/node_modules/bcryptjs
 -p:apps/site/node_modules/jose
+-p:*packages/database/node_modules/bcryptjs
