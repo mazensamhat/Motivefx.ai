@@ -12,10 +12,12 @@ console.log("[terminal] Building full MotiveFX terminal for /terminal/ …");
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
-execSync("npm ci && npm run build", {
+// Vercel sets NODE_ENV=production during install/build, which makes `npm ci`
+// skip devDependencies. The terminal build needs TypeScript, Vite, and @types/*.
+execSync("npm ci --include=dev && npm run build", {
   cwd: webDir,
   stdio: "inherit",
-  env: { ...process.env, VITE_BASE: "/terminal/" },
+  env: { ...process.env, VITE_BASE: "/terminal/", NODE_ENV: "development" },
 });
 
 const distDir = join(webDir, "dist");
