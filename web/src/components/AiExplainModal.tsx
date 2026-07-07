@@ -1,4 +1,5 @@
 import { HelpCircle, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { SignalChip } from "./SignalChip";
 import { IntelActionBar } from "./IntelActionBar";
 import { formatSignalShareText } from "../utils/shareSignal";
@@ -57,10 +58,9 @@ export function AiExplainModal({
     .filter(Boolean)
     .join(" · ");
 
-  return (
-    <div className="modal-overlay ai-explain-overlay" role="dialog" aria-modal="true">
-      <div className="ai-explain-modal glass-card">
-        <div className="ai-explain-header">
+  return createPortal(
+    <div className="modal-overlay ai-explain-overlay" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="ai-explain-modal glass-card" onClick={(e) => e.stopPropagation()}>        <div className="ai-explain-header">
           <div>
             <span className="ai-explain-label">Why this signal?</span>
             <h3>{symbol ? `$${symbol} · ` : ""}{title}</h3>
@@ -109,10 +109,10 @@ export function AiExplainModal({
 
         <p className="ai-explain-footer">{MOTIVE_RATING_DISCLAIMER}</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
-
 function Stars({ count }: { count: number }) {
   return (
     <span className="star-rating" aria-label={`${count} of 5 stars`}>

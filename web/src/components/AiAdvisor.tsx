@@ -234,44 +234,40 @@ function AdvisorRow({
   return (
     <TerminalRow
       tag={{ label: rating.shortLabel, variant: rating.variant }}
-      primary={
-        <>
-          Motive Signal {formatMotiveSignalScore(rating.score)} · {rec.headline}
-        </>
-      }
+      primary={<>Motive Signal {formatMotiveSignalScore(rating.score)} · {rec.headline}</>}
       secondary={
-        <div>
-          {reasons.length > 0 ? (
-            <ul className="motive-reason-list motive-reason-list-compact">
-              {reasons.map((reason) => (
-                <li key={reason}>
-                  <Check size={11} aria-hidden />
-                  {reason}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            rec.reasoning.slice(0, 120) + (rec.reasoning.length > 120 ? "…" : "")
-          )}
-          <div className="advisor-row-actions">
-            <RiskBadge level={risk} className="advisor-risk-pill" context={rec.headline} />
-            <button
-              type="button"
-              className="btn btn-sm btn-why"
-              onClick={() =>
-                onExplain({
-                  title: rec.headline,
-                  symbol: rec.symbol,
-                  confidence: rec.confidence,
-                  action: rec.action,
-                  reasons: reasons.length ? reasons : [rec.reasoning],
-                  signals: rec.signals,
-                })
-              }
-            >
-              Why?
-            </button>
-          </div>
+        reasons.length > 0 ? (
+          <ul className="motive-reason-list motive-reason-list-compact">
+            {reasons.map((reason) => (
+              <li key={reason}>
+                <Check size={11} aria-hidden />
+                {reason}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          rec.reasoning.slice(0, 120) + (rec.reasoning.length > 120 ? "…" : "")
+        )
+      }
+      actions={
+        <div className="advisor-row-actions">
+          <RiskBadge level={risk} className="advisor-risk-pill" context={rec.headline} />
+          <button
+            type="button"
+            className="btn btn-sm btn-why"
+            onClick={() =>
+              onExplain({
+                title: rec.headline,
+                symbol: rec.symbol,
+                confidence: rec.confidence,
+                action: rec.action,
+                reasons: reasons.length ? reasons : [rec.reasoning],
+                signals: rec.signals,
+              })
+            }
+          >
+            Why?
+          </button>
         </div>
       }
     />
