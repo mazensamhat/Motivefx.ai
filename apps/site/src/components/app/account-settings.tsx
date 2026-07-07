@@ -31,6 +31,8 @@ export function AccountSettings({
   const [feedbackKind, setFeedbackKind] = useState<"bug" | "feature" | "billing" | "other">("feature");
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
+
+  async function changePassword(e: React.FormEvent) {
     e.preventDefault();
     setPasswordErr("");
     setPasswordMsg("");
