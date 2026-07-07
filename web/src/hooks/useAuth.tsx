@@ -18,6 +18,7 @@ import {
   type AuthUser,
 } from "../lib/api";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
+import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
 import { AccountSettingsModal } from "../components/AccountSettingsModal";
 import { AuthModal } from "../components/AuthModal";
 
@@ -34,8 +35,6 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
-
 async function fetchSiteAdminStatus(): Promise<boolean> {
   if (!SITE_EMBED) return false;
   try {
@@ -45,32 +44,6 @@ async function fetchSiteAdminStatus(): Promise<boolean> {
     return Boolean(data.user?.isAdmin);
   } catch {
     return false;
-  }
-}
-
-async function bootstrapSiteSession(): Promise<{ ok: boolean; isAdmin: boolean }> {
-  if (!SITE_EMBED || getAccessToken()) return { ok: false, isAdmin: false };
-  try {
-    const res = await fetch("/api/app/session", { cache: "no-store" });
-    if (!res.ok) return { ok: false, isAdmin: false };
-    const data = (await res.json()) as {
-      ok?: boolean;
-      userId?: string;
-      email?: string;
-      accessToken?: string;
-      refreshToken?: string;
-      isAdmin?: boolean;
-    };
-    if (!data.ok || !data.accessToken || !data.refreshToken || !data.userId || !data.email) {
-      return { ok: false, isAdmin: false };
-    }
-    setSession(data.accessToken, data.refreshToken, {
-      userId: data.userId,
-      email: data.email,
-    });
-    return { ok: true, isAdmin: Boolean(data.isAdmin) };
-  } catch {
-    return { ok: false, isAdmin: false };
   }
 }
 
@@ -101,9 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const boot = await bootstrapSiteSession();
-      if (boot.isAdmin) setIsAdmin(true);
+      const sync = await syncSiteEntitlementsFromServer();
+      if (sync.isAdmin) setIsAdmin(true);
       await refreshUser();
+      if (sync.ok) {
+        window.dispatchEvent(new Event("motivefx:entitlements-changed"));
+      }
     })().finally(() => setLoading(false));
   }, [refreshUser]);
 

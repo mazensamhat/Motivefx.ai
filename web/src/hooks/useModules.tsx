@@ -3,6 +3,7 @@ import { WinHookModal } from "../components/WinHookModal";
 import { useAuth } from "./useAuth";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
 import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
+import { syncSiteEntitlementsFromServer } from "../lib/siteSession";
 import {
   DEFAULT_PLAN,
   EntitlementFeature,
@@ -57,7 +58,7 @@ interface ModulesState {
 const ModulesContext = createContext<ModulesState | null>(null);
 
 export function ModulesProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, openAuth } = useAuth();
+  const { isAuthenticated, loading: authLoading, openAuth } = useAuth();
   const [active, setActive] = useState<string[]>([]);
   const [catalog, setCatalog] = useState<ModuleCatalog>({});
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    await syncSiteEntitlementsFromServer();
     try {
       const data = await apiGet<{
         active: string[];
@@ -248,10 +250,14 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function init() {
+      if (authLoading) return;
       if (!getAccessToken()) {
         setLoading(false);
         return;
       }
+
+      setLoading(true);
+      await syncSiteEntitlementsFromServer();
 
       try {
         await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
@@ -299,7 +305,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       }
     }
     init();
-  }, [triggerWinHook, isAuthenticated, applyModulesPayload]);
+  }, [triggerWinHook, isAuthenticated, authLoading, applyModulesPayload]);
 
   const allowedMarkets = plan.allowedMarkets;
 

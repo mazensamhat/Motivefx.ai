@@ -65,6 +65,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       passwordHash?: string;
       stripeSubscriptionId?: null;
       stripeCustomerId?: null;
+      selectedMarkets?: string;
     } = {};
 
     if (parsed.data.disabled === true) data.disabledAt = new Date();
@@ -80,6 +81,15 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       data.intelligenceTier = tier;
       data.subscriptionStatus = "comp";
       data.accessExpiresAt = computeAccessExpiresAt(parsed.data.grantAccessDuration as CompAccessDuration);
+      if (tier === "elite" || tier === "ultra" || tier === "ultra_plus") {
+        data.selectedMarkets = JSON.stringify([
+          "stocks",
+          "crypto",
+          "pink_slips",
+          "sports_betting",
+          "prediction_markets",
+        ]);
+      }
     } else if (parsed.data.revokeAccess) {
       data.intelligenceTier = "lite";
       data.subscriptionStatus = "none";
@@ -126,12 +136,14 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       },
     });
 
-    void syncBackendUser(user.email).catch((err) => {
+    const backendSynced = await syncBackendUser(user.email).then(Boolean).catch((err) => {
       console.error("[admin/site-users PATCH] backend sync failed", err);
+      return false;
     });
 
     return json({
       ok: true,
+      backendSynced,
       user: {
         id: user.id,
         email: user.email,
