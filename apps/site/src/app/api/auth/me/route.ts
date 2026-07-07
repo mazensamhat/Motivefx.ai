@@ -1,6 +1,7 @@
 import { prisma } from "@motivefx/database";
 import { json, unauthorized } from "@/lib/api";
 import { getSession } from "@/lib/session";
+import { isAdminEmail } from "@/lib/admin";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
 
 export async function GET() {
@@ -28,6 +29,7 @@ export async function GET() {
       ...user,
       selectedMarkets: user.selectedMarkets ? JSON.parse(user.selectedMarkets) : [],
       hasSubscription: userHasActiveSubscription(user),
+      isAdmin: isAdminEmail(user.email),
     },
   });
 }

@@ -25,6 +25,7 @@ interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   openAuth: (mode?: "login" | "register") => void;
   openAccount: () => void;
   logout: () => Promise<void>;
@@ -35,34 +36,48 @@ const AuthContext = createContext<AuthState | null>(null);
 
 const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
 
-async function bootstrapSiteSession() {
-  if (!SITE_EMBED || getAccessToken()) return false;
+async function fetchSiteAdminStatus(): Promise<boolean> {
+  if (!SITE_EMBED) return false;
+  try {
+    const res = await fetch("/api/auth/me", { cache: "no-store" });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { user?: { isAdmin?: boolean } };
+    return Boolean(data.user?.isAdmin);
+  } catch {
+    return false;
+  }
+}
+
+async function bootstrapSiteSession(): Promise<{ ok: boolean; isAdmin: boolean }> {
+  if (!SITE_EMBED || getAccessToken()) return { ok: false, isAdmin: false };
   try {
     const res = await fetch("/api/app/session", { cache: "no-store" });
-    if (!res.ok) return false;
+    if (!res.ok) return { ok: false, isAdmin: false };
     const data = (await res.json()) as {
       ok?: boolean;
       userId?: string;
       email?: string;
       accessToken?: string;
       refreshToken?: string;
+      isAdmin?: boolean;
     };
     if (!data.ok || !data.accessToken || !data.refreshToken || !data.userId || !data.email) {
-      return false;
+      return { ok: false, isAdmin: false };
     }
     setSession(data.accessToken, data.refreshToken, {
       userId: data.userId,
       email: data.email,
     });
-    return true;
+    return { ok: true, isAdmin: Boolean(data.isAdmin) };
   } catch {
-    return false;
+    return { ok: false, isAdmin: false };
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [accountOpen, setAccountOpen] = useState(false);
@@ -70,20 +85,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = useCallback(async () => {
     if (!getAccessToken()) {
       setUser(null);
+      setIsAdmin(false);
       return;
     }
     try {
       const profile = await authGet<AuthUser>("/me");
       setUser(profile);
+      setIsAdmin(await fetchSiteAdminStatus());
     } catch {
       clearSession();
       setUser(null);
+      setIsAdmin(false);
     }
   }, []);
 
   useEffect(() => {
     (async () => {
-      await bootstrapSiteSession();
+      const boot = await bootstrapSiteSession();
+      if (boot.isAdmin) setIsAdmin(true);
       await refreshUser();
     })().finally(() => setLoading(false));
   }, [refreshUser]);
@@ -107,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearSession();
     setUser(null);
+    setIsAdmin(false);
     if (SITE_EMBED) {
       try {
         await fetch("/api/auth/logout", { method: "POST" });
@@ -136,12 +156,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       isAuthenticated: !!user,
+      isAdmin,
       openAuth,
       openAccount,
       logout,
       refreshUser,
     }),
-    [user, loading, openAuth, openAccount, logout, refreshUser]
+    [user, loading, isAdmin, openAuth, openAccount, logout, refreshUser]
   );
 
   return (

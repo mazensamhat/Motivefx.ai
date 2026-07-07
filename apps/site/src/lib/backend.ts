@@ -1,5 +1,4 @@
 import { prisma } from "@motivefx/database";
-import { isAdminEmail } from "@/lib/admin";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
 
 const SITE_MARKET_TO_BACKEND: Record<string, string> = {
@@ -68,7 +67,6 @@ export async function syncBackendUser(email: string): Promise<BackendSession | n
       intelligence_tier: user.intelligenceTier,
       selected_markets: selectedMarkets,
       subscription_active: userHasActiveSubscription(user),
-      is_admin: isAdminEmail(user.email),
     }),
     cache: "no-store",
   });

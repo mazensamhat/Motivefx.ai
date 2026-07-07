@@ -5234,6 +5234,16 @@ html[data-gen="boomer"] .gen-setup-preview {
   color: var(--accent);
 }
 
+.ops-console-btn {
+  text-decoration: none;
+  color: var(--accent);
+  border-color: rgba(0, 230, 118, 0.35);
+}
+
+.ops-console-btn:hover {
+  background: rgba(0, 230, 118, 0.12);
+}
+
 .account-menu {
   display: flex;
   align-items: center;

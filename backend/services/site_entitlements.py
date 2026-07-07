@@ -29,14 +29,10 @@ def sync_site_user_entitlements(
     intelligence_tier: str,
     selected_markets: list[str],
     subscription_active: bool,
-    is_admin: bool = False,
 ) -> dict:
     """Apply site plan state to backend module subscriptions."""
     tier = intelligence_tier or "lite"
     backend_markets = map_site_markets_to_backend(selected_markets)
-
-    if is_admin:
-        return activate_tier_plan(user_id, "elite", list(ALL_MARKET_MODULES), payment_method="comp")
 
     if not subscription_active:
         deactivate_tier_subscription(user_id, tier)

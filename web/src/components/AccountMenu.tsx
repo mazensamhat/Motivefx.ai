@@ -1,8 +1,10 @@
-import { LogIn, LogOut, Shield, User } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, User } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
+const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
+
 export function AccountMenu() {
-  const { user, isAuthenticated, openAuth, openAccount, logout, loading } = useAuth();
+  const { user, isAuthenticated, isAdmin, openAuth, openAccount, logout, loading } = useAuth();
 
   if (loading) {
     return <span className="account-menu-loading">…</span>;
@@ -27,8 +29,13 @@ export function AccountMenu() {
         <User size={14} />
         {user.displayName || user.email}
       </span>
+      {SITE_EMBED && isAdmin && (
+        <a href="/admin" className="btn admin-btn account-btn ops-console-btn" title="Ops Console">
+          <LayoutDashboard size={14} /> Ops
+        </a>
+      )}
       <button type="button" className="btn admin-btn account-btn" onClick={openAccount}>
-        <Shield size={14} /> Account
+        <User size={14} /> Account
       </button>
       <button type="button" className="btn admin-btn account-btn" onClick={() => logout()}>
         <LogOut size={14} /> Sign out

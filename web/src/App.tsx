@@ -62,7 +62,7 @@ export default function App() {
   const health = useApi<{ feeds: Record<string, boolean> }>("/health", 60_000);
   const { badges: pulseBadges } = useModulePulse(activeTab);
   const { hasModule, annualPrice, active: activeModules } = useModules();
-  const { isAuthenticated, openAuth } = useAuth();
+  const { isAuthenticated, openAuth, isAdmin } = useAuth();
   const liveCount = Object.values(health.data?.feeds ?? {}).filter(Boolean).length;
 
   const active = TABS.find((t) => t.id === activeTab)!;
@@ -147,12 +147,9 @@ export default function App() {
               <a href={legalHref("data-deletion")}>Data deletion</a>
               <a href={legalHref("cookies")}>Cookies</a>
               <a href={legalHref("disclaimer")}>Disclaimer</a>
-              {SITE_EMBED ? (
-                <>
-                  <a href="/app/settings">Site account</a>
-                  <a href="/admin">Ops Console</a>
-                </>
-              ) : (
+              {SITE_EMBED && <a href="/app/settings">Site account</a>}
+              {SITE_EMBED && isAdmin && <a href="/admin">Ops Console</a>}
+              {!SITE_EMBED && (
                 <a href="?view=admin" className="admin-footer-link">Ops Console</a>
               )}
             </div>

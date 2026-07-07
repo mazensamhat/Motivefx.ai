@@ -27,7 +27,6 @@ class SyncSiteUserRequest(BaseModel):
     intelligence_tier: str = "lite"
     selected_markets: list[str] = []
     subscription_active: bool = False
-    is_admin: bool = False
 
 
 class FeedbackRequest(BaseModel):
@@ -56,7 +55,6 @@ async def sync_site_user(
         intelligence_tier=body.intelligence_tier or "lite",
         selected_markets=body.selected_markets,
         subscription_active=body.subscription_active,
-        is_admin=body.is_admin,
     )
     return result
 

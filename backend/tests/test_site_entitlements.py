@@ -22,23 +22,6 @@ class SiteEntitlementSyncTests(unittest.TestCase):
     def _uid(self, name: str) -> str:
         return f"user-{name}"
 
-    def test_admin_sync_grants_elite_all_modules(self) -> None:
-        uid = self._uid("admin")
-        sync_site_user_entitlements(
-            uid,
-            intelligence_tier="lite",
-            selected_markets=[],
-            subscription_active=False,
-            is_admin=True,
-        )
-        plan = db.get_user_plan(uid)
-        self.assertEqual(plan["tier"], "elite")
-        self.assertTrue(has_module(uid, "trades"))
-        self.assertTrue(has_module(uid, "crypto"))
-        self.assertTrue(has_module(uid, "penny"))
-        self.assertTrue(has_module(uid, "betting"))
-        self.assertTrue(has_module(uid, "predictions"))
-
     def test_comp_elite_sync_unlocks_terminal_modules(self) -> None:
         uid = self._uid("elite-comp")
         sync_site_user_entitlements(

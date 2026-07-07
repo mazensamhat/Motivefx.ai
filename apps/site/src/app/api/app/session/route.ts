@@ -1,6 +1,7 @@
 import { json, unauthorized } from "@/lib/api";
 import { syncBackendUser } from "@/lib/backend";
 import { getSession } from "@/lib/session";
+import { isAdminEmail } from "@/lib/admin";
 
 /** Bridge Next.js site login → FastAPI tokens for the embedded terminal. */
 export async function GET() {
@@ -25,5 +26,6 @@ export async function GET() {
     email: backend.email,
     accessToken: backend.accessToken,
     refreshToken: backend.refreshToken,
+    isAdmin: isAdminEmail(session.email),
   });
 }
