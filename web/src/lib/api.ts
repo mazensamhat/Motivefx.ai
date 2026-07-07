@@ -70,7 +70,7 @@ async function refreshAccessToken(): Promise<boolean> {
   const refresh = getRefreshToken();
   if (!refresh) return false;
   try {
-    const res = await fetch("/api/auth/refresh", {
+    const res = await fetch("/api/terminal-auth/refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -136,7 +136,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
 }
 
 export async function authPublicPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`/api/auth${path}`, {
+  const res = await fetch(`/api/terminal-auth${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -149,7 +149,7 @@ export async function authPublicPost<T>(path: string, body: unknown): Promise<T>
 }
 
 export async function authPost<T>(path: string, body: unknown = {}): Promise<T> {
-  const res = await fetchWithAuth(`/api/auth${path}`, {
+  const res = await fetchWithAuth(`/api/terminal-auth${path}`, {
     method: "POST",
     headers: buildHeaders(),
     body: JSON.stringify(body),
@@ -164,7 +164,7 @@ export async function authPost<T>(path: string, body: unknown = {}): Promise<T> 
 export async function authGet<T>(path: string): Promise<T> {
   const token = getAccessToken();
   if (!token) throw new Error("Not authenticated");
-  const res = await fetchWithAuth(`/api/auth${path}`, {
+  const res = await fetchWithAuth(`/api/terminal-auth${path}`, {
     headers: buildHeaders(),
   });
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);

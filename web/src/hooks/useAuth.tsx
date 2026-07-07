@@ -33,6 +33,33 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
+
+async function bootstrapSiteSession() {
+  if (!SITE_EMBED || getAccessToken()) return false;
+  try {
+    const res = await fetch("/api/app/session", { cache: "no-store" });
+    if (!res.ok) return false;
+    const data = (await res.json()) as {
+      ok?: boolean;
+      userId?: string;
+      email?: string;
+      accessToken?: string;
+      refreshToken?: string;
+    };
+    if (!data.ok || !data.accessToken || !data.refreshToken || !data.userId || !data.email) {
+      return false;
+    }
+    setSession(data.accessToken, data.refreshToken, {
+      userId: data.userId,
+      email: data.email,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,10 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
+    (async () => {
+      await bootstrapSiteSession();
+      await refreshUser();
+    })().finally(() => setLoading(false));
   }, [refreshUser]);
 
   const openAuth = useCallback((mode: "login" | "register" = "login") => {
+    if (SITE_EMBED) {
+      window.location.href = mode === "register" ? "/register?next=/app" : "/login?next=/app";
+      return;
+    }
     setAuthMode(mode);
     setAuthOpen(true);
   }, []);
@@ -73,6 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearSession();
     setUser(null);
+    if (SITE_EMBED) {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        /* ok */
+      }
+      window.location.href = "/login";
+    }
   }, []);
 
   const onAuthed = useCallback(

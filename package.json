@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @motivefx/site dev",
-    "build": "pnpm --filter @motivefx/site build",
+    "build": "node scripts/build-terminal.mjs && pnpm --filter @motivefx/site build",
+    "build:terminal": "node scripts/build-terminal.mjs",
     "db:generate": "pnpm --filter @motivefx/database db:generate",
     "db:push": "pnpm --filter @motivefx/database db:push"
   },

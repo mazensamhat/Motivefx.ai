@@ -12,6 +12,7 @@ backend/**/__pycache__/
 
 # Build
 web/dist/
+apps/site/public/terminal/
 mobile/.expo/
 mobile/dist/
 apps/site/.next/

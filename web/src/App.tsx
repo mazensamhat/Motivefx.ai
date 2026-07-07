@@ -39,12 +39,25 @@ const TABS: { id: TabId; label: string; module: string }[] = [
   { id: "predictions", label: "Predictions", module: "predictions" },
 ];
 
+const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
+const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
+
+function legalHref(page: string) {
+  return SITE_EMBED ? `/terminal/?page=${page}` : `/?page=${page}`;
+}
+
+function initialTabFromUrl(): TabId {
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  if (tab && TAB_IDS.has(tab as TabId)) return tab as TabId;
+  return "home";
+}
+
 export default function App() {
   const params = new URLSearchParams(window.location.search);
-  const isAdmin = params.get("view") === "admin";
+  const isAdmin = !SITE_EMBED && params.get("view") === "admin";
   const legalPage = params.get("page");
   const resetToken = params.get("token") ?? "";
-  const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [activeTab, setActiveTab] = useState<TabId>(initialTabFromUrl);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const health = useApi<{ feeds: Record<string, boolean> }>("/health", 60_000);
   const { badges: pulseBadges } = useModulePulse(activeTab);
@@ -84,7 +97,7 @@ export default function App() {
 
   return (
     <div className="app app-terminal" data-theme={TAB_TO_BRAND[activeTab]}>
-      {!isAuthenticated && (
+      {!isAuthenticated && !SITE_EMBED && (
         <div className="launch-banner">
           <span>Create a free account to secure your data before launch.</span>
           <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>
@@ -129,12 +142,19 @@ export default function App() {
             <BillingFinePrint annualPrice={annualPrice} />
             <div className="app-footer-links">
               <a href="/legal-documents.html" target="_blank" rel="noreferrer">All legal documents</a>
-              <a href="/?page=privacy">Privacy</a>
-              <a href="/?page=terms">Terms</a>
-              <a href="/?page=data-deletion">Data deletion</a>
-              <a href="/?page=cookies">Cookies</a>
-              <a href="/?page=disclaimer">Disclaimer</a>
-              <a href="?view=admin" className="admin-footer-link">Ops Console</a>
+              <a href={legalHref("privacy")}>Privacy</a>
+              <a href={legalHref("terms")}>Terms</a>
+              <a href={legalHref("data-deletion")}>Data deletion</a>
+              <a href={legalHref("cookies")}>Cookies</a>
+              <a href={legalHref("disclaimer")}>Disclaimer</a>
+              {SITE_EMBED ? (
+                <>
+                  <a href="/app/settings">Site account</a>
+                  <a href="/admin">Ops Console</a>
+                </>
+              ) : (
+                <a href="?view=admin" className="admin-footer-link">Ops Console</a>
+              )}
             </div>
           </footer>
         </div>

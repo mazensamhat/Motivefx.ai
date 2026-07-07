@@ -21,6 +21,7 @@ export function mapMarketsToBackend(markets: string[]) {
 export interface BackendSession {
   userId: string;
   accessToken: string;
+  refreshToken: string;
   email: string;
 }
 
@@ -72,12 +73,14 @@ export async function syncBackendUser(email: string): Promise<BackendSession | n
   const data = (await res.json()) as {
     user_id: string;
     access_token: string;
+    refresh_token: string;
     email: string;
   };
 
   return {
     userId: data.user_id,
     accessToken: data.access_token,
+    refreshToken: data.refresh_token,
     email: data.email,
   };
 }

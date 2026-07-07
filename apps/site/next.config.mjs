@@ -10,6 +10,7 @@ const backendPrefixes = [
   "home",
   "news",
   "advisor",
+  "track",
 ];
 
 const nextConfig = {
@@ -20,6 +21,10 @@ const nextConfig = {
         source: `/api/${prefix}/:path*`,
         destination: `${backendUrl}/api/${prefix}/:path*`,
       })),
+      {
+        source: "/api/terminal-auth/:path*",
+        destination: `${backendUrl}/api/auth/:path*`,
+      },
       { source: "/api/live-feed", destination: `${backendUrl}/api/live-feed` },
       { source: "/api/health", destination: `${backendUrl}/api/health` },
       { source: "/go/:path*", destination: `${backendUrl}/go/:path*` },
