@@ -20,6 +20,9 @@ importers:
       '@prisma/client':
         specifier: ^6.19.3
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@tailwindcss/postcss':
+        specifier: ^4.1.10
+        version: 4.3.2
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.2.7)
@@ -35,13 +38,16 @@ importers:
       stripe:
         specifier: ^18.0.0
         version: 18.5.0(@types/node@22.20.0)
+      tailwindcss:
+        specifier: ^4.1.10
+        version: 4.3.2
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
       zod:
         specifier: ^3.25.67
         version: 3.25.76
     devDependencies:
-      '@tailwindcss/postcss':
-        specifier: ^4.1.10
-        version: 4.3.2
       '@types/node':
         specifier: ^22.15.32
         version: 22.20.0
@@ -51,12 +57,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.6
         version: 19.2.3(@types/react@19.2.17)
-      tailwindcss:
-        specifier: ^4.1.10
-        version: 4.3.2
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
 
   packages/database:
     dependencies:

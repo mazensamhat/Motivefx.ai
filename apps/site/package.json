@@ -12,19 +12,19 @@
   "dependencies": {
     "@motivefx/database": "workspace:*",
     "@prisma/client": "^6.19.3",
+    "@tailwindcss/postcss": "^4.1.10",
     "lucide-react": "^0.525.0",
     "next": "^15.3.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "stripe": "^18.0.0",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.8.3",
     "zod": "^3.25.67"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.10",
     "@types/node": "^22.15.32",
     "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "tailwindcss": "^4.1.10",
-    "typescript": "^5.8.3"
+    "@types/react-dom": "^19.1.6"
   }
 }
