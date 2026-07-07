@@ -2,7 +2,10 @@ services:
   - type: web
     name: motivefx-api
     runtime: docker
+    plan: starter
+    region: ohio
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
     envVars:
       - key: MOTIVEFX_DATA_DIR
         value: /var/data
@@ -12,6 +15,12 @@ services:
         value: https://www.motivefxai.com
       - key: AUTH_ENFORCE
         value: "true"
+      - key: EXPOSE_RESET_LINKS
+        value: "false"
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: BACKEND_SYNC_SECRET
+        sync: false
     disk:
       name: motivefx-data
       mountPath: /var/data

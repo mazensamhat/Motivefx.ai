@@ -15,8 +15,8 @@ WORKDIR /app/backend
 
 ENV API_HOST=0.0.0.0
 ENV API_PORT=8001
-ENV MOTIVEFX_DATA_DIR=/app/backend/data
-RUN mkdir -p /app/backend/data
+ENV MOTIVEFX_DATA_DIR=/var/data
+RUN mkdir -p /var/data
 
 EXPOSE 8001
 

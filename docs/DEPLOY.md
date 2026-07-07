@@ -187,15 +187,14 @@ BACKEND_SYNC_SECRET=your-shared-secret
 
 ### Production (Render)
 
-1. [render.com](https://render.com) → **New Web Service** → connect `motivefx-ai` repo
-2. Use `render.yaml` (Docker, root `Dockerfile`)
-3. Add env vars:
-   - `JWT_SECRET_KEY` — random 32+ bytes
-   - `BACKEND_SYNC_SECRET` — **same** as Vercel
-   - `CORS_ORIGINS` — `https://motivefxai.com,https://www.motivefxai.com`
-   - `APP_PUBLIC_URL` — `https://www.motivefxai.com`
-4. Copy the Render service URL → Vercel `MOTIVEFX_API_URL` (e.g. `https://motivefx-api.onrender.com`)
-5. Redeploy Vercel
+See **[docs/FASTAPI-RENDER.md](../FASTAPI-RENDER.md)** for the full guide.
+
+**Blueprint:** https://dashboard.render.com/blueprint/new?repo=https://github.com/mazensamhat/Motivefx.ai
+
+1. Run `.\scripts\generate-production-secrets.ps1` for `JWT_SECRET_KEY` + `BACKEND_SYNC_SECRET`
+2. Apply Blueprint → set secrets when prompted
+3. Copy Render URL → Vercel `MOTIVEFX_API_URL`
+4. Set same `BACKEND_SYNC_SECRET` on Vercel → redeploy
 
 Health check: `GET https://www.motivefxai.com/api/system/health` should show `backend: true` when both are up.
 

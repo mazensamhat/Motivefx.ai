@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     jwt_pending_2fa_expire_minutes: int = 5
     auth_enforce: bool = True
     password_reset_expire_minutes: int = 60
-    expose_reset_links: bool = True  # dev/staging: return reset URL in API response
+    expose_reset_links: bool = True  # set false in production (Render)
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
