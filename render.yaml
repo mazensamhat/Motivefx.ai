@@ -5,14 +5,15 @@ services:
     plan: starter
     region: ohio
     dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health
     envVars:
       - key: MOTIVEFX_DATA_DIR
         value: /var/data
       - key: CORS_ORIGINS
-        value: https://motivefxai.com,https://www.motivefxai.com
+        value: "https://motivefxai.com,https://www.motivefxai.com"
       - key: APP_PUBLIC_URL
-        value: https://www.motivefxai.com
+        value: "https://www.motivefxai.com"
       - key: AUTH_ENFORCE
         value: "true"
       - key: EXPOSE_RESET_LINKS
@@ -24,4 +25,4 @@ services:
     disk:
       name: motivefx-data
       mountPath: /var/data
-      sizeGB: 1
+      sizeGB: 10

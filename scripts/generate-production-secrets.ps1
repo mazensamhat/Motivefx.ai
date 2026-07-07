@@ -1,4 +1,10 @@
-# Generate production secrets for Render + Vercel
+# Generate production secrets for Render + Vercel (Windows PowerShell 5.1+)
+
+function ConvertTo-HexLower {
+    param([byte[]]$Bytes)
+    return ([BitConverter]::ToString($Bytes) -replace '-', '').ToLower()
+}
+
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
 $jwtBytes = New-Object byte[] 32
 $syncBytes = New-Object byte[] 24
@@ -6,9 +12,9 @@ $adminBytes = New-Object byte[] 24
 $rng.GetBytes($jwtBytes)
 $rng.GetBytes($syncBytes)
 $rng.GetBytes($adminBytes)
-$jwt = [Convert]::ToHexString($jwtBytes).ToLower()
-$sync = [Convert]::ToHexString($syncBytes).ToLower()
-$admin = [Convert]::ToHexString($adminBytes).ToLower()
+$jwt = ConvertTo-HexLower $jwtBytes
+$sync = ConvertTo-HexLower $syncBytes
+$admin = ConvertTo-HexLower $adminBytes
 
 Write-Host ""
 Write-Host "=== MotiveFX FastAPI production secrets ===" -ForegroundColor Cyan
