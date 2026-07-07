@@ -1,26 +1,50 @@
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ROOT = Path(__file__).resolve().parent.parent
-_ENV_FILES = (
-    Path(__file__).resolve().parent / ".env",
-    _ROOT / ".env",
-    _ROOT / ".env.staging",
+_ENV_FILES = tuple(
+    str(p)
+    for p in (
+        Path(__file__).resolve().parent / ".env",
+        _ROOT / ".env",
+        _ROOT / ".env.staging",
+    )
+    if p.exists()
 )
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=[str(p) for p in _ENV_FILES if p.exists()] or [str(_ROOT / ".env")],
+        env_file=_ENV_FILES or None,
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
+        case_sensitive=False,
         extra="ignore",
     )
 
-    finnhub_api_key: str = ""
-    twelve_data_api_key: str = ""
-    the_odds_api_key: str = ""
-    coinstats_api_key: str = ""
+    finnhub_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("FINNHUB_API_KEY", "finnhub_api_key"),
+    )
+    twelve_data_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWELVE_DATA_API_KEY", "twelve_data_api_key"),
+    )
+    the_odds_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "THE_ODDS_API_KEY",
+            "ODDS_API_KEY",
+            "THEODDS_API_KEY",
+            "the_odds_api_key",
+        ),
+    )
+    coinstats_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("COINSTATS_API_KEY", "COINSTATS_KEY", "coinstats_api_key"),
+    )
 
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
@@ -43,7 +67,10 @@ class Settings(BaseSettings):
     annual_price_usd: int = 999
     bundle_price_usd: int = 109
 
-    openai_api_key: str = ""
+    openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("OPENAI_API_KEY", "openai_api_key"),
+    )
     openai_model: str = "gpt-4o-mini"
 
     api_host: str = "127.0.0.1"

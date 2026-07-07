@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import os
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -17,19 +18,45 @@ class CheckoutRequest(BaseModel):
     cancel_url: str
 
 
+def _env_present(name: str) -> bool:
+    return bool((os.environ.get(name) or "").strip())
+
+
+FEED_ENV_KEYS = {
+    "finnhub": "FINNHUB_API_KEY",
+    "coinstats": "COINSTATS_API_KEY",
+    "the_odds_api": "THE_ODDS_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "stripe": "STRIPE_SECRET_KEY",
+}
+
+
 @router.get("/health")
 async def health():
+    env_present = {k: _env_present(v) for k, v in FEED_ENV_KEYS.items()}
+    feeds = {
+        "finnhub": bool(settings.finnhub_api_key),
+        "coinstats": bool(settings.coinstats_api_key),
+        "the_odds_api": bool(settings.the_odds_api_key),
+        "stripe": bool(settings.stripe_secret_key),
+        "openai": bool(settings.openai_api_key),
+    }
+    hint = None
+    if not any(env_present.values()):
+        hint = (
+            "No feed keys in process env. Add them on Render → motivefx-api → Environment "
+            "(FINNHUB_API_KEY, COINSTATS_API_KEY, THE_ODDS_API_KEY, OPENAI_API_KEY), then Manual Deploy."
+        )
+    elif any(env_present.values()) and not any(feeds.values()):
+        hint = "Env vars visible but not loaded — trigger Manual Deploy on motivefx-api."
+
     return {
         "status": "ok",
         "app": "MotiveFX.AI",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "feeds": {
-            "finnhub": bool(settings.finnhub_api_key),
-            "coinstats": bool(settings.coinstats_api_key),
-            "the_odds_api": bool(settings.the_odds_api_key),
-            "stripe": bool(settings.stripe_secret_key),
-            "openai": bool(settings.openai_api_key),
-        },
+        "feeds": feeds,
+        "envPresent": env_present,
+        "hint": hint,
     }
 
 
