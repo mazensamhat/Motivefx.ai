@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { DEFAULT_EMAIL_FROM } from "@/lib/email-config";
 import { PRICING_TIERS, type PricingTierId } from "@/lib/tiers";
 
 function tierLabel(tier: string) {
@@ -32,24 +31,6 @@ export function AccountSettings({
   const [feedbackKind, setFeedbackKind] = useState<"bug" | "feature" | "billing" | "other">("feature");
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
-  const [emailTestStatus, setEmailTestStatus] = useState("");
-
-  async function sendEmailTest() {
-    setEmailTestStatus("");
-    try {
-      const res = await fetch("/api/system/email-test", { method: "POST" });
-      const data = (await res.json()) as { message?: string; error?: string };
-      if (!res.ok) {
-        setEmailTestStatus(data.error ?? "Could not send test email.");
-        return;
-      }
-      setEmailTestStatus(data.message ?? "Test email sent.");
-    } catch {
-      setEmailTestStatus("Could not reach the server.");
-    }
-  }
-
-  async function changePassword(e: React.FormEvent) {
     e.preventDefault();
     setPasswordErr("");
     setPasswordMsg("");
@@ -161,31 +142,6 @@ export function AccountSettings({
           )}
         </div>
         {billingErr && <p className="text-sm text-red-400">{billingErr}</p>}
-      </section>
-
-      <section className="app-panel">
-        <h2 className="font-semibold text-white">Email delivery</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          Password resets send via Resend from{" "}
-          <span className="text-white">{DEFAULT_EMAIL_FROM}</span> (shared Motive Life account).
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" className="app-cta-btn" onClick={sendEmailTest}>
-            Send test email
-          </button>
-          <Link href="/forgot-password" className="text-sm text-[#00e676] hover:underline">
-            Forgot password flow
-          </Link>
-        </div>
-        {emailTestStatus && (
-          <p
-            className={`mt-3 text-sm ${
-              emailTestStatus.includes("sent") ? "text-[#00e676]" : "text-red-400"
-            }`}
-          >
-            {emailTestStatus}
-          </p>
-        )}
       </section>
 
       <section className="app-panel">

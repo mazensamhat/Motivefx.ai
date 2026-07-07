@@ -280,9 +280,8 @@ export function SiteUsersPanel() {
               : "border-amber-500/30 bg-amber-500/10 text-amber-100"
           }`}
         >
-          <p className="font-medium">Email (Resend) — {emailStatus.configured ? "ready" : "needs setup"}</p>
-          <p className="mt-1 text-xs opacity-80">From: {emailStatus.from}</p>
-          <p className="mt-1 text-xs opacity-80">Reset links: {emailStatus.resetUrlExample}</p>
+          <p className="font-medium">Email — {emailStatus.configured ? "ready" : "needs setup"}</p>
+          <p className="mt-1 text-xs opacity-80">Password reset links: {emailStatus.resetUrlExample}</p>
           {emailStatus.diagnostic && (
             <p className="mt-2 text-xs font-medium text-amber-100">{emailStatus.diagnostic}</p>
           )}

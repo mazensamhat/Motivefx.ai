@@ -37,7 +37,7 @@ function parseEmailFrom(from: string) {
 function getKeyDiagnostic(): string {
   const raw = process.env.RESEND_API_KEY?.trim() ?? "";
   if (!raw) {
-    return "RESEND_API_KEY is not set. Copy the same key from Motive Life Vercel → Production.";
+    return "RESEND_API_KEY is not set. Add it in Vercel → Environment Variables → Production.";
   }
   if (raw.startsWith('"') || raw.startsWith("'")) {
     return 'RESEND_API_KEY has quote characters — paste the key only, no quotes.';
@@ -60,8 +60,8 @@ export function getResendSetupSteps(): ResendSetupStep[] {
   return [
     {
       step: 1,
-      title: "Copy RESEND_API_KEY from Motive Life",
-      detail: "Vercel → motivelife-web → Settings → Environment Variables → Production.",
+      title: "Add RESEND_API_KEY",
+      detail: "Vercel → MotiveFX project → Settings → Environment Variables → Production.",
       href: "https://vercel.com/docs/projects/environment-variables",
     },
     {
@@ -73,7 +73,7 @@ export function getResendSetupSteps(): ResendSetupStep[] {
     {
       step: 3,
       title: "Redeploy MotiveFX",
-      detail: "No new Resend domain — uses verified mymotivelife.com.",
+      detail: "No separate Resend domain required for launch.",
       href: SITE.url,
     },
     {
@@ -106,12 +106,12 @@ export function getEmailConfigStatus() {
     diagnostic:
       getKeyDiagnostic() ||
       (!domainMatches
-        ? `EMAIL_FROM must use @${SHARED_RESEND_DOMAIN} (shared Motive Life Resend domain)`
+        ? `EMAIL_FROM must use @${SHARED_RESEND_DOMAIN}`
         : "") ||
       (!appUrlHttps ? "NEXT_PUBLIC_APP_URL must be your https:// production URL" : ""),
     keyConfigured: apiKeySet,
     checklist: [
-      { ok: apiKeySet, label: "RESEND_API_KEY is set (same as Motive Life)" },
+      { ok: apiKeySet, label: "RESEND_API_KEY is set" },
       {
         ok: fromExplicit || fromLooksValid,
         label: `EMAIL_FROM is set (default: ${DEFAULT_EMAIL_FROM})`,
@@ -119,12 +119,12 @@ export function getEmailConfigStatus() {
       { ok: fromLooksValid, label: "Sender address format is valid" },
       {
         ok: domainMatches,
-        label: `Sender uses @${SHARED_RESEND_DOMAIN} (no new Resend domain)`,
+        label: `Sender domain is @${SHARED_RESEND_DOMAIN}`,
       },
       { ok: appUrlHttps, label: "NEXT_PUBLIC_APP_URL is HTTPS" },
     ],
     setupNote:
-      "Copy RESEND_API_KEY from Motive Life Vercel → set EMAIL_FROM on MotiveFX Vercel → redeploy. No Resend upgrade needed.",
+      "Set RESEND_API_KEY and EMAIL_FROM on MotiveFX Vercel → redeploy.",
     setupSteps: getResendSetupSteps(),
   };
 }
