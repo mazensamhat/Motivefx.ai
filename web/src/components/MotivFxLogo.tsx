@@ -8,10 +8,9 @@ interface Props {
   dimmed?: boolean;
 }
 
-export const BRAND_LOGO_SRC = "/brand/motivefx-logo.png";
 export const BRAND_TAGLINE = "TRADE SMARTER. MOVE FASTER.";
 
-/** Official MotiveFX lockup from brand assets */
+/** Official MotiveFX lockup — SVG/text (no external PNG asset required). */
 export function MotiveFxBrandLogo({
   className = "",
   compact = false,
@@ -22,14 +21,20 @@ export function MotiveFxBrandLogo({
   alt?: string;
 }) {
   return (
-    <img
-      src={BRAND_LOGO_SRC}
-      alt={alt}
-      className={`motivfx-brand-image ${compact ? "motivfx-brand-image-compact" : ""} ${className}`.trim()}
-      width={184}
-      height={120}
-      decoding="async"
-    />
+    <div
+      className={`motivfx-brand-lockup ${compact ? "motivfx-brand-lockup-compact" : ""} ${className}`.trim()}
+      role="img"
+      aria-label={alt}
+    >
+      <MotivFxLogo module="home" size={compact ? 28 : 36} />
+      <div className="motivfx-brand-text">
+        <span className="motivfx-brand-title">
+          MOTIVE<span className="brand-gradient-text">FX</span>
+          <span className="motivfx-wordmark-ai">.AI</span>
+        </span>
+        {!compact && <span className="motivfx-brand-tagline-inline">{BRAND_TAGLINE}</span>}
+      </div>
+    </div>
   );
 }
 

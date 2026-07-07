@@ -3,7 +3,7 @@
  * Emails are live; name, jurisdiction, and address are placeholders until confirmed.
  */
 export const LEGAL_ENTITY = {
-  legalName: "[Legal Entity Name]",
+  legalName: "MotiveFX.AI",
   jurisdiction: "[Jurisdiction of incorporation, e.g. Ontario, Canada]",
   address: "[Registered business address]",
   privacyOfficerTitle: "Privacy Officer",

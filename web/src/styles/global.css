@@ -540,15 +540,55 @@ body {
   max-width: 9rem;
 }
 
-.motivfx-brand-image-auth {
-  max-width: 10.5rem;
-  margin: 0 auto 1rem;
-}
-
 .motivfx-brand-image-favicon {
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+.motivfx-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.motivfx-brand-lockup-compact {
+  gap: 0.5rem;
+}
+
+.motivfx-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.motivfx-brand-title {
+  font-family: var(--heading);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.motivfx-brand-lockup-compact .motivfx-brand-title {
+  font-size: 0.75rem;
+}
+
+.motivfx-brand-tagline-inline {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.motivfx-brand-image-auth {
+  max-width: 10.5rem;
+  margin: 0 auto 1rem;
+  justify-content: center;
 }
 
 .sidebar-active-module {

@@ -1,10 +1,10 @@
 import { ArrowRight, BookOpen, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useApi } from "../hooks/useApi";
+import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import { useAuth } from "../hooks/useAuth";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { useModules } from "../hooks/useModules";
-import type { HomeBriefing, TabId } from "../types";
+import type { TabId } from "../types";
 import { AiExplainModal, Stars } from "./AiExplainModal";
 import { AudioBriefingButton } from "./AudioBriefingButton";
 import { CompareLensSection } from "./CompareLensSection";
@@ -40,7 +40,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const { hasFeature } = useModules();
   const { profile } = useGenerationalProfile();
   const { inspectDetail } = useSignalDetail();
-  const { data, loading } = useApi<HomeBriefing>("/home/briefing", 60_000);
+  const { data, loading } = useHomeBriefing(60_000);
   const [sinceNewCount, setSinceNewCount] = useState(0);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [explain, setExplain] = useState<{

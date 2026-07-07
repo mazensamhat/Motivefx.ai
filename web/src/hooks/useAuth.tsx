@@ -18,7 +18,11 @@ import {
   type AuthUser,
 } from "../lib/api";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
-import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
+import {
+  fetchSiteSessionUser,
+  syncSiteEntitlementsFromServer,
+  SITE_EMBED,
+} from "../lib/siteSession";
 import { AccountSettingsModal } from "../components/AccountSettingsModal";
 import { AuthModal } from "../components/AuthModal";
 
@@ -35,18 +39,6 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-async function fetchSiteAdminStatus(): Promise<boolean> {
-  if (!SITE_EMBED) return false;
-  try {
-    const res = await fetch("/api/auth/me", { cache: "no-store" });
-    if (!res.ok) return false;
-    const data = (await res.json()) as { user?: { isAdmin?: boolean } };
-    return Boolean(data.user?.isAdmin);
-  } catch {
-    return false;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,20 +48,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
 
   const refreshUser = useCallback(async () => {
-    if (!getAccessToken()) {
-      setUser(null);
-      setIsAdmin(false);
-      return;
+    if (getAccessToken()) {
+      try {
+        const profile = await authGet<AuthUser>("/me");
+        setUser(profile);
+        if (SITE_EMBED) {
+          const siteUser = await fetchSiteSessionUser();
+          setIsAdmin(Boolean(siteUser?.isAdmin));
+        }
+        return;
+      } catch {
+        clearSession();
+      }
     }
-    try {
-      const profile = await authGet<AuthUser>("/me");
-      setUser(profile);
-      setIsAdmin(await fetchSiteAdminStatus());
-    } catch {
-      clearSession();
-      setUser(null);
-      setIsAdmin(false);
+
+    if (SITE_EMBED) {
+      const siteUser = await fetchSiteSessionUser();
+      if (siteUser) {
+        setUser({ userId: siteUser.userId, email: siteUser.email });
+        setIsAdmin(Boolean(siteUser.isAdmin));
+        return;
+      }
     }
+
+    setUser(null);
+    setIsAdmin(false);
   }, []);
 
   useEffect(() => {

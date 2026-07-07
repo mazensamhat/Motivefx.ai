@@ -111,18 +111,38 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const applySitePlanOnly = useCallback(
+    (sitePlan: Awaited<ReturnType<typeof fetchSitePlan>>) => {
+      if (!sitePlan?.hasSubscription) return false;
+      applyModulesPayload(
+        applySitePlanToModulesPayload(
+          { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
+          sitePlan
+        )
+      );
+      return true;
+    },
+    [applyModulesPayload]
+  );
+
   const refresh = useCallback(async () => {
-    if (!getAccessToken()) {
-      setActive([]);
-      setSimulation(null);
-      setPlan(DEFAULT_PLAN);
-      setLoading(false);
-      return;
-    }
     if (SITE_EMBED) {
       await syncSiteEntitlementsFromServer();
     }
     const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
+
+    if (!getAccessToken()) {
+      if (SITE_EMBED) {
+        applySitePlanOnly(sitePlan);
+      } else {
+        setActive([]);
+        setSimulation(null);
+        setPlan(DEFAULT_PLAN);
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await apiGet<{
         active: string[];
@@ -139,12 +159,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       applyModulesPayload(applySitePlanToModulesPayload(data, sitePlan));
     } catch {
       if (sitePlan?.hasSubscription) {
-        applyModulesPayload(
-          applySitePlanToModulesPayload(
-            { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
-            sitePlan
-          )
-        );
+        applySitePlanOnly(sitePlan);
       } else {
         setActive([]);
         setSimulation(null);
@@ -153,7 +168,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [applyModulesPayload]);
+  }, [applyModulesPayload, applySitePlanOnly]);
 
   const triggerWinHook = useCallback(async (module: string) => {
     if (hasAnnual) return;
@@ -251,15 +266,20 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
     const onAuth = () => {
       refresh();
     };
+    const onEntitlements = () => {
+      refresh();
+    };
     const onVisible = () => {
-      if (document.visibilityState === "visible" && getAccessToken()) {
+      if (document.visibilityState === "visible") {
         void refresh();
       }
     };
     window.addEventListener("motivefx:auth-changed", onAuth);
+    window.addEventListener("motivefx:entitlements-changed", onEntitlements);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("motivefx:auth-changed", onAuth);
+      window.removeEventListener("motivefx:entitlements-changed", onEntitlements);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refresh]);
@@ -267,16 +287,20 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function init() {
       if (authLoading) return;
-      if (!getAccessToken()) {
-        setLoading(false);
-        return;
-      }
 
       setLoading(true);
       if (SITE_EMBED) {
         await syncSiteEntitlementsFromServer();
       }
       const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
+
+      if (!getAccessToken()) {
+        if (SITE_EMBED) {
+          applySitePlanOnly(sitePlan);
+        }
+        setLoading(false);
+        return;
+      }
 
       try {
         await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
@@ -338,7 +362,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       }
     }
     init();
-  }, [triggerWinHook, isAuthenticated, authLoading, applyModulesPayload]);
+  }, [triggerWinHook, isAuthenticated, authLoading, applyModulesPayload, applySitePlanOnly]);
 
   const allowedMarkets = plan.allowedMarkets;
 
