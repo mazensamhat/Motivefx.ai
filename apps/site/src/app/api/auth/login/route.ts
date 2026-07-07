@@ -1,0 +1,33 @@
+import { z } from "zod";
+import { prisma } from "@motivefx/database";
+import { badRequest, json, serverError, unauthorized } from "@/lib/api";
+import { verifyPassword } from "@/lib/password";
+import { createSession } from "@/lib/session";
+
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export async function POST(request: Request) {
+  try {
+    const parsed = schema.safeParse(await request.json());
+    if (!parsed.success) return badRequest("Invalid email or password.");
+
+    const email = parsed.data.email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user?.passwordHash) return unauthorized("Invalid email or password.");
+
+    const valid = await verifyPassword(parsed.data.password, user.passwordHash);
+    if (!valid) return unauthorized("Invalid email or password.");
+
+    await createSession({ id: user.id, email: user.email });
+    return json({ user: { id: user.id, email: user.email }, redirectTo: "/app" });
+  } catch (error) {
+    console.error("[auth/login]", error);
+    if (error instanceof Error && error.message.includes("AUTH_SECRET")) {
+      return serverError("Auth is not configured. Set AUTH_SECRET in environment variables.");
+    }
+    return serverError("Could not sign in. Try again.");
+  }
+}

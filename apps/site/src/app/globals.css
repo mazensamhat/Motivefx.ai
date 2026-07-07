@@ -1748,3 +1748,199 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ── Auth ── */
+.auth-page {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 230, 118, 0.1), transparent),
+    var(--bg-deep);
+}
+
+.auth-card {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(18, 22, 28, 0.9);
+  padding: 2rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.auth-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.auth-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: rgba(8, 10, 12, 0.8);
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 0.9375rem;
+}
+
+.auth-input:focus {
+  outline: 2px solid rgba(0, 230, 118, 0.35);
+  border-color: rgba(0, 230, 118, 0.5);
+}
+
+.auth-submit {
+  width: 100%;
+  border-radius: 0.75rem;
+  background: var(--green);
+  color: #080a0c;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  transition: filter 0.2s;
+}
+
+.auth-submit:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── App terminal ── */
+.app-layout {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(0, 230, 118, 0.06), transparent),
+    var(--bg-deep);
+}
+
+.app-header {
+  border-bottom: 1px solid var(--border);
+  background: rgba(8, 10, 12, 0.9);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.app-header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  transition: color 0.2s, background 0.2s;
+}
+
+.app-header-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-hero-card,
+.app-panel,
+.app-module-card,
+.app-signal-card,
+.app-upgrade-banner {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(18, 22, 28, 0.85);
+}
+
+.app-hero-card,
+.app-upgrade-banner,
+.app-panel {
+  padding: 1.5rem;
+}
+
+.app-signal-card {
+  padding: 1.25rem 1.5rem;
+  min-width: 220px;
+  border-color: rgba(0, 230, 118, 0.25);
+  background: linear-gradient(160deg, rgba(0, 230, 118, 0.08), rgba(18, 22, 28, 0.95));
+}
+
+.app-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 230, 118, 0.35);
+  background: rgba(0, 230, 118, 0.08);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #00e676;
+  text-transform: capitalize;
+}
+
+.app-badge-muted {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+.app-module-card {
+  display: block;
+  padding: 1.25rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.app-module-card:hover {
+  border-color: rgba(0, 230, 118, 0.35);
+  transform: translateY(-2px);
+}
+
+.app-module-icon {
+  display: inline-flex;
+  border-radius: 0.75rem;
+  background: rgba(0, 230, 118, 0.1);
+  color: #00e676;
+  padding: 0.625rem;
+}
+
+.app-signal-pill {
+  border-radius: 999px;
+  background: rgba(0, 230, 118, 0.12);
+  color: #00e676;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.625rem;
+}
+
+.app-inline-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #00e676;
+}
+
+.app-inline-link:hover {
+  text-decoration: underline;
+}
+
+.app-upgrade-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-color: rgba(168, 85, 247, 0.35);
+  background: linear-gradient(135deg, rgba(123, 47, 247, 0.12), rgba(18, 22, 28, 0.95));
+}
+
+@media (min-width: 640px) {
+  .app-upgrade-banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.app-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--green);
+  color: #080a0c;
+  font-weight: 700;
+  padding: 0.625rem 1.25rem;
+  white-space: nowrap;
+}

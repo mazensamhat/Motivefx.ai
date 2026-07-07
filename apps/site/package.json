@@ -13,6 +13,8 @@
     "@motivefx/database": "workspace:*",
     "@prisma/client": "^6.19.3",
     "@tailwindcss/postcss": "^4.1.10",
+    "bcryptjs": "^3.0.2",
+    "jose": "^6.0.11",
     "lucide-react": "^0.525.0",
     "next": "^15.3.4",
     "react": "^19.1.0",
@@ -23,6 +25,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.15.32",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6"

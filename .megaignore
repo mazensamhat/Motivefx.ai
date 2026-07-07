@@ -24,3 +24,6 @@
 -p:*packages/database/node_modules/prisma
 -p:packages/database/node_modules/typescript
 -p:*apps/site/node_modules/lucide-react
+-p:apps/site/node_modules/@types/bcryptjs
+-p:apps/site/node_modules/bcryptjs
+-p:apps/site/node_modules/jose

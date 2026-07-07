@@ -73,11 +73,11 @@ export function SiteNav() {
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2 sm:gap-3 lg:flex">
-          <Button href="/pricing" variant="ghost" size="sm">
+          <Button href="/login" variant="ghost" size="sm">
             Sign in
           </Button>
-          <Button href="/pricing" size="sm">
-            Start free trial
+          <Button href="/app" size="sm">
+            Open app
           </Button>
         </div>
 
@@ -100,8 +100,8 @@ export function SiteNav() {
               </Link>
             )
           )}
-          <Button href="/pricing" className="w-full mt-4">
-            Start free trial
+          <Button href="/register" className="w-full mt-4">
+            Open app
           </Button>
         </div>
       )}
