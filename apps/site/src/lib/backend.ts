@@ -1,4 +1,6 @@
 import { prisma } from "@motivefx/database";
+import { isAdminEmail } from "@/lib/admin";
+import { userHasActiveSubscription } from "@/lib/subscription-access";
 
 const SITE_MARKET_TO_BACKEND: Record<string, string> = {
   stocks: "trades",
@@ -38,6 +40,10 @@ export async function syncBackendUser(email: string): Promise<BackendSession | n
       email: true,
       intelligenceTier: true,
       selectedMarkets: true,
+      subscriptionStatus: true,
+      stripeSubscriptionId: true,
+      accessExpiresAt: true,
+      disabledAt: true,
     },
   });
   if (!user) return null;
@@ -61,6 +67,8 @@ export async function syncBackendUser(email: string): Promise<BackendSession | n
       display_name: user.email.split("@")[0],
       intelligence_tier: user.intelligenceTier,
       selected_markets: selectedMarkets,
+      subscription_active: userHasActiveSubscription(user),
+      is_admin: isAdminEmail(user.email),
     }),
     cache: "no-store",
   });

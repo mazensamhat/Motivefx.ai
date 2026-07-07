@@ -6,8 +6,9 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, EmailStr
 
 from config import settings
-from db import get_user_by_email, save_user_intelligence_plan, record_usage_event
+from db import get_user_by_email, record_usage_event
 from services import auth_service
+from services.site_entitlements import sync_site_user_entitlements
 
 router = APIRouter(prefix="/api/internal", tags=["internal"])
 
@@ -25,6 +26,8 @@ class SyncSiteUserRequest(BaseModel):
     display_name: str | None = None
     intelligence_tier: str = "lite"
     selected_markets: list[str] = []
+    subscription_active: bool = False
+    is_admin: bool = False
 
 
 class FeedbackRequest(BaseModel):
@@ -48,16 +51,12 @@ async def sync_site_user(
     """Provision or refresh SQLite user from Supabase site session."""
     _verify_sync_secret(x_backend_sync_secret)
     result = auth_service.provision_site_user(body.email, display_name=body.display_name)
-    markets = [
-        SITE_MARKET_TO_BACKEND[m]
-        for m in body.selected_markets
-        if m in SITE_MARKET_TO_BACKEND
-    ]
-    save_user_intelligence_plan(
+    sync_site_user_entitlements(
         result["user_id"],
-        body.intelligence_tier or "lite",
-        markets,
-        sync_from_subs=False,
+        intelligence_tier=body.intelligence_tier or "lite",
+        selected_markets=body.selected_markets,
+        subscription_active=body.subscription_active,
+        is_admin=body.is_admin,
     )
     return result
 
