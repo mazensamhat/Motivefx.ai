@@ -28,10 +28,6 @@ export function TabPenny() {
   const [holdingsCount, setHoldingsCount] = useState(0);
 
   useEffect(() => {
-    if (enabled) analyze(true);
-  }, [enabled, analyze]);
-
-  useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
       analyze(false);
     }

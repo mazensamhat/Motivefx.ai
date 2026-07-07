@@ -15,6 +15,7 @@ import {
   getAnonymousUserId,
   getRefreshToken,
   setSession,
+  syncAuthUserId,
   type AuthUser,
 } from "../lib/api";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (getAccessToken()) {
       try {
         const profile = await authGet<AuthUser>("/me");
+        syncAuthUserId(profile);
         setUser(profile);
         if (SITE_EMBED) {
           const siteUser = await fetchSiteSessionUser();
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (sync.isAdmin) setIsAdmin(true);
       await refreshUser();
       if (sync.ok) {
+        window.dispatchEvent(new Event("motivefx:auth-changed"));
         window.dispatchEvent(new Event("motivefx:entitlements-changed"));
       }
     })().finally(() => setLoading(false));

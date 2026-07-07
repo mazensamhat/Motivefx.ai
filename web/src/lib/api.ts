@@ -49,6 +49,11 @@ export function setSession(
   localStorage.setItem(AUTH_USER_KEY, user.userId);
 }
 
+/** Keep local user id aligned with the JWT profile (fixes stale anonymous ids). */
+export function syncAuthUserId(user: AuthUser): void {
+  localStorage.setItem(AUTH_USER_KEY, user.userId);
+}
+
 export function clearSession(): void {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
