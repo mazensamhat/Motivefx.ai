@@ -13,23 +13,38 @@ async function activateTier(
   subscriptionId: string,
   customerId?: string | null
 ) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { subscriptionStatus: true },
+  });
+  // Ops-granted comp access must not be overwritten by Stripe subscription events.
+  if (existing?.subscriptionStatus === "comp") return;
+
   await prisma.user.update({
     where: { id: userId },
     data: {
       intelligenceTier: tier,
       selectedMarkets,
       stripeSubscriptionId: subscriptionId,
+      subscriptionStatus: "active",
       ...(customerId ? { stripeCustomerId: customerId } : {}),
     },
   });
 }
 
 async function deactivateTier(userId: string) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { subscriptionStatus: true },
+  });
+  if (existing?.subscriptionStatus === "comp") return;
+
   await prisma.user.update({
     where: { id: userId },
     data: {
       intelligenceTier: "lite",
       stripeSubscriptionId: null,
+      subscriptionStatus: "none",
     },
   });
 }

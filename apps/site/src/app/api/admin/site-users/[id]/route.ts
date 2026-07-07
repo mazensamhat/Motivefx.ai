@@ -41,20 +41,13 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         stripeSubscriptionId: true,
         accessExpiresAt: true,
         intelligenceTier: true,
+        subscriptionStatus: true,
       },
     });
     if (!target) return badRequest("User not found.");
 
     if (parsed.data.disabled === true && isAdminEmail(target.email)) {
       return badRequest("Cannot disable an admin account.");
-    }
-
-    if (parsed.data.revokeAccess && target.stripeSubscriptionId) {
-      return badRequest("This user pays via Stripe — cancel in the billing portal instead.");
-    }
-
-    if (parsed.data.grantAccessDuration && target.stripeSubscriptionId) {
-      return badRequest("This user has Stripe billing — change tier in Stripe or revoke subscription first.");
     }
 
     const data: {
@@ -81,6 +74,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       data.intelligenceTier = tier;
       data.subscriptionStatus = "comp";
       data.accessExpiresAt = computeAccessExpiresAt(parsed.data.grantAccessDuration as CompAccessDuration);
+      data.stripeSubscriptionId = null;
       if (tier === "elite" || tier === "ultra" || tier === "ultra_plus") {
         data.selectedMarkets = JSON.stringify([
           "stocks",
@@ -94,6 +88,8 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       data.intelligenceTier = "lite";
       data.subscriptionStatus = "none";
       data.accessExpiresAt = null;
+      data.selectedMarkets = JSON.stringify([]);
+      data.stripeSubscriptionId = null;
     } else if (parsed.data.cancelAccount) {
       data.intelligenceTier = "lite";
       data.subscriptionStatus = "cancelled";
@@ -103,8 +99,8 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       }
     } else {
       if (parsed.data.intelligenceTier) {
-        if (target.stripeSubscriptionId) {
-          return badRequest("Tier changes for Stripe subscribers must go through billing.");
+        if (target.stripeSubscriptionId && !parsed.data.grantAccessDuration) {
+          return badRequest("Tier changes for Stripe subscribers must go through billing, or use Grant to override.");
         }
         data.intelligenceTier = parsed.data.intelligenceTier;
       }
@@ -113,6 +109,13 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         if (parsed.data.subscriptionStatus === "cancelled") {
           data.intelligenceTier = "lite";
           data.accessExpiresAt = null;
+        }
+        // Never downgrade comp → active from Enable; only explicit pause/revoke changes comp.
+        if (
+          parsed.data.subscriptionStatus === "active" &&
+          target.subscriptionStatus === "comp"
+        ) {
+          delete data.subscriptionStatus;
         }
       }
     }

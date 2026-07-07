@@ -42,7 +42,7 @@ export function SiteUsersPanel() {
   const [password, setPassword] = useState("");
   const [tier, setTier] = useState<PricingTierId>("pro");
   const [grantDuration, setGrantDuration] = useState<GrantDuration>("1_month");
-  const [grantTier, setGrantTier] = useState<PricingTierId>("pro");
+  const [grantTier, setGrantTier] = useState<PricingTierId>("elite");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -101,12 +101,37 @@ export function SiteUsersPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { error?: string; backendSynced?: boolean };
+      const data = (await res.json()) as {
+        error?: string;
+        backendSynced?: boolean;
+        user?: { id: string; tier: string; subscriptionStatus: string };
+      };
       if (!res.ok) throw new Error(data.error ?? "Update failed");
       if (data.backendSynced === false) {
         setMessage("User saved in site DB, but terminal backend sync failed — check MOTIVEFX_API_URL and BACKEND_SYNC_SECRET on Vercel.");
       } else {
         setMessage("User updated.");
+      }
+      if (data.user) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === data.user!.id
+              ? {
+                  ...u,
+                  tier: data.user!.tier,
+                  subscriptionStatus: data.user!.subscriptionStatus,
+                  statusLabel:
+                    data.user!.subscriptionStatus === "comp"
+                      ? "Comp access"
+                      : u.statusLabel,
+                  hasStripeSubscription: false,
+                  hasSubscription: data.user!.subscriptionStatus === "comp",
+                  accessLabel:
+                    data.user!.subscriptionStatus === "comp" ? "Lifetime" : u.accessLabel,
+                }
+              : u
+          )
+        );
       }
       setEditingId(null);
       setNewPassword("");
@@ -339,32 +364,30 @@ export function SiteUsersPanel() {
                         <KeyRound className="h-3 w-3" /> Password
                       </button>
 
-                      {u.hasStripeSubscription ? (
-                        <span className="self-center text-xs text-slate-500">Stripe billing</span>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="admin-btn admin-btn-primary"
-                            disabled={actionLoading === u.id}
-                            onClick={() =>
-                              patchUser(u.id, {
-                                intelligenceTier: grantTier,
-                                grantAccessDuration: grantDuration,
-                              })
-                            }
-                          >
-                            Grant {grantTier.replace(/_/g, " ")}
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-btn"
-                            disabled={actionLoading === u.id}
-                            onClick={() => patchUser(u.id, { revokeAccess: true })}
-                          >
-                            Revoke
-                          </button>
-                        </>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn-primary"
+                        disabled={actionLoading === u.id}
+                        onClick={() =>
+                          patchUser(u.id, {
+                            intelligenceTier: grantTier,
+                            grantAccessDuration: grantDuration,
+                          })
+                        }
+                      >
+                        Grant {grantTier.replace(/_/g, " ")}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn"
+                        disabled={actionLoading === u.id}
+                        onClick={() => patchUser(u.id, { revokeAccess: true })}
+                      >
+                        Revoke
+                      </button>
+
+                      {u.hasStripeSubscription && (
+                        <span className="self-center text-xs text-amber-300/90">Stripe linked</span>
                       )}
 
                       <button
@@ -381,7 +404,7 @@ export function SiteUsersPanel() {
                           type="button"
                           className="admin-btn"
                           disabled={actionLoading === u.id}
-                          onClick={() => patchUser(u.id, { disabled: false, subscriptionStatus: "active" })}
+                          onClick={() => patchUser(u.id, { disabled: false })}
                         >
                           <UserCheck className="h-3 w-3" /> Enable
                         </button>
