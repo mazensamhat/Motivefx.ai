@@ -54,7 +54,7 @@ function initialTabFromUrl(): TabId {
 
 export default function App() {
   const params = new URLSearchParams(window.location.search);
-  const isAdmin = !SITE_EMBED && params.get("view") === "admin";
+  const legacyAdminView = !SITE_EMBED && params.get("view") === "admin";
   const legalPage = params.get("page");
   const resetToken = params.get("token") ?? "";
   const [activeTab, setActiveTab] = useState<TabId>(initialTabFromUrl);
@@ -91,7 +91,7 @@ export default function App() {
   if (legalPage === "forgot-password") return <ForgotPasswordPage />;
   if (legalPage === "reset-password") return <ResetPasswordPage token={resetToken} />;
 
-  if (isAdmin) {
+  if (legacyAdminView) {
     return <AdminDashboard />;
   }
 
