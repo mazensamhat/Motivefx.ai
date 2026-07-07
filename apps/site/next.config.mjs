@@ -15,9 +15,6 @@ const backendPrefixes = [
 
 const nextConfig = {
   transpilePackages: ["@motivefx/database"],
-  async redirects() {
-    return [{ source: "/terminal", destination: "/terminal/", permanent: true }];
-  },
   async rewrites() {
     return [
       ...backendPrefixes.map((prefix) => ({

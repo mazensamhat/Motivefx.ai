@@ -6,10 +6,13 @@ const SESSION_COOKIE = "motivefx_session";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/terminal") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/terminal/";
-    return NextResponse.redirect(url);
+  // Static terminal bundle (JS/CSS/images) must not bounce through login.
+  if (
+    pathname.startsWith("/terminal/assets/") ||
+    pathname.startsWith("/terminal/brand/") ||
+    /\.[a-zA-Z0-9]+$/.test(pathname)
+  ) {
+    return NextResponse.next();
   }
 
   const session = request.cookies.get(SESSION_COOKIE)?.value;
