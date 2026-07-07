@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
+from typing import Awaitable, TypeVar
 
 from db import count_user_holdings, list_bets, list_predictions, list_watchlist, user_tracked_symbols
 from services import coinstats, congress, odds_api, penny_scanner, prediction_markets, yfinance_scanner
+
+T = TypeVar("T")
+
+
+async def _safe_feed(coro: Awaitable[T], fallback: T) -> T:
+    try:
+        return await coro
+    except Exception:
+        return fallback
 
 
 def _risk_from_confidence(confidence: int, module: str) -> str:
@@ -116,11 +127,13 @@ async def build_home_briefing(display_name: str | None = None, user_id: str | No
 
     options = yfinance_scanner.scan_unusual_options()[:4]
     penny = penny_scanner.scan_penny_movers()[:3]
-    whales = await coinstats.fetch_whale_alerts()
-    lines = await odds_api.fetch_line_moves()
-    sharp = await odds_api.fetch_sharp_action()
-    markets = await prediction_markets.fetch_markets(limit=4)
-    congress_trades = await congress.fetch_senate_trades(10)
+    whales, lines, sharp, markets, congress_trades = await asyncio.gather(
+        _safe_feed(coinstats.fetch_whale_alerts(), []),
+        _safe_feed(odds_api.fetch_line_moves(), []),
+        _safe_feed(odds_api.fetch_sharp_action(), []),
+        _safe_feed(prediction_markets.fetch_markets(limit=4), []),
+        _safe_feed(congress.fetch_senate_trades(10), []),
+    )
 
     opportunities: list[dict] = []
 

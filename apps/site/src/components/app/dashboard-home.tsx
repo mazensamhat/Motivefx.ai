@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -32,16 +33,43 @@ export function DashboardHome({
   tier,
   markets,
   hasSubscription,
-  briefing,
-  backendConnected,
 }: {
   email: string;
   tier: string;
   markets: IntelligenceMarketId[];
   hasSubscription: boolean;
-  briefing: Record<string, unknown> | null;
-  backendConnected: boolean;
 }) {
+  const [briefing, setBriefing] = useState<Record<string, unknown> | null>(null);
+  const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/backend/briefing", { cache: "no-store" });
+        if (cancelled) return;
+        if (!res.ok) {
+          setBackendConnected(false);
+          return;
+        }
+        const data = (await res.json()) as { ok?: boolean; briefing?: Record<string, unknown> };
+        if (data.ok && data.briefing) {
+          setBriefing(data.briefing);
+          setBackendConnected(true);
+        } else {
+          setBackendConnected(false);
+        }
+      } catch {
+        if (!cancelled) setBackendConnected(false);
+      } finally {
+        if (!cancelled) setBriefingLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const firstName = email.split("@")[0] ?? "Trader";
   const hour = new Date().getHours();
   const greeting =
@@ -54,7 +82,7 @@ export function DashboardHome({
 
   return (
     <div className="space-y-6">
-      {!backendConnected && (
+      {!backendConnected && backendConnected !== null && (
         <section className="app-upgrade-banner border-amber-500/40">
           <div>
             <p className="font-semibold text-white">Backend tools offline</p>
@@ -91,9 +119,19 @@ export function DashboardHome({
           </div>
           <div className="app-signal-card shrink-0">
             <p className="text-xs uppercase tracking-wider text-slate-400">Top Motive Signal</p>
-            <p className="mt-2 text-4xl font-bold text-[#00e676]">{top?.confidence ?? 92}</p>
-            <p className="mt-1 text-lg font-semibold text-white">{top?.symbol ?? "NVDA"}</p>
-            <p className="text-sm text-slate-400">{top?.title ?? "High confidence · Earnings momentum"}</p>
+            {briefingLoading ? (
+              <>
+                <p className="mt-2 text-4xl font-bold text-slate-600">…</p>
+                <p className="mt-1 text-lg font-semibold text-slate-500">Loading intel</p>
+                <p className="text-sm text-slate-500">Pulling live briefing from backend</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-4xl font-bold text-[#00e676]">{top?.confidence ?? 92}</p>
+                <p className="mt-1 text-lg font-semibold text-white">{top?.symbol ?? "NVDA"}</p>
+                <p className="text-sm text-slate-400">{top?.title ?? "High confidence · Earnings momentum"}</p>
+              </>
+            )}
             <Link href="/app/markets/stocks" className="app-inline-link mt-4 inline-flex items-center gap-1">
               <BarChart3 className="h-4 w-4" />
               Open stocks terminal

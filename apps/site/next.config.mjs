@@ -10,7 +10,6 @@ const backendPrefixes = [
   "home",
   "news",
   "advisor",
-  "admin",
 ];
 
 const nextConfig = {

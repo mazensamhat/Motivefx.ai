@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, Settings, Shield } from "lucide-react";
 import { BrandLogo } from "@/components/brand/logo";
 import { clientLogout } from "@/lib/auth-client";
 
@@ -13,9 +13,11 @@ const NAV = [
 
 export function AppShell({
   email,
+  isAdmin,
   children,
 }: {
   email: string;
+  isAdmin?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -42,6 +44,17 @@ export function AppShell({
             })}
           </nav>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="app-header-link"
+                title="Ops Console"
+                aria-label="Ops Console"
+              >
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Ops</span>
+              </Link>
+            )}
             <span className="hidden text-sm text-slate-400 md:inline">{email}</span>
             <button type="button" className="app-header-link" onClick={() => clientLogout()}>
               <LogOut className="h-4 w-4" />

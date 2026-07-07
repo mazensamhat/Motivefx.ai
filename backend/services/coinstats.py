@@ -14,10 +14,13 @@ async def fetch_whale_alerts() -> list[dict]:
         return _demo_whale_alerts()
 
     headers = {"X-API-KEY": settings.coinstats_api_key}
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(f"{COINSTATS_BASE}/whale/transactions", headers=headers)
-        resp.raise_for_status()
-        return _normalize_whales(resp.json())
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(f"{COINSTATS_BASE}/whale/transactions", headers=headers)
+            resp.raise_for_status()
+            return _normalize_whales(resp.json())
+    except Exception:
+        return _demo_whale_alerts()
 
 
 async def fetch_prediction_odds() -> list[dict]:
