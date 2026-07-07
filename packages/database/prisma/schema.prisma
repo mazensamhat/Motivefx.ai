@@ -1,248 +1,499 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-model User {
-  id                   String    @id @default(cuid())
-  email                String    @unique
-  passwordHash         String?
-  displayName          String?
-  intelligenceTier     String    @default("lite")
-  selectedMarkets      String?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  subscriptionStatus   String    @default("none")
-  accessExpiresAt      DateTime?
-  disabledAt           DateTime?
-  signupCountry        String?
-  signupRegion         String?
-  signupCity           String?
-  signupLatitude       Float?
-  signupLongitude      Float?
-  acquisitionChannel   String?
-  simTrialStartedAt    DateTime?
-  simBankroll          Float     @default(1000)
-  termsAcceptedAt      DateTime?
-  privacyAcceptedAt    DateTime?
-  lastSeenAt           DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  passwordResetTokens PasswordResetToken[]
-  productFeedback     ProductFeedback[]
-  portfolios          UserPortfolio[]
-  bets                UserBet[]
-  predictions         UserPrediction[]
-  watchlistItems      WatchlistItem[]
-  journalEntries      IntelJournalEntry[]
-  intelAlerts         IntelAlert[]
-  platformPrefs       PlatformPref[]
-  usageEvents         UsageEvent[]
-  channelTouchpoints  ChannelTouchpoint[]
-
-  @@index([subscriptionStatus])
-}
-
-model UserPortfolio {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module       String
-  holdingsJson String   @default("[]")
-  updatedAt    DateTime @updatedAt
-
-  @@unique([userId, module])
-  @@index([userId])
-}
-
-model UserBet {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matchup      String
-  pick         String
-  odds         String?
-  stake        Float?
-  sport        String    @default("other")
-  status       String    @default("open")
-  isSimulation Boolean   @default(false)
-  outcome      String?
-  pnl          Float?
-  settledAt    DateTime?
-  createdAt    DateTime  @default(now())
-
-  @@index([userId])
-}
-
-model UserPrediction {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  market       String
-  category     String    @default("other")
-  pick         String
-  stake        Float?
-  yesPrice     Float?
-  status       String    @default("open")
-  isSimulation Boolean   @default(false)
-  outcome      String?
-  pnl          Float?
-  settledAt    DateTime?
-  createdAt    DateTime  @default(now())
-
-  @@index([userId])
-}
-
-model WatchlistItem {
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module    String
-  symbol    String
-  createdAt DateTime @default(now())
-
-  @@id([userId, module, symbol])
-}
-
-model IntelJournalEntry {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module      String?
-  symbol      String?
-  signalTitle String?
-  note        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model IntelAlert {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module     String?
-  symbol     String?
-  title      String
-  body       String?
-  confidence Int?
-  alertKey   String
-  seen       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  @@unique([userId, alertKey])
-  @@index([userId])
-}
-
-model PlatformPref {
-  userId     String
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module     String
-  platformId String
-  customUrl  String?
-
-  @@id([userId, module])
-}
-
-model UsageEvent {
-  id         String   @id @default(cuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  module     String?
-  action     String
-  endpoint   String?
-  statusCode Int?
-  durationMs Float?
-  createdAt  DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([userId])
-}
-
-model MarketingChannel {
-  id        String   @id
-  platform  String
-  handle    String?
-  url       String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  touchpoints ChannelTouchpoint[]
-  credentials SocialChannelCredential?
-  metrics     SocialMetricsSnapshot[]
-}
-
-model ChannelTouchpoint {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channelId String
-  channel   MarketingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  eventType String
-  amountUsd Float    @default(0)
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([channelId])
-}
-
-model SocialChannelCredential {
-  channelId        String   @id
-  channel          MarketingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  accountId        String?
-  accessToken      String?
-  refreshToken     String?
-  extraJson        String?
-  connectionStatus String   @default("disconnected")
-  lastSyncAt       DateTime?
-  syncError        String?
-  updatedAt        DateTime @updatedAt
-}
-
-model SocialMetricsSnapshot {
-  id             String   @id @default(cuid())
-  channelId      String
-  channel        MarketingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  snapshotDate   String
-  followers      Int      @default(0)
-  impressions    Int      @default(0)
-  profileViews   Int      @default(0)
-  linkClicks     Int      @default(0)
-  engagementRate Float    @default(0)
-  postsCount     Int      @default(0)
-  rawJson        String?
-  syncedAt       DateTime @default(now())
-
-  @@unique([channelId, snapshotDate])
-}
-
-model ProductFeedback {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email     String
-  kind      String
-  message   String
-  pagePath  String?
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-}
-
-model PasswordResetToken {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-}
-
+generator client {
+
+  provider = "prisma-client-js"
+
+}
+
+
+
+datasource db {
+
+  provider  = "postgresql"
+
+  url       = env("DATABASE_URL")
+
+  directUrl = env("DIRECT_URL")
+
+}
+
+
+
+model User {
+
+  id                   String    @id @default(cuid())
+
+  email                String    @unique
+
+  passwordHash         String?
+
+  displayName          String?
+
+  intelligenceTier     String    @default("lite")
+
+  selectedMarkets      String?
+
+  stripeCustomerId     String?
+
+  stripeSubscriptionId String?
+
+  subscriptionStatus   String    @default("none")
+
+  accessExpiresAt      DateTime?
+
+  disabledAt           DateTime?
+
+  signupCountry        String?
+
+  signupRegion         String?
+
+  signupCity           String?
+
+  signupLatitude       Float?
+
+  signupLongitude      Float?
+
+  acquisitionChannel   String?
+
+  simTrialStartedAt    DateTime?
+
+  simBankroll          Float     @default(1000)
+
+  termsAcceptedAt      DateTime?
+
+  privacyAcceptedAt    DateTime?
+
+  lastSeenAt           DateTime?
+
+  totpSecret           String?
+
+  totpEnabled          Boolean   @default(false)
+
+  createdAt            DateTime  @default(now())
+
+  updatedAt            DateTime  @updatedAt
+
+
+
+  passwordResetTokens PasswordResetToken[]
+
+  productFeedback     ProductFeedback[]
+
+  portfolios          UserPortfolio[]
+
+  bets                UserBet[]
+
+  predictions         UserPrediction[]
+
+  watchlistItems      WatchlistItem[]
+
+  journalEntries      IntelJournalEntry[]
+
+  intelAlerts         IntelAlert[]
+
+  platformPrefs       PlatformPref[]
+
+  usageEvents         UsageEvent[]
+
+  channelTouchpoints  ChannelTouchpoint[]
+
+
+
+  @@index([subscriptionStatus])
+
+}
+
+
+
+model UserPortfolio {
+
+  id           String   @id @default(cuid())
+
+  userId       String
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module       String
+
+  holdingsJson String   @default("[]")
+
+  updatedAt    DateTime @updatedAt
+
+
+
+  @@unique([userId, module])
+
+  @@index([userId])
+
+}
+
+
+
+model UserBet {
+
+  id           String    @id @default(cuid())
+
+  userId       String
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  matchup      String
+
+  pick         String
+
+  odds         String?
+
+  stake        Float?
+
+  sport        String    @default("other")
+
+  status       String    @default("open")
+
+  isSimulation Boolean   @default(false)
+
+  outcome      String?
+
+  pnl          Float?
+
+  settledAt    DateTime?
+
+  createdAt    DateTime  @default(now())
+
+
+
+  @@index([userId])
+
+}
+
+
+
+model UserPrediction {
+
+  id           String    @id @default(cuid())
+
+  userId       String
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  market       String
+
+  category     String    @default("other")
+
+  pick         String
+
+  stake        Float?
+
+  yesPrice     Float?
+
+  status       String    @default("open")
+
+  isSimulation Boolean   @default(false)
+
+  outcome      String?
+
+  pnl          Float?
+
+  settledAt    DateTime?
+
+  createdAt    DateTime  @default(now())
+
+
+
+  @@index([userId])
+
+}
+
+
+
+model WatchlistItem {
+
+  userId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module    String
+
+  symbol    String
+
+  createdAt DateTime @default(now())
+
+
+
+  @@id([userId, module, symbol])
+
+}
+
+
+
+model IntelJournalEntry {
+
+  id          String   @id @default(cuid())
+
+  userId      String
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module      String?
+
+  symbol      String?
+
+  signalTitle String?
+
+  note        String
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+
+
+
+  @@index([userId])
+
+}
+
+
+
+model IntelAlert {
+
+  id         String   @id @default(cuid())
+
+  userId     String
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module     String?
+
+  symbol     String?
+
+  title      String
+
+  body       String?
+
+  confidence Int?
+
+  alertKey   String
+
+  seen       Boolean  @default(false)
+
+  createdAt  DateTime @default(now())
+
+
+
+  @@unique([userId, alertKey])
+
+  @@index([userId])
+
+}
+
+
+
+model PlatformPref {
+
+  userId     String
+
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  module     String
+
+  platformId String
+
+  customUrl  String?
+
+
+
+  @@id([userId, module])
+
+}
+
+
+
+model UsageEvent {
+
+  id         String   @id @default(cuid())
+
+  userId     String?
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  module     String?
+
+  action     String
+
+  endpoint   String?
+
+  statusCode Int?
+
+  durationMs Float?
+
+  createdAt  DateTime @default(now())
+
+
+
+  @@index([createdAt])
+
+  @@index([userId])
+
+}
+
+
+
+model MarketingChannel {
+
+  id        String   @id
+
+  platform  String
+
+  handle    String?
+
+  url       String?
+
+  active    Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+
+
+
+  touchpoints ChannelTouchpoint[]
+
+  credentials SocialChannelCredential?
+
+  metrics     SocialMetricsSnapshot[]
+
+}
+
+
+
+model ChannelTouchpoint {
+
+  id        String   @id @default(cuid())
+
+  userId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  channelId String
+
+  channel   MarketingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  eventType String
+
+  amountUsd Float    @default(0)
+
+  createdAt DateTime @default(now())
+
+
+
+  @@index([userId])
+
+  @@index([channelId])
+
+}
+
+
+
+model SocialChannelCredential {
+
+  channelId        String   @id
+
+  channel          MarketingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  accountId        String?
+
+  accessToken      String?
+
+  refreshToken     String?
+
+  extraJson        String?
+
+  connectionStatus String   @default("disconnected")
+
+  lastSyncAt       DateTime?
+
+  syncError        String?
+
+  updatedAt        DateTime @updatedAt
+
+}
+
+
+
+model SocialMetricsSnapshot {
+
+  id             String   @id @default(cuid())
+
+  channelId      String
+
+  channel        MarketingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  snapshotDate   String
+
+  followers      Int      @default(0)
+
+  impressions    Int      @default(0)
+
+  profileViews   Int      @default(0)
+
+  linkClicks     Int      @default(0)
+
+  engagementRate Float    @default(0)
+
+  postsCount     Int      @default(0)
+
+  rawJson        String?
+
+  syncedAt       DateTime @default(now())
+
+
+
+  @@unique([channelId, snapshotDate])
+
+}
+
+
+
+model ProductFeedback {
+
+  id        String   @id @default(cuid())
+
+  userId    String?
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  email     String
+
+  kind      String
+
+  message   String
+
+  pagePath  String?
+
+  createdAt DateTime @default(now())
+
+
+
+  @@index([createdAt])
+
+}
+
+
+
+model PasswordResetToken {
+
+  id        String   @id @default(cuid())
+
+  userId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String   @unique
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+
+
+  @@index([userId])
+
+}
+
+

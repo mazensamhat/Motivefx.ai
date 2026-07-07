@@ -19,6 +19,7 @@ export async function GET() {
       subscriptionStatus: true,
       accessExpiresAt: true,
       disabledAt: true,
+      totpEnabled: true,
     },
   });
 
@@ -30,6 +31,7 @@ export async function GET() {
       selectedMarkets: user.selectedMarkets ? JSON.parse(user.selectedMarkets) : [],
       hasSubscription: userHasActiveSubscription(user),
       isAdmin: isAdminEmail(user.email),
+      totpEnabled: Boolean(user.totpEnabled),
     },
   });
 }

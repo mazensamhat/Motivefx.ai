@@ -19,6 +19,8 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
   const next = searchParams.get("next") ?? "/app";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [error, setError] = useState("");
@@ -29,13 +31,28 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
     setError("");
     setLoading(true);
 
-    const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-    const body =
-      mode === "login"
-        ? { email, password }
-        : { email, password, acceptTerms, acceptPrivacy };
-
     try {
+      if (pendingToken) {
+        const res = await fetch("/api/auth/login/2fa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pendingToken, code: totpCode }),
+        });
+        if (!res.ok) {
+          setError(await readApiError(res));
+          return;
+        }
+        const payload = (await res.json()) as { redirectTo?: string };
+        window.location.href = payload.redirectTo ?? next;
+        return;
+      }
+
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body =
+        mode === "login"
+          ? { email, password }
+          : { email, password, acceptTerms, acceptPrivacy };
+
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,7 +64,17 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
         return;
       }
 
-      const payload = (await res.json()) as { redirectTo?: string };
+      const payload = (await res.json()) as {
+        redirectTo?: string;
+        requires2fa?: boolean;
+        pendingToken?: string;
+      };
+
+      if (payload.requires2fa && payload.pendingToken) {
+        setPendingToken(payload.pendingToken);
+        return;
+      }
+
       window.location.href = payload.redirectTo ?? next;
     } catch {
       setError("Could not reach the server. Check your connection and try again.");
@@ -59,15 +86,19 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
   return (
     <div className="auth-card w-full max-w-md">
       <h1 className="text-2xl font-bold text-white">
-        {mode === "login" ? "Welcome back" : "Create your account"}
+        {pendingToken ? "Two-factor authentication" : mode === "login" ? "Welcome back" : "Create your account"}
       </h1>
       <p className="mt-2 text-sm text-slate-400">
-        {mode === "login"
-          ? "Sign in to open your intelligence terminal."
-          : "Start with market intelligence built around you."}
+        {pendingToken
+          ? "Enter the 6-digit code from your authenticator app."
+          : mode === "login"
+            ? "Sign in to open your intelligence terminal."
+            : "Start with market intelligence built around you."}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        {!pendingToken && (
+          <>
         <div>
           <label className="auth-label" htmlFor="email">
             Email
@@ -106,8 +137,27 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
             autoComplete={mode === "login" ? "current-password" : "new-password"}
           />
         </div>
+          </>
+        )}
 
-        {mode === "register" && (
+        {pendingToken && (
+          <div>
+            <label className="auth-label" htmlFor="totp">
+              Authentication code
+            </label>
+            <input
+              id="totp"
+              className="auth-input"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="123456"
+              required
+              autoComplete="one-time-code"
+            />
+          </div>
+        )}
+
+        {mode === "register" && !pendingToken && (
           <div className="space-y-3 text-sm text-slate-400">
             <label className="flex items-start gap-2">
               <input
@@ -145,8 +195,27 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
         {error && <p className="text-sm text-red-400">{error}</p>}
 
         <button type="submit" className="auth-submit" disabled={loading}>
-          {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+          {loading
+            ? "Please wait…"
+            : pendingToken
+              ? "Verify code"
+              : mode === "login"
+                ? "Sign in"
+                : "Create account"}
         </button>
+        {pendingToken && (
+          <button
+            type="button"
+            className="w-full text-sm text-slate-400 hover:text-white"
+            onClick={() => {
+              setPendingToken(null);
+              setTotpCode("");
+              setError("");
+            }}
+          >
+            Back to sign in
+          </button>
+        )}
       </form>
     </div>
   );

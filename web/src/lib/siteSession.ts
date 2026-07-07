@@ -5,6 +5,7 @@ export { SITE_EMBED } from "./embed";
 
 export interface SiteSessionUser extends AuthUser {
   isAdmin?: boolean;
+  totpEnabled?: boolean;
 }
 
 /** Site cookie session — works even when FastAPI bridge is down. */
@@ -14,7 +15,7 @@ export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
     const res = await fetch("/api/auth/me", { cache: "no-store" });
     if (!res.ok) return null;
     const data = (await res.json()) as {
-      user?: { id?: string; email?: string; isAdmin?: boolean };
+      user?: { id?: string; email?: string; isAdmin?: boolean; totpEnabled?: boolean };
     };
     const user = data.user;
     if (!user?.email) return null;
@@ -22,6 +23,7 @@ export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
       userId: user.id ?? user.email,
       email: user.email,
       isAdmin: Boolean(user.isAdmin),
+      totpEnabled: Boolean(user.totpEnabled),
     };
   } catch {
     return null;

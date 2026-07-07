@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { Shield, X } from "lucide-react";
 import { authPost, type AuthUser } from "../lib/api";
+import { SITE_EMBED } from "../lib/siteSession";
+import { siteAuthPost } from "../lib/siteSecurity";
 
 interface Props {
   user: AuthUser;
   onClose: () => void;
   onUserUpdated: () => Promise<void>;
+}
+
+async function securityPost<T>(path: string, body: unknown = {}): Promise<T> {
+  if (SITE_EMBED) return siteAuthPost<T>(path, body);
+  return authPost<T>(path, body);
 }
 
 export function SecuritySettingsModal({ user, onClose, onUserUpdated }: Props) {
@@ -21,7 +28,7 @@ export function SecuritySettingsModal({ user, onClose, onUserUpdated }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const res = await authPost<{ secret: string; otpauthUrl: string }>("/2fa/setup");
+      const res = await securityPost<{ secret: string; otpauthUrl: string }>("/2fa/setup");
       setSecret(res.secret);
       setOtpauthUrl(res.otpauthUrl);
       setStep("confirm");
@@ -37,7 +44,7 @@ export function SecuritySettingsModal({ user, onClose, onUserUpdated }: Props) {
     setLoading(true);
     setError(null);
     try {
-      await authPost("/2fa/confirm", { code });
+      await securityPost("/2fa/confirm", { code });
       await onUserUpdated();
       onClose();
     } catch (err) {
@@ -52,7 +59,7 @@ export function SecuritySettingsModal({ user, onClose, onUserUpdated }: Props) {
     setLoading(true);
     setError(null);
     try {
-      await authPost("/2fa/disable", { code, password });
+      await securityPost("/2fa/disable", { code, password });
       await onUserUpdated();
       onClose();
     } catch (err) {
@@ -92,6 +99,7 @@ export function SecuritySettingsModal({ user, onClose, onUserUpdated }: Props) {
                 Disable 2FA
               </button>
             )}
+            {error && <p className="auth-error">{error}</p>}
           </div>
         )}
 

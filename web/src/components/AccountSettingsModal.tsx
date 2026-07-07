@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Download, Trash2, X } from "lucide-react";
 import { authGet, authPost, clearSession, apiPost, getUserId } from "../lib/api";
+import { SITE_EMBED } from "../lib/siteSession";
+import { openSiteBillingPortal } from "../lib/siteSecurity";
 import { SecuritySettingsModal } from "./SecuritySettingsModal";
 import type { AuthUser } from "../lib/api";
 
@@ -8,9 +10,10 @@ interface Props {
   user: AuthUser;
   onClose: () => void;
   onLogout: () => Promise<void>;
+  onUserUpdated: () => Promise<void>;
 }
 
-export function AccountSettingsModal({ user, onClose, onLogout }: Props) {
+export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }: Props) {
   const [tab, setTab] = useState<"account" | "security">("account");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -42,6 +45,10 @@ export function AccountSettingsModal({ user, onClose, onLogout }: Props) {
     setLoading(true);
     setError(null);
     try {
+      if (SITE_EMBED) {
+        await openSiteBillingPortal();
+        return;
+      }
       const res = await apiPost<{ url?: string }>("/advisor/billing/portal", {
         user_id: getUserId(),
         return_url: window.location.href,
@@ -75,7 +82,7 @@ export function AccountSettingsModal({ user, onClose, onLogout }: Props) {
       <SecuritySettingsModal
         user={user}
         onClose={() => setTab("account")}
-        onUserUpdated={async () => {}}
+        onUserUpdated={onUserUpdated}
       />
     );
   }

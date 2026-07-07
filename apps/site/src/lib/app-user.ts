@@ -19,6 +19,7 @@ export async function getAppUser() {
       subscriptionStatus: true,
       accessExpiresAt: true,
       disabledAt: true,
+      totpEnabled: true,
     },
   });
 
@@ -31,5 +32,6 @@ export async function getAppUser() {
     markets: parseUserMarkets(user.selectedMarkets),
     hasSubscription: userHasActiveSubscription(user),
     hasBillingAccount: Boolean(user.stripeCustomerId),
+    totpEnabled: Boolean(user.totpEnabled),
   };
 }

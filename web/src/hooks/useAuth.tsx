@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const siteUser = await fetchSiteSessionUser();
       if (siteUser) {
         syncAuthUserId({ userId: siteUser.userId, email: siteUser.email });
-        setUser({ userId: siteUser.userId, email: siteUser.email });
+        setUser({ userId: siteUser.userId, email: siteUser.email, totpEnabled: siteUser.totpEnabled });
         setIsAdmin(Boolean(siteUser.isAdmin));
         return;
       }
@@ -166,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user={user}
           onClose={() => setAccountOpen(false)}
           onLogout={logout}
+          onUserUpdated={refreshUser}
         />
       )}
     </AuthContext.Provider>
