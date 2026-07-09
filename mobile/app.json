@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MotiveFX.AI",
-    "slug": "motivefx-ai",
+    "slug": "motivefx",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -64,7 +64,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "be5b49f1-61c1-4d22-960d-12a3a898f913"
       }
     }
   }
