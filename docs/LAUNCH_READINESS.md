@@ -52,6 +52,9 @@
 See [MOBILE_STRATEGY.md](./MOBILE_STRATEGY.md) for full mobile plan.
 
 - [x] Expo app shell with env-based API URL
+- [x] Android native project scaffold (`expo prebuild`, `eas.json`) — see `docs/ANDROID_PLAY_STORE.md`
+- [x] Terminal WebView loads full mobile UI (`MobileBottomNav` design parity)
+- [x] Mobile-first terminal CSS (`viewport-fit`, safe-area, `100dvh`, native-shell class)
 - [x] Mobile auth screen (login/register)
 - [ ] **Billing model decision:** web-only subscribe vs native IAP (RevenueCat)
 - [ ] Apple Developer + Google Play Console accounts

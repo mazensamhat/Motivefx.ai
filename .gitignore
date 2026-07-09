@@ -15,6 +15,9 @@ web/dist/
 apps/site/public/terminal/
 mobile/.expo/
 mobile/dist/
+mobile/android/
+mobile/ios/
+google-play-service-account.json
 apps/site/.next/
 .next/
 build-log.txt

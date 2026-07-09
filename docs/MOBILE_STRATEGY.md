@@ -10,10 +10,12 @@
 |------|--------|
 | Framework | Expo SDK 56 + React Native 0.85 |
 | Bundle ID | `ai.motivefx.app` |
-| Screens | Feed, Stocks, Crypto, Betting (read-only API calls) |
-| Auth | Login/register screen with secure token storage |
+| Android scaffold | `expo prebuild` + `eas.json` (see `docs/ANDROID_PLAY_STORE.md`) |
+| Primary UI | **Terminal WebView** — loads `/terminal/` for full mobile design parity |
+| Legacy screens | Feed, Stocks, Crypto, Betting (native stubs, not in main nav) |
+| Auth | Login/register + secure token storage → injected into WebView |
 | Billing | **Not in app** — subscribe on web |
-| API | `EXPO_PUBLIC_API_URL` env (defaults to dev) |
+| API | `EXPO_PUBLIC_API_URL` env (defaults to production) |
 
 ---
 
@@ -31,9 +33,9 @@
 
 **App v1.0 features:**
 - Login / register (same auth API as web)
-- Live feed + module tabs (authenticated API)
-- Portfolio view (read-only initially)
-- Link out to web for subscribe: `https://motivefx.ai/?subscribe=trades`
+- **Full terminal in WebView** — bottom nav, Home command center, virtualized feeds (matches web mobile)
+- Auth session injected into terminal localStorage
+- Link out to web for subscribe: `https://motivefx.ai/pricing`
 - In-app disclaimers + link to Privacy/Terms
 
 **Store listing copy:**
@@ -146,7 +148,7 @@ Flow matches web:
 | 100% feature parity with web | Worse native UX (keyboard, gestures) |
 | Single codebase | Harder to pass performance review |
 
-**Decision:** Stay with Expo native for better store acceptance and future push/biometrics.
+**Decision (updated July 2026):** Expo native shell with **Terminal WebView** for Android v1 — instant design parity with the polished web mobile UX (`MobileBottomNav`). Native FlashList screens remain Phase 2+.
 
 ---
 

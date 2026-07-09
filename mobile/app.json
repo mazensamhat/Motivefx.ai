@@ -6,18 +6,66 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "scheme": "motivefx",
     "splash": {
-      "backgroundColor": "#06080f"
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#080a0c"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.motivefx.app"
+      "bundleIdentifier": "ai.motivefx.app",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false
+        }
+      }
     },
     "android": {
+      "package": "ai.motivefx.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#06080f"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080a0c"
       },
-      "package": "ai.motivefx.app"
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "INTERNET",
+        "VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "motivefx.ai",
+              "pathPrefix": "/terminal"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#080a0c",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
     }
   }
 }

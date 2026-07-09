@@ -6,6 +6,8 @@
     "dev": "pnpm --filter @motivefx/site dev",
     "build": "node scripts/build-terminal.mjs && pnpm --filter @motivefx/site build",
     "build:terminal": "node scripts/build-terminal.mjs",
+    "mobile:assets": "node scripts/generate-mobile-assets.mjs",
+    "mobile:prebuild": "node scripts/generate-mobile-assets.mjs && cd mobile && npm install && npx expo prebuild --platform android",
     "db:generate": "pnpm --filter @motivefx/database db:generate",
     "db:push": "pnpm --filter @motivefx/database db:push"
   },
