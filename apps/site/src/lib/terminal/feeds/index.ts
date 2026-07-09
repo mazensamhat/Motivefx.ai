@@ -112,19 +112,40 @@ async function fetchCoinGeckoWhaleLike() {
   }
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function fetchWhaleAlerts() {
   const key = process.env.COINSTATS_API_KEY?.trim();
+  const demo = demoWhaleAlerts();
 
-  const gecko = await fetchCoinGeckoWhaleLike();
-  if (gecko.length) return gecko;
+  /* Cap total wait so activity panels never sit empty on CoinGecko cold starts. */
+  const live = (async () => {
+    const gecko = await withTimeout(fetchCoinGeckoWhaleLike(), 2200);
+    if (gecko?.length) return gecko;
 
-  if (key) {
+    if (!key) return demo;
+
     try {
-      const res = await fetch("https://openapiv1.coinstats.app/coins?limit=20", {
-        headers: { "X-API-KEY": key },
-        next: { revalidate: 120 },
-      });
-      if (res.ok) {
+      const res = await withTimeout(
+        fetch("https://openapiv1.coinstats.app/coins?limit=12", {
+          headers: { "X-API-KEY": key },
+          next: { revalidate: 120 },
+        }),
+        2000
+      );
+      if (res?.ok) {
         const raw = (await res.json()) as { result?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
         const rows = Array.isArray(raw) ? raw : raw.result ?? [];
         const items = rows.slice(0, 12).map((r) => {
@@ -147,9 +168,11 @@ export async function fetchWhaleAlerts() {
     } catch {
       /* fall through */
     }
-  }
+    return demo;
+  })();
 
-  return demoWhaleAlerts();
+  const raced = await withTimeout(live, 2800);
+  return raced?.length ? raced : demo;
 }
 
 export function demoLineMoves() {
@@ -272,7 +295,8 @@ export const PREDICTION_CATEGORIES = [
   { id: "crypto", label: "Crypto Events" },
 ];
 
-const STOCK_SCAN_SYMBOLS = ["NVDA", "TSLA", "AAPL", "MSFT", "AMD", "AMZN", "META", "GOOGL", "SPY", "QQQ"];
+/* Keep Finnhub fan-out small — 10 parallel calls made activity panels feel stuck. */
+const STOCK_SCAN_SYMBOLS = ["NVDA", "TSLA", "AAPL", "MSFT", "AMD"];
 
 type InsiderRow = {
   name?: string;
@@ -285,11 +309,14 @@ type InsiderRow = {
 };
 
 async function fetchFinnhubInsider(symbol: string, apiKey: string) {
-  const res = await fetch(
-    `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`,
-    { next: { revalidate: 300 } }
+  const res = await withTimeout(
+    fetch(
+      `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`,
+      { next: { revalidate: 300 } }
+    ),
+    3000
   );
-  if (!res.ok) return [];
+  if (!res?.ok) return [];
   const data = (await res.json()) as { data?: InsiderRow[] };
   return data.data ?? [];
 }
@@ -342,26 +369,26 @@ function mapInsiderToActivity(rows: InsiderRow[], symbol: string, startId = 0) {
 
 export async function fetchStockActivity() {
   const finnhubKey = process.env.FINNHUB_API_KEY?.trim();
-  const items: ReturnType<typeof mapOptionsToActivity> = [];
+  /* Seed with demo options so the panel never waits on Finnhub cold starts. */
+  const items: ReturnType<typeof mapOptionsToActivity> = [
+    ...mapOptionsToActivity(scanUnusualOptions()),
+  ];
 
   if (finnhubKey) {
-    const batches = await Promise.all(
-      STOCK_SCAN_SYMBOLS.map((sym) => fetchFinnhubInsider(sym, finnhubKey))
+    const batches = await withTimeout(
+      Promise.all(STOCK_SCAN_SYMBOLS.map((sym) => fetchFinnhubInsider(sym, finnhubKey))),
+      3200
     );
-    batches.forEach((rows, idx) => {
+    batches?.forEach((rows, idx) => {
       if (rows.length) {
         items.push(...mapInsiderToActivity(rows, STOCK_SCAN_SYMBOLS[idx]!, items.length));
       }
     });
   }
 
-  if (items.length < 5) {
-    items.push(...mapOptionsToActivity(scanUnusualOptions(), items.length));
-  }
-
-  return items.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  return items
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 40);
 }
 
 function mapPennyMoverToActivity(
@@ -399,7 +426,7 @@ export async function fetchPennyActivity() {
 
 export async function fetchCryptoActivity() {
   const whales = await fetchWhaleAlerts();
-  return whales.map((w, i) => {
+  return whales.slice(0, 40).map((w, i) => {
     const amountUsd = Number(w.amountUsd ?? 0);
     const price = Number((w as { price?: number }).price ?? 0) || undefined;
     const amountCrypto = price && price > 0 ? amountUsd / price : amountUsd / 50_000;

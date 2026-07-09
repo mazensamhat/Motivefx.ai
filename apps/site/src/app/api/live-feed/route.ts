@@ -19,10 +19,17 @@ export async function GET() {
   const events: Array<Record<string, unknown>> = [];
 
   for (const w of whales.slice(0, 2)) {
+    const usd = Number(w.amountUsd) || 0;
+    const pretty =
+      usd >= 1_000_000_000
+        ? `$${(usd / 1_000_000_000).toFixed(1)}B`
+        : usd >= 1_000_000
+          ? `$${Math.round(usd / 1_000_000)}M`
+          : `$${Math.round(usd).toLocaleString()}`;
     events.push({
       type: "crypto",
       severity: "high",
-      message: `$${w.asset} whale moved $${Math.floor(Number(w.amountUsd) / 1_000_000)}M — ${w.note ?? w.direction ?? ""}`,
+      message: `${String(w.asset)} whale moved ${pretty} — ${w.note ?? w.direction ?? ""}`,
       timestamp: w.timestamp,
     });
   }

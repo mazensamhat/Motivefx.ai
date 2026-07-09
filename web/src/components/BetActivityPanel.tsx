@@ -40,10 +40,11 @@ export function BetActivityPanel() {
   return (
     <ActivityPanel
       module="betting"
-      title="Your Bets — Full Slip History"
+      title="Your Bets"
+      subtitle="Full slip history — tap a row for context."
       endpoint="/betting/activity"
       filters={BET_FILTERS}
-      emptyMessage="No bets logged yet. Add bets above or use demo data."
+      emptyMessage="No bets logged yet. Add bets above or check back soon."
       columns={[
         { key: "created_at", label: "Logged", render: (r) => formatTime(r.created_at) },
         {

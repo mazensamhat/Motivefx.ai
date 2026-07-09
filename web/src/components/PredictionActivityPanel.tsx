@@ -36,10 +36,11 @@ export function PredictionActivityPanel() {
   return (
     <ActivityPanel
       module="predictions"
-      title="Prediction Market Activity — Who's Betting on What"
+      title="Prediction Market Activity"
+      subtitle="Who's betting on what — YES / NO flow."
       endpoint="/predictions/activity"
       filters={PREDICTION_FILTERS}
-      emptyMessage="No prediction market activity for these filters."
+      emptyMessage="No prediction bets yet. Check back as markets move."
       columns={[
         { key: "timestamp", label: "Time", render: (r) => formatTime(r.timestamp) },
         {
@@ -48,34 +49,38 @@ export function PredictionActivityPanel() {
           render: (r) => <span className="badge badge-neutral">{String(r.categoryLabel ?? r.category)}</span>,
         },
         {
-          key: "market",
-          label: "Market",
-          mobilePrimary: true,
-          render: (r) => <strong className="cell-note">{String(r.market)}</strong>,
-        },
-        {
           key: "bettor",
           label: "Who",
           mobilePrimary: true,
-          render: (r) => <span className="cell-mono">{String(r.bettor)}</span>,
+          mobilePriority: 0,
+          render: (r) => <span>{String(r.bettor)}</span>,
         },
         {
           key: "pick",
           label: "Pick",
           mobilePrimary: true,
+          mobilePriority: 1,
           render: (r) => (
             <span className={`badge badge-${r.side === "yes" ? "bullish" : "bearish"}`}>
               {String(r.pick).toUpperCase()}
             </span>
           ),
         },
-        { key: "yesPrice", label: "YES %", render: (r) => `${(Number(r.yesPrice) * 100).toFixed(0)}%` },
         {
           key: "stake",
           label: "Stake",
           mobilePrimary: true,
+          mobilePriority: 2,
           render: (r) => formatUsd(r.stake),
         },
+        {
+          key: "market",
+          label: "Market",
+          mobilePrimary: true,
+          mobilePriority: 3,
+          render: (r) => <strong className="cell-note">{String(r.market)}</strong>,
+        },
+        { key: "yesPrice", label: "YES %", render: (r) => `${(Number(r.yesPrice) * 100).toFixed(0)}%` },
         { key: "marketBetCount", label: "Market bets", render: (r) => Number(r.marketBetCount).toLocaleString() },
       ]}
     />

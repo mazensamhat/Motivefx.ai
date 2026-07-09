@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Filter, RefreshCw } from "lucide-react";
+import { Filter, RefreshCw, X } from "lucide-react";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { apiGet, getUserId } from "../lib/api";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { AssetDeepDiveModal } from "./AssetDeepDiveModal";
@@ -16,20 +17,40 @@ const SPORT_OPTIONS = [
   { value: "tennis", label: "Tennis" },
 ];
 
+function ActivitySkeleton() {
+  return (
+    <div className="activity-skeleton" aria-hidden>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="activity-skeleton-card">
+          <div className="activity-skeleton-line activity-skeleton-line-lg" />
+          <div className="activity-skeleton-row">
+            <div className="activity-skeleton-pill" />
+            <div className="activity-skeleton-line" />
+            <div className="activity-skeleton-line activity-skeleton-line-sm" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function BetMarketActivityPanel() {
+  const isMobile = useMediaQuery("(max-width: 900px)");
   const [sport, setSport] = useState("");
   const [matchup, setMatchup] = useState("");
   const [minBets, setMinBets] = useState("");
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [summaries, setSummaries] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [deepDiveRow, setDeepDiveRow] = useState<Record<string, unknown> | null>(null);
+
+  const activeFilterCount = [sport, matchup.trim(), minBets].filter(Boolean).length;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ user_id: getUserId() });
+      const params = new URLSearchParams({ user_id: getUserId(), limit: "40" });
       if (sport) params.set("sport", sport);
       if (matchup.trim()) params.set("matchup", matchup.trim());
       if (minBets) params.set("min_bets", minBets);
@@ -51,50 +72,110 @@ export function BetMarketActivityPanel() {
     fetchData();
   }, [fetchData]);
 
+  function clearFilters() {
+    setSport("");
+    setMatchup("");
+    setMinBets("");
+  }
+
+  function applyFilters() {
+    void fetchData();
+    if (isMobile) setShowFilters(false);
+  }
+
+  const filterFields = (
+    <>
+      <label className="filter-field">
+        <span>Sport</span>
+        <select value={sport} onChange={(e) => setSport(e.target.value)}>
+          <option value="">All sports</option>
+          {SPORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="filter-field">
+        <span>Game / matchup</span>
+        <input placeholder="Chiefs, Lakers…" value={matchup} onChange={(e) => setMatchup(e.target.value)} />
+      </label>
+      <label className="filter-field">
+        <span>Min bets on game</span>
+        <input type="number" placeholder="200" value={minBets} onChange={(e) => setMinBets(e.target.value)} />
+      </label>
+    </>
+  );
+
   return (
     <>
-      <div className="card glass-card activity-panel terminal-panel">
+      <div className={`card glass-card activity-panel terminal-panel ${isMobile ? "activity-panel-mobile" : ""}`}>
         <div className="card-header card-header-bold">
           <div>
-            <h2 className="card-title card-title-lg">Sports Bet Activity — Who&apos;s Betting on What</h2>
-            <p className="activity-panel-sub">Live market flow ledger. Click any bet row for deep-dive analytics.</p>
+            <h2 className="card-title card-title-lg">Sports Bet Activity</h2>
+            <p className="activity-panel-sub">
+              {isMobile ? "Who's betting on what right now." : "Live market flow ledger. Click any bet row for deep-dive analytics."}
+            </p>
           </div>
           <div className="activity-actions">
-            <span className="activity-count">{items.length} bets · {summaries.length} games</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowFilters((s) => !s)}>
-              <Filter size={14} /> Filters
+            <span className="activity-count">
+              {loading && items.length === 0
+                ? "Loading…"
+                : isMobile
+                  ? items.length === 0
+                    ? "No activity yet"
+                    : `${items.length} bets`
+                  : `${items.length} bets · ${summaries.length} games`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowFilters((s) => !s)}
+              aria-expanded={showFilters}
+            >
+              <Filter size={14} />
+              Filters
+              {activeFilterCount > 0 ? (
+                <span className="activity-filter-badge">{activeFilterCount}</span>
+              ) : null}
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={fetchData} disabled={loading}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={fetchData} disabled={loading}>
               <RefreshCw size={14} className={loading ? "spin" : ""} />
             </button>
           </div>
         </div>
 
-        {showFilters && (
+        {showFilters && !isMobile && (
           <div className="activity-filters">
-            <label className="filter-field">
-              <span>Sport</span>
-              <select value={sport} onChange={(e) => setSport(e.target.value)}>
-                <option value="">All sports</option>
-                {SPORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="filter-field">
-              <span>Game / matchup</span>
-              <input placeholder="Chiefs, Lakers…" value={matchup} onChange={(e) => setMatchup(e.target.value)} />
-            </label>
-            <label className="filter-field">
-              <span>Min bets on game</span>
-              <input type="number" placeholder="200" value={minBets} onChange={(e) => setMinBets(e.target.value)} />
-            </label>
-            <button className="btn btn-primary btn-sm" onClick={fetchData}>Apply</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setSport(""); setMatchup(""); setMinBets(""); }}>Clear</button>
+            {filterFields}
+            <button type="button" className="btn btn-primary btn-sm" onClick={applyFilters}>Apply</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear</button>
           </div>
         )}
 
-        {summaries.length > 0 && (
+        {showFilters && isMobile && (
+          <div className="activity-filter-sheet-overlay" onClick={() => setShowFilters(false)} role="presentation">
+            <div
+              className="activity-filter-sheet"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal
+              aria-label="Activity filters"
+            >
+              <div className="activity-filter-sheet-head">
+                <h3>Filters</h3>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowFilters(false)} aria-label="Close filters">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="activity-filters activity-filters-sheet">{filterFields}</div>
+              <div className="activity-filter-sheet-actions">
+                <button type="button" className="btn btn-ghost" onClick={clearFilters}>Clear</button>
+                <button type="button" className="btn btn-primary" onClick={applyFilters}>Show results</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {summaries.length > 0 && !isMobile && (
           <div className="card-body flush">
             <div className="section-label" style={{ padding: "0.75rem 1rem 0.25rem" }}>Volume by game</div>
             <VirtualizedTable
@@ -143,9 +224,17 @@ export function BetMarketActivityPanel() {
 
         <div className="card-body flush activity-table-wrap">
           {loading && items.length === 0 ? (
-            <div className="loading">Loading bet flow…</div>
+            <ActivitySkeleton />
           ) : items.length === 0 ? (
-            <div className="empty">No bet activity for these filters.</div>
+            <div className="activity-empty">
+              <strong>No activity yet</strong>
+              <p>No bet flow for these filters. Try clearing filters or check back soon.</p>
+              {activeFilterCount > 0 ? (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
           ) : (
             <VirtualizedTable
               items={items}
@@ -155,26 +244,11 @@ export function BetMarketActivityPanel() {
               columns={[
                 { key: "timestamp", label: "Time", width: "7rem", render: (r) => formatTime(r.timestamp) },
                 {
-                  key: "sport",
-                  label: "Sport",
-                  width: "5.5rem",
-                  render: (r) => (
-                    <span className="badge badge-neutral">{String(r.sportLabel ?? r.sport)}</span>
-                  ),
-                },
-                {
-                  key: "matchup",
-                  label: "Matchup",
-                  width: "1.2fr",
-                  mobilePrimary: true,
-                  render: (r) => <strong>{String(r.matchup)}</strong>,
-                },
-                {
                   key: "bettor",
-                  label: "Bettor",
+                  label: "Who",
                   width: "6.5rem",
-                  className: "cell-mono",
                   mobilePrimary: true,
+                  mobilePriority: 0,
                   render: (r) => String(r.bettor),
                 },
                 {
@@ -182,16 +256,34 @@ export function BetMarketActivityPanel() {
                   label: "Pick",
                   width: "1fr",
                   mobilePrimary: true,
+                  mobilePriority: 1,
                   render: (r) => String(r.pick),
                 },
-                { key: "odds", label: "Odds", width: "4rem", className: "cell-mono", render: (r) => String(r.odds) },
                 {
                   key: "stake",
                   label: "Stake",
                   width: "5.5rem",
                   mobilePrimary: true,
+                  mobilePriority: 2,
                   render: (r) => formatUsd(r.stake),
                 },
+                {
+                  key: "matchup",
+                  label: "Matchup",
+                  width: "1.2fr",
+                  mobilePrimary: true,
+                  mobilePriority: 3,
+                  render: (r) => <strong>{String(r.matchup)}</strong>,
+                },
+                {
+                  key: "sport",
+                  label: "Sport",
+                  width: "5.5rem",
+                  render: (r) => (
+                    <span className="badge badge-neutral">{String(r.sportLabel ?? r.sport)}</span>
+                  ),
+                },
+                { key: "odds", label: "Odds", width: "4rem", className: "cell-mono", render: (r) => String(r.odds) },
                 {
                   key: "gameBetCount",
                   label: "Game bets",

@@ -30,37 +30,41 @@ export function PennyActivityPanel() {
   return (
     <ActivityPanel
       module="pinkslips"
-      title="Pink Slip Activity — Who's Buying & Selling"
+      title="Pink Slip Activity"
+      subtitle="Who's buying and selling — microcap flow."
       endpoint="/penny/activity"
       filters={PENNY_FILTERS}
-      emptyMessage="No pink slip flow for these filters."
+      emptyMessage="No pink slip activity yet. Check back as volume spikes."
       columns={[
         { key: "timestamp", label: "Time", render: (r) => formatTime(r.timestamp) },
-        {
-          key: "symbol",
-          label: "Symbol",
-          mobilePrimary: true,
-          render: (r) => <strong>${String(r.symbol)}</strong>,
-        },
-        { key: "price", label: "Price", render: (r) => formatPrice(r.price) },
-        { key: "actor", label: "Who", mobilePrimary: true },
+        { key: "actor", label: "Who", mobilePrimary: true, mobilePriority: 0 },
         {
           key: "side",
           label: "Side",
           mobilePrimary: true,
+          mobilePriority: 1,
           render: (r) => (
             <span className={`badge badge-${sideBadgeClass(r.side)}`}>
               {String(r.side).toUpperCase()}
             </span>
           ),
         },
-        { key: "shares", label: "Shares", render: (r) => formatShares(r.shares) },
         {
           key: "amountUsd",
           label: "Amount",
           mobilePrimary: true,
+          mobilePriority: 2,
           render: (r) => formatUsd(r.amountUsd),
         },
+        {
+          key: "symbol",
+          label: "Symbol",
+          mobilePrimary: true,
+          mobilePriority: 3,
+          render: (r) => <strong>${String(r.symbol)}</strong>,
+        },
+        { key: "price", label: "Price", render: (r) => formatPrice(r.price) },
+        { key: "shares", label: "Shares", render: (r) => formatShares(r.shares) },
         { key: "note", label: "Detail", render: (r) => <span className="cell-note">{String(r.note ?? "")}</span> },
       ]}
       buildWhy={(r) => ({

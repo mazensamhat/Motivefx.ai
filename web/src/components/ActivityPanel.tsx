@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart3, Filter, HelpCircle, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { BarChart3, Filter, HelpCircle, RefreshCw, X } from "lucide-react";
 import type { BrandModuleId } from "../brand/moduleBrand";
 import { brandToPlatformModule } from "../config/tradingPlatforms";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { apiGet, getUserId } from "../lib/api";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { activityWhyToDetail } from "../utils/signalIntel";
@@ -41,9 +42,64 @@ interface Props {
 
 export { formatTime, formatUsd, formatShares, formatPrice };
 
+function ActivitySkeleton() {
+  return (
+    <div className="activity-skeleton" aria-hidden>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="activity-skeleton-card">
+          <div className="activity-skeleton-line activity-skeleton-line-lg" />
+          <div className="activity-skeleton-row">
+            <div className="activity-skeleton-pill" />
+            <div className="activity-skeleton-line" />
+            <div className="activity-skeleton-line activity-skeleton-line-sm" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FilterFields({
+  filters,
+  values,
+  setValues,
+}: {
+  filters: ActivityFilter[];
+  values: Record<string, string>;
+  setValues: Dispatch<SetStateAction<Record<string, string>>>;
+}) {
+  return (
+    <>
+      {filters.map((f) => (
+        <label key={f.key} className="filter-field">
+          <span>{f.label}</span>
+          {f.type === "select" ? (
+            <select
+              value={values[f.key] ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+            >
+              <option value="">All</option>
+              {f.options?.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={f.type}
+              placeholder={f.placeholder}
+              value={values[f.key] ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+            />
+          )}
+        </label>
+      ))}
+    </>
+  );
+}
+
 export function ActivityPanel({
   title,
-  subtitle = "Consolidated flow ledger. Click rows for deep-dive — use Why? for signal context.",
+  subtitle = "See who's buying and selling. Tap a card for context.",
   endpoint,
   module,
   filters,
@@ -51,16 +107,22 @@ export function ActivityPanel({
   emptyMessage,
   buildWhy,
 }: Props) {
+  const isMobile = useMediaQuery("(max-width: 900px)");
   const [values, setValues] = useState<Record<string, string>>({});
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deepDiveRow, setDeepDiveRow] = useState<Record<string, unknown> | null>(null);
   const [explain, setExplain] = useState<ActivityWhyPayload | null>(null);
   const { inspectDetail } = useSignalDetail();
   const platformModule = brandToPlatformModule(module);
+
+  const activeFilterCount = useMemo(
+    () => filters.reduce((n, f) => (values[f.key]?.trim() ? n + 1 : n), 0),
+    [filters, values]
+  );
 
   const tableColumns = useMemo(() => {
     const cols = [...columns];
@@ -123,6 +185,7 @@ export function ActivityPanel({
         const v = values[f.key]?.trim();
         if (v) params.set(f.param, v);
       }
+      if (!params.has("limit")) params.set("limit", "40");
       const data = await apiGet<{ items: Record<string, unknown>[]; count?: number }>(
         `${endpoint}?${params.toString()}`
       );
@@ -145,70 +208,107 @@ export function ActivityPanel({
     setValues({});
   }
 
+  function applyFilters() {
+    void fetchData();
+    if (isMobile) setShowFilters(false);
+  }
+
+  const emptyCopy = emptyMessage ?? "No activity yet. Check back soon for fresh flow.";
+
   return (
     <>
       {explain && (
         <AiExplainModal {...explain} module={platformModule} onClose={() => setExplain(null)} />
       )}
-      <div className="card glass-card activity-panel terminal-panel">
+      <div className={`card glass-card activity-panel terminal-panel ${isMobile ? "activity-panel-mobile" : ""}`}>
         <div className="card-header card-header-bold">
           <div>
             <h2 className="card-title card-title-lg">{title}</h2>
-            <p className="activity-panel-sub">{subtitle}</p>
+            <p className="activity-panel-sub">{isMobile ? "Who's buying & selling right now." : subtitle}</p>
           </div>
           <div className="activity-actions">
-            <span className="activity-count">{count} records</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowFilters((s) => !s)}>
-              <Filter size={14} /> Filters
+            <span className="activity-count">
+              {loading && items.length === 0
+                ? "Loading…"
+                : isMobile
+                  ? count === 0
+                    ? "No activity yet"
+                    : `${count} moves`
+                  : `${count} records`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowFilters((s) => !s)}
+              aria-expanded={showFilters}
+            >
+              <Filter size={14} />
+              Filters
+              {activeFilterCount > 0 ? (
+                <span className="activity-filter-badge">{activeFilterCount}</span>
+              ) : null}
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={fetchData} disabled={loading}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={fetchData} disabled={loading}>
               <RefreshCw size={14} className={loading ? "spin" : ""} />
             </button>
           </div>
         </div>
 
-        {showFilters && (
+        {showFilters && !isMobile && (
           <div className="activity-filters">
-            {filters.map((f) => (
-              <label key={f.key} className="filter-field">
-                <span>{f.label}</span>
-                {f.type === "select" ? (
-                  <select
-                    value={values[f.key] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  >
-                    <option value="">All</option>
-                    {f.options?.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={values[f.key] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  />
-                )}
-              </label>
-            ))}
-            <button className="btn btn-primary btn-sm" onClick={fetchData}>Apply</button>
-            <button className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear</button>
+            <FilterFields filters={filters} values={values} setValues={setValues} />
+            <button type="button" className="btn btn-primary btn-sm" onClick={applyFilters}>Apply</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear</button>
+          </div>
+        )}
+
+        {showFilters && isMobile && (
+          <div className="activity-filter-sheet-overlay" onClick={() => setShowFilters(false)} role="presentation">
+            <div
+              className="activity-filter-sheet"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal
+              aria-label="Activity filters"
+            >
+              <div className="activity-filter-sheet-head">
+                <h3>Filters</h3>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowFilters(false)} aria-label="Close filters">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="activity-filters activity-filters-sheet">
+                <FilterFields filters={filters} values={values} setValues={setValues} />
+              </div>
+              <div className="activity-filter-sheet-actions">
+                <button type="button" className="btn btn-ghost" onClick={clearFilters}>Clear</button>
+                <button type="button" className="btn btn-primary" onClick={applyFilters}>Show results</button>
+              </div>
+            </div>
           </div>
         )}
 
         <div className="card-body flush activity-table-wrap">
           {loading && items.length === 0 ? (
-            <div className="loading">Loading activity…</div>
+            <ActivitySkeleton />
           ) : error && items.length === 0 ? (
-            <div className="empty">
-              {error}
-              <button className="btn btn-ghost btn-sm" style={{ marginTop: "0.75rem" }} onClick={fetchData}>
+            <div className="activity-empty">
+              <strong>Couldn&apos;t load activity</strong>
+              <p>{error}</p>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={fetchData}>
                 Retry
               </button>
             </div>
           ) : items.length === 0 ? (
-            <div className="empty">{emptyMessage ?? "No activity matches your filters."}</div>
+            <div className="activity-empty">
+              <strong>No activity yet</strong>
+              <p>{emptyCopy}</p>
+              {activeFilterCount > 0 ? (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
           ) : (
             <VirtualizedTable
               items={items}

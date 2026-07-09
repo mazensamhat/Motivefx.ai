@@ -35,10 +35,12 @@ export function WorkspaceHeader({ activeTab, statusLabel }: Props) {
           No Trading. No Buying. No Selling. Monitor Only.
         </span>
         <AlertCenterBell />
-        <AccountMenu />
-        <span className="workspace-header-divider" />
-        <span className="status-dot" />
-        <span className="workspace-status">{statusLabel}</span>
+        <div className="workspace-header-desktop-chrome">
+          <AccountMenu />
+          <span className="workspace-header-divider" />
+          <span className="status-dot" />
+          <span className="workspace-status">{statusLabel}</span>
+        </div>
       </div>
     </header>
   );

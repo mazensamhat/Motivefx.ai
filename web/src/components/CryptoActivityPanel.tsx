@@ -24,23 +24,25 @@ export function CryptoActivityPanel() {
   return (
     <ActivityPanel
       module="crypto"
-      title="Crypto Spot Activity — Buys & Sells"
       endpoint="/crypto/activity"
       filters={CRYPTO_FILTERS}
-      emptyMessage="No crypto spot activity for these filters."
+      title="Crypto Spot Activity"
+      subtitle="Who's buying and selling — whale and exchange flow."
+      emptyMessage="No crypto buys or sells yet. Pull to refresh in a moment."
       columns={[
         { key: "timestamp", label: "Time", render: (r) => formatTime(r.timestamp) },
         {
-          key: "symbol",
-          label: "Symbol",
+          key: "from",
+          label: "Who",
           mobilePrimary: true,
-          render: (r) => <strong>{String(r.symbol)}</strong>,
+          mobilePriority: 0,
+          render: (r) => <strong>{String(r.from ?? r.venue ?? "Whale")}</strong>,
         },
-        { key: "price", label: "Token price", render: (r) => formatPrice(r.price) },
         {
           key: "side",
           label: "Side",
           mobilePrimary: true,
+          mobilePriority: 1,
           render: (r) => (
             <span className={`badge badge-${sideBadgeClass(r.side)}`}>
               {String(r.side).toUpperCase()}
@@ -48,18 +50,26 @@ export function CryptoActivityPanel() {
           ),
         },
         {
-          key: "amountCrypto",
-          label: "Amount",
-          render: (r) => Number(r.amountCrypto).toLocaleString(undefined, { maximumFractionDigits: 2 }),
-        },
-        {
           key: "amountUsd",
-          label: "USD",
+          label: "Amount",
           mobilePrimary: true,
+          mobilePriority: 2,
           render: (r) => formatUsd(r.amountUsd),
         },
-        { key: "venue", label: "Venue", mobilePrimary: true },
-        { key: "from", label: "From", render: (r) => <span className="cell-mono">{String(r.from ?? "").slice(0, 18)}</span> },
+        {
+          key: "symbol",
+          label: "Symbol",
+          mobilePrimary: true,
+          mobilePriority: 3,
+          render: (r) => <strong>{String(r.symbol)}</strong>,
+        },
+        { key: "price", label: "Token price", render: (r) => formatPrice(r.price) },
+        {
+          key: "amountCrypto",
+          label: "Tokens",
+          render: (r) => Number(r.amountCrypto).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+        },
+        { key: "venue", label: "Venue" },
         { key: "to", label: "To", render: (r) => <span className="cell-mono">{String(r.to ?? "").slice(0, 18)}</span> },
         { key: "note", label: "Note", render: (r) => <span className="cell-note">{String(r.note ?? "")}</span> },
       ]}

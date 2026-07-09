@@ -221,6 +221,34 @@ html.motivefx-native-shell .vtable-wrap {
   overflow-x: hidden;
 }
 
+/* Native shell: brand + monitor strip only (Account / Ops live in More) */
+html.motivefx-native-shell .workspace-header-desktop-chrome,
+html.motivefx-native-shell .workspace-header .account-menu,
+html.motivefx-native-shell .workspace-header .account-email,
+html.motivefx-native-shell .workspace-header .ops-console-btn,
+html.motivefx-native-shell .workspace-header .account-apps-btn,
+html.motivefx-native-shell .workspace-header .monitor-only-pill {
+  display: none !important;
+}
+
+html.motivefx-native-shell .live-feed {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+html.motivefx-native-shell .live-feed-inner {
+  display: inline-flex;
+  width: max-content;
+  animation: scroll 48s linear infinite;
+}
+
+html.motivefx-native-shell .feed-item {
+  flex-shrink: 0;
+  max-width: min(22rem, 78vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .app-body {
   display: flex;
   flex: 1;
@@ -392,6 +420,13 @@ html.motivefx-native-shell .vtable-wrap {
   flex-shrink: 0;
 }
 
+.workspace-header-desktop-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .workspace-header .monitor-only-pill {
   max-width: 14rem;
   white-space: normal;
@@ -505,8 +540,13 @@ html.motivefx-native-shell .vtable-wrap {
 
   .workspace-header-right {
     flex-shrink: 0;
-    gap: 0.25rem;
-    max-width: 62%;
+    gap: 0.35rem;
+    max-width: none;
+  }
+
+  /* Desktop chrome (email / Ops / Apps / Account / Sign out) lives in More sheet */
+  .workspace-header-desktop-chrome {
+    display: none !important;
   }
 
   .workspace-header .monitor-only-pill {
@@ -514,15 +554,15 @@ html.motivefx-native-shell .vtable-wrap {
   }
 
   .workspace-header-brand-title {
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
   }
 
   .workspace-header-edge {
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 11rem;
+    max-width: min(16rem, 70vw);
   }
 
   .workspace-subheader {
@@ -541,28 +581,32 @@ html.motivefx-native-shell .vtable-wrap {
     display: none;
   }
 
-  .account-email {
-    display: none;
+  .account-email,
+  .account-apps-btn,
+  .ops-console-btn,
+  .workspace-header .account-menu,
+  .workspace-header .account-menu-loading {
+    display: none !important;
   }
 
-  .account-apps-btn {
-    display: none;
+  .live-feed {
+    overflow: hidden;
+    max-width: 100%;
   }
 
-  .account-menu {
-    flex-wrap: nowrap;
-    gap: 0.25rem;
+  .live-feed-inner {
+    display: inline-flex;
+    width: max-content;
+    max-width: none;
+    animation: scroll 48s linear infinite;
+    will-change: transform;
   }
 
-  .account-menu .account-btn {
-    padding: 0.45rem 0.55rem !important;
-    font-size: 0.75rem !important;
-    min-height: 2.25rem;
-    white-space: nowrap;
-  }
-
-  .ops-console-btn {
-    display: none;
+  .feed-item {
+    flex-shrink: 0;
+    max-width: min(22rem, 78vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .terminal-main {
@@ -618,28 +662,40 @@ html.motivefx-native-shell .vtable-wrap {
     flex-shrink: 0;
   }
 
-  .activity-filters {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-field input,
-  .filter-field select {
-    min-width: 0;
-    width: 100%;
-    font-size: 1rem;
-    min-height: 2.75rem;
-  }
-
   .activity-panel .card-header {
     flex-wrap: wrap;
     gap: 0.65rem;
     align-items: flex-start;
   }
 
+  .activity-panel .card-title-lg {
+    font-size: 1.05rem;
+    font-family: var(--heading);
+    letter-spacing: 0.01em;
+  }
+
+  .activity-panel-sub {
+    font-family: var(--font) !important;
+    font-size: 0.8125rem !important;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  .activity-count {
+    font-family: var(--heading) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
   .activity-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  /* Filters open in a bottom sheet — never stacked as primary UI */
+  .activity-filters:not(.activity-filters-sheet) {
+    display: none !important;
   }
 
   .cell-note {
@@ -648,8 +704,17 @@ html.motivefx-native-shell .vtable-wrap {
   }
 
   .cell-mono {
+    font-family: var(--font);
     font-size: 0.8125rem;
-    word-break: break-all;
+    word-break: break-word;
+  }
+
+  .vtable-card-title {
+    font-size: 1.0625rem;
+  }
+
+  .vtable-card-field-value {
+    font-size: 0.9375rem;
   }
 }
 
@@ -4255,11 +4320,11 @@ button.data-row,
 
 /* ── Activity ledger subtitle ── */
 .activity-panel-sub {
-  font-size: 0.625rem;
-  color: var(--text-dim);
+  font-size: 0.75rem;
+  color: var(--text-muted);
   margin-top: 0.25rem;
-  font-family: var(--mono);
-  line-height: 1.4;
+  font-family: var(--font);
+  line-height: 1.45;
 }
 
 /* ── Asset deep-dive modal ── */
@@ -5918,6 +5983,17 @@ html[data-gen="boomer"] .gen-setup-preview {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Re-assert mobile hide after base account styles (cascade fix) */
+@media (max-width: 900px) {
+  .workspace-header-right .account-menu,
+  .workspace-header-right .account-email,
+  .workspace-header-right .account-btn,
+  .workspace-header-right .ops-console-btn,
+  .workspace-header-right .account-apps-btn {
+    display: none !important;
+  }
 }
 
 .workspace-header-divider {
@@ -8227,4 +8303,179 @@ html[data-gen="boomer"] .gen-setup-preview {
   font-size: 0.625rem;
   font-weight: 800;
   letter-spacing: 0.03em;
+}
+
+/* ── Activity mobile: filter sheet, skeletons, friendly empty ── */
+.activity-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 1.1rem;
+}
+
+.activity-skeleton-card {
+  padding: 1rem;
+  border-radius: var(--radius-lg, 14px);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: rgba(18, 24, 32, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.activity-skeleton-line {
+  height: 0.7rem;
+  width: 55%;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: activity-shimmer 1.4s ease-in-out infinite;
+}
+
+.activity-skeleton-line-lg { width: 72%; height: 0.85rem; }
+.activity-skeleton-line-sm { width: 36%; }
+.activity-skeleton-line.w-40 { width: 40%; }
+.activity-skeleton-line.w-55 { width: 55%; }
+.activity-skeleton-line.w-70 { width: 70%; }
+
+.activity-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.activity-skeleton-pill {
+  width: 3.25rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  animation: activity-shimmer 1.4s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+}
+
+@keyframes activity-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.activity-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--module-accent, var(--accent)) 28%, transparent);
+  color: var(--text);
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.activity-empty {
+  padding: 2rem 1.25rem !important;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.activity-empty strong,
+.activity-empty-title {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.activity-empty p,
+.activity-empty-copy {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  max-width: 22rem;
+}
+
+.activity-filter-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.62);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.activity-filter-sheet {
+  width: 100%;
+  max-width: 32rem;
+  max-height: min(78vh, 36rem);
+  overflow: auto;
+  border-radius: 18px 18px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  background: rgba(12, 16, 22, 0.98);
+  padding: 0.85rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.activity-filter-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.activity-filter-sheet-head h3 {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.activity-filters-sheet {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.5rem 0 1rem;
+  border: none;
+}
+
+.activity-filters-sheet .filter-field input,
+.activity-filters-sheet .filter-field select {
+  min-width: 0;
+  width: 100%;
+  font-size: 1rem;
+  min-height: 2.75rem;
+}
+
+.activity-filter-sheet-actions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.activity-filter-sheet-actions .btn {
+  flex: 1;
+  min-height: 2.75rem;
+  font-weight: 700;
 }
