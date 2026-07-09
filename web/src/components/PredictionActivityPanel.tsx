@@ -42,12 +42,27 @@ export function PredictionActivityPanel() {
       emptyMessage="No prediction market activity for these filters."
       columns={[
         { key: "timestamp", label: "Time", render: (r) => formatTime(r.timestamp) },
-        { key: "categoryLabel", label: "Category", render: (r) => <span className="badge badge-neutral">{String(r.categoryLabel ?? r.category)}</span> },
-        { key: "market", label: "Market", render: (r) => <strong className="cell-note">{String(r.market)}</strong> },
-        { key: "bettor", label: "Who", render: (r) => <span className="cell-mono">{String(r.bettor)}</span> },
+        {
+          key: "categoryLabel",
+          label: "Category",
+          render: (r) => <span className="badge badge-neutral">{String(r.categoryLabel ?? r.category)}</span>,
+        },
+        {
+          key: "market",
+          label: "Market",
+          mobilePrimary: true,
+          render: (r) => <strong className="cell-note">{String(r.market)}</strong>,
+        },
+        {
+          key: "bettor",
+          label: "Who",
+          mobilePrimary: true,
+          render: (r) => <span className="cell-mono">{String(r.bettor)}</span>,
+        },
         {
           key: "pick",
           label: "Pick",
+          mobilePrimary: true,
           render: (r) => (
             <span className={`badge badge-${r.side === "yes" ? "bullish" : "bearish"}`}>
               {String(r.pick).toUpperCase()}
@@ -55,7 +70,12 @@ export function PredictionActivityPanel() {
           ),
         },
         { key: "yesPrice", label: "YES %", render: (r) => `${(Number(r.yesPrice) * 100).toFixed(0)}%` },
-        { key: "stake", label: "Stake", render: (r) => formatUsd(r.stake) },
+        {
+          key: "stake",
+          label: "Stake",
+          mobilePrimary: true,
+          render: (r) => formatUsd(r.stake),
+        },
         { key: "marketBetCount", label: "Market bets", render: (r) => Number(r.marketBetCount).toLocaleString() },
       ]}
     />

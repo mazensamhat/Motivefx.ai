@@ -54,6 +54,7 @@ body,
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 body {
@@ -63,10 +64,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
-  touch-action: manipulation;
+  overscroll-behavior-x: none;
+  touch-action: pan-x pan-y;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   scrollbar-width: thin;
   scrollbar-color: #2d333b #0d0f12;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Premium dark scrollbars — no thick grey bars */
@@ -170,6 +174,14 @@ body {
 }
 
 /* Native Android/iOS shell (Expo WebView) — hide web chrome duplicates */
+html.motivefx-native-shell,
+html.motivefx-native-shell body {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 html.motivefx-native-shell .launch-banner {
   display: none;
 }
@@ -180,6 +192,29 @@ html.motivefx-native-shell .app-footer {
 
 html.motivefx-native-shell .live-feed-bar {
   top: env(safe-area-inset-top, 0px);
+}
+
+html.motivefx-native-shell .module-sidebar {
+  display: none !important;
+}
+
+html.motivefx-native-shell .app-body {
+  flex-direction: column;
+}
+
+html.motivefx-native-shell .app-content {
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+html.motivefx-native-shell .mobile-bottom-nav {
+  display: flex;
+}
+
+html.motivefx-native-shell .app-content,
+html.motivefx-native-shell .terminal-main,
+html.motivefx-native-shell .vtable-wrap {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .app-body {
@@ -437,10 +472,29 @@ html.motivefx-native-shell .live-feed-bar {
 
   .app-content {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .workspace-header {
-    padding: 0.65rem 1rem;
+    padding: 0.65rem 0.75rem;
+    gap: 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 800;
+    background: rgba(8, 10, 12, 0.96);
+  }
+
+  .workspace-header-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .workspace-header-right {
+    flex-shrink: 0;
+    gap: 0.25rem;
+    max-width: 62%;
   }
 
   .workspace-subheader {
@@ -467,13 +521,107 @@ html.motivefx-native-shell .live-feed-bar {
     display: none;
   }
 
+  .account-menu {
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+
+  .account-menu .account-btn {
+    padding: 0.45rem 0.55rem !important;
+    font-size: 0.75rem !important;
+    min-height: 2.25rem;
+    white-space: nowrap;
+  }
+
+  .ops-console-btn {
+    display: none;
+  }
+
   .terminal-main {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .app-footer {
     padding-bottom: 0.5rem;
+  }
+
+  .data-row {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 0.9rem 1rem;
+    min-height: 3.25rem;
+    align-items: flex-start;
+  }
+
+  .data-row > div:first-child {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .row-primary {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .row-secondary {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .row-meta {
+    text-align: left;
+    font-size: 0.875rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .badge {
+    font-size: 0.6875rem;
+    padding: 0.25rem 0.55rem;
+    flex-shrink: 0;
+  }
+
+  .activity-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-field input,
+  .filter-field select {
+    min-width: 0;
+    width: 100%;
+    font-size: 1rem;
+    min-height: 2.75rem;
+  }
+
+  .activity-panel .card-header {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: flex-start;
+  }
+
+  .activity-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cell-note {
+    max-width: 100%;
+    font-size: 0.875rem;
+  }
+
+  .cell-mono {
+    font-size: 0.8125rem;
+    word-break: break-all;
   }
 }
 
@@ -1511,6 +1659,7 @@ button.data-row,
 .badge-bearish { background: rgba(248, 113, 113, 0.15); color: var(--red); }
 .badge-high { background: rgba(248, 113, 113, 0.15); color: var(--red); }
 .badge-medium { background: rgba(251, 191, 36, 0.15); color: var(--amber); }
+.badge-neutral { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); }
 
 .empty {
   padding: 2rem;
@@ -2872,6 +3021,208 @@ button.data-row,
 .vtable-th {
   padding: 0.6rem 1rem;
   text-align: left;
+}
+
+/* Mobile card layout for activity / screener tables */
+.vtable-mobile {
+  overflow-x: hidden;
+}
+
+.vtable-mobile .vtable-scroll {
+  padding-inline: 0.65rem;
+  box-sizing: border-box;
+}
+
+.vtable-mobile .vtable-head {
+  display: none;
+}
+
+.vtable-card-row {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 0.55rem;
+  /* padding-bottom doubles as inter-card gap — virtualizer measures box height, not margin */
+  padding: 0.85rem 0.9rem 1.15rem;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  min-height: 4.5rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.vtable-card-row.selected,
+.vtable-body-row.vtable-card-row.selected {
+  border-color: color-mix(in srgb, var(--module-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--module-accent) 8%, rgba(255, 255, 255, 0.025));
+}
+
+.vtable-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.vtable-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.vtable-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.vtable-card-title strong {
+  font-size: inherit;
+}
+
+.vtable-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.65rem;
+  align-items: center;
+}
+
+.vtable-card-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.vtable-card-field-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.vtable-card-field-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.vtable-card-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.vtable-card-action {
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.vtable-card-action .btn {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}
+
+.vtable-card-footer {
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.45rem;
+}
+
+.vtable-card-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: transparent;
+  color: var(--module-accent);
+  font-family: var(--heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0.35rem 0;
+  min-height: 2.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vtable-card-expand svg {
+  transition: transform 0.15s ease;
+}
+
+.vtable-card-expand.open svg {
+  transform: rotate(180deg);
+}
+
+.vtable-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.25rem 0 0.15rem;
+}
+
+.vtable-card-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.vtable-card-detail-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.vtable-card-detail-value {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.vtable-card-detail-value .cell-note,
+.vtable-card-detail-value .cell-mono {
+  font-size: 0.8125rem;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .vtable-wrap {
+    overflow-x: hidden;
+  }
+
+  .vtable-body-row:not(.vtable-card-row) {
+    font-size: 0.875rem;
+  }
+
+  .vtable-cell {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.875rem;
+  }
+
+  .scoop-list-scroll {
+    max-width: 100%;
+  }
+
+  .scoop-list-item .data-row {
+    align-items: flex-start;
+  }
 }
 
 .scoop-list-item {

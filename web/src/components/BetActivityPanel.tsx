@@ -46,14 +46,29 @@ export function BetActivityPanel() {
       emptyMessage="No bets logged yet. Add bets above or use demo data."
       columns={[
         { key: "created_at", label: "Logged", render: (r) => formatTime(r.created_at) },
-        { key: "sport", label: "Sport", render: (r) => <span className="badge badge-neutral">{String(r.sport ?? "—").toUpperCase()}</span> },
-        { key: "matchup", label: "Matchup", render: (r) => <strong>{String(r.matchup)}</strong> },
-        { key: "pick", label: "Pick" },
+        {
+          key: "sport",
+          label: "Sport",
+          render: (r) => <span className="badge badge-neutral">{String(r.sport ?? "—").toUpperCase()}</span>,
+        },
+        {
+          key: "matchup",
+          label: "Matchup",
+          mobilePrimary: true,
+          render: (r) => <strong>{String(r.matchup)}</strong>,
+        },
+        { key: "pick", label: "Pick", mobilePrimary: true },
         { key: "odds", label: "Odds", render: (r) => <span className="cell-mono">{String(r.odds)}</span> },
-        { key: "stake", label: "Stake", render: (r) => formatUsd(r.stake) },
+        {
+          key: "stake",
+          label: "Stake",
+          mobilePrimary: true,
+          render: (r) => formatUsd(r.stake),
+        },
         {
           key: "status",
           label: "Status",
+          mobilePrimary: true,
           render: (r) => (
             <span className={`badge badge-${r.status === "open" ? "neutral" : r.status === "won" ? "bullish" : "bearish"}`}>
               {String(r.status ?? "open").toUpperCase()}

@@ -32,12 +32,18 @@ export function StockActivityPanel() {
       emptyMessage="No stock activity for these filters."
       columns={[
         { key: "timestamp", label: "Time", render: (r) => formatTime(r.timestamp) },
-        { key: "symbol", label: "Symbol", render: (r) => <strong>${String(r.symbol)}</strong> },
+        {
+          key: "symbol",
+          label: "Symbol",
+          mobilePrimary: true,
+          render: (r) => <strong>${String(r.symbol)}</strong>,
+        },
         { key: "price", label: "Price", render: (r) => formatPrice(r.price) },
-        { key: "actor", label: "Who" },
+        { key: "actor", label: "Who", mobilePrimary: true },
         {
           key: "side",
           label: "Side",
+          mobilePrimary: true,
           render: (r) => (
             <span className={`badge badge-${sideBadgeClass(r.side)}`}>
               {String(r.side).toUpperCase()}
@@ -45,7 +51,12 @@ export function StockActivityPanel() {
           ),
         },
         { key: "shares", label: "Shares", render: (r) => formatShares(r.shares) },
-        { key: "amountUsd", label: "Amount", render: (r) => formatUsd(r.amountUsd) },
+        {
+          key: "amountUsd",
+          label: "Amount",
+          mobilePrimary: true,
+          render: (r) => formatUsd(r.amountUsd),
+        },
         { key: "note", label: "Detail", render: (r) => <span className="cell-note">{String(r.note ?? "")}</span> },
       ]}
       buildWhy={(r) => ({

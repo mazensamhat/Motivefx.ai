@@ -1,6 +1,7 @@
-import { BookOpen, Home, LayoutGrid, Settings2, Users } from "lucide-react";
+import { BookOpen, Home, LayoutGrid, LogOut, Settings2, User, Users } from "lucide-react";
 import { MotivFxLogo } from "./MotivFxLogo";
 import { TAB_TO_BRAND } from "../brand/moduleBrand";
+import { useAuth } from "../hooks/useAuth";
 import type { TabId } from "../types";
 
 const PRIMARY: { id: TabId; label: string; module: string }[] = [
@@ -78,6 +79,8 @@ export function MobileMoreSheet({
   genModeLabel = "Investor mode",
   onClose,
 }: MoreSheetProps) {
+  const { isAuthenticated, openAccount, openAuth, logout } = useAuth();
+
   return (
     <div className="mobile-more-overlay" onClick={onClose} role="presentation">
       <div
@@ -123,6 +126,48 @@ export function MobileMoreSheet({
             <Users size={18} />
             <span>{genModeLabel}</span>
           </button>
+        </div>
+
+        <div className="mobile-more-section">
+          <p className="mobile-more-label">Account</p>
+          {isAuthenticated ? (
+            <>
+              <button
+                type="button"
+                className="mobile-more-row"
+                onClick={() => {
+                  openAccount();
+                  onClose();
+                }}
+              >
+                <User size={18} />
+                <span>Account</span>
+              </button>
+              <button
+                type="button"
+                className="mobile-more-row"
+                onClick={() => {
+                  void logout();
+                  onClose();
+                }}
+              >
+                <LogOut size={18} />
+                <span>Sign out</span>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="mobile-more-row"
+              onClick={() => {
+                openAuth("login");
+                onClose();
+              }}
+            >
+              <User size={18} />
+              <span>Sign in</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

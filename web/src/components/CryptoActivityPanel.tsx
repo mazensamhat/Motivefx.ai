@@ -30,11 +30,17 @@ export function CryptoActivityPanel() {
       emptyMessage="No crypto spot activity for these filters."
       columns={[
         { key: "timestamp", label: "Time", render: (r) => formatTime(r.timestamp) },
-        { key: "symbol", label: "Symbol", render: (r) => <strong>{String(r.symbol)}</strong> },
+        {
+          key: "symbol",
+          label: "Symbol",
+          mobilePrimary: true,
+          render: (r) => <strong>{String(r.symbol)}</strong>,
+        },
         { key: "price", label: "Token price", render: (r) => formatPrice(r.price) },
         {
           key: "side",
           label: "Side",
+          mobilePrimary: true,
           render: (r) => (
             <span className={`badge badge-${sideBadgeClass(r.side)}`}>
               {String(r.side).toUpperCase()}
@@ -46,8 +52,13 @@ export function CryptoActivityPanel() {
           label: "Amount",
           render: (r) => Number(r.amountCrypto).toLocaleString(undefined, { maximumFractionDigits: 2 }),
         },
-        { key: "amountUsd", label: "USD", render: (r) => formatUsd(r.amountUsd) },
-        { key: "venue", label: "Venue" },
+        {
+          key: "amountUsd",
+          label: "USD",
+          mobilePrimary: true,
+          render: (r) => formatUsd(r.amountUsd),
+        },
+        { key: "venue", label: "Venue", mobilePrimary: true },
         { key: "from", label: "From", render: (r) => <span className="cell-mono">{String(r.from ?? "").slice(0, 18)}</span> },
         { key: "to", label: "To", render: (r) => <span className="cell-mono">{String(r.to ?? "").slice(0, 18)}</span> },
         { key: "note", label: "Note", render: (r) => <span className="cell-note">{String(r.note ?? "")}</span> },

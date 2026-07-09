@@ -108,19 +108,33 @@ export function BetMarketActivityPanel() {
                   key: "sport",
                   label: "Sport",
                   width: "6.5rem",
+                  mobilePrimary: true,
                   render: (s) => (
                     <span className="badge badge-neutral">{String(s.sportLabel ?? s.sport)}</span>
                   ),
                 },
-                { key: "matchup", label: "Matchup", width: "1.4fr", render: (s) => <strong>{String(s.matchup)}</strong> },
+                {
+                  key: "matchup",
+                  label: "Matchup",
+                  width: "1.4fr",
+                  mobilePrimary: true,
+                  render: (s) => <strong>{String(s.matchup)}</strong>,
+                },
                 {
                   key: "betCount",
                   label: "Bets entered",
                   width: "6rem",
                   className: "cell-mono",
+                  mobilePrimary: true,
                   render: (s) => Number(s.betCount).toLocaleString(),
                 },
-                { key: "totalStake", label: "Total stake", width: "6.5rem", render: (s) => formatUsd(s.totalStake) },
+                {
+                  key: "totalStake",
+                  label: "Total stake",
+                  width: "6.5rem",
+                  mobilePrimary: true,
+                  render: (s) => formatUsd(s.totalStake),
+                },
                 { key: "lastActivity", label: "Last activity", width: "7.5rem", render: (s) => formatTime(s.lastActivity) },
               ]}
             />
@@ -148,11 +162,36 @@ export function BetMarketActivityPanel() {
                     <span className="badge badge-neutral">{String(r.sportLabel ?? r.sport)}</span>
                   ),
                 },
-                { key: "matchup", label: "Matchup", width: "1.2fr", render: (r) => <strong>{String(r.matchup)}</strong> },
-                { key: "bettor", label: "Bettor", width: "6.5rem", className: "cell-mono", render: (r) => String(r.bettor) },
-                { key: "pick", label: "Pick", width: "1fr", render: (r) => String(r.pick) },
+                {
+                  key: "matchup",
+                  label: "Matchup",
+                  width: "1.2fr",
+                  mobilePrimary: true,
+                  render: (r) => <strong>{String(r.matchup)}</strong>,
+                },
+                {
+                  key: "bettor",
+                  label: "Bettor",
+                  width: "6.5rem",
+                  className: "cell-mono",
+                  mobilePrimary: true,
+                  render: (r) => String(r.bettor),
+                },
+                {
+                  key: "pick",
+                  label: "Pick",
+                  width: "1fr",
+                  mobilePrimary: true,
+                  render: (r) => String(r.pick),
+                },
                 { key: "odds", label: "Odds", width: "4rem", className: "cell-mono", render: (r) => String(r.odds) },
-                { key: "stake", label: "Stake", width: "5.5rem", render: (r) => formatUsd(r.stake) },
+                {
+                  key: "stake",
+                  label: "Stake",
+                  width: "5.5rem",
+                  mobilePrimary: true,
+                  render: (r) => formatUsd(r.stake),
+                },
                 {
                   key: "gameBetCount",
                   label: "Game bets",

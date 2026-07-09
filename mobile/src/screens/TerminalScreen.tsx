@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
@@ -7,6 +7,31 @@ import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
+
+/** Lock viewport + block pinch/double-tap zoom before page paint. */
+const VIEWPORT_LOCK_SCRIPT = `
+  (function () {
+    try {
+      document.documentElement.classList.add("motivefx-native-shell");
+      var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = document.createElement("meta");
+        meta.setAttribute("name", "viewport");
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute("content", content);
+      var lock = function (e) {
+        if (e.touches && e.touches.length > 1) e.preventDefault();
+      };
+      document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener("gesturechange", function (e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener("gestureend", function (e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener("touchmove", lock, { passive: false });
+    } catch (e) {}
+    true;
+  })();
+`;
 
 function buildAuthInjectionScript(
   accessToken: string | null,
@@ -32,6 +57,14 @@ function buildAuthInjectionScript(
           localStorage.setItem("motivefx_auth_user_id", session.userId);
         }
         document.documentElement.classList.add("motivefx-native-shell");
+        var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.setAttribute("name", "viewport");
+          if (document.head) document.head.appendChild(meta);
+        }
+        if (meta) meta.setAttribute("content", content);
       } catch (e) {
         console.warn("MotiveFX auth injection failed", e);
       }
@@ -112,6 +145,7 @@ export function TerminalScreen() {
           onLoadEnd={() => setLoading(false)}
           onError={() => setError("Could not load the MotiveFX terminal. Check your connection.")}
           injectedJavaScriptBeforeContentLoaded={injection}
+          injectedJavaScript={VIEWPORT_LOCK_SCRIPT}
           onMessage={onMessage}
           allowsBackForwardNavigationGestures
           allowsInlineMediaPlayback
@@ -119,9 +153,14 @@ export function TerminalScreen() {
           setSupportMultipleWindows={false}
           sharedCookiesEnabled
           thirdPartyCookiesEnabled
-          pullToRefreshEnabled
+          pullToRefreshEnabled={Platform.OS === "android"}
           decelerationRate="normal"
           overScrollMode="never"
+          bounces={false}
+          scalesPageToFit={false}
+          setBuiltInZoomControls={false}
+          setDisplayZoomControls={false}
+          textZoom={100}
           userAgent="MotiveFXNative/1.0"
           originWhitelist={["https://*", "http://*"]}
           // Keep navigation on the production origin
