@@ -17,28 +17,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function boot() {
-      const token = await getAccessToken();
-      if (!token) {
-        setLoading(false);
-        return;
-      }
       try {
-        const profile = await fetchProfile();
-        setUser(profile);
-      } catch {
-        await apiLogout();
-        setUser(null);
+        const token = await getAccessToken();
+        if (!token) {
+          if (!cancelled) {
+            setUser(null);
+            setLoading(false);
+          }
+          return;
+        }
+        try {
+          const profile = await fetchProfile();
+          if (!cancelled) setUser(profile);
+        } catch {
+          try {
+            await apiLogout();
+          } catch {
+            /* ignore logout failures during boot */
+          }
+          if (!cancelled) setUser(null);
+        }
+      } catch (e) {
+        console.warn("Auth boot failed", e);
+        if (!cancelled) setUser(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    boot();
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const logout = useCallback(async () => {
-    await apiLogout();
-    setUser(null);
+    try {
+      await apiLogout();
+    } catch (e) {
+      console.warn("Logout failed", e);
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   const value = useMemo(

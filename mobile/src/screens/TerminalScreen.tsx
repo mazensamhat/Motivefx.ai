@@ -90,13 +90,21 @@ export function TerminalScreen() {
   const [sourceUri, setSourceUri] = useState<string | null>(null);
 
   const prepareSession = useCallback(async () => {
-    const [accessToken, refreshToken, userId] = await Promise.all([
-      getAccessToken(),
-      getRefreshToken(),
-      getUserId(),
-    ]);
-    setInjection(buildAuthInjectionScript(accessToken, refreshToken, userId));
-    setSourceUri(terminalEntryUrl(accessToken));
+    try {
+      const [accessToken, refreshToken, userId] = await Promise.all([
+        getAccessToken(),
+        getRefreshToken(),
+        getUserId(),
+      ]);
+      setInjection(buildAuthInjectionScript(accessToken, refreshToken, userId));
+      setSourceUri(terminalEntryUrl(accessToken));
+      setError(null);
+    } catch (e) {
+      console.warn("Terminal session prepare failed", e);
+      setInjection("true;");
+      setSourceUri(TERMINAL_URL);
+      setError("Could not restore session. Loading terminal without saved login.");
+    }
   }, []);
 
   useEffect(() => {

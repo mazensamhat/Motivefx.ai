@@ -38,6 +38,7 @@ export function AuthScreen() {
       if (mode === "register") {
         if (!acceptLegal) {
           setError("Accept Privacy Policy and Terms to continue.");
+          setLoading(false);
           return;
         }
         const session = await register(email, password, true, true);

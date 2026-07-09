@@ -11,16 +11,41 @@ export interface AuthUser {
   totpEnabled?: boolean;
 }
 
+async function safeGet(key: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch (e) {
+    console.warn(`SecureStore get failed for ${key}`, e);
+    return null;
+  }
+}
+
+async function safeSet(key: string, value: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(key, value);
+  } catch (e) {
+    console.warn(`SecureStore set failed for ${key}`, e);
+  }
+}
+
+async function safeDelete(key: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch (e) {
+    console.warn(`SecureStore delete failed for ${key}`, e);
+  }
+}
+
 export async function getAccessToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(ACCESS_KEY);
+  return safeGet(ACCESS_KEY);
 }
 
 export async function getRefreshToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(REFRESH_KEY);
+  return safeGet(REFRESH_KEY);
 }
 
 export async function getUserId(): Promise<string | null> {
-  return SecureStore.getItemAsync(USER_KEY);
+  return safeGet(USER_KEY);
 }
 
 export async function setSession(
@@ -28,13 +53,13 @@ export async function setSession(
   refreshToken: string,
   user: AuthUser
 ): Promise<void> {
-  await SecureStore.setItemAsync(ACCESS_KEY, accessToken);
-  await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
-  await SecureStore.setItemAsync(USER_KEY, user.userId);
+  await safeSet(ACCESS_KEY, accessToken);
+  await safeSet(REFRESH_KEY, refreshToken);
+  await safeSet(USER_KEY, user.userId);
 }
 
 export async function clearSession(): Promise<void> {
-  await SecureStore.deleteItemAsync(ACCESS_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_KEY);
-  await SecureStore.deleteItemAsync(USER_KEY);
+  await safeDelete(ACCESS_KEY);
+  await safeDelete(REFRESH_KEY);
+  await safeDelete(USER_KEY);
 }
