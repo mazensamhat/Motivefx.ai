@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { PRICING_TIERS, type PricingTierId } from "@/lib/tiers";
+import { PRICING_TIERS, upgradeTiersFrom, type PricingTierId } from "@/lib/tiers";
 
 function tierLabel(tier: string) {
   return PRICING_TIERS.find((t) => t.id === tier)?.name ?? tier;
@@ -137,11 +137,17 @@ export function AccountSettings({
             <button type="button" className="app-cta-btn" onClick={openBilling}>
               Manage billing
             </button>
-          ) : (
+          ) : null}
+          {hasSubscription &&
+          upgradeTiersFrom(tier as PricingTierId, { subscribed: true }).length > 0 ? (
+            <Link href="/pricing" className="app-cta-btn">
+              Upgrade plan
+            </Link>
+          ) : !hasSubscription ? (
             <Link href="/pricing" className="app-cta-btn">
               Subscribe
             </Link>
-          )}
+          ) : null}
         </div>
         {billingErr && <p className="text-sm text-red-400">{billingErr}</p>}
       </section>

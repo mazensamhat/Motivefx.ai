@@ -26,7 +26,7 @@ import {
 
 } from "lucide-react";
 
-import { PRICING_TIERS, type IntelligenceMarketId, type PricingTierId } from "@/lib/tiers";
+import { PRICING_TIERS, upgradeTiersFrom, type IntelligenceMarketId, type PricingTierId } from "@/lib/tiers";
 
 import { userHasLiveMarketAccess } from "@/lib/entitlements";
 
@@ -240,31 +240,31 @@ export function DashboardHome({
 
 
 
-      {!hasSubscription && (
-
+      {!hasSubscription ? (
         <section className="app-upgrade-banner">
-
           <div>
-
             <p className="font-semibold text-white">Unlock live intelligence</p>
-
             <p className="mt-1 text-sm text-slate-400">
-
               Preview mode is active. Subscribe to unlock live feeds on your plan.
-
             </p>
-
           </div>
-
           <Link href="/pricing" className="app-cta-btn">
-
             View plans
-
           </Link>
-
         </section>
-
-      )}
+      ) : upgradeTiersFrom(tier as PricingTierId, { subscribed: true }).length > 0 ? (
+        <section className="app-upgrade-banner">
+          <div>
+            <p className="font-semibold text-white">Upgrade available</p>
+            <p className="mt-1 text-sm text-slate-400">
+              Higher tiers unlock more markets and capabilities.
+            </p>
+          </div>
+          <Link href="/pricing" className="app-cta-btn">
+            Upgrade plan
+          </Link>
+        </section>
+      ) : null}
 
 
 

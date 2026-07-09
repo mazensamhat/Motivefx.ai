@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Bitcoin, TrendingUp } from "lucide-react";
+import { Bitcoin } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
 import { FeatureGate } from "./FeatureGate";
-import type { PredictionMarket, WhaleAlert } from "../types";
+import type { WhaleAlert } from "../types";
 import { AiAdvisor } from "./AiAdvisor";
 import { DeepScanModal } from "./DeepScanModal";
 import { ModuleIntelStrip } from "./ModuleIntelStrip";
@@ -16,7 +16,7 @@ import { CryptoActivityPanel } from "./CryptoActivityPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
-import { eventMarketDetail, whaleAlertDetail } from "../utils/signalIntel";
+import { whaleAlertDetail } from "../utils/signalIntel";
 
 function formatUsd(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -29,7 +29,6 @@ export function TabCrypto() {
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("crypto");
   const whales = useApi<{ items: WhaleAlert[] }>("/crypto/whale-alerts");
-  const markets = useApi<{ items: PredictionMarket[] }>("/crypto/prediction-odds");
   const { result, loading, analyzeError, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("crypto", enabled);
   const [holdingsCount, setHoldingsCount] = useState(0);
 
@@ -83,74 +82,36 @@ export function TabCrypto() {
           />
         </div>
       )}
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">
-              <Bitcoin size={18} /> Whale Alerts
-            </h2>
-          </div>
-          <div className="card-body flush">
-            {whales.loading ? (
-              <div className="loading">Loading whale alerts…</div>
-            ) : (whales.data?.items.length ?? 0) === 0 ? (
-              <div className="empty">No whale alerts.</div>
-            ) : (
-              <VirtualizedScoopList
-                items={whales.data?.items ?? []}
-                estimateRowHeight={96}
-                maxHeight="min(22rem, 50vh)"
-                measureDynamic
-                renderItem={(w) => (
-                  <ModuleItemCard
-                    onClick={() => inspectDetail(whaleAlertDetail(w))}
-                    title={`Whale alert: ${w.asset}`}
-                    symbol={w.asset}
-                    name={w.note || `${w.direction} flow`}
-                    price={formatUsd(w.amountUsd)}
-                    changeLabel={w.direction}
-                    change={w.direction === "deposit" ? -1 : 1}
-                  />
-                )}
-              />
-            )}
-          </div>
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <div className="card-header">
+          <h2 className="card-title">
+            <Bitcoin size={18} /> Whale Alerts
+          </h2>
         </div>
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">
-              <TrendingUp size={18} /> Polymarket Odds
-            </h2>
-          </div>
-          <div className="card-body flush">
-            {markets.loading ? (
-              <div className="loading">Loading markets…</div>
-            ) : (markets.data?.items.length ?? 0) === 0 ? (
-              <div className="empty">No markets loaded.</div>
-            ) : (
-              <VirtualizedScoopList
-                items={markets.data?.items ?? []}
-                estimateRowHeight={110}
-                maxHeight="min(22rem, 50vh)"
-                renderItem={(m) => (
-                  <ModuleItemCard
-                    onClick={() => inspectDetail(eventMarketDetail(m))}
-                    title={`Event market: ${m.market}`}
-                    symbol={m.market}
-                    name={`24h vol ${m.volume24h}`}
-                    price={`${(m.yes * 100).toFixed(0)}¢ YES`}
-                    change={(m.yes - 0.5) * 100}
-                    changeLabel={`${(m.yes * 100).toFixed(0)}% yes`}
-                  >
-                    <div className="mf-yesno-row">
-                      <span className="mf-yesno yes">YES {(m.yes * 100).toFixed(0)}¢</span>
-                      <span className="mf-yesno no">NO {((1 - m.yes) * 100).toFixed(0)}¢</span>
-                    </div>
-                  </ModuleItemCard>
-                )}
-              />
-            )}
-          </div>
+        <div className="card-body flush">
+          {whales.loading ? (
+            <div className="loading">Loading whale alerts…</div>
+          ) : (whales.data?.items.length ?? 0) === 0 ? (
+            <div className="empty">No whale alerts.</div>
+          ) : (
+            <VirtualizedScoopList
+              items={whales.data?.items ?? []}
+              estimateRowHeight={96}
+              maxHeight="min(22rem, 50vh)"
+              measureDynamic
+              renderItem={(w) => (
+                <ModuleItemCard
+                  onClick={() => inspectDetail(whaleAlertDetail(w))}
+                  title={`Whale alert: ${w.asset}`}
+                  symbol={w.asset}
+                  name={w.note || `${w.direction} flow`}
+                  price={formatUsd(w.amountUsd)}
+                  changeLabel={w.direction}
+                  change={w.direction === "deposit" ? -1 : 1}
+                />
+              )}
+            />
+          )}
         </div>
       </div>
       <NewsPanel module="crypto" />

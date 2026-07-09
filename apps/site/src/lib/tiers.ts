@@ -87,6 +87,33 @@ export function formatTierPrice(tier: PricingTier): string {
   return "Contact us";
 }
 
+/** Lite < Pro < Ultra < Ultra+ < Elite */
+export const TIER_RANK: Record<PricingTierId, number> = {
+  lite: 0,
+  pro: 1,
+  ultra: 2,
+  ultra_plus: 3,
+  elite: 4,
+};
+
+export function tierRank(tier: PricingTierId): number {
+  return TIER_RANK[tier] ?? 0;
+}
+
+/**
+ * Subscribed users only see upgrade tiers (strictly higher rank).
+ * Elite / top tier → empty list (no downgrade CTAs).
+ * Unsubscribed / anonymous → all tiers.
+ */
+export function upgradeTiersFrom(
+  currentTier: PricingTierId | null | undefined,
+  opts?: { subscribed?: boolean }
+): PricingTier[] {
+  if (!opts?.subscribed || !currentTier) return [...PRICING_TIERS];
+  const rank = tierRank(currentTier);
+  return PRICING_TIERS.filter((t) => tierRank(t.id) > rank);
+}
+
 export function validateSelectedMarkets(
   tierId: PricingTierId,
   selected: IntelligenceMarketId[]

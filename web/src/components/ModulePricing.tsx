@@ -10,7 +10,7 @@ import { Boxes, Lock, ShieldAlert, Wallet } from "lucide-react";
 const MODULES = [
   { id: "trades", name: "Trades", price: 29, desc: "Holdings intel · stock activity · congress flow" },
   { id: "penny", name: "Pink Slips", price: 29, desc: "Penny stock scanner · pink slip holdings intel" },
-  { id: "crypto", name: "Crypto", price: 29, desc: "Spot activity · Polymarket · crypto holdings intel" },
+  { id: "crypto", name: "Crypto", price: 29, desc: "Spot activity · whale alerts · crypto holdings intel" },
   { id: "betting", name: "Betting", price: 29, desc: "Sports bet flow · sharp signals · line moves" },
   { id: "predictions", name: "Predictions", price: 29, desc: "War · politics · celebrity event markets" },
 ];

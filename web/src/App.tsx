@@ -8,7 +8,7 @@ import { FinancialDisclaimer } from "./components/FinancialDisclaimer";
 import { TierPricing } from "./components/TierPricing";
 import { ModuleGate } from "./components/ModuleGate";
 import { ModuleSidebar } from "./components/ModuleSidebar";
-import { MobileBottomNav, MobileMoreSheet } from "./components/MobileNav";
+import { MobileBottomNav } from "./components/MobileNav";
 import { WorkspaceHeader } from "./components/WorkspaceHeader";
 import { TabBetting } from "./components/TabBetting";
 import { TabCrypto } from "./components/TabCrypto";
@@ -21,8 +21,6 @@ import { useModules } from "./hooks/useModules";
 import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
-import { useGenerationalProfile } from "./hooks/useGenerationalProfile";
-import { usePlatformPrefs } from "./hooks/usePlatformPrefs";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { DataDeletionPage } from "./pages/DataDeletionPage";
@@ -62,13 +60,10 @@ export default function App() {
   const resetToken = params.get("token") ?? "";
   const [activeTab, setActiveTab] = useState<TabId>(initialTabFromUrl);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const health = useApi<{ feeds: Record<string, boolean> }>("/health", 60_000);
   const { badges: pulseBadges } = useModulePulse(activeTab);
   const { hasModule, annualPrice, active: activeModules } = useModules();
   const { isAuthenticated, openAuth, isAdmin } = useAuth();
-  const { openSetup } = usePlatformPrefs();
-  const { openSetup: openGenSetup, profile } = useGenerationalProfile();
   const liveCount = Object.values(health.data?.feeds ?? {}).filter(Boolean).length;
 
   const active = TABS.find((t) => t.id === activeTab)!;
@@ -125,7 +120,12 @@ export default function App() {
         />
 
         <div className="app-content">
-          <WorkspaceHeader activeTab={activeTab} statusLabel={statusLabel} />
+          <WorkspaceHeader
+            activeTab={activeTab}
+            statusLabel={statusLabel}
+            onSelectTab={setActiveTab}
+            onOpenGlossary={() => setGlossaryOpen(true)}
+          />
           <LiveFeed />
           <div className="monitor-only-strip" role="note">
             No Trading. No Buying. No Selling. Monitor Only.
@@ -166,22 +166,7 @@ export default function App() {
         </div>
       </div>
 
-      <MobileBottomNav
-        activeTab={activeTab}
-        onSelect={setActiveTab}
-        onOpenMore={() => setMobileMoreOpen(true)}
-      />
-      {mobileMoreOpen && (
-        <MobileMoreSheet
-          activeTab={activeTab}
-          onSelect={setActiveTab}
-          onOpenApps={openSetup}
-          onOpenGlossary={() => setGlossaryOpen(true)}
-          onOpenGenMode={openGenSetup}
-          genModeLabel={`${profile.name} mode`}
-          onClose={() => setMobileMoreOpen(false)}
-        />
-      )}
+      <MobileBottomNav activeTab={activeTab} onSelect={setActiveTab} />
     </div>
   );
 }

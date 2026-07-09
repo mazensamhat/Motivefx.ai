@@ -221,14 +221,34 @@ html.motivefx-native-shell .vtable-wrap {
   overflow-x: hidden;
 }
 
-/* Native shell: brand + monitor strip only (Account / Ops live in More) */
+/* Native shell: desktop chrome hidden; compact toolbar + brand remain */
 html.motivefx-native-shell .workspace-header-desktop-chrome,
 html.motivefx-native-shell .workspace-header .account-menu,
 html.motivefx-native-shell .workspace-header .account-email,
 html.motivefx-native-shell .workspace-header .ops-console-btn,
 html.motivefx-native-shell .workspace-header .account-apps-btn,
-html.motivefx-native-shell .workspace-header .monitor-only-pill {
+html.motivefx-native-shell .workspace-header .monitor-only-pill:not(.monitor-only-pill-compact) {
   display: none !important;
+}
+
+html.motivefx-native-shell .workspace-header-desktop-brand {
+  display: none !important;
+}
+
+html.motivefx-native-shell .workspace-header-brand-mobile {
+  display: block !important;
+}
+
+html.motivefx-native-shell .mobile-header-toolbar {
+  display: flex !important;
+}
+
+html.motivefx-native-shell .mobile-header-monitor {
+  display: block !important;
+}
+
+html.motivefx-native-shell .workspace-header {
+  padding-top: calc(0.45rem + env(safe-area-inset-top, 0px));
 }
 
 html.motivefx-native-shell .live-feed {
@@ -372,13 +392,37 @@ html.motivefx-native-shell .feed-item {
 
 .workspace-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   padding: 0.85rem 1.5rem;
-  gap: 0.75rem;
+  gap: 0.55rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(8, 10, 12, 0.6);
   backdrop-filter: blur(8px);
+}
+
+.workspace-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.mobile-header-toolbar,
+.mobile-header-monitor {
+  display: none;
+}
+
+.workspace-header-brand-mobile {
+  display: none;
+}
+
+.workspace-header-desktop-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .workspace-header-left {
@@ -525,12 +569,16 @@ html.motivefx-native-shell .feed-item {
   }
 
   .workspace-header {
-    padding: 0.65rem 0.75rem;
-    gap: 0.5rem;
+    padding: 0.55rem 0.65rem 0.45rem;
+    gap: 0.4rem;
     position: sticky;
     top: 0;
     z-index: 800;
     background: rgba(8, 10, 12, 0.96);
+  }
+
+  .workspace-header-top {
+    gap: 0.4rem;
   }
 
   .workspace-header-left {
@@ -544,25 +592,47 @@ html.motivefx-native-shell .feed-item {
     max-width: none;
   }
 
-  /* Desktop chrome (email / Ops / Apps / Account / Sign out) lives in More sheet */
+  /* Desktop chrome (email / Ops / Apps / Account / Sign out) → mobile toolbar */
   .workspace-header-desktop-chrome {
     display: none !important;
   }
 
-  .workspace-header .monitor-only-pill {
+  .workspace-header-desktop-brand {
+    display: none !important;
+  }
+
+  .workspace-header-brand-mobile {
+    display: block !important;
+  }
+
+  .workspace-header .monitor-only-pill:not(.monitor-only-pill-compact) {
     display: none;
+  }
+
+  .workspace-header-brand-block {
+    gap: 0.25rem;
   }
 
   .workspace-header-brand-title {
     font-size: 0.9375rem;
   }
 
+  .mobile-header-monitor,
+  .monitor-only-pill-compact {
+    display: block !important;
+    margin: 0;
+    max-width: none;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0;
+    line-height: 1.25;
+    color: var(--text-dim);
+    white-space: normal;
+  }
+
   .workspace-header-edge {
-    font-size: 0.6875rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: min(16rem, 70vw);
+    display: none;
   }
 
   .workspace-subheader {
@@ -587,6 +657,54 @@ html.motivefx-native-shell .feed-item {
   .workspace-header .account-menu,
   .workspace-header .account-menu-loading {
     display: none !important;
+  }
+
+  .mobile-header-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.1rem;
+  }
+
+  .mobile-header-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-header-tool {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    min-height: 1.75rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-muted);
+    font-family: var(--heading);
+    font-size: 0.625rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-header-tool.active {
+    color: var(--module-accent);
+    border-color: color-mix(in srgb, var(--module-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--module-accent) 12%, transparent);
+  }
+
+  .mobile-header-tool.muted {
+    border: none;
+    background: transparent;
+    cursor: default;
   }
 
   .live-feed {
@@ -748,15 +866,15 @@ html.motivefx-native-shell .feed-item {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.2rem;
+    gap: 0.15rem;
     border: none;
     border-radius: 10px;
     background: transparent;
     color: var(--text-dim);
     font-family: var(--heading);
-    font-size: 0.625rem;
+    font-size: 0.5625rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
