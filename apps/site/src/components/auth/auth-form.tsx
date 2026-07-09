@@ -184,7 +184,7 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
               />
               <span>
                 I agree to the{" "}
-                <Link href="/faq/what-is-your-data-source" className="text-[#00e676] hover:underline">
+                <Link href="/privacy" className="text-[#00e676] hover:underline">
                   Privacy Policy
                 </Link>
               </span>

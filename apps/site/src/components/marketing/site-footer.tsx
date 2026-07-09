@@ -68,7 +68,12 @@ export function SiteFooter() {
         </div>
 
         <div className="footer-bottom">
-          <p>© {new Date().getFullYear()} MotiveFX.AI · Not financial advice.</p>
+          <p>
+            © {new Date().getFullYear()} MotiveFX.AI ·{" "}
+            <Link href="/privacy">Privacy</Link>
+            {" · "}
+            Not financial advice.
+          </p>
           <p className="footer-disclaimer">
             MotiveFX provides informational market intelligence only. Past performance does not guarantee
             future results. Read our methodology at /data-sources.
