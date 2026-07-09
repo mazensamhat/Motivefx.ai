@@ -14,7 +14,7 @@ import { PortfolioPanel } from "./PortfolioPanel";
 import { NewsPanel } from "./NewsPanel";
 import { CryptoActivityPanel } from "./CryptoActivityPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
-import { ClickableDataRow } from "./ClickableDataRow";
+import { ModuleItemCard } from "./ModuleItemCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { eventMarketDetail, whaleAlertDetail } from "../utils/signalIntel";
 
@@ -45,9 +45,9 @@ export function TabCrypto() {
       <ModuleIntelStrip tab="crypto" />
       <FeatureGate feature="portfolio_intelligence">
         <PortfolioOverview
-          label="CRYPTO HOLDINGS"
+          label="CRYPTO PORTFOLIO VALUE"
           value={result?.portfolio_value}
-          subtitle="Demo · BTC, ETH, SOL"
+          subtitle="Demo · BTC, ETH, SOL · Monitor only"
           winRate={calcWinRate(result?.recommendations)}
           module="crypto"
         />
@@ -98,24 +98,19 @@ export function TabCrypto() {
             ) : (
               <VirtualizedScoopList
                 items={whales.data?.items ?? []}
-                estimateRowHeight={72}
+                estimateRowHeight={96}
                 maxHeight="min(22rem, 50vh)"
                 measureDynamic
                 renderItem={(w) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(whaleAlertDetail(w))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(whaleAlertDetail(w))}
                     title={`Whale alert: ${w.asset}`}
-                  >
-                    <div>
-                      <div className="row-primary">{w.asset} · {formatUsd(w.amountUsd)}</div>
-                      {w.note && <div className="row-secondary">{w.note}</div>}
-                    </div>
-                    <div className="row-meta">
-                      <span className={`badge ${w.direction === "deposit" ? "badge-bearish" : "badge-bullish"}`}>
-                        {w.direction}
-                      </span>
-                    </div>
-                  </ClickableDataRow>
+                    symbol={w.asset}
+                    name={w.note || `${w.direction} flow`}
+                    price={formatUsd(w.amountUsd)}
+                    changeLabel={w.direction}
+                    change={w.direction === "deposit" ? -1 : 1}
+                  />
                 )}
               />
             )}
@@ -135,19 +130,23 @@ export function TabCrypto() {
             ) : (
               <VirtualizedScoopList
                 items={markets.data?.items ?? []}
-                estimateRowHeight={68}
+                estimateRowHeight={110}
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(m) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(eventMarketDetail(m))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(eventMarketDetail(m))}
                     title={`Event market: ${m.market}`}
+                    symbol={m.market}
+                    name={`24h vol ${m.volume24h}`}
+                    price={`${(m.yes * 100).toFixed(0)}¢ YES`}
+                    change={(m.yes - 0.5) * 100}
+                    changeLabel={`${(m.yes * 100).toFixed(0)}% yes`}
                   >
-                    <div>
-                      <div className="row-primary">{m.market}</div>
-                      <div className="row-secondary">24h vol {m.volume24h}</div>
+                    <div className="mf-yesno-row">
+                      <span className="mf-yesno yes">YES {(m.yes * 100).toFixed(0)}¢</span>
+                      <span className="mf-yesno no">NO {((1 - m.yes) * 100).toFixed(0)}¢</span>
                     </div>
-                    <div className="row-meta">{(m.yes * 100).toFixed(0)}% yes</div>
-                  </ClickableDataRow>
+                  </ModuleItemCard>
                 )}
               />
             )}

@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, Sparkles, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import { useAuth } from "../hooks/useAuth";
@@ -8,7 +8,6 @@ import type { TabId } from "../types";
 import { AiExplainModal, Stars } from "./AiExplainModal";
 import { AudioBriefingButton } from "./AudioBriefingButton";
 import { CompareLensSection } from "./CompareLensSection";
-import { DailyIntelCard } from "./DailyIntelCard";
 import { FeatureGate } from "./FeatureGate";
 import { HomeAlertsSection } from "./HomeAlertsSection";
 import { IntelJournalPanel } from "./IntelJournalPanel";
@@ -16,7 +15,8 @@ import { RiskBadge } from "./RiskBadge";
 import { SignalChip } from "./SignalChip";
 import { SignalGlossaryModal } from "./SignalGlossaryModal";
 import { WatchlistRadar } from "./WatchlistRadar";
-import { APP_MODULE_TO_BRAND } from "../brand/moduleBrand";
+import { APP_MODULE_TO_BRAND, MODULE_BRAND } from "../brand/moduleBrand";
+import { MotivFxLogo } from "./MotivFxLogo";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
 import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail, resolveSignalDetail } from "../utils/signalIntel";
@@ -29,6 +29,14 @@ const RISK_LABEL: Record<string, string> = {
 };
 
 const LAST_OPPS_KEY = "motivefx_last_opps";
+
+const MODULE_TILES: { tab: TabId; brand: keyof typeof MODULE_BRAND; label: string }[] = [
+  { tab: "stocks", brand: "trades", label: "Trades" },
+  { tab: "penny", brand: "pinkslips", label: "Pink Slip" },
+  { tab: "crypto", brand: "crypto", label: "Crypto" },
+  { tab: "betting", brand: "betting", label: "Bets" },
+  { tab: "predictions", brand: "predictions", label: "Polymarket" },
+];
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -80,6 +88,19 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   }
 
   const p = b.personalized;
+  const delta = b.portfolioDelta;
+  const deltaCls = delta == null ? "flat" : delta >= 0 ? "up" : "down";
+  const deltaText =
+    delta == null
+      ? "Monitor-only overview"
+      : `${delta >= 0 ? "+" : ""}${delta.toFixed(2)}% today`;
+
+  const snapshotRows = [
+    { name: "MotiveFX Score", value: String(b.motivfxScore), pct: b.marketConfidence },
+    { name: "Active signals", value: String(b.opportunityCount), pct: `${b.highRiskAlerts} high risk` },
+    { name: "Radar hits", value: String(p?.radarSignalCount ?? 0), pct: p?.watchlistCount ? `${p.watchlistCount} watched` : "Watchlist" },
+    { name: "Breaking news", value: String(b.breakingNewsCount), pct: "Feed pulse" },
+  ];
 
   return (
     <>
@@ -94,20 +115,36 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         </div>
       )}
 
-      <section className="home-hero glass-card">
-        <div className="home-hero-left">
-          <p className="home-greeting">{b.greeting}</p>
-          <p className="home-tagline">{b.tagline}</p>
-          {user && p?.coverageLine && hasFeature("portfolio_intelligence") && (
-            <p className="home-portfolio-delta">{p.coverageLine}</p>
-          )}
-          {user && p?.simRecord && (
-            <p className="home-sim-record">{p.simRecord}</p>
-          )}
-          {!user && (
-            <p className="home-guest-hint">Sign in to personalize your radar and ledger intel.</p>
-          )}
-          <div className="home-hero-actions">
+      <div className="home-mockup">
+        <section className="home-overview-card">
+          <div className="home-overview-top">
+            <div>
+              <div className="home-overview-label">Portfolio Overview</div>
+              <div className="home-overview-value">{b.motivfxScore}</div>
+              <div className={`mf-summary-delta ${deltaCls}`}>{deltaText}</div>
+              <p className="mf-summary-sub">
+                {b.greeting} · {b.tagline}
+              </p>
+              {user && p?.coverageLine && hasFeature("portfolio_intelligence") && (
+                <p className="mf-summary-sub">{p.coverageLine}</p>
+              )}
+              {!user && (
+                <p className="mf-summary-sub">Sign in to personalize your radar and ledger intel.</p>
+              )}
+            </div>
+            <button
+              type="button"
+              className="home-score-block home-score-clickable"
+              onClick={() => inspectDetail(homeScoreDetail(b.motivfxScore, b.marketConfidence, b.stars))}
+              title="Learn about MotiveFX Score"
+            >
+              <Stars count={b.stars} />
+              <div className="home-score-meta">
+                <span>Density <strong>{b.marketConfidence}</strong></span>
+              </div>
+            </button>
+          </div>
+          <div className="home-hero-actions" style={{ marginTop: "0.85rem" }}>
             {b.audioBriefingScript && hasFeature("voice_briefing") && (
               <AudioBriefingButton script={b.audioBriefingScript} />
             )}
@@ -122,38 +159,88 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
               <BookOpen size={14} /> Glossary
             </button>
           </div>
-        </div>
-        <button
-          type="button"
-          className="home-score-block home-score-clickable"
-          onClick={() => inspectDetail(homeScoreDetail(b.motivfxScore, b.marketConfidence, b.stars))}
-          title="Learn about MotiveFX Score"
-        >
-          <div className="home-score-label">MotiveFX Score</div>
-          <div className="home-score-value">{b.motivfxScore}</div>
-          <Stars count={b.stars} />
-          <div className="home-score-meta">
-            <span>Signal density: <strong>{b.marketConfidence}</strong></span>
-          </div>
-        </button>
-        <div className="home-hero-stats">
-          <div className="home-stat">
-            <span className="home-stat-val">{b.opportunityCount}</span>
-            <span className="home-stat-lbl">Active signals</span>
-          </div>
-          <div className="home-stat">
-            <span className="home-stat-val risk">{b.highRiskAlerts}</span>
-            <span className="home-stat-lbl">High risk flags</span>
-          </div>
-          <div className="home-stat">
-            <span className="home-stat-val">{p?.radarSignalCount ?? 0}</span>
-            <span className="home-stat-lbl">Radar hits</span>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <DailyIntelCard briefing={b} />
+        <section className="home-snapshot-card">
+          <h2 className="mf-section-title">Market Snapshot</h2>
+          {snapshotRows.map((row) => (
+            <div key={row.name} className="home-snapshot-row">
+              <span className="home-snapshot-name">{row.name}</span>
+              <span className="home-snapshot-meta">
+                <strong style={{ color: "var(--text)", marginRight: "0.5rem" }}>{row.value}</strong>
+                {row.pct}
+              </span>
+            </div>
+          ))}
+        </section>
 
+        <section className="home-insight-card">
+          <div className="home-insight-orb" aria-hidden>
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <div className="home-insight-label">AI Market Insight</div>
+            <p className="home-insight-body">
+              {b.topAiTip || b.biggestOpportunity}
+              {b.biggestRisk ? ` Risk lens: ${b.biggestRisk}.` : ""}
+            </p>
+          </div>
+        </section>
+
+        <section className="mf-section">
+          <h2 className="mf-section-title">My Modules</h2>
+          <div className="home-module-grid">
+            {MODULE_TILES.map((tile) => {
+              const summary = b.moduleSummaries.find((m) => m.tab === tile.tab || APP_MODULE_TO_BRAND[m.module] === tile.brand);
+              const accent = MODULE_BRAND[tile.brand].accent;
+              return (
+                <button
+                  key={tile.tab}
+                  type="button"
+                  className="home-module-tile"
+                  style={{ ["--tile-accent" as string]: accent }}
+                  data-brand={tile.brand}
+                  onClick={() => onNavigate(tile.tab)}
+                >
+                  <MotivFxLogo module={tile.brand} size={28} />
+                  <span className="home-module-tile-label">{tile.label}</span>
+                  <span className="home-module-tile-sub">
+                    {summary
+                      ? `${summary.count} tracked${summary.newSignals ? ` · ${summary.newSignals} new` : ""}`
+                      : "Open desk"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mf-section">
+          <h2 className="mf-section-title">Recent Activity</h2>
+          <div className="home-activity-list">
+            {b.opportunities.slice(0, 4).map((o) => (
+              <div key={o.id} className="home-activity-item">
+                <div>
+                  <div className="home-activity-title">{o.symbol} · {o.title}</div>
+                  <div className="home-activity-meta">
+                    {MODULE_BRAND[APP_MODULE_TO_BRAND[o.module] ?? "trades"]?.name ?? o.module}
+                    {" · "}
+                    {formatSignalStrength(o.confidence)}
+                  </div>
+                </div>
+                <span className={`mf-pct-badge ${o.confidence >= 60 ? "up" : "flat"}`}>
+                  {o.confidence}%
+                </span>
+              </div>
+            ))}
+            {b.opportunities.length === 0 && (
+              <div className="empty" style={{ padding: "1rem" }}>No recent signals yet.</div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="home-desk-secondary">
       <WatchlistRadar
         personalized={p}
         onNavigateModule={(tab) => onNavigate(tab as TabId)}
@@ -170,21 +257,6 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
       {b.compareLens && b.compareLens.length > 0 && (
         <CompareLensSection items={b.compareLens} />
       )}
-
-      <section className="home-pulse-row">
-        <div className="home-pulse-card">
-          <span className="home-pulse-label">Top signal</span>
-          <strong>{b.biggestOpportunity}</strong>
-        </div>
-        <div className="home-pulse-card warn">
-          <span className="home-pulse-label">Risk lens today</span>
-          <strong>{b.biggestRisk}</strong>
-        </div>
-        <div className="home-pulse-card tip">
-          <span className="home-pulse-label">{profile.intelHomeTipLabel}</span>
-          <strong>{b.topAiTip}</strong>
-        </div>
-      </section>
 
       <section className="home-section">
         <div className="home-section-header">
@@ -342,6 +414,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           <SentimentCard label="News flow" value={b.sentiment.news} />
         </div>
       </section>
+      </div>
     </>
   );
 }

@@ -14,7 +14,7 @@ import { PortfolioPanel } from "./PortfolioPanel";
 import { NewsPanel } from "./NewsPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { StockActivityPanel } from "./StockActivityPanel";
-import { ClickableDataRow } from "./ClickableDataRow";
+import { ModuleItemCard } from "./ModuleItemCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { congressFlowDetail, optionFlowDetail } from "../utils/signalIntel";
 
@@ -45,9 +45,9 @@ export function TabStocks() {
       <ModuleIntelStrip tab="stocks" />
       <FeatureGate feature="portfolio_intelligence">
         <PortfolioOverview
-          label="HOLDINGS OVERVIEW"
+          label="WATCHLIST VALUE"
           value={result?.portfolio_value}
-          subtitle="Demo holdings · NVDA, AAPL, TSLA, MSFT"
+          subtitle="Demo holdings · NVDA, AAPL, TSLA, MSFT · Monitor only"
           winRate={calcWinRate(result?.recommendations)}
           module="trades"
         />
@@ -98,25 +98,23 @@ export function TabStocks() {
             ) : (
               <VirtualizedScoopList
                 items={options.data?.items ?? []}
-                estimateRowHeight={76}
+                estimateRowHeight={96}
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(o) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(optionFlowDetail(o))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(optionFlowDetail(o))}
                     title={`Options flow: $${o.symbol}`}
-                  >
-                    <div>
-                      <div className="row-primary">
+                    symbol={
+                      <>
                         ${o.symbol}{" "}
                         <span className={`badge badge-${o.sentiment}`}>{o.type.toUpperCase()}</span>
-                      </div>
-                      <div className="row-secondary">
-                        Strike ${o.strike} · Vol {o.volume?.toLocaleString()}
-                      </div>
-                      {o.note && <div className="row-secondary">{o.note}</div>}
-                    </div>
-                    <div className="row-meta">${(o.premium ?? 0).toLocaleString()}</div>
-                  </ClickableDataRow>
+                      </>
+                    }
+                    name={`Strike $${o.strike} · Vol ${o.volume?.toLocaleString()}${o.note ? ` · ${o.note}` : ""}`}
+                    price={`$${(o.premium ?? 0).toLocaleString()}`}
+                    changeLabel={o.sentiment}
+                    change={o.sentiment === "bullish" ? 1 : o.sentiment === "bearish" ? -1 : 0}
+                  />
                 )}
               />
             )}
@@ -136,21 +134,18 @@ export function TabStocks() {
             ) : (
               <VirtualizedScoopList
                 items={congress.data?.items ?? []}
-                estimateRowHeight={68}
+                estimateRowHeight={88}
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(t) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(congressFlowDetail(t))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(congressFlowDetail(t))}
                     title={`Congress flow: ${t.symbol}`}
-                  >
-                    <div>
-                      <div className="row-primary">{t.politician}</div>
-                      <div className="row-secondary">
-                        {t.transaction} ${t.symbol} · {t.amount}
-                      </div>
-                    </div>
-                    <div className="row-meta">{t.filedAt}</div>
-                  </ClickableDataRow>
+                    symbol={t.politician}
+                    name={`${t.transaction} $${t.symbol} · ${t.amount}`}
+                    price={t.filedAt}
+                    changeLabel={t.transaction}
+                    change={String(t.transaction).toLowerCase().includes("sale") ? -1 : 1}
+                  />
                 )}
               />
             )}

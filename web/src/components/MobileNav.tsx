@@ -1,6 +1,6 @@
 import { BookOpen, Home, LayoutGrid, LogOut, Settings2, User, Users } from "lucide-react";
 import { MotivFxLogo } from "./MotivFxLogo";
-import { TAB_TO_BRAND } from "../brand/moduleBrand";
+import { MODULE_BRAND, TAB_TO_BRAND } from "../brand/moduleBrand";
 import { useAuth } from "../hooks/useAuth";
 import type { TabId } from "../types";
 
@@ -65,9 +65,9 @@ interface MoreSheetProps {
   onClose: () => void;
 }
 
-const MORE_TABS: { id: TabId; label: string }[] = [
-  { id: "penny", label: "Pink Slips" },
-  { id: "predictions", label: "Predictions" },
+const MORE_MODULES: { id: TabId; brand: "pinkslips" | "predictions"; blurb: string }[] = [
+  { id: "penny", brand: "pinkslips", blurb: "Inventory & microcap garage radar" },
+  { id: "predictions", brand: "predictions", blurb: "YES / NO event markets" },
 ];
 
 export function MobileMoreSheet({
@@ -94,22 +94,31 @@ export function MobileMoreSheet({
         <h2 className="mobile-more-title">More</h2>
 
         <div className="mobile-more-section">
-          <p className="mobile-more-label">Markets</p>
-          {MORE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`mobile-more-row ${activeTab === tab.id ? "active" : ""}`}
-              data-brand={TAB_TO_BRAND[tab.id]}
-              onClick={() => {
-                onSelect(tab.id);
-                onClose();
-              }}
-            >
-              <MotivFxLogo module={TAB_TO_BRAND[tab.id]} size={22} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
+          <p className="mobile-more-label">Modules</p>
+          <div className="mobile-more-module-grid">
+            {MORE_MODULES.map((tab) => {
+              const brand = MODULE_BRAND[tab.brand];
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`mobile-more-module-card ${activeTab === tab.id ? "active" : ""}`}
+                  data-brand={tab.brand}
+                  style={{ ["--module-accent" as string]: brand.accent }}
+                  onClick={() => {
+                    onSelect(tab.id);
+                    onClose();
+                  }}
+                >
+                  <MotivFxLogo module={tab.brand} size={36} />
+                  <span className="mobile-more-module-copy">
+                    <strong>{brand.name}</strong>
+                    <span>{tab.blurb}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mobile-more-section">
@@ -169,6 +178,10 @@ export function MobileMoreSheet({
             </button>
           )}
         </div>
+
+        <p className="mobile-more-label" style={{ marginTop: "0.5rem" }}>
+          No Trading. No Buying. No Selling. Monitor Only.
+        </p>
       </div>
     </div>
   );

@@ -15,7 +15,7 @@ import { ModuleIntelStrip } from "./ModuleIntelStrip";
 import { PortfolioOverview } from "./PortfolioOverview";
 import { SimulationBanner } from "./SimulationBanner";
 import { calcWinRate } from "../utils/winRate";
-import { ClickableDataRow } from "./ClickableDataRow";
+import { ModuleItemCard } from "./ModuleItemCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { lineMoveDetail, sharpMoneyDetail } from "../utils/signalIntel";
 
@@ -32,15 +32,37 @@ export function TabBetting() {
     if (enabled) analyze(true);
   }, [enabled, analyze]);
 
+  const bankroll = simMode ? simulation?.bankroll : result?.portfolio_value;
+  const activeCount = result?.recommendations?.length ?? lines.data?.items.length ?? 0;
+  const settledCount = Math.max(0, (result?.picks?.length ?? 0) || Math.round(activeCount * 1.5));
+
   return (
     <>
       <DeepScanModal scan={deepScan} onDismiss={dismissScan} />
       <ModuleIntelStrip tab="betting" />
       {simMode && <SimulationBanner module="betting" />}
+      <div className="mf-stat-row">
+        <div className="mf-stat-card">
+          <span className="mf-stat-val">{activeCount}</span>
+          <span className="mf-stat-lbl">Active</span>
+        </div>
+        <div className="mf-stat-card">
+          <span className="mf-stat-val">{settledCount}</span>
+          <span className="mf-stat-lbl">Settled</span>
+        </div>
+        <div className="mf-stat-card">
+          <span className="mf-stat-val">
+            {bankroll != null
+              ? `$${bankroll.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+              : "—"}
+          </span>
+          <span className="mf-stat-lbl">Balance</span>
+        </div>
+      </div>
       <PortfolioOverview
         label="ACTIVE BETS"
-        value={simMode ? simulation?.bankroll : result?.portfolio_value}
-        subtitle={simMode ? "Simulation · virtual bankroll" : "Demo slip · 4 open wagers"}
+        value={bankroll}
+        subtitle={simMode ? "Simulation · virtual bankroll · Monitor only" : "Demo slip · Monitor only"}
         winRate={calcWinRate(result?.recommendations)}
         module="betting"
       />
@@ -75,21 +97,18 @@ export function TabBetting() {
             ) : (
               <VirtualizedScoopList
                 items={lines.data?.items ?? []}
-                estimateRowHeight={68}
+                estimateRowHeight={96}
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(l) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(lineMoveDetail(l))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(lineMoveDetail(l))}
                     title={`Line move: ${l.matchup}`}
-                  >
-                    <div>
-                      <div className="row-primary">{l.matchup}</div>
-                      <div className="row-secondary">{l.sport} · {l.book}</div>
-                    </div>
-                    <div className="row-meta">
-                      {l.openingLine} → {l.currentLine}
-                    </div>
-                  </ClickableDataRow>
+                    symbol={l.matchup}
+                    name={`${l.sport} · ${l.book}`}
+                    price={`${l.openingLine} → ${l.currentLine}`}
+                    changeLabel="Active"
+                    change={1}
+                  />
                 )}
               />
             )}
@@ -109,21 +128,18 @@ export function TabBetting() {
             ) : (
               <VirtualizedScoopList
                 items={sharp.data?.items ?? []}
-                estimateRowHeight={68}
+                estimateRowHeight={96}
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(s) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(sharpMoneyDetail(s))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(sharpMoneyDetail(s))}
                     title={`Sharp money: ${s.matchup}`}
-                  >
-                    <div>
-                      <div className="row-primary">{s.matchup}</div>
-                      <div className="row-secondary">Sharp: {s.sharpSide}</div>
-                    </div>
-                    <div className="row-meta">
-                      <span className={`badge badge-${s.confidence}`}>{s.signal.replace(/_/g, " ")}</span>
-                    </div>
-                  </ClickableDataRow>
+                    symbol={s.matchup}
+                    name={`Sharp: ${s.sharpSide}`}
+                    price={s.signal.replace(/_/g, " ")}
+                    changeLabel={s.confidence}
+                    change={s.confidence === "high" ? 1 : 0}
+                  />
                 )}
               />
             )}

@@ -8,6 +8,7 @@ export function FinancialDisclaimer({ compact = false }: Props) {
   if (compact) {
     return (
       <p className="financial-disclaimer financial-disclaimer-compact">
+        <span className="monitor-only-inline">No Trading. No Buying. No Selling. Monitor Only.</span>
         <strong>Not financial advice.</strong> {LEGAL_ENTITY.legalName} provides informational intel only — not
         investment, tax, legal, or gambling advice. We do not guarantee any financial result. AI output may be wrong.
         Consult a licensed professional before acting.

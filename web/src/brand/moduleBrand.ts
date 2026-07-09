@@ -18,7 +18,7 @@ export const MODULE_BRAND: Record<BrandModuleId, ModuleBrand> = {
     accent: "#b24bf3",
     shadow: "#7b2ff7",
     glow: "rgba(123, 47, 247, 0.35)",
-    tagline: "The AI Command Center for Market Intelligence",
+    tagline: "AI-Powered Markets. Real-Time Edge.",
   },
   trades: {
     id: "trades",
@@ -26,7 +26,7 @@ export const MODULE_BRAND: Record<BrandModuleId, ModuleBrand> = {
     accent: "#00E676",
     shadow: "#00C853",
     glow: "rgba(0, 230, 118, 0.4)",
-    tagline: "Global stocks & options activity alerts",
+    tagline: "Watchlist & equity flow monitor",
   },
   pinkslips: {
     id: "pinkslips",
@@ -34,7 +34,7 @@ export const MODULE_BRAND: Record<BrandModuleId, ModuleBrand> = {
     accent: "#FF4081",
     shadow: "#F50057",
     glow: "rgba(255, 64, 129, 0.4)",
-    tagline: "Penny stock microcap scanner insights",
+    tagline: "Microcap & garage inventory radar",
   },
   crypto: {
     id: "crypto",
@@ -42,11 +42,11 @@ export const MODULE_BRAND: Record<BrandModuleId, ModuleBrand> = {
     accent: "#00E5FF",
     shadow: "#7C4DFF",
     glow: "rgba(0, 229, 255, 0.4)",
-    tagline: "On-chain whale wallet tracker",
+    tagline: "On-chain whale & coin watchlist",
   },
   betting: {
     id: "betting",
-    name: "Betting",
+    name: "Bets",
     accent: "#FFAB00",
     shadow: "#FF8F00",
     glow: "rgba(255, 171, 0, 0.4)",
@@ -54,11 +54,11 @@ export const MODULE_BRAND: Record<BrandModuleId, ModuleBrand> = {
   },
   predictions: {
     id: "predictions",
-    name: "Predictions",
-    accent: "#FF1744",
-    shadow: "#D500F9",
-    glow: "rgba(255, 23, 68, 0.4)",
-    tagline: "Binary event outcome tracker",
+    name: "Polymarket",
+    accent: "#C084FC",
+    shadow: "#A855F7",
+    glow: "rgba(192, 132, 252, 0.4)",
+    tagline: "Event markets · YES / NO tracker",
   },
 };
 

@@ -9,7 +9,7 @@ interface Props {
   dimmed?: boolean;
 }
 
-export const BRAND_TAGLINE = "TRADE SMARTER. MOVE FASTER.";
+export const BRAND_TAGLINE = "AI-Powered Markets. Real-Time Edge.";
 
 /** Official MotiveFX lockup — PNG brand asset. */
 export function MotiveFxBrandLogo({
@@ -185,8 +185,7 @@ export function MotivFxWordmark({
       </div>
       {showTagline && (
         <p className="motivfx-wordmark-tagline">
-          TRADE <span className="brand-gradient-text">SMARTER</span>. MOVE{" "}
-          <span className="brand-gradient-text">FASTER</span>.
+          AI-Powered Markets. <span className="brand-gradient-text">Real-Time Edge.</span>
         </p>
       )}
     </div>

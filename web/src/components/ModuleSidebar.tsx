@@ -10,8 +10,8 @@ const NAV: { id: TabId; label: string; module: string; icon?: "home" }[] = [
   { id: "stocks", label: "Trades", module: "trades" },
   { id: "penny", label: "Pink Slips", module: "penny" },
   { id: "crypto", label: "Crypto", module: "crypto" },
-  { id: "betting", label: "Betting", module: "betting" },
-  { id: "predictions", label: "Predictions", module: "predictions" },
+  { id: "betting", label: "Bets", module: "betting" },
+  { id: "predictions", label: "Polymarket", module: "predictions" },
 ];
 
 interface Props {

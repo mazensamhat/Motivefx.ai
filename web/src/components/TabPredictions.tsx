@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Globe, TrendingUp } from "lucide-react";
+import { Globe } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -14,7 +14,7 @@ import { NewsPanel } from "./NewsPanel";
 import { PredictionTracker } from "./PredictionTracker";
 import { SimulationBanner } from "./SimulationBanner";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
-import { ClickableDataRow } from "./ClickableDataRow";
+import { ModuleItemCard } from "./ModuleItemCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { eventMarketDetail } from "../utils/signalIntel";
 
@@ -36,9 +36,9 @@ export function TabPredictions() {
       <ModuleIntelStrip tab="predictions" />
       {simMode && <SimulationBanner module="predictions" />}
       <PortfolioOverview
-        label="PREDICTION POSITIONS"
+        label="PORTFOLIO VALUE"
         value={simMode ? simulation?.bankroll : result?.portfolio_value}
-        subtitle={simMode ? "Simulation · virtual bankroll" : "Demo · war, celebrity & Fed markets"}
+        subtitle={simMode ? "Simulation · virtual bankroll · Monitor only" : "Demo · war, celebrity & Fed markets · Monitor only"}
         winRate={calcWinRate(result?.recommendations)}
         module="predictions"
       />
@@ -59,7 +59,7 @@ export function TabPredictions() {
       </div>
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="card-header">
-          <h2 className="card-title"><Globe size={18} /> Live Event Markets</h2>
+          <h2 className="card-title"><Globe size={18} /> Trending Markets</h2>
         </div>
         <div className="card-body flush">
           {markets.loading ? (
@@ -69,24 +69,23 @@ export function TabPredictions() {
           ) : (
             <VirtualizedScoopList
               items={markets.data?.items ?? []}
-              estimateRowHeight={68}
+              estimateRowHeight={120}
               maxHeight="min(24rem, 52vh)"
               renderItem={(m) => (
-                <ClickableDataRow
-                  onInspect={() => inspectDetail(eventMarketDetail(m))}
+                <ModuleItemCard
+                  onClick={() => inspectDetail(eventMarketDetail(m))}
                   title={`Event market: ${m.market}`}
+                  symbol={m.market}
+                  name={`${m.categoryLabel ?? m.platform} · 24h ${m.volume24h}`}
+                  price={`${(m.yes * 100).toFixed(0)}¢ YES`}
+                  change={(m.yes - 0.5) * 100}
+                  changeLabel={`Vol ${m.volume24h}`}
                 >
-                  <div>
-                    <div className="row-primary">{m.market}</div>
-                    <div className="row-secondary">
-                      {m.categoryLabel ?? m.platform} · 24h {m.volume24h}
-                    </div>
+                  <div className="mf-yesno-row">
+                    <span className="mf-yesno yes">YES {(m.yes * 100).toFixed(0)}¢</span>
+                    <span className="mf-yesno no">NO {((1 - m.yes) * 100).toFixed(0)}¢</span>
                   </div>
-                  <div className="row-meta">
-                    <TrendingUp size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
-                    {(m.yes * 100).toFixed(0)}% yes
-                  </div>
-                </ClickableDataRow>
+                </ModuleItemCard>
               )}
             />
           )}

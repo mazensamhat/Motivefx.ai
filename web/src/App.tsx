@@ -38,8 +38,8 @@ const TABS: { id: TabId; label: string; module: string }[] = [
   { id: "stocks", label: "Trades", module: "trades" },
   { id: "penny", label: "Pink Slips", module: "penny" },
   { id: "crypto", label: "Crypto", module: "crypto" },
-  { id: "betting", label: "Betting", module: "betting" },
-  { id: "predictions", label: "Predictions", module: "predictions" },
+  { id: "betting", label: "Bets", module: "betting" },
+  { id: "predictions", label: "Polymarket", module: "predictions" },
 ];
 
 const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
@@ -127,6 +127,9 @@ export default function App() {
         <div className="app-content">
           <WorkspaceHeader activeTab={activeTab} statusLabel={statusLabel} />
           <LiveFeed />
+          <div className="monitor-only-strip" role="note">
+            No Trading. No Buying. No Selling. Monitor Only.
+          </div>
 
           <main className="main terminal-main">
             {activeTab === "home" ? (

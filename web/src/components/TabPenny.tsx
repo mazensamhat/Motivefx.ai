@@ -14,7 +14,7 @@ import { PortfolioPanel } from "./PortfolioPanel";
 import { PennyActivityPanel } from "./PennyActivityPanel";
 import { NewsPanel } from "./NewsPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
-import { ClickableDataRow } from "./ClickableDataRow";
+import { ModuleItemCard, ModuleSummaryCard } from "./ModuleItemCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { moverToSignalDetail } from "../utils/signalIntel";
 
@@ -33,18 +33,39 @@ export function TabPenny() {
     }
   }, [enabled, holdingsCount, result, loading, analyzeError, analyze]);
 
+  const inventory = result?.portfolio_value;
+  const potential =
+    inventory != null ? Math.round(inventory * 0.16 * 100) / 100 : null;
+
   return (
     <>
       <DeepScanModal scan={deepScan} onDismiss={dismissScan} />
       <ModuleIntelStrip tab="penny" />
       <FeatureGate feature="portfolio_intelligence">
-        <PortfolioOverview
-          label="PINK SLIP HOLDINGS"
-          value={result?.portfolio_value}
-          subtitle="Demo · SNDL, AMC, OPEN, BNGO"
-          winRate={calcWinRate(result?.recommendations)}
-          module="pinkslips"
-        />
+        {inventory != null ? (
+          <div className="mf-dual-stats">
+            <ModuleSummaryCard
+              label="Inventory Value"
+              value={`$${inventory.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              subtitle="Demo garage · Monitor only"
+            />
+            <ModuleSummaryCard
+              label="Potential Profit"
+              value={potential != null ? `$${potential.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—"}
+              delta={16}
+              deltaLabel="Est. upside*"
+              subtitle="Informational scenario only"
+            />
+          </div>
+        ) : (
+          <PortfolioOverview
+            label="PINK SLIP HOLDINGS"
+            value={result?.portfolio_value}
+            subtitle="Demo · SNDL, AMC, OPEN, BNGO · Monitor only"
+            winRate={calcWinRate(result?.recommendations)}
+            module="pinkslips"
+          />
+        )}
         <div className="grid-2" style={{ marginBottom: "1rem" }}>
           <PortfolioPanel
             module="penny"
@@ -80,7 +101,7 @@ export function TabPenny() {
       <div className="grid-2">
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title"><Zap size={18} /> Penny Movers</h2>
+            <h2 className="card-title"><Zap size={18} /> Garage Movers</h2>
           </div>
           <div className="card-body flush">
             {movers.loading ? (
@@ -90,26 +111,18 @@ export function TabPenny() {
             ) : (
               <VirtualizedScoopList
                 items={movers.data?.items ?? []}
-                estimateRowHeight={80}
+                estimateRowHeight={100}
                 maxHeight="min(22rem, 50vh)"
                 measureDynamic
                 renderItem={(m) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(moverToSignalDetail(m))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(moverToSignalDetail(m))}
                     title={`Volume intel: $${m.symbol}`}
-                  >
-                    <div>
-                      <div className="row-primary">
-                        ${m.symbol}{" "}
-                        <span className={`badge badge-${m.sentiment}`}>
-                          {m.changePct >= 0 ? "+" : ""}{m.changePct}%
-                        </span>
-                      </div>
-                      <div className="row-secondary">${m.price?.toFixed(2)} · Vol {m.volRatio}x avg</div>
-                      {m.note && <div className="row-secondary">{m.note}</div>}
-                    </div>
-                    <div className="row-meta">{m.volume?.toLocaleString()}</div>
-                  </ClickableDataRow>
+                    symbol={`$${m.symbol}`}
+                    name={`$${m.price?.toFixed(2)} · Vol ${m.volRatio}x avg${m.note ? ` · ${m.note}` : ""}`}
+                    price={m.volume?.toLocaleString()}
+                    change={m.changePct}
+                  />
                 )}
               />
             )}
@@ -127,19 +140,17 @@ export function TabPenny() {
             ) : (
               <VirtualizedScoopList
                 items={spikes.data?.items ?? []}
-                estimateRowHeight={68}
+                estimateRowHeight={88}
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(m) => (
-                  <ClickableDataRow
-                    onInspect={() => inspectDetail(moverToSignalDetail(m))}
+                  <ModuleItemCard
+                    onClick={() => inspectDetail(moverToSignalDetail(m))}
                     title={`Volume spike: $${m.symbol}`}
-                  >
-                    <div>
-                      <div className="row-primary">${m.symbol}</div>
-                      <div className="row-secondary">{m.note}</div>
-                    </div>
-                    <div className="row-meta">{m.volRatio}x</div>
-                  </ClickableDataRow>
+                    symbol={`$${m.symbol}`}
+                    name={m.note}
+                    price={`${m.volRatio}x`}
+                    change={m.changePct}
+                  />
                 )}
               />
             )}
