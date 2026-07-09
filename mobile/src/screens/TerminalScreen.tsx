@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
-import { TERMINAL_URL } from "../config";
+import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
@@ -40,6 +40,13 @@ function buildAuthInjectionScript(
   `;
 }
 
+function terminalEntryUrl(accessToken: string | null): string {
+  if (!accessToken) return TERMINAL_URL;
+  const next = encodeURIComponent("/terminal/");
+  const token = encodeURIComponent(accessToken);
+  return `${API_BASE}/auth/native-handoff?token=${token}&next=${next}`;
+}
+
 export function TerminalScreen() {
   const insets = useSafeAreaInsets();
   const webRef = useRef<WebView>(null);
@@ -47,21 +54,30 @@ export function TerminalScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [injection, setInjection] = useState<string>("true;");
+  const [sourceUri, setSourceUri] = useState<string | null>(null);
 
-  const prepareInjection = useCallback(async () => {
+  const prepareSession = useCallback(async () => {
     const [accessToken, refreshToken, userId] = await Promise.all([
       getAccessToken(),
       getRefreshToken(),
       getUserId(),
     ]);
     setInjection(buildAuthInjectionScript(accessToken, refreshToken, userId));
+    setSourceUri(terminalEntryUrl(accessToken));
   }, []);
 
-  const onMessage = useCallback((event: WebViewMessageEvent) => {
-    if (event.nativeEvent.data === "motivefx:logout") {
-      void logout();
-    }
-  }, [logout]);
+  useEffect(() => {
+    void prepareSession();
+  }, [prepareSession]);
+
+  const onMessage = useCallback(
+    (event: WebViewMessageEvent) => {
+      if (event.nativeEvent.data === "motivefx:logout") {
+        void logout();
+      }
+    },
+    [logout]
+  );
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -72,7 +88,7 @@ export function TerminalScreen() {
             onPress={() => {
               setError(null);
               setLoading(true);
-              void prepareInjection().then(() => webRef.current?.reload());
+              void prepareSession();
             }}
           >
             <Text style={styles.retry}>Retry</Text>
@@ -80,36 +96,41 @@ export function TerminalScreen() {
         </View>
       ) : null}
 
-      {loading ? (
+      {loading || !sourceUri ? (
         <View style={styles.loader} pointerEvents="none">
           <ActivityIndicator color={colors.accent} size="large" />
           <Text style={styles.loaderText}>Loading terminal…</Text>
         </View>
       ) : null}
 
-      <WebView
-        ref={webRef}
-        source={{ uri: TERMINAL_URL }}
-        style={styles.webview}
-        onLoadStart={() => {
-          setLoading(true);
-          void prepareInjection();
-        }}
-        onLoadEnd={() => setLoading(false)}
-        onError={() => setError("Could not load the MotiveFX terminal. Check your connection.")}
-        injectedJavaScriptBeforeContentLoaded={injection}
-        onMessage={onMessage}
-        allowsBackForwardNavigationGestures
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        setSupportMultipleWindows={false}
-        sharedCookiesEnabled
-        thirdPartyCookiesEnabled
-        pullToRefreshEnabled
-        decelerationRate="normal"
-        overScrollMode="never"
-        userAgent="MotiveFXAndroid/1.0"
-      />
+      {sourceUri ? (
+        <WebView
+          ref={webRef}
+          source={{ uri: sourceUri }}
+          style={styles.webview}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          onError={() => setError("Could not load the MotiveFX terminal. Check your connection.")}
+          injectedJavaScriptBeforeContentLoaded={injection}
+          onMessage={onMessage}
+          allowsBackForwardNavigationGestures
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          setSupportMultipleWindows={false}
+          sharedCookiesEnabled
+          thirdPartyCookiesEnabled
+          pullToRefreshEnabled
+          decelerationRate="normal"
+          overScrollMode="never"
+          userAgent="MotiveFXNative/1.0"
+          originWhitelist={["https://*", "http://*"]}
+          // Keep navigation on the production origin
+          onShouldStartLoadWithRequest={(req) => {
+            if (!req.url.startsWith("http")) return true;
+            return req.url.startsWith(WEB_BASE) || req.url.startsWith(API_BASE);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

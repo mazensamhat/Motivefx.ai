@@ -3,16 +3,24 @@ import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
 import { verifyPending2faToken } from "@/lib/pending-2fa";
 import { verifyTotpCode } from "@/lib/totp";
-import { createSession } from "@/lib/session";
+import { createSession, mobileSessionPayload } from "@/lib/session";
 
 const schema = z.object({
   pendingToken: z.string().min(1),
   code: z.string().min(6).max(8),
 });
 
+function normalize2faBody(body: Record<string, unknown>) {
+  return {
+    pendingToken: body.pendingToken ?? body.pending_token,
+    code: body.code,
+  };
+}
+
 export async function POST(request: Request) {
   try {
-    const parsed = schema.safeParse(await request.json());
+    const raw = (await request.json()) as Record<string, unknown>;
+    const parsed = schema.safeParse(normalize2faBody(raw));
     if (!parsed.success) return badRequest("Enter a valid authentication code.");
 
     let userId: string;
@@ -34,8 +42,8 @@ export async function POST(request: Request) {
       return unauthorized("Invalid authentication code.");
     }
 
-    await createSession({ id: user.id, email: user.email });
-    return json({ user: { id: user.id, email: user.email }, redirectTo: "/app" });
+    const accessToken = await createSession({ id: user.id, email: user.email });
+    return json(mobileSessionPayload({ id: user.id, email: user.email }, accessToken));
   } catch (error) {
     console.error("[auth/login/2fa]", error);
     if (error instanceof Error && error.message.includes("AUTH_SECRET")) {

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getAccessToken, type AuthUser } from "../lib/auth";
-import { apiGet, logout as apiLogout } from "../lib/api";
+import { fetchProfile, logout as apiLogout } from "../lib/api";
 
 interface AuthState {
   user: AuthUser | null;
@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const profile = await apiGet<AuthUser>("/auth/me");
+        const profile = await fetchProfile();
         setUser(profile);
       } catch {
         await apiLogout();

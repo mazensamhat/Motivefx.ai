@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError } from "@/lib/api";
 import { hashPassword } from "@/lib/password";
-import { createSession } from "@/lib/session";
+import { createSession, mobileSessionPayload } from "@/lib/session";
 
 const schema = z.object({
   email: z.string().email(),
@@ -11,9 +11,19 @@ const schema = z.object({
   acceptPrivacy: z.literal(true, { errorMap: () => ({ message: "You must accept the privacy policy." }) }),
 });
 
+function normalizeRegisterBody(body: Record<string, unknown>) {
+  return {
+    email: body.email,
+    password: body.password,
+    acceptTerms: body.acceptTerms ?? body.accept_terms,
+    acceptPrivacy: body.acceptPrivacy ?? body.accept_privacy,
+  };
+}
+
 export async function POST(request: Request) {
   try {
-    const parsed = schema.safeParse(await request.json());
+    const raw = (await request.json()) as Record<string, unknown>;
+    const parsed = schema.safeParse(normalizeRegisterBody(raw));
     if (!parsed.success) {
       return badRequest(parsed.error.errors[0]?.message ?? "Invalid input.");
     }
@@ -62,8 +72,8 @@ export async function POST(request: Request) {
           },
         });
 
-    await createSession({ id: user.id, email: user.email });
-    return json({ user: { id: user.id, email: user.email }, redirectTo: "/app" });
+    const accessToken = await createSession({ id: user.id, email: user.email });
+    return json(mobileSessionPayload({ id: user.id, email: user.email }, accessToken));
   } catch (error) {
     console.error("[auth/register]", error);
     if (error instanceof Error && error.message.includes("AUTH_SECRET")) {

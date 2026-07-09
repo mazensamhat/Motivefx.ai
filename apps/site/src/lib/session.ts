@@ -1,9 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@motivefx/database";
 
-const SESSION_COOKIE = "motivefx_session";
-const SESSION_DURATION = 60 * 60 * 24 * 30;
+export const SESSION_COOKIE = "motivefx_session";
+export const SESSION_DURATION = 60 * 60 * 24 * 30;
 
 export interface SessionUser {
   id: string;
@@ -16,12 +16,17 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-export async function createSession(user: SessionUser) {
-  const token = await new SignJWT({ sub: user.id, email: user.email })
+export async function createSessionToken(user: SessionUser): Promise<string> {
+  return new SignJWT({ sub: user.id, email: user.email })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION}s`)
     .sign(getSecret());
+}
+
+/** Sets the httpOnly session cookie and returns the JWT (for native / Bearer clients). */
+export async function createSession(user: SessionUser): Promise<string> {
+  const token = await createSessionToken(user);
 
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
@@ -31,6 +36,8 @@ export async function createSession(user: SessionUser) {
     maxAge: SESSION_DURATION,
     path: "/",
   });
+
+  return token;
 }
 
 export async function destroySession() {
@@ -44,9 +51,7 @@ export async function destroySession() {
   });
 }
 
-export async function getSession(): Promise<SessionUser | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+async function sessionFromToken(token: string | undefined | null): Promise<SessionUser | null> {
   if (!token) return null;
 
   try {
@@ -64,4 +69,34 @@ export async function getSession(): Promise<SessionUser | null> {
   } catch {
     return null;
   }
+}
+
+function bearerFromAuthorization(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^Bearer\s+(.+)$/i.exec(value.trim());
+  return match?.[1]?.trim() || null;
+}
+
+/** Cookie session, or Authorization: Bearer <session JWT> (mobile / API clients). */
+export async function getSession(): Promise<SessionUser | null> {
+  const cookieStore = await cookies();
+  const fromCookie = await sessionFromToken(cookieStore.get(SESSION_COOKIE)?.value);
+  if (fromCookie) return fromCookie;
+
+  const headerStore = await headers();
+  return sessionFromToken(bearerFromAuthorization(headerStore.get("authorization")));
+}
+
+/** Shape expected by the MotiveFX native app after login/register. */
+export function mobileSessionPayload(user: SessionUser, accessToken: string) {
+  return {
+    accessToken,
+    refreshToken: accessToken,
+    user: {
+      id: user.id,
+      userId: user.id,
+      email: user.email,
+    },
+    redirectTo: "/app" as const,
+  };
 }

@@ -135,7 +135,7 @@ export function AuthScreen() {
       )}
 
       <Text style={styles.disclaimer}>
-        Informational only. Not financial advice. Subscriptions at motivefx.ai.
+        Informational only. Not financial advice. Subscriptions at motivefxai.com.
       </Text>
     </View>
   );

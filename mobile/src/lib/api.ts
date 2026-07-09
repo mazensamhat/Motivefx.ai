@@ -8,9 +8,31 @@ async function authHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+async function readError(res: Response): Promise<string> {
+  const err = await res.json().catch(() => ({}));
+  const detail = (err as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail) return detail;
+  const error = (err as { error?: unknown }).error;
+  if (typeof error === "string" && error) return error;
+  return `Request failed: ${res.status}`;
+}
+
+function normalizeUser(raw: Record<string, unknown> | undefined): AuthUser | null {
+  if (!raw) return null;
+  const userId = String(raw.userId ?? raw.id ?? "");
+  const email = String(raw.email ?? "");
+  if (!userId || !email) return null;
+  return {
+    userId,
+    email,
+    displayName: (raw.displayName as string | null | undefined) ?? null,
+    totpEnabled: Boolean(raw.totpEnabled),
+  };
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: await authHeaders() });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  if (!res.ok) throw new Error(await readError(res));
   return res.json();
 }
 
@@ -20,10 +42,7 @@ export async function authPublicPost<T>(path: string, body: unknown): Promise<T>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Request failed: ${res.status}`);
-  }
+  if (!res.ok) throw new Error(await readError(res));
   return res.json();
 }
 
@@ -32,7 +51,7 @@ interface SessionResult {
   pendingToken?: string;
   accessToken?: string;
   refreshToken?: string;
-  user?: AuthUser;
+  user?: AuthUser | Record<string, unknown>;
 }
 
 export async function login(email: string, password: string): Promise<SessionResult> {
@@ -58,11 +77,19 @@ export async function verify2fa(pendingToken: string, code: string): Promise<Ses
 }
 
 export async function persistSession(session: SessionResult): Promise<AuthUser | null> {
-  if (session.accessToken && session.refreshToken && session.user) {
-    await setSession(session.accessToken, session.refreshToken, session.user);
-    return session.user;
+  const user = normalizeUser(session.user as Record<string, unknown> | undefined);
+  if (session.accessToken && session.refreshToken && user) {
+    await setSession(session.accessToken, session.refreshToken, user);
+    return user;
   }
   return null;
+}
+
+export async function fetchProfile(): Promise<AuthUser> {
+  const data = await apiGet<{ user?: Record<string, unknown> } & Record<string, unknown>>("/auth/me");
+  const user = normalizeUser((data.user as Record<string, unknown> | undefined) ?? data);
+  if (!user) throw new Error("Invalid profile response");
+  return user;
 }
 
 export async function logout(): Promise<void> {
@@ -70,7 +97,7 @@ export async function logout(): Promise<void> {
   try {
     await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify({ refresh_token: refresh }),
     });
   } catch {
