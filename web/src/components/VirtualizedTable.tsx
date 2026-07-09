@@ -19,6 +19,7 @@ interface VirtualizedTableProps<T extends Record<string, unknown>> {
   className?: string;
   selectedIndex?: number | null;
   onRowClick?: (row: T, index: number) => void;
+  measureDynamic?: boolean;
 }
 
 export function VirtualizedTable<T extends Record<string, unknown>>({
@@ -31,6 +32,7 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
   className = "",
   selectedIndex = null,
   onRowClick,
+  measureDynamic = true,
 }: VirtualizedTableProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
   const gridCols = columns.map((c) => c.width ?? "minmax(0, 1fr)").join(" ");
@@ -42,6 +44,9 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
     getScrollElement: () => parentRef.current,
     estimateSize: () => rowHeight,
     overscan: 10,
+    measureElement: measureDynamic
+      ? (el) => el?.getBoundingClientRect().height ?? rowHeight
+      : undefined,
   });
 
   const virtualRows = virtualizer.getVirtualItems();
@@ -105,6 +110,8 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
                   return (
                     <div
                       key={getRowKey(row, vRow.index)}
+                      data-index={vRow.index}
+                      ref={measureDynamic ? virtualizer.measureElement : undefined}
                       className={rowClass(vRow.index)}
                       onClick={onRowClick ? () => onRowClick(row, vRow.index) : undefined}
                       onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row, vRow.index) : undefined}
@@ -115,7 +122,7 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
                         top: 0,
                         left: 0,
                         width: "100%",
-                        height: `${vRow.size}px`,
+                        ...(measureDynamic ? {} : { height: `${vRow.size}px` }),
                         transform: `translateY(${vRow.start}px)`,
                       }}
                     >

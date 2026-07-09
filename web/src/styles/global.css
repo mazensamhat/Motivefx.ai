@@ -1395,7 +1395,7 @@ body {
 
 .data-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid rgba(30, 41, 59, 0.5);
@@ -1429,6 +1429,8 @@ button.data-row,
 .row-primary {
   font-weight: 600;
   font-size: 0.875rem;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .row-secondary {
@@ -2787,16 +2789,18 @@ button.data-row,
   min-width: 0;
 }
 
+.vtable-body-row {
+  align-items: flex-start;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+  padding-block: 0.15rem;
+}
+
 .vtable-head-row {
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
-}
-
-.vtable-body-row {
-  font-size: 0.8125rem;
-  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
 }
 
 .vtable-body-row:hover {
@@ -2809,6 +2813,8 @@ button.data-row,
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .vtable-th {
@@ -2858,8 +2864,10 @@ button.data-row,
 .cell-note {
   font-size: 0.75rem;
   color: var(--text-muted);
-  max-width: 220px;
+  max-width: min(220px, 100%);
   display: block;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .cell-mono {

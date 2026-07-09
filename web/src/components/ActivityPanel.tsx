@@ -213,7 +213,7 @@ export function ActivityPanel({
             <VirtualizedTable
               items={items}
               columns={tableColumns}
-              rowHeight={44}
+              rowHeight={56}
               maxHeight="min(28rem, 62vh)"
               onRowClick={handleRowClick}
             />

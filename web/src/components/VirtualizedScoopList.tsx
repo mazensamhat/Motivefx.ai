@@ -20,7 +20,7 @@ export function VirtualizedScoopList<T>({
   scrollThreshold = 8,
   getItemKey = (_item, index) => String(index),
   className = "",
-  measureDynamic = false,
+  measureDynamic = true,
 }: VirtualizedScoopListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
   const contentHeight = Math.max(items.length * estimateRowHeight, estimateRowHeight);
