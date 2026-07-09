@@ -321,10 +321,10 @@ function mapOptionsToActivity(
 function mapInsiderToActivity(rows: InsiderRow[], symbol: string, startId = 0) {
   return rows.slice(0, 8).map((r, i) => {
     const shares = Math.abs(Number(r.change ?? r.share ?? 0));
-    const price = Number(r.transactionPrice ?? 0) || undefined;
+    const price = Number(r.transactionPrice ?? 0) || 100;
     const code = String(r.transactionCode ?? "").toUpperCase();
     const side = code === "S" || code === "D" ? "sell" : "buy";
-    const amountUsd = price ? Math.round(shares * price) : shares * 100;
+    const amountUsd = Math.round(shares * price);
     return {
       id: `ins-${symbol}-${startId + i}`,
       symbol,
