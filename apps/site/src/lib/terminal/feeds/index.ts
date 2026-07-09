@@ -68,35 +68,88 @@ export function scanVolumeSpikes() {
 
 export function demoWhaleAlerts() {
   return [
-    { asset: "BTC", amountUsd: 42000000, from: "unknown wallet", to: "Coinbase", direction: "deposit", note: "Exchange inflow", timestamp: now() },
-    { asset: "ETH", amountUsd: 18500000, from: "whale 0x7a…", to: "Binance", direction: "deposit", note: "Large transfer flagged", timestamp: now() },
+    { asset: "BTC", amountUsd: 42000000, from: "bc1q…whale", to: "Coinbase", direction: "deposit", note: "Exchange inflow — $42M", timestamp: now() },
+    { asset: "ETH", amountUsd: 18500000, from: "0x7a…whale", to: "Binance", direction: "deposit", note: "Large transfer flagged", timestamp: now() },
+    { asset: "SOL", amountUsd: 9200000, from: "Binance", to: "0x9f…cold", direction: "withdrawal", note: "Exchange outflow", timestamp: now() },
+    { asset: "BTC", amountUsd: 67000000, from: "Kraken", to: "bc1q…custody", direction: "withdrawal", note: "Cold storage move", timestamp: now() },
   ];
+}
+
+type CoinGeckoMarket = {
+  symbol?: string;
+  name?: string;
+  current_price?: number;
+  total_volume?: number;
+  price_change_percentage_24h?: number;
+};
+
+async function fetchCoinGeckoWhaleLike() {
+  try {
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=15&page=1&sparkline=false",
+      { next: { revalidate: 120 } }
+    );
+    if (!res.ok) return [];
+    const rows = (await res.json()) as CoinGeckoMarket[];
+    return rows
+      .filter((r) => (r.total_volume ?? 0) >= 5_000_000)
+      .map((r) => {
+        const amountUsd = Math.round(r.total_volume ?? 0);
+        const bullish = (r.price_change_percentage_24h ?? 0) >= 0;
+        return {
+          asset: String(r.symbol ?? "").toUpperCase(),
+          amountUsd,
+          from: bullish ? "Market buyers" : "Exchange reserves",
+          to: bullish ? "Exchange / spot" : "Market sellers",
+          direction: bullish ? "deposit" : "withdrawal",
+          note: `${r.name ?? r.symbol} · 24h vol $${(amountUsd / 1_000_000).toFixed(1)}M`,
+          price: r.current_price,
+          timestamp: now(),
+        };
+      });
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchWhaleAlerts() {
   const key = process.env.COINSTATS_API_KEY?.trim();
-  if (!key) return demoWhaleAlerts();
-  try {
-    const res = await fetch("https://openapiv1.coinstats.app/whale/transactions", {
-      headers: { "X-API-KEY": key },
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return demoWhaleAlerts();
-    const raw = (await res.json()) as { result?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
-    const rows = Array.isArray(raw) ? raw : raw.result ?? [];
-    const items = rows.slice(0, 20).map((r) => ({
-      asset: String(r.coin ?? "—"),
-      amountUsd: r.amountUsd as number | undefined,
-      from: String(r.from ?? "unknown wallet"),
-      to: String(r.to ?? "exchange"),
-      direction: String(r.direction ?? "deposit"),
-      note: String(r.note ?? r.direction ?? "exchange flow"),
-      timestamp: r.timestamp as string | undefined,
-    }));
-    return items.length ? items : demoWhaleAlerts();
-  } catch {
-    return demoWhaleAlerts();
+
+  const gecko = await fetchCoinGeckoWhaleLike();
+  if (gecko.length) return gecko;
+
+  if (key) {
+    try {
+      const res = await fetch("https://openapiv1.coinstats.app/coins?limit=20", {
+        headers: { "X-API-KEY": key },
+        next: { revalidate: 120 },
+      });
+      if (res.ok) {
+        const raw = (await res.json()) as { result?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
+        const rows = Array.isArray(raw) ? raw : raw.result ?? [];
+        const items = rows.slice(0, 12).map((r) => {
+          const amountUsd = Number(r.volume ?? r.marketCap ?? 0);
+          const change = Number(r.priceChange1d ?? 0);
+          const bullish = change >= 0;
+          return {
+            asset: String(r.symbol ?? r.coin ?? "—").toUpperCase(),
+            amountUsd,
+            from: bullish ? "Spot buyers" : "Exchange flow",
+            to: bullish ? "Market" : "Distribution",
+            direction: bullish ? "deposit" : "withdrawal",
+            note: String(r.name ?? r.symbol ?? "Market flow"),
+            price: Number(r.price ?? 0) || undefined,
+            timestamp: now(),
+          };
+        });
+        if (items.length) return items;
+      }
+    } catch {
+      /* fall through */
+    }
   }
+
+  return demoWhaleAlerts();
 }
 
 export function demoLineMoves() {
@@ -200,8 +253,9 @@ export async function fetchPredictionMarkets(limit = 20) {
 
 export function demoCongressTrades() {
   return [
-    { politician: "Sen. Smith", symbol: "NVDA", transaction: "Purchase", amount: "$15,001 - $50,000", date: "2026-06-20" },
-    { politician: "Rep. Jones", symbol: "MSFT", transaction: "Sale", amount: "$1,001 - $15,000", date: "2026-06-18" },
+    { politician: "Sen. Smith", symbol: "NVDA", transaction: "Purchase", amount: "$15,001 - $50,000", filedAt: "2026-06-20", date: "2026-06-20" },
+    { politician: "Rep. Jones", symbol: "MSFT", transaction: "Sale", amount: "$1,001 - $15,000", filedAt: "2026-06-18", date: "2026-06-18" },
+    { politician: "Sen. Warren", symbol: "AAPL", transaction: "Purchase", amount: "$50,001 - $100,000", filedAt: "2026-06-15", date: "2026-06-15" },
   ];
 }
 
@@ -217,3 +271,155 @@ export const PREDICTION_CATEGORIES = [
   { id: "science", label: "Science & Tech" },
   { id: "crypto", label: "Crypto Events" },
 ];
+
+const STOCK_SCAN_SYMBOLS = ["NVDA", "TSLA", "AAPL", "MSFT", "AMD", "AMZN", "META", "GOOGL", "SPY", "QQQ"];
+
+type InsiderRow = {
+  name?: string;
+  share?: number;
+  change?: number;
+  filingDate?: string;
+  transactionDate?: string;
+  transactionCode?: string;
+  transactionPrice?: number;
+};
+
+async function fetchFinnhubInsider(symbol: string, apiKey: string) {
+  const res = await fetch(
+    `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`,
+    { next: { revalidate: 300 } }
+  );
+  if (!res.ok) return [];
+  const data = (await res.json()) as { data?: InsiderRow[] };
+  return data.data ?? [];
+}
+
+function mapOptionsToActivity(
+  options: ReturnType<typeof scanUnusualOptions>,
+  startId = 0
+) {
+  return options.map((o, i) => {
+    const shares = Number(o.volume ?? 0);
+    const price = Math.max(0.01, Math.round(Number(o.premium ?? 0) / Math.max(shares, 1)));
+    const amountUsd = Number(o.premium ?? shares * price);
+    const side = o.type === "put" || o.sentiment === "bearish" ? "sell" : "buy";
+    return {
+      id: `opt-${startId + i}`,
+      symbol: o.symbol,
+      actor: "Options block desk",
+      actorType: "institutional",
+      side,
+      shares,
+      amountUsd,
+      price,
+      timestamp: o.timestamp ?? now(),
+      note: o.note ?? `${o.type?.toUpperCase()} flow · Vol/OI ${o.volOiRatio ?? "—"}x`,
+    };
+  });
+}
+
+function mapInsiderToActivity(rows: InsiderRow[], symbol: string, startId = 0) {
+  return rows.slice(0, 8).map((r, i) => {
+    const shares = Math.abs(Number(r.change ?? r.share ?? 0));
+    const price = Number(r.transactionPrice ?? 0) || undefined;
+    const code = String(r.transactionCode ?? "").toUpperCase();
+    const side = code === "S" || code === "D" ? "sell" : "buy";
+    const amountUsd = price ? Math.round(shares * price) : shares * 100;
+    return {
+      id: `ins-${symbol}-${startId + i}`,
+      symbol,
+      actor: String(r.name ?? "Insider"),
+      actorType: "insider",
+      side,
+      shares,
+      amountUsd,
+      price,
+      timestamp: r.transactionDate ?? r.filingDate ?? now(),
+      note: `Form 4 · ${code || "trade"} filing`,
+    };
+  });
+}
+
+export async function fetchStockActivity() {
+  const finnhubKey = process.env.FINNHUB_API_KEY?.trim();
+  const items: ReturnType<typeof mapOptionsToActivity> = [];
+
+  if (finnhubKey) {
+    const batches = await Promise.all(
+      STOCK_SCAN_SYMBOLS.map((sym) => fetchFinnhubInsider(sym, finnhubKey))
+    );
+    batches.forEach((rows, idx) => {
+      if (rows.length) {
+        items.push(...mapInsiderToActivity(rows, STOCK_SCAN_SYMBOLS[idx]!, items.length));
+      }
+    });
+  }
+
+  if (items.length < 5) {
+    items.push(...mapOptionsToActivity(scanUnusualOptions(), items.length));
+  }
+
+  return items.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+}
+
+function mapPennyMoverToActivity(
+  movers: ReturnType<typeof scanPennyMovers>,
+  startId = 0
+) {
+  return movers.map((m, i) => {
+    const shares = Math.round(Number(m.volume ?? 0));
+    const amountUsd = Math.round(shares * Number(m.price ?? 0));
+    const side = m.sentiment === "bearish" ? "sell" : "buy";
+    const actor =
+      (m.volRatio ?? 0) >= 4
+        ? "Aggressive retail flow"
+        : (m.volRatio ?? 0) >= 2.5
+          ? "Momentum desk"
+          : "Microcap scanner";
+    return {
+      id: `penny-${startId + i}`,
+      symbol: m.symbol,
+      actor,
+      actorType: "flow",
+      side,
+      shares,
+      amountUsd,
+      price: m.price,
+      timestamp: m.timestamp ?? now(),
+      note: m.note ?? `Vol ${m.volRatio ?? "—"}x avg · ${m.changePct ?? 0}%`,
+    };
+  });
+}
+
+export async function fetchPennyActivity() {
+  return mapPennyMoverToActivity(scanPennyMovers());
+}
+
+export async function fetchCryptoActivity() {
+  const whales = await fetchWhaleAlerts();
+  return whales.map((w, i) => {
+    const amountUsd = Number(w.amountUsd ?? 0);
+    const price = Number((w as { price?: number }).price ?? 0) || undefined;
+    const amountCrypto = price && price > 0 ? amountUsd / price : amountUsd / 50_000;
+    const side = String(w.direction ?? "").includes("withdraw") ? "sell" : "buy";
+    return {
+      id: `whale-${i}`,
+      symbol: String(w.asset ?? "—").toUpperCase(),
+      side,
+      price,
+      amountUsd,
+      amountCrypto,
+      from: String(w.from ?? "unknown wallet"),
+      to: String(w.to ?? "exchange"),
+      venue: String(w.to ?? "exchange").includes("Binance")
+        ? "Binance"
+        : String(w.to ?? "").includes("Coinbase")
+          ? "Coinbase"
+          : "On-chain / CEX",
+      timestamp: w.timestamp ?? now(),
+      note: String(w.note ?? w.direction ?? "Whale flow"),
+    };
+  });
+}

@@ -6,6 +6,13 @@ import {
   STOCK_PRICE_FILTERS,
 } from "./activityFilters";
 
+function sideBadgeClass(side: unknown): string {
+  const s = String(side ?? "").toLowerCase();
+  if (s === "buy") return "bullish";
+  if (s === "sell") return "bearish";
+  return "neutral";
+}
+
 const STOCK_FILTERS = [
   { key: "symbol", label: "Symbol", type: "text" as const, placeholder: "NVDA", param: "symbol" },
   SIDE_FILTER,
@@ -32,7 +39,7 @@ export function StockActivityPanel() {
           key: "side",
           label: "Side",
           render: (r) => (
-            <span className={`badge badge-${r.side === "buy" ? "bullish" : r.side === "sell" ? "bearish" : "neutral"}`}>
+            <span className={`badge badge-${sideBadgeClass(r.side)}`}>
               {String(r.side).toUpperCase()}
             </span>
           ),

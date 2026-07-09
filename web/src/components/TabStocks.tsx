@@ -87,7 +87,7 @@ export function TabStocks() {
         <div className="card">
           <div className="card-header">
             <h2 className="card-title">
-              <Activity size={18} /> Unusual Options (yfinance)
+              <Activity size={18} /> Unusual Options Flow
             </h2>
           </div>
           <div className="card-body flush">
