@@ -72,6 +72,8 @@ export function SiteFooter() {
             © {new Date().getFullYear()} MotiveFX.AI ·{" "}
             <Link href="/privacy">Privacy</Link>
             {" · "}
+            <Link href="/data-deletion">Data deletion</Link>
+            {" · "}
             Not financial advice.
           </p>
           <p className="footer-disclaimer">

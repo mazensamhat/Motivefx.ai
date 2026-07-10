@@ -116,9 +116,10 @@ Install the APK from the EAS dashboard on a physical device for testing.
 - [ ] **Data safety form** — email, user ID, portfolio holdings (user-entered), usage analytics
 - [ ] **Financial features** declaration in Play Console
 - [ ] **Content rating** (IARC) — betting references may increase age rating
-- [ ] Privacy policy URL: `https://motivefx.ai/privacy`
+- [ ] Privacy policy URL: `https://www.motivefxai.com/privacy`
+- [ ] **Account deletion / data deletion URL:** `https://www.motivefxai.com/data-deletion`
 - [ ] In-app disclaimer visible (terminal footer + auth screen)
-- [ ] **Billing:** v1 sells subscriptions on web only (`motivefx.ai/pricing`) — document in store listing
+- [ ] **Billing:** v1 sells subscriptions on web only (`https://www.motivefxai.com/pricing`) — document in store listing
 - [ ] Geo-restrict betting module where required
 
 ### Testing before submit

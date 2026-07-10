@@ -25,6 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/research-team",
     "/tools",
     "/privacy",
+    "/data-deletion",
   ];
 
   const urls: MetadataRoute.Sitemap = staticPages.map((path) => ({
