@@ -1,8 +1,9 @@
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { AuthScreen } from "../screens/AuthScreen";
 import { TerminalScreen } from "../screens/TerminalScreen";
 import { colors } from "../theme";
@@ -34,9 +35,21 @@ function Root() {
 
   return (
     <NavigationContainer theme={theme}>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          // Fade + immediate WebView mount SIGSEGVs on many Android devices.
+          animation: Platform.OS === "android" ? "none" : "fade",
+        }}
+      >
         {isAuthenticated ? (
-          <Stack.Screen name="Terminal" component={TerminalScreen} />
+          <Stack.Screen name="Terminal">
+            {() => (
+              <ErrorBoundary>
+                <TerminalScreen />
+              </ErrorBoundary>
+            )}
+          </Stack.Screen>
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />
         )}

@@ -18,7 +18,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("MotiveFX uncaught render error", error, info.componentStack);
+    // Surfaces JS crashes (vs native WebView SIGSEGV which this cannot catch).
+    console.error("MotiveFX uncaught render error", {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      componentStack: info.componentStack,
+    });
   }
 
   render() {

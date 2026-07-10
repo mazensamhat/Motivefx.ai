@@ -24,26 +24,32 @@ export function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  async function completeLogin(session: Awaited<ReturnType<typeof login>>) {
+    const user = await persistSession(session);
+    if (!user) {
+      throw new Error("Login succeeded but session could not be saved. Try again.");
+    }
+    // Trigger Auth → Terminal after SecureStore writes finish.
+    setUser(user);
+  }
+
   async function handleSubmit() {
     setError(null);
     setLoading(true);
     try {
       if (pendingToken) {
         const session = await verify2fa(pendingToken, code);
-        const user = await persistSession(session);
-        if (user) setUser(user);
+        await completeLogin(session);
         return;
       }
 
       if (mode === "register") {
         if (!acceptLegal) {
           setError("Accept Privacy Policy and Terms to continue.");
-          setLoading(false);
           return;
         }
         const session = await register(email, password, true, true);
-        const user = await persistSession(session);
-        if (user) setUser(user);
+        await completeLogin(session);
         return;
       }
 
@@ -52,9 +58,9 @@ export function AuthScreen() {
         setPendingToken(session.pendingToken);
         return;
       }
-      const user = await persistSession(session);
-      if (user) setUser(user);
+      await completeLogin(session);
     } catch (e) {
+      console.warn("Auth submit failed", e);
       setError(e instanceof Error ? e.message : "Authentication failed");
     } finally {
       setLoading(false);

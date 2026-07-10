@@ -20,11 +20,12 @@
           "NSAllowsArbitraryLoads": false
         },
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "ai.motivefx.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#080a0c"
@@ -33,23 +34,6 @@
       "permissions": [
         "INTERNET",
         "VIBRATE"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "www.motivefxai.com",
-              "pathPrefix": "/terminal"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
       ]
     },
     "plugins": [

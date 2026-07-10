@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  InteractionManager,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+
+type ShouldStartLoadRequest = {
+  url: string;
+  isTopFrame?: boolean;
+};
 
 import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
@@ -33,28 +47,39 @@ const VIEWPORT_LOCK_SCRIPT = `
   })();
 `;
 
+/** Escape a string for safe embedding inside a JS single-quoted string literal. */
+function jsStringLiteral(value: string | null): string {
+  if (value == null) return "null";
+  return `'${value
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")}'`;
+}
+
 function buildAuthInjectionScript(
   accessToken: string | null,
   refreshToken: string | null,
   userId: string | null
 ): string {
-  const payload = JSON.stringify({
-    accessToken,
-    refreshToken,
-    userId,
-  });
+  // Prefer explicit string literals over JSON.stringify interpolation so a
+  // malformed token cannot break out of the injected script on Android WebView.
   return `
     (function () {
       try {
-        var session = ${payload};
-        if (session.accessToken) {
-          localStorage.setItem("motivefx_access_token", session.accessToken);
+        var accessToken = ${jsStringLiteral(accessToken)};
+        var refreshToken = ${jsStringLiteral(refreshToken)};
+        var userId = ${jsStringLiteral(userId)};
+        if (accessToken) {
+          localStorage.setItem("motivefx_access_token", accessToken);
         }
-        if (session.refreshToken) {
-          localStorage.setItem("motivefx_refresh_token", session.refreshToken);
+        if (refreshToken) {
+          localStorage.setItem("motivefx_refresh_token", refreshToken);
         }
-        if (session.userId) {
-          localStorage.setItem("motivefx_auth_user_id", session.userId);
+        if (userId) {
+          localStorage.setItem("motivefx_auth_user_id", userId);
         }
         document.documentElement.classList.add("motivefx-native-shell");
         var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
@@ -73,8 +98,21 @@ function buildAuthInjectionScript(
   `;
 }
 
+function isAllowedOrigin(url: string): boolean {
+  return url.startsWith(WEB_BASE) || url.startsWith(API_BASE);
+}
+
+/**
+ * Prefer cookie handoff for short tokens; fall back to terminal URL + localStorage
+ * injection if the JWT is too long for a safe Android WebView query string.
+ */
 function terminalEntryUrl(accessToken: string | null): string {
   if (!accessToken) return TERMINAL_URL;
+  // Android WebView + Intent resolution can choke on very long query strings.
+  if (accessToken.length > 1800) {
+    console.warn("MotiveFX: access token too long for handoff URL; loading terminal directly");
+    return TERMINAL_URL;
+  }
   const next = encodeURIComponent("/terminal/");
   const token = encodeURIComponent(accessToken);
   return `${API_BASE}/auth/native-handoff?token=${token}&next=${next}`;
@@ -88,6 +126,9 @@ export function TerminalScreen() {
   const [error, setError] = useState<string | null>(null);
   const [injection, setInjection] = useState<string>("true;");
   const [sourceUri, setSourceUri] = useState<string | null>(null);
+  /** Delay WebView mount until after Auth→Terminal transition settles (Android crash fix). */
+  const [webViewReady, setWebViewReady] = useState(false);
+  const [webViewKey, setWebViewKey] = useState(0);
 
   const prepareSession = useCallback(async () => {
     try {
@@ -96,14 +137,22 @@ export function TerminalScreen() {
         getRefreshToken(),
         getUserId(),
       ]);
+      if (!accessToken) {
+        setInjection("true;");
+        setSourceUri(null);
+        setError("No saved session. Sign in again.");
+        setLoading(false);
+        return;
+      }
       setInjection(buildAuthInjectionScript(accessToken, refreshToken, userId));
       setSourceUri(terminalEntryUrl(accessToken));
       setError(null);
     } catch (e) {
       console.warn("Terminal session prepare failed", e);
       setInjection("true;");
-      setSourceUri(TERMINAL_URL);
-      setError("Could not restore session. Loading terminal without saved login.");
+      setSourceUri(null);
+      setError("Could not restore session. Tap Retry or sign out.");
+      setLoading(false);
     }
   }, []);
 
@@ -111,57 +160,129 @@ export function TerminalScreen() {
     void prepareSession();
   }, [prepareSession]);
 
+  // Mount WebView only after navigation animation / interactions finish.
+  // Mounting WebView during a native-stack fade transition SIGSEGVs on many Android devices.
+  useEffect(() => {
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
+      timeoutId = setTimeout(() => {
+        if (!cancelled) setWebViewReady(true);
+      }, Platform.OS === "android" ? 120 : 0);
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
-      if (event.nativeEvent.data === "motivefx:logout") {
-        void logout();
+      try {
+        if (event.nativeEvent.data === "motivefx:logout") {
+          void logout();
+        }
+      } catch (e) {
+        console.warn("Terminal onMessage failed", e);
       }
     },
     [logout]
   );
+
+  const onShouldStartLoadWithRequest = useCallback((req: ShouldStartLoadRequest) => {
+    try {
+      const url = req.url ?? "";
+      // Allow non-http schemes the WebView needs (about:blank, data:, blob:).
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        return true;
+      }
+      // Only gate top-frame navigations; never block subresources (fonts, XHR, iframes).
+      if (Platform.OS === "android" && req.isTopFrame === false) {
+        return true;
+      }
+      if (isAllowedOrigin(url)) {
+        return true;
+      }
+      // External links: open in system browser instead of nesting VIEW intents.
+      void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
+      return false;
+    } catch (e) {
+      console.warn("onShouldStartLoadWithRequest failed", e);
+      return true;
+    }
+  }, []);
+
+  const remountWebView = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setWebViewKey((k) => k + 1);
+    void prepareSession();
+  }, [prepareSession]);
+
+  const showWebView = webViewReady && !!sourceUri;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            onPress={() => {
-              setError(null);
-              setLoading(true);
-              void prepareSession();
-            }}
-          >
+          <Pressable onPress={remountWebView}>
             <Text style={styles.retry}>Retry</Text>
           </Pressable>
         </View>
       ) : null}
 
-      {loading || !sourceUri ? (
+      {loading || !showWebView ? (
         <View style={styles.loader} pointerEvents="none">
           <ActivityIndicator color={colors.accent} size="large" />
           <Text style={styles.loaderText}>Loading terminal…</Text>
         </View>
       ) : null}
 
-      {sourceUri ? (
+      {showWebView ? (
         <WebView
+          key={webViewKey}
           ref={webRef}
-          source={{ uri: sourceUri }}
+          source={{ uri: sourceUri! }}
           style={styles.webview}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}
-          onError={() => setError("Could not load the MotiveFX terminal. Check your connection.")}
+          onError={(syntheticEvent) => {
+            const desc = syntheticEvent.nativeEvent.description;
+            console.warn("Terminal WebView onError", desc);
+            setLoading(false);
+            setError(desc || "Could not load the MotiveFX terminal. Check your connection.");
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { statusCode } = syntheticEvent.nativeEvent;
+            if (statusCode >= 500) {
+              console.warn("Terminal WebView HTTP error", statusCode);
+              setError(`Terminal server error (${statusCode}). Tap Retry.`);
+            }
+          }}
+          onRenderProcessGone={() => {
+            console.warn("Terminal WebView render process gone");
+            setLoading(false);
+            setError("Terminal view crashed. Tap Retry to reload.");
+          }}
+          onContentProcessDidTerminate={() => {
+            console.warn("Terminal WebView content process terminated");
+            setLoading(false);
+            setError("Terminal view was terminated. Tap Retry to reload.");
+          }}
           injectedJavaScriptBeforeContentLoaded={injection}
           injectedJavaScript={VIEWPORT_LOCK_SCRIPT}
           onMessage={onMessage}
-          allowsBackForwardNavigationGestures
+          javaScriptEnabled
+          domStorageEnabled
+          thirdPartyCookiesEnabled
+          sharedCookiesEnabled
+          setSupportMultipleWindows={false}
+          allowsBackForwardNavigationGestures={false}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
-          setSupportMultipleWindows={false}
-          sharedCookiesEnabled
-          thirdPartyCookiesEnabled
-          pullToRefreshEnabled={Platform.OS === "android"}
+          pullToRefreshEnabled={false}
           decelerationRate="normal"
           overScrollMode="never"
           bounces={false}
@@ -169,13 +290,18 @@ export function TerminalScreen() {
           setBuiltInZoomControls={false}
           setDisplayZoomControls={false}
           textZoom={100}
+          cacheEnabled
+          mixedContentMode="always"
           userAgent="MotiveFXNative/1.0"
-          originWhitelist={["https://*", "http://*"]}
-          // Keep navigation on the production origin
-          onShouldStartLoadWithRequest={(req) => {
-            if (!req.url.startsWith("http")) return true;
-            return req.url.startsWith(WEB_BASE) || req.url.startsWith(API_BASE);
-          }}
+          originWhitelist={["https://*", "http://*", "about:blank"]}
+          // Avoid nested App Link / VIEW intents for our own host while inside WebView.
+          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+          {...(Platform.OS === "android"
+            ? {
+                // Known Android WebView + navigation crash mitigations
+                androidLayerType: "hardware" as const,
+              }
+            : {})}
         />
       ) : null}
     </View>
@@ -190,9 +316,16 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: colors.bg,
+    // opacity 0.99 forces a separate compositor layer — mitigates Android
+    // libhwui SIGSEGV when WebView mounts during/after stack transitions.
+    opacity: 0.99,
   },
   loader: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.bg,
@@ -214,6 +347,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+    zIndex: 3,
   },
   errorText: {
     flex: 1,
