@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { InteractionManager, Platform } from "react-native";
 import { getAccessToken, type AuthUser } from "../lib/auth";
 import { fetchProfile, logout as apiLogout } from "../lib/api";
 
@@ -13,44 +22,45 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Paint Auth UI immediately. Session restore is deferred so SecureStore /
+  // network work does not run during Android Application/Activity create
+  // (that path causes the clear-cache crash loop on some devices).
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    async function boot() {
-      try {
-        const token = await getAccessToken();
-        if (!token) {
-          if (!cancelled) {
-            setUser(null);
-            setLoading(false);
-          }
-          return;
-        }
-        try {
-          const profile = await fetchProfile();
-          if (!cancelled) setUser(profile);
-        } catch {
+    const task = InteractionManager.runAfterInteractions(() => {
+      timeoutId = setTimeout(() => {
+        void (async () => {
           try {
-            await apiLogout();
-          } catch {
-            /* ignore logout failures during boot */
+            const token = await getAccessToken();
+            if (!token || cancelled) return;
+            try {
+              const profile = await fetchProfile();
+              if (!cancelled) setUser(profile);
+            } catch {
+              try {
+                await apiLogout();
+              } catch {
+                /* ignore */
+              }
+              if (!cancelled) setUser(null);
+            }
+          } catch (e) {
+            console.warn("Auth boot failed", e);
+            if (!cancelled) setUser(null);
           }
-          if (!cancelled) setUser(null);
-        }
-      } catch (e) {
-        console.warn("Auth boot failed", e);
-        if (!cancelled) setUser(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
+        })();
+      }, Platform.OS === "android" ? 400 : 100);
+    });
 
-    void boot();
     return () => {
       cancelled = true;
+      task.cancel();
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 

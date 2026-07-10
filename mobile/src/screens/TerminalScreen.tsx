@@ -178,7 +178,7 @@ export function TerminalScreen() {
     const task = InteractionManager.runAfterInteractions(() => {
       timeoutId = setTimeout(() => {
         if (!cancelled) setWebViewReady(true);
-      }, Platform.OS === "android" ? 350 : 0);
+      }, Platform.OS === "android" ? 600 : 0);
     });
     return () => {
       cancelled = true;
@@ -333,8 +333,8 @@ export function TerminalScreen() {
           onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
           {...(Platform.OS === "android"
             ? {
-                // Known Android WebView + navigation crash mitigations
-                androidLayerType: "hardware" as const,
+                // Software layer avoids libhwui SIGSEGV on some devices after Auth→Terminal.
+                androidLayerType: "software" as const,
               }
             : {})}
         />

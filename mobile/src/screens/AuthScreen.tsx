@@ -147,6 +147,7 @@ export function AuthScreen() {
       <Text style={styles.disclaimer}>
         Informational only. Not financial advice. Subscriptions at motivefxai.com.
       </Text>
+      <Text style={styles.buildTag}>Build 0.1.3 (5) · crash-fix</Text>
     </View>
   );
 }
@@ -179,4 +180,5 @@ const styles = StyleSheet.create({
   legalText: { flex: 1, color: colors.muted, fontSize: 12, lineHeight: 18 },
   link: { color: colors.accent },
   disclaimer: { marginTop: 24, fontSize: 11, color: colors.dim, textAlign: "center", lineHeight: 16 },
+  buildTag: { marginTop: 10, fontSize: 10, color: colors.dim, textAlign: "center", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
 });

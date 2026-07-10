@@ -1,4 +1,7 @@
-import * as SecureStore from "expo-secure-store";
+/**
+ * Session storage. SecureStore is loaded lazily so a native-module failure
+ * cannot crash the app during JS bundle evaluation (Android clear-cache loop).
+ */
 
 const ACCESS_KEY = "motivefx_access_token";
 const REFRESH_KEY = "motivefx_refresh_token";
@@ -11,9 +14,27 @@ export interface AuthUser {
   totpEnabled?: boolean;
 }
 
+type SecureStoreModule = typeof import("expo-secure-store");
+
+let secureStorePromise: Promise<SecureStoreModule | null> | null = null;
+
+async function getSecureStore(): Promise<SecureStoreModule | null> {
+  if (!secureStorePromise) {
+    secureStorePromise = import("expo-secure-store")
+      .then((mod) => mod)
+      .catch((e) => {
+        console.warn("expo-secure-store unavailable", e);
+        return null;
+      });
+  }
+  return secureStorePromise;
+}
+
 async function safeGet(key: string): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(key);
+    const store = await getSecureStore();
+    if (!store) return null;
+    return await store.getItemAsync(key);
   } catch (e) {
     console.warn(`SecureStore get failed for ${key}`, e);
     return null;
@@ -22,7 +43,9 @@ async function safeGet(key: string): Promise<string | null> {
 
 async function safeSet(key: string, value: string): Promise<void> {
   try {
-    await SecureStore.setItemAsync(key, value);
+    const store = await getSecureStore();
+    if (!store) return;
+    await store.setItemAsync(key, value);
   } catch (e) {
     console.warn(`SecureStore set failed for ${key}`, e);
   }
@@ -30,7 +53,9 @@ async function safeSet(key: string, value: string): Promise<void> {
 
 async function safeDelete(key: string): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(key);
+    const store = await getSecureStore();
+    if (!store) return;
+    await store.deleteItemAsync(key);
   } catch (e) {
     console.warn(`SecureStore delete failed for ${key}`, e);
   }
