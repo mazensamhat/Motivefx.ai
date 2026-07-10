@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -29,7 +30,9 @@ export function AuthScreen() {
     if (!user) {
       throw new Error("Login succeeded but session could not be saved. Try again.");
     }
-    // Trigger Auth → Terminal after SecureStore writes finish.
+    // Defer Auth → Terminal so SecureStore flush + AuthScreen unmount settle
+    // before TerminalScreen mounts the WebView (Android native crash window).
+    await new Promise((r) => setTimeout(r, Platform.OS === "android" ? 120 : 0));
     setUser(user);
   }
 

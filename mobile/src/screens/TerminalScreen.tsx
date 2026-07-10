@@ -12,15 +12,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
-type ShouldStartLoadRequest = {
-  url: string;
-  isTopFrame?: boolean;
-};
-
 import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
+
+type ShouldStartLoadRequest = {
+  url: string;
+  isTopFrame?: boolean;
+};
 
 /** Lock viewport + block pinch/double-tap zoom before page paint. */
 const VIEWPORT_LOCK_SCRIPT = `
@@ -32,9 +32,9 @@ const VIEWPORT_LOCK_SCRIPT = `
       if (!meta) {
         meta = document.createElement("meta");
         meta.setAttribute("name", "viewport");
-        document.head.appendChild(meta);
+        if (document.head) document.head.appendChild(meta);
       }
-      meta.setAttribute("content", content);
+      if (meta) meta.setAttribute("content", content);
       var lock = function (e) {
         if (e.touches && e.touches.length > 1) e.preventDefault();
       };
@@ -103,20 +103,18 @@ function isAllowedOrigin(url: string): boolean {
 }
 
 /**
- * Prefer cookie handoff for short tokens; fall back to terminal URL + localStorage
- * injection if the JWT is too long for a safe Android WebView query string.
+ * Cookie handoff is required: middleware blocks /terminal without motivefx_session.
+ * Do NOT register Android App Links for /terminal — they hijack the handoff redirect
+ * out of the WebView and relaunch the app (post-login crash loop).
  */
 function terminalEntryUrl(accessToken: string | null): string {
   if (!accessToken) return TERMINAL_URL;
-  // Android WebView + Intent resolution can choke on very long query strings.
-  if (accessToken.length > 1800) {
-    console.warn("MotiveFX: access token too long for handoff URL; loading terminal directly");
-    return TERMINAL_URL;
-  }
   const next = encodeURIComponent("/terminal/");
   const token = encodeURIComponent(accessToken);
   return `${API_BASE}/auth/native-handoff?token=${token}&next=${next}`;
 }
+
+type SessionPhase = "preparing" | "ready" | "failed";
 
 export function TerminalScreen() {
   const insets = useSafeAreaInsets();
@@ -126,11 +124,16 @@ export function TerminalScreen() {
   const [error, setError] = useState<string | null>(null);
   const [injection, setInjection] = useState<string>("true;");
   const [sourceUri, setSourceUri] = useState<string | null>(null);
+  const [phase, setPhase] = useState<SessionPhase>("preparing");
   /** Delay WebView mount until after Auth→Terminal transition settles (Android crash fix). */
   const [webViewReady, setWebViewReady] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
 
   const prepareSession = useCallback(async () => {
+    setPhase("preparing");
+    setWebViewReady(false);
+    setSourceUri(null);
+    setLoading(true);
     try {
       const [accessToken, refreshToken, userId] = await Promise.all([
         getAccessToken(),
@@ -141,17 +144,20 @@ export function TerminalScreen() {
         setInjection("true;");
         setSourceUri(null);
         setError("No saved session. Sign in again.");
+        setPhase("failed");
         setLoading(false);
         return;
       }
       setInjection(buildAuthInjectionScript(accessToken, refreshToken, userId));
       setSourceUri(terminalEntryUrl(accessToken));
       setError(null);
+      setPhase("ready");
     } catch (e) {
       console.warn("Terminal session prepare failed", e);
       setInjection("true;");
       setSourceUri(null);
-      setError("Could not restore session. Tap Retry or sign out.");
+      setError(e instanceof Error ? e.message : "Could not prepare terminal session.");
+      setPhase("failed");
       setLoading(false);
     }
   }, []);
@@ -163,19 +169,23 @@ export function TerminalScreen() {
   // Mount WebView only after navigation animation / interactions finish.
   // Mounting WebView during a native-stack fade transition SIGSEGVs on many Android devices.
   useEffect(() => {
+    if (phase !== "ready" || !sourceUri) {
+      setWebViewReady(false);
+      return;
+    }
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const task = InteractionManager.runAfterInteractions(() => {
       timeoutId = setTimeout(() => {
         if (!cancelled) setWebViewReady(true);
-      }, Platform.OS === "android" ? 120 : 0);
+      }, Platform.OS === "android" ? 350 : 0);
     });
     return () => {
       cancelled = true;
       task.cancel();
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, []);
+  }, [phase, sourceUri]);
 
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -220,7 +230,31 @@ export function TerminalScreen() {
     void prepareSession();
   }, [prepareSession]);
 
+  const openInBrowser = useCallback(() => {
+    void Linking.openURL(TERMINAL_URL);
+  }, []);
+
   const showWebView = webViewReady && !!sourceUri;
+
+  if (phase === "failed") {
+    return (
+      <View style={[styles.root, styles.centered, { paddingTop: insets.top }]}>
+        <Text style={styles.failTitle}>Terminal unavailable</Text>
+        <Text style={styles.failBody}>
+          {error || "Session handoff failed. Your login is saved — try again or open the web terminal."}
+        </Text>
+        <Pressable style={styles.failButton} onPress={remountWebView}>
+          <Text style={styles.failButtonText}>Retry</Text>
+        </Pressable>
+        <Pressable onPress={openInBrowser}>
+          <Text style={styles.link}>Open www.motivefxai.com</Text>
+        </Pressable>
+        <Pressable onPress={() => void logout()}>
+          <Text style={styles.linkMuted}>Sign out</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -264,11 +298,13 @@ export function TerminalScreen() {
           onRenderProcessGone={() => {
             console.warn("Terminal WebView render process gone");
             setLoading(false);
+            setWebViewReady(false);
             setError("Terminal view crashed. Tap Retry to reload.");
           }}
           onContentProcessDidTerminate={() => {
             console.warn("Terminal WebView content process terminated");
             setLoading(false);
+            setWebViewReady(false);
             setError("Terminal view was terminated. Tap Retry to reload.");
           }}
           injectedJavaScriptBeforeContentLoaded={injection}
@@ -294,7 +330,6 @@ export function TerminalScreen() {
           mixedContentMode="always"
           userAgent="MotiveFXNative/1.0"
           originWhitelist={["https://*", "http://*", "about:blank"]}
-          // Avoid nested App Link / VIEW intents for our own host while inside WebView.
           onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
           {...(Platform.OS === "android"
             ? {
@@ -313,6 +348,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  centered: {
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 12,
+  },
   webview: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -321,11 +361,7 @@ const styles = StyleSheet.create({
     opacity: 0.99,
   },
   loader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.bg,
@@ -358,5 +394,37 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: "700",
     fontSize: 13,
+  },
+  failTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  failBody: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  failButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  failButtonText: {
+    color: colors.bg,
+    fontWeight: "700",
+  },
+  link: {
+    color: colors.accent,
+    textAlign: "center",
+    marginTop: 8,
+    fontWeight: "600",
+  },
+  linkMuted: {
+    color: colors.dim,
+    textAlign: "center",
+    marginTop: 4,
   },
 });
