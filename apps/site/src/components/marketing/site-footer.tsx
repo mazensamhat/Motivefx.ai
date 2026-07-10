@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand/logo";
 import { FOOTER_MARKETS, FOOTER_RESOURCES } from "@/lib/marketing-copy";
 import { SITE } from "@/lib/site-config";
+import { SOCIAL_LINKS } from "@/lib/social";
 
 export function SiteFooter() {
   return (
@@ -59,6 +60,26 @@ export function SiteFooter() {
               <li><a href={`mailto:${SITE.email}`}>Contact</a></li>
             </ul>
           </div>
+          <div className="footer-col">
+            <p className="footer-heading">Legal</p>
+            <ul className="footer-links">
+              <li><Link href="/privacy">Privacy Policy</Link></li>
+              <li><Link href="/terms">Terms of Service</Link></li>
+              <li><Link href="/data-deletion">Data deletion</Link></li>
+            </ul>
+          </div>
+          <div className="footer-col">
+            <p className="footer-heading">Follow</p>
+            <ul className="footer-links">
+              {SOCIAL_LINKS.map((s) => (
+                <li key={s.id}>
+                  <a href={s.href} target="_blank" rel="noopener noreferrer">
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="footer-brand-lockup">
@@ -71,6 +92,8 @@ export function SiteFooter() {
           <p>
             © {new Date().getFullYear()} MotiveFX.AI ·{" "}
             <Link href="/privacy">Privacy</Link>
+            {" · "}
+            <Link href="/terms">Terms</Link>
             {" · "}
             <Link href="/data-deletion">Data deletion</Link>
             {" · "}

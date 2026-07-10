@@ -231,8 +231,10 @@ export default function PrivacyPage() {
           <p>
             MotiveFX provides informational market intelligence only — not financial, investment, tax, or
             legal advice. Past performance does not guarantee future results. See our{" "}
-            <Link href="/faq/is-motivefx-ai-financial-advice">financial advice FAQ</Link> and{" "}
-            <Link href="/data-sources">data methodology</Link>.
+            <Link href="/faq/is-motivefx-ai-financial-advice">financial advice FAQ</Link>,{" "}
+            <Link href="/data-sources">data methodology</Link>,{" "}
+            <Link href="/terms">Terms of Service</Link>, and{" "}
+            <Link href="/data-deletion">Data deletion</Link>.
           </p>
         </ContentProse>
       </ContentSection>

@@ -5,7 +5,7 @@ import { allCompareSlugs } from "@/content/compare";
 import { allDailySlugs } from "@/content/daily/pages";
 import { allFaqSlugs } from "@/content/faq/items";
 import { allGlossarySlugs } from "@/content/glossary/terms";
-import { allLearnCategorySlugs } from "@/content/learn";
+import { allLearnArticleParams, allLearnCategorySlugs } from "@/content/learn";
 import { allMetricSlugs } from "@/content/metrics/terms";
 import { allModuleSlugs } from "@/content/modules";
 import { allStockTickers } from "@/content/stocks/tickers";
@@ -25,6 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/research-team",
     "/tools",
     "/privacy",
+    "/terms",
     "/data-deletion",
   ];
 
@@ -52,6 +53,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   add(allAiSlugs().map((s) => `/ai/${s}`), 0.85);
   add(allMetricSlugs().map((s) => `/metrics/${s}`), 0.7);
   add(allLearnCategorySlugs().map((c) => `/learn/${c}`), 0.8);
+  add(
+    allLearnArticleParams().map(({ category, slug }) => `/learn/${category}/${slug}`),
+    0.75
+  );
 
   return urls;
 }

@@ -134,7 +134,8 @@ export default function DataDeletionPage() {
             within applicable statutory timelines.
           </p>
           <p>
-            See also our <Link href="/privacy">Privacy Policy</Link>.
+            See also our <Link href="/privacy">Privacy Policy</Link> and{" "}
+            <Link href="/terms">Terms of Service</Link>.
           </p>
         </ContentProse>
       </ContentSection>

@@ -32,15 +32,18 @@ export const TOPIC_ROUTES = [
   { slug: "ai-portfolio-analysis", label: "AI Portfolio Analysis", href: "/topics/ai-portfolio-analysis" },
 ] as const;
 
+/** Learning Center tracks — aligned to MotiveFX product modules + core skills. */
 export const LEARN_CATEGORIES = [
-  { slug: "ai-investing", label: "AI Investing", href: "/learn/ai-investing" },
+  { slug: "stocks", label: "Stocks", href: "/learn/stocks" },
+  { slug: "crypto-guides", label: "Crypto", href: "/learn/crypto-guides" },
   { slug: "options-flow", label: "Options Flow", href: "/learn/options-flow" },
+  { slug: "prediction-markets", label: "Prediction Markets", href: "/learn/prediction-markets" },
+  { slug: "sports-betting-analytics", label: "Sports Betting", href: "/learn/sports-betting-analytics" },
+  { slug: "pink-sheets", label: "Pink Slips", href: "/learn/pink-sheets" },
+  { slug: "ai-investing", label: "AI Investing", href: "/learn/ai-investing" },
   { slug: "institutional-buying", label: "Institutional Buying", href: "/learn/institutional-buying" },
   { slug: "earnings-analysis", label: "Earnings Analysis", href: "/learn/earnings-analysis" },
   { slug: "technical-analysis", label: "Technical Analysis", href: "/learn/technical-analysis" },
-  { slug: "crypto-guides", label: "Crypto Guides", href: "/learn/crypto-guides" },
-  { slug: "sports-betting-analytics", label: "Sports Betting Analytics", href: "/learn/sports-betting-analytics" },
-  { slug: "prediction-markets", label: "Prediction Markets", href: "/learn/prediction-markets" },
   { slug: "market-psychology", label: "Market Psychology", href: "/learn/market-psychology" },
 ] as const;
 

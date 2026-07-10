@@ -118,9 +118,13 @@ Install the APK from the EAS dashboard on a physical device for testing.
 - [ ] **Content rating** (IARC) — betting references may increase age rating
 - [ ] Privacy policy URL: `https://www.motivefxai.com/privacy`
 - [ ] **Account deletion / data deletion URL:** `https://www.motivefxai.com/data-deletion`
+- [ ] Terms of Service URL: `https://www.motivefxai.com/terms`
 - [ ] In-app disclaimer visible (terminal footer + auth screen)
 - [ ] **Billing:** v1 sells subscriptions on web only (`https://www.motivefxai.com/pricing`) — document in store listing
 - [ ] Geo-restrict betting module where required
+- [ ] Social / website fields — see `docs/PLAY_STORE_LISTING.md` (Instagram, Facebook, LinkedIn + disclosure URLs)
+
+**Store listing copy + social URLs:** `docs/PLAY_STORE_LISTING.md`
 
 ### Testing before submit
 

@@ -21,5 +21,15 @@ export const TERMINAL_URL = envUrl(
 export const LEGAL = {
   privacy: `${WEB_BASE}/privacy`,
   terms: `${WEB_BASE}/terms`,
+  dataDeletion: `${WEB_BASE}/data-deletion`,
   subscribe: `${WEB_BASE}/pricing`,
+} as const;
+
+/** Play Console / store listing disclosure URLs (canonical www host). */
+export const STORE_DISCLOSURE_URLS = {
+  privacy: "https://www.motivefxai.com/privacy",
+  terms: "https://www.motivefxai.com/terms",
+  dataDeletion: "https://www.motivefxai.com/data-deletion",
+  website: "https://www.motivefxai.com",
+  support: "https://www.motivefxai.com",
 } as const;

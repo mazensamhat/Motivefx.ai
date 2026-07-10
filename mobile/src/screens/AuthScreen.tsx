@@ -114,10 +114,14 @@ export function AuthScreen() {
             I agree to the{" "}
             <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
               Privacy Policy
-            </Text>{" "}
-            and{" "}
+            </Text>
+            {", "}
             <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
               Terms
+            </Text>
+            {", and "}
+            <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.dataDeletion)}>
+              Data deletion
             </Text>
           </Text>
         </Pressable>

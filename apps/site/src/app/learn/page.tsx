@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { MarketingShell } from "@/components/marketing/marketing-shell";
+import { LEARN_ARTICLES } from "@/content/learn";
 import { LEARN_CATEGORIES } from "@/lib/site-config";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Learning Center",
-  description: "Learn AI investing, options flow, crypto, prediction markets, and market psychology with MotiveFX guides.",
+  description:
+    "Learn MotiveFX products — stocks, crypto, options, prediction markets, sports betting, pink slips — plus AI investing and market psychology.",
   path: "/learn",
 });
+
+function guideCount(category: string) {
+  return Object.values(LEARN_ARTICLES).filter((a) => a.category === category).length;
+}
 
 export default function LearnHubPage() {
   return (
@@ -17,19 +23,24 @@ export default function LearnHubPage() {
           <p className="section-kicker">Learning center</p>
           <h1>Teach first. Authority follows.</h1>
           <p className="section-desc">
-            Google and AI search love structured education. This hub becomes your biggest SEO asset over
-            time.
+            Product guides for every MotiveFX market module — plus core skills in AI investing, flow, and
+            psychology. Educational only; not financial advice.
           </p>
         </header>
         <ul className="hub-grid">
-          {LEARN_CATEGORIES.map((c) => (
-            <li key={c.slug}>
-              <Link href={c.href} className="hub-card">
-                <h2>{c.label}</h2>
-                <p>Guides, explainers, and use cases →</p>
-              </Link>
-            </li>
-          ))}
+          {LEARN_CATEGORIES.map((c) => {
+            const n = guideCount(c.slug);
+            return (
+              <li key={c.slug}>
+                <Link href={c.href} className="hub-card">
+                  <h2>{c.label}</h2>
+                  <p>
+                    {n} guide{n === 1 ? "" : "s"} · explainers and use cases →
+                  </p>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </MarketingShell>
