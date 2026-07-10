@@ -2,7 +2,7 @@
   "expo": {
     "name": "MotiveFX.AI",
     "slug": "motivefx",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -22,11 +22,11 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "6"
+      "buildNumber": "7"
     },
     "android": {
       "package": "ai.motivefx.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#080a0c"
@@ -37,17 +37,7 @@
         "VIBRATE"
       ]
     },
-    "plugins": [
-      "expo-secure-store",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#080a0c",
-          "image": "./assets/splash-icon.png",
-          "imageWidth": 200
-        }
-      ]
-    ],
+    "plugins": [],
     "extra": {
       "eas": {
         "projectId": "be5b49f1-61c1-4d22-960d-12a3a898f913"

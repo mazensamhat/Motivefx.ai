@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  InteractionManager,
   Linking,
   Platform,
   Pressable,
@@ -10,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
@@ -22,7 +20,8 @@ type ShouldStartLoadRequest = {
   isTopFrame?: boolean;
 };
 
-/** Lock viewport + block pinch/double-tap zoom before page paint. */
+type WebViewComponent = typeof import("react-native-webview").WebView;
+
 const VIEWPORT_LOCK_SCRIPT = `
   (function () {
     try {
@@ -35,19 +34,11 @@ const VIEWPORT_LOCK_SCRIPT = `
         if (document.head) document.head.appendChild(meta);
       }
       if (meta) meta.setAttribute("content", content);
-      var lock = function (e) {
-        if (e.touches && e.touches.length > 1) e.preventDefault();
-      };
-      document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, { passive: false });
-      document.addEventListener("gesturechange", function (e) { e.preventDefault(); }, { passive: false });
-      document.addEventListener("gestureend", function (e) { e.preventDefault(); }, { passive: false });
-      document.addEventListener("touchmove", lock, { passive: false });
     } catch (e) {}
     true;
   })();
 `;
 
-/** Escape a string for safe embedding inside a JS single-quoted string literal. */
 function jsStringLiteral(value: string | null): string {
   if (value == null) return "null";
   return `'${value
@@ -64,100 +55,113 @@ function buildAuthInjectionScript(
   refreshToken: string | null,
   userId: string | null
 ): string {
-  // Prefer explicit string literals over JSON.stringify interpolation so a
-  // malformed token cannot break out of the injected script on Android WebView.
   return `
     (function () {
       try {
         var accessToken = ${jsStringLiteral(accessToken)};
         var refreshToken = ${jsStringLiteral(refreshToken)};
         var userId = ${jsStringLiteral(userId)};
-        if (accessToken) {
-          localStorage.setItem("motivefx_access_token", accessToken);
-        }
-        if (refreshToken) {
-          localStorage.setItem("motivefx_refresh_token", refreshToken);
-        }
-        if (userId) {
-          localStorage.setItem("motivefx_auth_user_id", userId);
-        }
-        document.documentElement.classList.add("motivefx-native-shell");
-        var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
-        var meta = document.querySelector('meta[name="viewport"]');
-        if (!meta) {
-          meta = document.createElement("meta");
-          meta.setAttribute("name", "viewport");
-          if (document.head) document.head.appendChild(meta);
-        }
-        if (meta) meta.setAttribute("content", content);
-      } catch (e) {
-        console.warn("MotiveFX auth injection failed", e);
-      }
+        if (accessToken) localStorage.setItem("motivefx_access_token", accessToken);
+        if (refreshToken) localStorage.setItem("motivefx_refresh_token", refreshToken);
+        if (userId) localStorage.setItem("motivefx_user_id", userId);
+      } catch (e) {}
       true;
     })();
   `;
 }
 
 function isAllowedOrigin(url: string): boolean {
-  return url.startsWith(WEB_BASE) || url.startsWith(API_BASE);
+  try {
+    const u = new URL(url);
+    const allowed = [WEB_BASE, "https://www.motivefxai.com", "https://motivefxai.com"];
+    return allowed.some((base) => {
+      try {
+        return u.origin === new URL(base).origin;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
 }
-
-/**
- * Cookie handoff is required: middleware blocks /terminal without motivefx_session.
- * Do NOT register Android App Links for /terminal — they hijack the handoff redirect
- * out of the WebView and relaunch the app (post-login crash loop).
- */
-function terminalEntryUrl(accessToken: string | null): string {
-  if (!accessToken) return TERMINAL_URL;
-  const next = encodeURIComponent("/terminal/");
-  const token = encodeURIComponent(accessToken);
-  return `${API_BASE}/auth/native-handoff?token=${token}&next=${next}`;
-}
-
-type SessionPhase = "preparing" | "ready" | "failed";
 
 export function TerminalScreen() {
   const insets = useSafeAreaInsets();
-  const webRef = useRef<WebView>(null);
   const { logout } = useAuth();
+  const [WebView, setWebView] = useState<WebViewComponent | null>(null);
+  const [phase, setPhase] = useState<"boot" | "ready" | "failed">("boot");
+  const [sourceUri, setSourceUri] = useState<string | null>(null);
+  const [injection, setInjection] = useState(VIEWPORT_LOCK_SCRIPT);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [injection, setInjection] = useState<string>("true;");
-  const [sourceUri, setSourceUri] = useState<string | null>(null);
-  const [phase, setPhase] = useState<SessionPhase>("preparing");
-  /** Delay WebView mount until after Auth→Terminal transition settles (Android crash fix). */
-  const [webViewReady, setWebViewReady] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
+  const [mountWebView, setMountWebView] = useState(false);
+  const webRef = useRef<{ reload?: () => void } | null>(null);
+
+  // Lazy-require WebView only after this screen mounts (never at app cold start).
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mod = require("react-native-webview") as typeof import("react-native-webview");
+        if (!cancelled) setWebView(() => mod.WebView);
+      } catch (e) {
+        console.warn("WebView module failed to load", e);
+        if (!cancelled) {
+          setError("WebView unavailable on this device.");
+          setPhase("failed");
+        }
+      }
+    }, Platform.OS === "android" ? 500 : 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
 
   const prepareSession = useCallback(async () => {
-    setPhase("preparing");
-    setWebViewReady(false);
-    setSourceUri(null);
+    setPhase("boot");
     setLoading(true);
+    setError(null);
+    setMountWebView(false);
     try {
       const [accessToken, refreshToken, userId] = await Promise.all([
         getAccessToken(),
         getRefreshToken(),
         getUserId(),
       ]);
-      if (!accessToken) {
-        setInjection("true;");
-        setSourceUri(null);
-        setError("No saved session. Sign in again.");
-        setPhase("failed");
-        setLoading(false);
-        return;
+      setInjection(
+        `${buildAuthInjectionScript(accessToken, refreshToken, userId)}\n${VIEWPORT_LOCK_SCRIPT}`
+      );
+
+      let uri = TERMINAL_URL.endsWith("/") ? TERMINAL_URL : `${TERMINAL_URL}/`;
+      if (accessToken) {
+        try {
+          const handoff = await fetch(`${API_BASE}/auth/native-handoff`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          if (handoff.ok) {
+            const data = (await handoff.json()) as { url?: string };
+            if (data.url && data.url.length < 4000) uri = data.url;
+          }
+        } catch (e) {
+          console.warn("native-handoff failed; loading terminal with injected tokens", e);
+        }
       }
-      setInjection(buildAuthInjectionScript(accessToken, refreshToken, userId));
-      setSourceUri(terminalEntryUrl(accessToken));
-      setError(null);
+      setSourceUri(uri);
       setPhase("ready");
     } catch (e) {
-      console.warn("Terminal session prepare failed", e);
-      setInjection("true;");
-      setSourceUri(null);
-      setError(e instanceof Error ? e.message : "Could not prepare terminal session.");
+      console.warn("prepareSession failed", e);
+      setError(e instanceof Error ? e.message : "Could not prepare terminal session");
       setPhase("failed");
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -166,33 +170,20 @@ export function TerminalScreen() {
     void prepareSession();
   }, [prepareSession]);
 
-  // Mount WebView only after navigation animation / interactions finish.
-  // Mounting WebView during a native-stack fade transition SIGSEGVs on many Android devices.
+  // Extra delay before mounting WebView after session is ready.
   useEffect(() => {
-    if (phase !== "ready" || !sourceUri) {
-      setWebViewReady(false);
+    if (phase !== "ready" || !sourceUri || !WebView) {
+      setMountWebView(false);
       return;
     }
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const task = InteractionManager.runAfterInteractions(() => {
-      timeoutId = setTimeout(() => {
-        if (!cancelled) setWebViewReady(true);
-      }, Platform.OS === "android" ? 600 : 0);
-    });
-    return () => {
-      cancelled = true;
-      task.cancel();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [phase, sourceUri]);
+    const timer = setTimeout(() => setMountWebView(true), Platform.OS === "android" ? 700 : 100);
+    return () => clearTimeout(timer);
+  }, [phase, sourceUri, WebView]);
 
   const onMessage = useCallback(
-    (event: WebViewMessageEvent) => {
+    (event: { nativeEvent: { data: string } }) => {
       try {
-        if (event.nativeEvent.data === "motivefx:logout") {
-          void logout();
-        }
+        if (event.nativeEvent.data === "motivefx:logout") void logout();
       } catch (e) {
         console.warn("Terminal onMessage failed", e);
       }
@@ -203,22 +194,12 @@ export function TerminalScreen() {
   const onShouldStartLoadWithRequest = useCallback((req: ShouldStartLoadRequest) => {
     try {
       const url = req.url ?? "";
-      // Allow non-http schemes the WebView needs (about:blank, data:, blob:).
-      if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        return true;
-      }
-      // Only gate top-frame navigations; never block subresources (fonts, XHR, iframes).
-      if (Platform.OS === "android" && req.isTopFrame === false) {
-        return true;
-      }
-      if (isAllowedOrigin(url)) {
-        return true;
-      }
-      // External links: open in system browser instead of nesting VIEW intents.
+      if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
+      if (Platform.OS === "android" && req.isTopFrame === false) return true;
+      if (isAllowedOrigin(url)) return true;
       void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
       return false;
-    } catch (e) {
-      console.warn("onShouldStartLoadWithRequest failed", e);
+    } catch {
       return true;
     }
   }, []);
@@ -230,23 +211,69 @@ export function TerminalScreen() {
     void prepareSession();
   }, [prepareSession]);
 
-  const openInBrowser = useCallback(() => {
-    void Linking.openURL(TERMINAL_URL);
-  }, []);
+  const showWebView = mountWebView && !!WebView && !!sourceUri;
 
-  const showWebView = webViewReady && !!sourceUri;
+  const webViewProps = useMemo(
+    () => ({
+      source: { uri: sourceUri! },
+      style: styles.webview,
+      onLoadStart: () => setLoading(true),
+      onLoadEnd: () => setLoading(false),
+      onError: (e: { nativeEvent: { description?: string } }) => {
+        setLoading(false);
+        setError(e.nativeEvent.description || "Could not load terminal.");
+      },
+      onHttpError: (e: { nativeEvent: { statusCode: number } }) => {
+        if (e.nativeEvent.statusCode >= 500) {
+          setError(`Terminal server error (${e.nativeEvent.statusCode}). Tap Retry.`);
+        }
+      },
+      onRenderProcessGone: () => {
+        setLoading(false);
+        setMountWebView(false);
+        setError("Terminal view crashed. Tap Retry.");
+      },
+      onContentProcessDidTerminate: () => {
+        setLoading(false);
+        setMountWebView(false);
+        setError("Terminal view terminated. Tap Retry.");
+      },
+      injectedJavaScriptBeforeContentLoaded: injection,
+      injectedJavaScript: VIEWPORT_LOCK_SCRIPT,
+      onMessage,
+      javaScriptEnabled: true,
+      domStorageEnabled: true,
+      thirdPartyCookiesEnabled: true,
+      sharedCookiesEnabled: true,
+      setSupportMultipleWindows: false,
+      allowsBackForwardNavigationGestures: false,
+      pullToRefreshEnabled: false,
+      bounces: false,
+      scalesPageToFit: false,
+      setBuiltInZoomControls: false,
+      setDisplayZoomControls: false,
+      textZoom: 100,
+      cacheEnabled: true,
+      mixedContentMode: "always" as const,
+      userAgent: "MotiveFXNative/1.0",
+      originWhitelist: ["https://*", "http://*", "about:blank"],
+      onShouldStartLoadWithRequest,
+      ...(Platform.OS === "android" ? { androidLayerType: "software" as const } : {}),
+    }),
+    [sourceUri, injection, onMessage, onShouldStartLoadWithRequest]
+  );
 
   if (phase === "failed") {
     return (
       <View style={[styles.root, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.failTitle}>Terminal unavailable</Text>
         <Text style={styles.failBody}>
-          {error || "Session handoff failed. Your login is saved — try again or open the web terminal."}
+          {error || "Session handoff failed. Try again or open the web terminal."}
         </Text>
         <Pressable style={styles.failButton} onPress={remountWebView}>
           <Text style={styles.failButtonText}>Retry</Text>
         </Pressable>
-        <Pressable onPress={openInBrowser}>
+        <Pressable onPress={() => void Linking.openURL(TERMINAL_URL)}>
           <Text style={styles.link}>Open www.motivefxai.com</Text>
         </Pressable>
         <Pressable onPress={() => void logout()}>
@@ -274,157 +301,47 @@ export function TerminalScreen() {
         </View>
       ) : null}
 
-      {showWebView ? (
-        <WebView
-          key={webViewKey}
-          ref={webRef}
-          source={{ uri: sourceUri! }}
-          style={styles.webview}
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
-          onError={(syntheticEvent) => {
-            const desc = syntheticEvent.nativeEvent.description;
-            console.warn("Terminal WebView onError", desc);
-            setLoading(false);
-            setError(desc || "Could not load the MotiveFX terminal. Check your connection.");
-          }}
-          onHttpError={(syntheticEvent) => {
-            const { statusCode } = syntheticEvent.nativeEvent;
-            if (statusCode >= 500) {
-              console.warn("Terminal WebView HTTP error", statusCode);
-              setError(`Terminal server error (${statusCode}). Tap Retry.`);
-            }
-          }}
-          onRenderProcessGone={() => {
-            console.warn("Terminal WebView render process gone");
-            setLoading(false);
-            setWebViewReady(false);
-            setError("Terminal view crashed. Tap Retry to reload.");
-          }}
-          onContentProcessDidTerminate={() => {
-            console.warn("Terminal WebView content process terminated");
-            setLoading(false);
-            setWebViewReady(false);
-            setError("Terminal view was terminated. Tap Retry to reload.");
-          }}
-          injectedJavaScriptBeforeContentLoaded={injection}
-          injectedJavaScript={VIEWPORT_LOCK_SCRIPT}
-          onMessage={onMessage}
-          javaScriptEnabled
-          domStorageEnabled
-          thirdPartyCookiesEnabled
-          sharedCookiesEnabled
-          setSupportMultipleWindows={false}
-          allowsBackForwardNavigationGestures={false}
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          pullToRefreshEnabled={false}
-          decelerationRate="normal"
-          overScrollMode="never"
-          bounces={false}
-          scalesPageToFit={false}
-          setBuiltInZoomControls={false}
-          setDisplayZoomControls={false}
-          textZoom={100}
-          cacheEnabled
-          mixedContentMode="always"
-          userAgent="MotiveFXNative/1.0"
-          originWhitelist={["https://*", "http://*", "about:blank"]}
-          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
-          {...(Platform.OS === "android"
-            ? {
-                // Software layer avoids libhwui SIGSEGV on some devices after Auth→Terminal.
-                androidLayerType: "software" as const,
-              }
-            : {})}
-        />
+      {showWebView && WebView ? (
+        <WebView key={webViewKey} ref={webRef as never} {...webViewProps} />
       ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  centered: {
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  webview: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    // opacity 0.99 forces a separate compositor layer — mitigates Android
-    // libhwui SIGSEGV when WebView mounts during/after stack transitions.
-    opacity: 0.99,
-  },
+  root: { flex: 1, backgroundColor: colors.bg },
+  centered: { justifyContent: "center", paddingHorizontal: 24, gap: 12 },
+  webview: { flex: 1, backgroundColor: colors.bg, opacity: 0.99 },
   loader: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.bg,
     zIndex: 2,
     gap: 12,
   },
-  loaderText: {
-    color: colors.muted,
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  loaderText: { color: colors.muted, fontSize: 14, fontWeight: "600" },
   errorBanner: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     backgroundColor: "#2a1215",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.red,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    zIndex: 3,
   },
-  errorText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 13,
-  },
-  retry: {
-    color: colors.accent,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  failTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  failBody: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
+  errorText: { color: "#fca5a5", flex: 1, fontSize: 13 },
+  retry: { color: colors.accent, fontWeight: "700" },
+  failTitle: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
+  failBody: { color: colors.muted, fontSize: 14, textAlign: "center", lineHeight: 20 },
   failButton: {
     backgroundColor: colors.accent,
     borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignSelf: "center",
   },
-  failButtonText: {
-    color: colors.bg,
-    fontWeight: "700",
-  },
-  link: {
-    color: colors.accent,
-    textAlign: "center",
-    marginTop: 8,
-    fontWeight: "600",
-  },
-  linkMuted: {
-    color: colors.dim,
-    textAlign: "center",
-    marginTop: 4,
-  },
+  failButtonText: { color: colors.bg, fontWeight: "700" },
+  link: { color: colors.accent, textAlign: "center", marginTop: 8 },
+  linkMuted: { color: colors.dim, textAlign: "center", marginTop: 8 },
 });
