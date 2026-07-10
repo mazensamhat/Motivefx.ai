@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) setLoading(false);
         }
       })();
-    }, 300);
+    }, 0);
 
     return () => {
       cancelled = true;

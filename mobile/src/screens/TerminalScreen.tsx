@@ -96,28 +96,25 @@ export function TerminalScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
-  const [mountWebView, setMountWebView] = useState(false);
   const webRef = useRef<{ reload?: () => void } | null>(null);
 
-  // Lazy-require WebView only after this screen mounts (never at app cold start).
+  // Load WebView module as soon as Terminal mounts (Auth screen never imports it).
   useEffect(() => {
     let cancelled = false;
-    const timer = setTimeout(() => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const mod = require("react-native-webview") as typeof import("react-native-webview");
-        if (!cancelled) setWebView(() => mod.WebView);
-      } catch (e) {
-        console.warn("WebView module failed to load", e);
-        if (!cancelled) {
-          setError("WebView unavailable on this device.");
-          setPhase("failed");
-        }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require("react-native-webview") as typeof import("react-native-webview");
+      if (!cancelled) setWebView(() => mod.WebView);
+    } catch (e) {
+      console.warn("WebView module failed to load", e);
+      if (!cancelled) {
+        setError("WebView unavailable on this device.");
+        setPhase("failed");
+        setLoading(false);
       }
-    }, Platform.OS === "android" ? 500 : 0);
+    }
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
   }, []);
 
@@ -125,7 +122,6 @@ export function TerminalScreen() {
     setPhase("boot");
     setLoading(true);
     setError(null);
-    setMountWebView(false);
     try {
       const [accessToken, refreshToken, userId] = await Promise.all([
         getAccessToken(),
@@ -136,32 +132,39 @@ export function TerminalScreen() {
         `${buildAuthInjectionScript(accessToken, refreshToken, userId)}\n${VIEWPORT_LOCK_SCRIPT}`
       );
 
-      let uri = TERMINAL_URL.endsWith("/") ? TERMINAL_URL : `${TERMINAL_URL}/`;
-      if (accessToken) {
-        try {
-          const handoff = await fetch(`${API_BASE}/auth/native-handoff`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-          if (handoff.ok) {
-            const data = (await handoff.json()) as { url?: string };
-            if (data.url && data.url.length < 4000) uri = data.url;
-          }
-        } catch (e) {
-          console.warn("native-handoff failed; loading terminal with injected tokens", e);
-        }
-      }
+      // Start terminal immediately — do not block on native-handoff network roundtrip.
+      const uri = TERMINAL_URL.endsWith("/") ? TERMINAL_URL : `${TERMINAL_URL}/`;
       setSourceUri(uri);
       setPhase("ready");
+      setLoading(false);
+
+      // Best-effort cookie handoff in background (does not delay first paint).
+      if (accessToken) {
+        void (async () => {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 1200);
+            const handoff = await fetch(`${API_BASE}/auth/native-handoff`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ refresh_token: refreshToken }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (!handoff.ok) return;
+            // Cookie is set on the response; WebView already has localStorage tokens.
+          } catch (e) {
+            console.warn("native-handoff skipped", e);
+          }
+        })();
+      }
     } catch (e) {
       console.warn("prepareSession failed", e);
       setError(e instanceof Error ? e.message : "Could not prepare terminal session");
       setPhase("failed");
-    } finally {
       setLoading(false);
     }
   }, []);
@@ -169,16 +172,6 @@ export function TerminalScreen() {
   useEffect(() => {
     void prepareSession();
   }, [prepareSession]);
-
-  // Extra delay before mounting WebView after session is ready.
-  useEffect(() => {
-    if (phase !== "ready" || !sourceUri || !WebView) {
-      setMountWebView(false);
-      return;
-    }
-    const timer = setTimeout(() => setMountWebView(true), Platform.OS === "android" ? 700 : 100);
-    return () => clearTimeout(timer);
-  }, [phase, sourceUri, WebView]);
 
   const onMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
@@ -211,7 +204,7 @@ export function TerminalScreen() {
     void prepareSession();
   }, [prepareSession]);
 
-  const showWebView = mountWebView && !!WebView && !!sourceUri;
+  const showWebView = phase === "ready" && !!WebView && !!sourceUri;
 
   const webViewProps = useMemo(
     () => ({
@@ -230,12 +223,10 @@ export function TerminalScreen() {
       },
       onRenderProcessGone: () => {
         setLoading(false);
-        setMountWebView(false);
         setError("Terminal view crashed. Tap Retry.");
       },
       onContentProcessDidTerminate: () => {
         setLoading(false);
-        setMountWebView(false);
         setError("Terminal view terminated. Tap Retry.");
       },
       injectedJavaScriptBeforeContentLoaded: injection,
@@ -254,11 +245,13 @@ export function TerminalScreen() {
       setDisplayZoomControls: false,
       textZoom: 100,
       cacheEnabled: true,
+      cacheMode: "LOAD_DEFAULT" as const,
       mixedContentMode: "always" as const,
       userAgent: "MotiveFXNative/1.0",
       originWhitelist: ["https://*", "http://*", "about:blank"],
       onShouldStartLoadWithRequest,
-      ...(Platform.OS === "android" ? { androidLayerType: "software" as const } : {}),
+      // Hardware layer = smooth scroll; software layer was the main glitch/slowness cause.
+      ...(Platform.OS === "android" ? { androidLayerType: "hardware" as const } : {}),
     }),
     [sourceUri, injection, onMessage, onShouldStartLoadWithRequest]
   );
@@ -294,12 +287,12 @@ export function TerminalScreen() {
         </View>
       ) : null}
 
-      {loading || !showWebView ? (
+      {loading && (
         <View style={styles.loader} pointerEvents="none">
           <ActivityIndicator color={colors.accent} size="large" />
           <Text style={styles.loaderText}>Loading terminal…</Text>
         </View>
-      ) : null}
+      )}
 
       {showWebView && WebView ? (
         <WebView key={webViewKey} ref={webRef as never} {...webViewProps} />
@@ -311,7 +304,7 @@ export function TerminalScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   centered: { justifyContent: "center", paddingHorizontal: 24, gap: 12 },
-  webview: { flex: 1, backgroundColor: colors.bg, opacity: 0.99 },
+  webview: { flex: 1, backgroundColor: colors.bg },
   loader: {
     ...StyleSheet.absoluteFill,
     alignItems: "center",

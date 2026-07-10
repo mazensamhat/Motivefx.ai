@@ -30,8 +30,6 @@ export function AuthScreen() {
     if (!user) {
       throw new Error("Login succeeded but session could not be saved. Try again.");
     }
-    // Brief pause so Auth UI unmounts before Terminal mounts WebView.
-    await new Promise((r) => setTimeout(r, Platform.OS === "android" ? 200 : 0));
     setUser(user);
   }
 
@@ -146,7 +144,7 @@ export function AuthScreen() {
       <Text style={styles.disclaimer}>
         Informational only. Not financial advice. Subscriptions at motivefxai.com.
       </Text>
-      <Text style={styles.buildTag}>Build 0.1.4 (6) · stable-shell</Text>
+      <Text style={styles.buildTag}>Build 0.1.5 (7) · performance</Text>
     </View>
   );
 }
