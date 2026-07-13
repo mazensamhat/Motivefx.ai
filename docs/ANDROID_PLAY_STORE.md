@@ -122,7 +122,7 @@ Install the APK from the EAS dashboard on a physical device for testing.
 - [ ] In-app disclaimer visible (terminal footer + auth screen)
 - [x] **Billing: web only** — subscriptions at `https://www.motivefxai.com/pricing` (no Play Billing in v1). Documented in store listing + auth screen. Do not sell digital goods in-app until IAP is intentionally adopted.
 - [ ] Geo-restrict betting module where required
-- [ ] Social / website fields — MotiveFX accounts only via `SOCIAL_*` env (see `docs/PLAY_STORE_LISTING.md`); do not use MotiveLife profiles
+- [ ] Social / website fields — MotiveFX Instagram / Facebook / LinkedIn URLs in `docs/PLAY_STORE_LISTING.md` (defaults in `apps/site/src/lib/social.ts`; optional `SOCIAL_*` env overrides). Do not use MotiveLife profiles.
 
 **Store listing copy + social URLs:** `docs/PLAY_STORE_LISTING.md`
 

@@ -162,6 +162,7 @@ Flow matches web:
 - [ ] No localhost references in release build
 - [ ] TestFlight / internal testing with real auth + subscribed account
 - [ ] Support URL and marketing URL in store listing
+- [ ] Social contact fields: Instagram / Facebook / LinkedIn from `docs/PLAY_STORE_LISTING.md` (also `mobile/src/config.ts` `STORE_SOCIAL_URLS`)
 - [ ] Screenshots for 6.7" and 6.1" iPhone + phone/tablet Android
 
 ---

@@ -25,18 +25,23 @@ Store listing and in-app copy must say clearly:
 
 After Play review approval, keep this model unless/until RevenueCat (or native Play Billing) is intentionally adopted — see `docs/ANDROID_PLAY_STORE.md` and `docs/MOBILE_STRATEGY.md`.
 
-## Social profiles (site footer + bios)
+## Social profiles (site footer + Play Console)
 
-MotiveFX Instagram / Facebook / LinkedIn accounts are **not** linked by default (MotiveLife profiles must not be used).
+Use these MotiveFX-owned profiles (do not use MotiveLife URLs):
 
-1. Create MotiveFX-branded accounts when ready.
-2. Set Vercel env (Production + Preview) on the marketing site:
-   - `SOCIAL_INSTAGRAM_URL`
-   - `SOCIAL_FACEBOOK_URL`
-   - `SOCIAL_LINKEDIN_URL`
-3. Until then, the site footer hides Follow links (or points to `/demo`). Leave Play Console social fields blank or use the website URL only.
+| Platform | URL |
+|----------|-----|
+| **Instagram** | `https://www.instagram.com/motivefx.ai/` |
+| **Facebook** | `https://www.facebook.com/profile.php?id=61591532050605` |
+| **LinkedIn** | `https://www.linkedin.com/company/motivefx-ai/` |
 
-Play Console does not always expose Instagram/Facebook/LinkedIn fields; put the website in store listing **website** and developer contact notes.
+Site footer Follow links default to the URLs above (`apps/site/src/lib/social.ts`). Optional Vercel overrides:
+
+- `SOCIAL_INSTAGRAM_URL`
+- `SOCIAL_FACEBOOK_URL`
+- `SOCIAL_LINKEDIN_URL`
+
+Play Console: paste the same URLs into contact/social fields when available; always set **website** to `https://www.motivefxai.com`.
 
 ## Short description (≤80 chars)
 
@@ -79,7 +84,7 @@ Product tracks live at `https://www.motivefxai.com/learn` — stocks, crypto, op
 - [ ] Data deletion URL set (Account deletion / Data safety)
 - [ ] Website = `https://www.motivefxai.com`
 - [ ] Short + full description pasted (includes **web billing only**)
-- [ ] Social bios link to website with UTM if desired — only after MotiveFX accounts exist
+- [ ] Social / contact fields use MotiveFX Instagram, Facebook, LinkedIn URLs above
 - [ ] In-app auth links open Privacy, Terms, and Data deletion
 - [ ] Post-review: confirm Stripe checkout still opens in external browser (not WebView)
 

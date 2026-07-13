@@ -151,7 +151,7 @@ STRIPE_WEBHOOK_SECRET=
 
 ### Social
 
-- MotiveFX social Follow links are hidden until `SOCIAL_INSTAGRAM_URL` / `SOCIAL_FACEBOOK_URL` / `SOCIAL_LINKEDIN_URL` are set on Vercel. Do not default to MotiveLife profiles.
+- Footer Follow links default to MotiveFX Instagram / Facebook / LinkedIn (`apps/site/src/lib/social.ts`). Optional overrides: `SOCIAL_INSTAGRAM_URL`, `SOCIAL_FACEBOOK_URL`, `SOCIAL_LINKEDIN_URL`. Do not use MotiveLife profiles.
 
 ---
 

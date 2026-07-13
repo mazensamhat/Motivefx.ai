@@ -33,3 +33,10 @@ export const STORE_DISCLOSURE_URLS = {
   website: "https://www.motivefxai.com",
   support: "https://www.motivefxai.com",
 } as const;
+
+/** Play Console / App Store contact social fields (MotiveFX-owned). */
+export const STORE_SOCIAL_URLS = {
+  instagram: "https://www.instagram.com/motivefx.ai/",
+  facebook: "https://www.facebook.com/profile.php?id=61591532050605",
+  linkedin: "https://www.linkedin.com/company/motivefx-ai/",
+} as const;
