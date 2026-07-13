@@ -25,7 +25,7 @@
 | `src/screens/TerminalScreen.tsx` | Full-screen WebView + auth token injection into terminal localStorage |
 | `src/navigation/RootNavigator.tsx` | Auth stack → Terminal (no duplicate native tabs) |
 | `src/config.ts` | `EXPO_PUBLIC_TERMINAL_URL`, API, legal URLs (production defaults) |
-| `app.json` | Android package `ai.motivefx.app`, edge-to-edge, deep link to `/terminal` |
+| `app.json` | Android package `ai.motivefx.app`, edge-to-edge; custom scheme `motivefx` only (App Links / intentFilters **not** enabled) |
 | `eas.json` | `preview` (APK) + `production` (AAB) build profiles |
 | `assets/` | Placeholder icons (replace before store) |
 
@@ -171,4 +171,31 @@ Interactive HTML mockup: `docs/MOTIVEFX-LAUNCH-REVIEW.html`
 
 ---
 
-*Last updated: July 9, 2026*
+## Android App Links (Digital Asset Links)
+
+Hosted statement (site `apps/site` on Vercel):
+
+- **URL:** `https://www.motivefxai.com/.well-known/assetlinks.json`
+- **Source:** `apps/site/public/.well-known/assetlinks.json`
+- **Package:** `ai.motivefx.app`
+
+**Verify with Google** after deploy:
+
+[Statement List Generator and Tester](https://developers.google.com/digital-asset-links/tools/generator) — enter `www.motivefxai.com`, package `ai.motivefx.app`, and the SHA-256 fingerprint from Play Console.
+
+**Fingerprint check:** the SHA-256 in `assetlinks.json` must match **Play Console → App integrity → App signing key certificate** (Play App Signing). If verification fails, compare against the **upload key certificate** only if that is what you intentionally used.
+
+### App Links status in the mobile app
+
+**Hosting only for now.** `mobile/app.json` has custom scheme `motivefx` but **no** `android.intentFilters` with `autoVerify` and **no** iOS `associatedDomains`. Do not re-enable verified App Links until deep-link handling is confirmed stable (they were removed earlier for crash fixes).
+
+To re-enable later (do **not** ship until tested on a physical device):
+
+1. Confirm `assetlinks.json` verifies in Google’s tester with the Play signing fingerprint.
+2. In `mobile/app.json` under `android`, add intent filters for `https://www.motivefxai.com` (and paths you own), with `"autoVerify": true`.
+3. Rebuild with EAS; confirm no startup crash and that links open the app as expected.
+4. iOS: only add `associatedDomains` + `apple-app-site-association` if you have a real Apple Team ID — do not invent one.
+
+---
+
+*Last updated: July 13, 2026*

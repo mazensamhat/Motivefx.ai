@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ai.motivefx.app",
+      "sha256_cert_fingerprints": [
+        "A5:E8:93:DE:89:18:64:18:25:2D:0A:EC:4D:A7:98:51:0D:71:6F:32:B9:A8:E2:93:A4:3D:2C:5B:11:C9:96:BC"
+      ]
+    }
+  }
+]
