@@ -30,9 +30,17 @@ export function middleware(request: NextRequest) {
   const demo = wantsPublicDemo(request);
 
   if (!session && !demo) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname.startsWith("/terminal") ? "/terminal/?demo=1" : "/app");
-    return NextResponse.redirect(login);
+    // Prefer ungated read-only demo over a hard login wall for bare /terminal.
+    const demoUrl = new URL("/terminal/", request.url);
+    demoUrl.searchParams.set("demo", "1");
+    const response = NextResponse.redirect(demoUrl);
+    response.cookies.set(DEMO_COOKIE, "1", {
+      path: "/",
+      maxAge: 60 * 60 * 24,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    return response;
   }
 
   const response = NextResponse.next();
