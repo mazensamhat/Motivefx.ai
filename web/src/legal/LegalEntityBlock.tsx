@@ -22,8 +22,8 @@ export function LegalEntityBlock() {
         <a href={`mailto:${LEGAL_ENTITY.supportEmail}`}>{LEGAL_ENTITY.supportEmail}</a>
       </p>
       <p className="legal-entity-note">
-        Update the bracketed entity details above with your registered legal name, jurisdiction, and address
-        when confirmed with counsel.
+        Registered street address will be published here once confirmed with counsel. Until then, use the Privacy
+        Officer email for formal notices.
       </p>
     </div>
   );

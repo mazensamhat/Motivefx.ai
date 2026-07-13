@@ -128,10 +128,22 @@ export function TierPricing() {
                     ? "All 5 intelligence markets"
                     : `Pick exactly ${t.intelligenceMarketsIncluded} market${t.intelligenceMarketsIncluded === 1 ? "" : "s"}`}
                 </li>
-                {t.id === "pro" && <li>Portfolio Intelligence · AI Memory</li>}
-                {t.id === "ultra" && <li>Voice briefing · Decision History</li>}
-                {t.id === "ultra_plus" && <li>API · Teams · Concierge</li>}
-                {t.id === "elite" && <li>Early models · Direct product feedback</li>}
+                {t.id === "lite" && <li>AI Brief · limited research briefs</li>}
+                {t.id === "pro" && <li>Portfolio Intelligence · AI Memory · push + email</li>}
+                {t.id === "ultra" && (
+                  <>
+                    <li>Voice briefing · Motive Daily voice</li>
+                    <li>Decision History · advanced analytics</li>
+                  </>
+                )}
+                {t.id === "ultra_plus" && (
+                  <>
+                    <li>Everything in Ultra</li>
+                    <li>API access · multiple portfolios · team workspace</li>
+                    <li>Beta features · concierge support</li>
+                  </>
+                )}
+                {t.id === "elite" && <li>White-glove onboarding · early AI models · product feedback</li>}
               </ul>
               {isCurrent ? (
                 <span className="tier-pricing-owned">

@@ -100,7 +100,7 @@ export const TOPICS: Record<string, EntityPageContent> = {
     "Market Intelligence",
     "Cross-asset market intelligence platform — stocks, crypto, sports, predictions, and pink sheets.",
     "Market intelligence is the discipline of turning raw feeds into decisions. MotiveFX is your AI chief of staff across five modules.",
-    [{ heading: "One terminal, five markets", paragraphs: ["Subscribe to the markets you trade. Upgrade when you need more coverage or portfolio features."] }],
+    [{ heading: "One terminal, five markets", paragraphs: ["Subscribe to the markets you monitor. Upgrade when you need more coverage or portfolio features."] }],
     [{ label: "All market modules", href: "/markets/stocks" }, { label: "Why MotiveFX", href: "/why-motivefx" }]
   ),
   "sports-betting-analytics": topic(

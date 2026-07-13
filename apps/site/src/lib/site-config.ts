@@ -28,7 +28,7 @@ export const TOPIC_ROUTES = [
   { slug: "sports-betting-analytics", label: "Sports Betting Analytics", href: "/topics/sports-betting-analytics" },
   { slug: "prediction-market-analysis", label: "Prediction Market Analysis", href: "/topics/prediction-market-analysis" },
   { slug: "pink-sheet-stocks", label: "Pink Sheet Stocks", href: "/topics/pink-sheet-stocks" },
-  { slug: "motive-signal", label: "Motive Signal", href: "/topics/motive-signal" },
+  { slug: "motive-signal", label: "Motive Signal", href: "/motive-signal" },
   { slug: "ai-portfolio-analysis", label: "AI Portfolio Analysis", href: "/topics/ai-portfolio-analysis" },
 ] as const;
 
@@ -57,15 +57,67 @@ export const COMPARE_SLUGS = [
   "bloomberg",
 ] as const;
 
-export const DATA_SOURCES = [
-  "SEC EDGAR",
-  "FINRA",
-  "Polygon.io",
-  "NASDAQ",
-  "NYSE",
-  "CBOE",
-  "Coinbase",
-  "Tradier",
-  "Polymarket",
-  "Government disclosures",
-] as const;
+/** Live / configured providers — keep in sync with README + `/api/health` feed keys. */
+export type DataSourceStatus = "live" | "demo" | "infra";
+
+export type DataSourceEntry = {
+  name: string;
+  status: DataSourceStatus;
+  detail: string;
+};
+
+export const DATA_SOURCES: DataSourceEntry[] = [
+  {
+    name: "Finnhub",
+    status: "live",
+    detail: "Equity quotes, insider / Form 4–style filings when FINNHUB_API_KEY is set.",
+  },
+  {
+    name: "CoinStats / CoinGecko",
+    status: "live",
+    detail: "Crypto market data and whale-style volume proxies (CoinStats key optional; CoinGecko fallback).",
+  },
+  {
+    name: "The Odds API",
+    status: "live",
+    detail: "Sports odds and line context when THE_ODDS_API_KEY is set.",
+  },
+  {
+    name: "Polymarket Gamma API",
+    status: "live",
+    detail: "Public prediction-market events and prices (no API key).",
+  },
+  {
+    name: "OpenAI",
+    status: "live",
+    detail: "LLM layer for Why It Matters briefs and Ask Motive AI when OPENAI_API_KEY is set.",
+  },
+  {
+    name: "Stripe",
+    status: "infra",
+    detail: "Subscription checkout and billing (not a market feed).",
+  },
+  {
+    name: "Unusual options flow",
+    status: "demo",
+    detail: "Simulated options-block samples until a dedicated options-flow vendor is wired.",
+  },
+  {
+    name: "Congress / politician trades",
+    status: "demo",
+    detail: "Illustrative sample filings — not a live congressional disclosure feed.",
+  },
+  {
+    name: "Sharp-money / public-vs-money splits",
+    status: "demo",
+    detail: "Educational sample sharp-action cards; not a live sportsbook ticket feed.",
+  },
+  {
+    name: "Pink-sheet / microcap movers",
+    status: "demo",
+    detail: "Scanner uses curated demo movers pending a dedicated OTC tape provider.",
+  },
+];
+
+/** @deprecated Prefer DATA_SOURCES entries; kept for any string-only consumers. */
+export const DATA_SOURCE_NAMES = DATA_SOURCES.map((s) => s.name);

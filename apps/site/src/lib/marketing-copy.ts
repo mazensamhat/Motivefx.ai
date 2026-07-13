@@ -1,4 +1,4 @@
-export const TAGLINE = "Trade smarter. Move faster.";
+export const TAGLINE = "Research smarter. Move faster.";
 export const HERO_HEADLINE = "Your AI Chief of Staff for";
 export const HERO_HEADLINE_ACCENT = "Market Intelligence";
 export const HERO_SUBHEAD =
@@ -11,6 +11,7 @@ export const HERO_PROPS = [
   { icon: "action", title: "Actionable", desc: "Clear research, explanations, and daily briefings" },
 ] as const;
 
+/** Media outlets referenced in research briefs — not an endorsement or user count claim. */
 export const TRUST_LOGOS = [
   "Yahoo Finance",
   "Benzinga",
@@ -70,6 +71,8 @@ export const FOOTER_MARKETS = [
 export const FOOTER_RESOURCES = [
   { label: "Learning center", href: "/learn" },
   { label: "Glossary", href: "/glossary" },
+  { label: "Motive Signal", href: "/motive-signal" },
+  { label: "Product preview", href: "/demo" },
   { label: "Daily intelligence", href: "/daily/biggest-movers" },
   { label: "Compare", href: "/compare" },
   { label: "Tools", href: "/tools" },

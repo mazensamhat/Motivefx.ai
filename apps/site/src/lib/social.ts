@@ -1,10 +1,16 @@
 /**
  * Public social profile URLs for MotiveFX marketing / Play Store.
  *
- * MotiveFX-specific Instagram / Facebook / LinkedIn pages are not yet published
- * in-repo (see motivelife.ai docs/AUTO_POST_SETUP.md Part E placeholders).
- * Defaults use the live Motive brand accounts documented for MotiveLife.
- * Override via SOCIAL_*_URL env vars when MotiveFX pages go live.
+ * MotiveFX-specific Instagram / Facebook / LinkedIn pages are not live yet.
+ * Defaults are empty — Follow links are hidden until SOCIAL_*_URL env vars are set.
+ * Do not fall back to MotiveLife profiles.
+ *
+ * After creating MotiveFX accounts, set on Vercel (Production + Preview):
+ *   SOCIAL_INSTAGRAM_URL=https://www.instagram.com/<motivefx-handle>/
+ *   SOCIAL_FACEBOOK_URL=https://www.facebook.com/<motivefx-page>
+ *   SOCIAL_LINKEDIN_URL=https://www.linkedin.com/company/<motivefx>
+ *
+ * See docs/PLAY_STORE_LISTING.md for store listing instructions.
  */
 export type SocialPlatformId = "instagram" | "facebook" | "linkedin";
 
@@ -14,34 +20,46 @@ export type SocialLink = {
   href: string;
 };
 
-const DEFAULTS: Record<SocialPlatformId, string> = {
-  // Confirmed live Motive brand profiles (motivelife.ai/docs/AUTO_POST_SETUP.md)
-  instagram: "https://www.instagram.com/motivelife.ai/",
-  facebook: "https://www.facebook.com/profile.php?id=61591637157893",
-  linkedin: "https://www.linkedin.com/company/motivelife-ai",
-};
-
 const ENV_KEYS: Record<SocialPlatformId, string> = {
   instagram: "SOCIAL_INSTAGRAM_URL",
   facebook: "SOCIAL_FACEBOOK_URL",
   linkedin: "SOCIAL_LINKEDIN_URL",
 };
 
-function resolveUrl(id: SocialPlatformId): string {
+function resolveUrl(id: SocialPlatformId): string | null {
   const fromEnv =
     typeof process !== "undefined" ? process.env[ENV_KEYS[id]]?.trim() : undefined;
-  return fromEnv || DEFAULTS[id];
+  if (!fromEnv) return null;
+  try {
+    const u = new URL(fromEnv);
+    if (u.protocol !== "https:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
 }
 
-export const SOCIAL_LINKS: SocialLink[] = [
-  { id: "instagram", label: "Instagram", href: resolveUrl("instagram") },
-  { id: "facebook", label: "Facebook", href: resolveUrl("facebook") },
-  { id: "linkedin", label: "LinkedIn", href: resolveUrl("linkedin") },
-];
+const LABELS: Record<SocialPlatformId, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+};
 
-/** Canonical URLs for Play Console / store listing docs (always absolute). */
+/** Only platforms with a configured HTTPS URL — empty until SOCIAL_* env is set. */
+export const SOCIAL_LINKS: SocialLink[] = (["instagram", "facebook", "linkedin"] as const)
+  .map((id) => {
+    const href = resolveUrl(id);
+    return href ? { id, label: LABELS[id], href } : null;
+  })
+  .filter((x): x is SocialLink => Boolean(x));
+
+/** Absolute URLs for Play Console when configured; otherwise empty strings. */
 export const STORE_SOCIAL_URLS = {
-  instagram: DEFAULTS.instagram,
-  facebook: DEFAULTS.facebook,
-  linkedin: DEFAULTS.linkedin,
+  instagram: resolveUrl("instagram") ?? "",
+  facebook: resolveUrl("facebook") ?? "",
+  linkedin: resolveUrl("linkedin") ?? "",
 } as const;
+
+export function hasConfiguredSocialLinks(): boolean {
+  return SOCIAL_LINKS.length > 0;
+}

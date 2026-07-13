@@ -8,7 +8,7 @@ export function BrandLogo({ href = "/", compact = false }: { href?: string; comp
     <Link href={href} className="brand-logo-link shrink-0">
       <Image
         src={LOGO_SRC}
-        alt="MotiveFX — Trade Smarter. Move Faster."
+        alt="MotiveFX — Research Smarter. Move Faster."
         width={640}
         height={640}
         priority

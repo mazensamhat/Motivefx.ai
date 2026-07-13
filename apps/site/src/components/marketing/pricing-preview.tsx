@@ -53,6 +53,11 @@ export function PricingPreview() {
                   ? "All 5 modules"
                   : `Choose ${tier.intelligenceMarketsIncluded} module${tier.intelligenceMarketsIncluded === 1 ? "" : "s"}`}
               </p>
+              <ul className="pricing-preview-highlights">
+                {tier.highlights.slice(0, 3).map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
+              </ul>
               <span className="module-dots" aria-hidden>
                 {MODULE_DOTS.slice(0, tier.intelligenceMarketsIncluded === "all" ? 5 : Number(tier.intelligenceMarketsIncluded)).join(" ")}
               </span>

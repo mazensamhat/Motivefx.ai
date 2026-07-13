@@ -1,0 +1,3 @@
+/api/*  https://YOUR-API-ORIGIN.example.com/api/:splat  200
+/go/*   https://YOUR-API-ORIGIN.example.com/go/:splat   200
+/*      /index.html  200

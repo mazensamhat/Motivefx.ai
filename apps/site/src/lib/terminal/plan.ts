@@ -126,6 +126,29 @@ export function planForUser(user: User): TerminalPlan {
   };
 }
 
+/** Read-only public demo: all markets unlocked; portfolio / billing features stay off. */
+export function sandboxDemoPlan(): TerminalPlan {
+  const selectedMarkets = INTELLIGENCE_MARKETS.map((m) => m.id);
+  const allowedMarkets = [...ALL_MODULES];
+  const features: Record<string, boolean> = {};
+  const entitlements: string[] = [];
+  for (const feature of Object.keys(FEATURE_MIN_TIER) as TerminalFeature[]) {
+    const ok = tierHasFeature("ultra", feature) && feature !== "api_access" && feature !== "team_workspace";
+    features[feature] = ok;
+    if (ok) entitlements.push(feature);
+  }
+  return {
+    tier: "ultra",
+    selectedMarkets,
+    allowedMarkets,
+    active: allowedMarkets,
+    features,
+    entitlements,
+    hasAnnual: false,
+    hasSubscription: true,
+  };
+}
+
 export function hasModule(plan: TerminalPlan, module: string): boolean {
   return plan.hasSubscription && plan.allowedMarkets.includes(module);
 }

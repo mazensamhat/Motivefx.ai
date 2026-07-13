@@ -20,11 +20,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MotiveFX.AI — Trade smarter. Move faster.",
+  title: "MotiveFX.AI — Research smarter. Move faster.",
   description:
     "AI market intelligence for stocks, crypto, pink slips, sports betting, and prediction markets. Tiered plans from Lite to Elite.",
   openGraph: {
-    title: "MotiveFX.AI — Trade smarter. Move faster.",
+    title: "MotiveFX.AI — Research smarter. Move faster.",
     description: "Five intelligence markets. One terminal. Pick your tier.",
     siteName: "MotiveFX.AI",
   },

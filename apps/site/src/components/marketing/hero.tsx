@@ -56,9 +56,9 @@ export function Hero() {
               Start free trial
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
-            <Button href="#features" variant="secondary" size="lg">
+            <Button href="/demo" variant="secondary" size="lg">
               <Play className="h-4 w-4" aria-hidden />
-              Watch how it works
+              Try the preview
             </Button>
           </div>
 

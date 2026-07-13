@@ -12,20 +12,31 @@ Copy these into Play Console → **Grow users** → **Store presence** → **Mai
 | **Marketing / website** | `https://www.motivefxai.com` |
 | **Support** | `https://www.motivefxai.com` (or `mailto:support@motivefx.ai`) |
 | **Pricing (web billing)** | `https://www.motivefxai.com/pricing` |
+| **Product preview (no login)** | `https://www.motivefxai.com/demo` |
+
+## Billing (critical for store review)
+
+**Subscriptions are purchased on the web only** at `https://www.motivefxai.com/pricing`.  
+The Android app does **not** sell digital subscriptions in-app (no Play Billing / IAP in v1).
+
+Store listing and in-app copy must say clearly:
+
+> Subscriptions are managed at motivefxai.com. Sign in with the same account on mobile to access your markets. Billing is not available inside the Play Store app.
+
+After Play review approval, keep this model unless/until RevenueCat (or native Play Billing) is intentionally adopted — see `docs/ANDROID_PLAY_STORE.md` and `docs/MOBILE_STRATEGY.md`.
 
 ## Social profiles (site footer + bios)
 
-MotiveFX-specific social pages are not yet published in-repo. Until dedicated MotiveFX accounts go live, use the **Motive brand** profiles documented in `motivelife.ai/docs/AUTO_POST_SETUP.md`:
+MotiveFX Instagram / Facebook / LinkedIn accounts are **not** linked by default (MotiveLife profiles must not be used).
 
-| Platform | URL |
-|----------|-----|
-| **Instagram** | `https://www.instagram.com/motivelife.ai/` |
-| **Facebook** | `https://www.facebook.com/profile.php?id=61591637157893` |
-| **LinkedIn** | `https://www.linkedin.com/company/motivelife-ai` |
+1. Create MotiveFX-branded accounts when ready.
+2. Set Vercel env (Production + Preview) on the marketing site:
+   - `SOCIAL_INSTAGRAM_URL`
+   - `SOCIAL_FACEBOOK_URL`
+   - `SOCIAL_LINKEDIN_URL`
+3. Until then, the site footer hides Follow links (or points to `/demo`). Leave Play Console social fields blank or use the website URL only.
 
-Override on the marketing site via env: `SOCIAL_INSTAGRAM_URL`, `SOCIAL_FACEBOOK_URL`, `SOCIAL_LINKEDIN_URL`.
-
-Play Console does not always expose Instagram/Facebook/LinkedIn fields; put these in store listing **website**, developer contact notes, and social bios.
+Play Console does not always expose Instagram/Facebook/LinkedIn fields; put the website in store listing **website** and developer contact notes.
 
 ## Short description (≤80 chars)
 
@@ -43,17 +54,19 @@ Track stocks, crypto, options flow, pink slips, sports betting analytics, and pr
 What MotiveFX is:
 • Research and analytics software
 • Educational market intelligence
-• Web subscriptions (billing on motivefxai.com)
+• Web subscriptions only (billing on motivefxai.com — not in this app)
 
 What MotiveFX is NOT:
 • A broker or exchange
 • A sportsbook or gambling operator
 • Personalized financial, investment, or betting advice
 
+Try the preview (no login): https://www.motivefxai.com/demo
 Privacy: https://www.motivefxai.com/privacy
 Delete your data: https://www.motivefxai.com/data-deletion
 Terms: https://www.motivefxai.com/terms
 Learning Center: https://www.motivefxai.com/learn
+Motive Signal methodology: https://www.motivefxai.com/motive-signal
 ```
 
 ## Learning Center (public site)
@@ -65,8 +78,9 @@ Product tracks live at `https://www.motivefxai.com/learn` — stocks, crypto, op
 - [ ] Privacy policy URL set in Play Console App content
 - [ ] Data deletion URL set (Account deletion / Data safety)
 - [ ] Website = `https://www.motivefxai.com`
-- [ ] Short + full description pasted
-- [ ] Social bios link to website with UTM if desired
+- [ ] Short + full description pasted (includes **web billing only**)
+- [ ] Social bios link to website with UTM if desired — only after MotiveFX accounts exist
 - [ ] In-app auth links open Privacy, Terms, and Data deletion
+- [ ] Post-review: confirm Stripe checkout still opens in external browser (not WebView)
 
 See also: `docs/ANDROID_PLAY_STORE.md`

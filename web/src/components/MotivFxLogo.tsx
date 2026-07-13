@@ -15,7 +15,7 @@ export const BRAND_TAGLINE = "AI-Powered Markets. Real-Time Edge.";
 export function MotiveFxBrandLogo({
   className = "",
   compact = false,
-  alt = "MotiveFX — Trade Smarter. Move Faster.",
+  alt = "MotiveFX — Research Smarter. Move Faster.",
 }: {
   className?: string;
   compact?: boolean;

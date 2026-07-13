@@ -91,7 +91,7 @@ export function ContentLayout({
 
         {cta && (
           <section className="content-cta">
-            <h2>Ready to trade with context?</h2>
+            <h2>Ready to research with context?</h2>
             <p>Start with a 7-day trial — pick your markets and open the intelligence terminal.</p>
             <Button href="/pricing" size="lg">
               Start free trial

@@ -58,6 +58,10 @@ export default function App() {
   const legacyAdminView = !SITE_EMBED && params.get("view") === "admin";
   const legalPage = params.get("page");
   const resetToken = params.get("token") ?? "";
+  const isPublicDemo =
+    params.get("demo") === "1" ||
+    (typeof document !== "undefined" &&
+      document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1")));
   const [activeTab, setActiveTab] = useState<TabId>(initialTabFromUrl);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const health = useApi<{ feeds: Record<string, boolean> }>("/health", 60_000);
@@ -104,6 +108,17 @@ export default function App() {
           <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>
             Get started
           </button>
+        </div>
+      )}
+      {isPublicDemo && !isAuthenticated && (
+        <div className="launch-banner" style={{ background: "rgba(34, 197, 94, 0.12)" }}>
+          <span>
+            Read-only public demo — sample &amp; live feeds for exploration. Sign up to save portfolios and
+            subscribe.
+          </span>
+          <a className="btn btn-annual-cta" href="/pricing">
+            Start free trial
+          </a>
         </div>
       )}
       <PlatformSetupGate activeModules={activeModules} />

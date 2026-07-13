@@ -120,11 +120,20 @@ Install the APK from the EAS dashboard on a physical device for testing.
 - [ ] **Account deletion / data deletion URL:** `https://www.motivefxai.com/data-deletion`
 - [ ] Terms of Service URL: `https://www.motivefxai.com/terms`
 - [ ] In-app disclaimer visible (terminal footer + auth screen)
-- [ ] **Billing:** v1 sells subscriptions on web only (`https://www.motivefxai.com/pricing`) — document in store listing
+- [x] **Billing: web only** — subscriptions at `https://www.motivefxai.com/pricing` (no Play Billing in v1). Documented in store listing + auth screen. Do not sell digital goods in-app until IAP is intentionally adopted.
 - [ ] Geo-restrict betting module where required
-- [ ] Social / website fields — see `docs/PLAY_STORE_LISTING.md` (Instagram, Facebook, LinkedIn + disclosure URLs)
+- [ ] Social / website fields — MotiveFX accounts only via `SOCIAL_*` env (see `docs/PLAY_STORE_LISTING.md`); do not use MotiveLife profiles
 
 **Store listing copy + social URLs:** `docs/PLAY_STORE_LISTING.md`
+
+### Post-review launch checklist
+
+- [ ] Production AAB live on Play Console
+- [ ] Smoke-test login → terminal WebView on a physical device
+- [ ] Confirm subscribe CTA opens **external browser** to `/pricing` (web billing)
+- [ ] Confirm `/demo` and `/terminal/?demo=1` still work ungated for marketing
+- [ ] Monitor Stripe webhooks + cancel via Customer Portal
+- [ ] Only then consider Phase 4 Play Billing / RevenueCat if conversion requires it
 
 ### Testing before submit
 

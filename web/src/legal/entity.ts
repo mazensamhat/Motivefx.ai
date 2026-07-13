@@ -1,11 +1,14 @@
 /**
- * Legal entity details — update with counsel before final registration filings.
- * Emails are live; name, jurisdiction, and address are placeholders until confirmed.
+ * Legal entity details for privacy / terms footers.
+ * Jurisdiction follows Ontario governing-law clauses already in Terms.
+ * Registered street address is not yet confirmed in-repo — use counsel mailing interim.
+ * See docs/LAUNCH_READINESS.md § Legal entity.
  */
 export const LEGAL_ENTITY = {
   legalName: "MotiveFX.AI",
-  jurisdiction: "[Jurisdiction of incorporation, e.g. Ontario, Canada]",
-  address: "[Registered business address]",
+  jurisdiction: "Ontario, Canada",
+  address:
+    "Privacy & legal correspondence: privacy@motivefx.ai (registered mailing address available on written request to the Privacy Officer)",
   privacyOfficerTitle: "Privacy Officer",
   privacyEmail: "privacy@motivefx.ai",
   legalEmail: "legal@motivefx.ai",

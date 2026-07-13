@@ -34,13 +34,15 @@ Open http://localhost:3010 — terminal at http://localhost:3010/terminal/
 
 | Plan | Markets | Highlights |
 |------|---------|------------|
-| Lite | Preview | Sample signals |
-| Pro | 1 market | Live feeds + AI advisor |
-| Ultra | 3 markets | Full terminal access |
-| Ultra+ | 5 markets | All markets + simulation |
-| Elite | All | Annual flagship tier |
+| Lite | Pick 1 | AI Brief, limited research briefs |
+| Pro | Pick 2 | Portfolio Intelligence, AI Memory, push + Motive Daily email |
+| Ultra | All 5 | Voice briefing, Decision History, advanced analytics |
+| Ultra+ | All 5 | Everything in Ultra + API, teams, multi-portfolio, concierge |
+| Elite | All 5 | Annual VIP — white-glove onboarding, early AI models |
 
-See `/pricing` on the site for current Stripe pricing.
+See `/pricing` on the site for current Stripe pricing. Ultra vs Ultra+ differs on **API / teams / multi-portfolio / beta / concierge** — not market count.
+
+Public preview (no login): `/demo` → `/terminal/?demo=1`
 
 ## API routes (native)
 
@@ -55,8 +57,12 @@ See `/pricing` on the site for current Stripe pricing.
 | Tab | Provider | Env var |
 |-----|----------|---------|
 | Stocks | Finnhub | `FINNHUB_API_KEY` |
-| Crypto | CoinStats | `COINSTATS_API_KEY` |
+| Crypto | CoinStats (+ CoinGecko fallback) | `COINSTATS_API_KEY` |
 | Betting | The Odds API | `THE_ODDS_API_KEY` |
+| Predictions | Polymarket Gamma | (public) |
+| AI briefs | OpenAI | `OPENAI_API_KEY` |
+
+**Demo / simulated** (labeled on `/data-sources`): unusual options flow, congress trades, sharp-money splits, pink-sheet scanner samples.
 
 Without API keys the app runs in **demo mode** with realistic sample data.
 

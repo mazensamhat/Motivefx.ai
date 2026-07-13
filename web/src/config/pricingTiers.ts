@@ -57,7 +57,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "ultra",
     name: "Ultra",
-    tagline: "All 5 markets · voice & analytics",
+    tagline: "All 5 markets · voice & Decision History",
     monthlyUsd: 99.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
@@ -65,7 +65,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "ultra_plus",
     name: "Ultra+",
-    tagline: "For professionals & teams",
+    tagline: "Ultra + API, teams & multi-portfolio",
     monthlyUsd: 149.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",

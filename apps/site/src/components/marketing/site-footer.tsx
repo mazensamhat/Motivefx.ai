@@ -30,7 +30,8 @@ export function SiteFooter() {
             <p className="footer-heading">Product</p>
             <ul className="footer-links">
               <li><Link href="#features">Features</Link></li>
-              <li><Link href="/topics/motive-signal">Motive Signal</Link></li>
+              <li><Link href="/motive-signal">Motive Signal</Link></li>
+              <li><Link href="/demo">Product preview</Link></li>
               <li><Link href="/pricing">Pricing</Link></li>
               <li><Link href="/tools">Tools</Link></li>
             </ul>
@@ -70,15 +71,22 @@ export function SiteFooter() {
           </div>
           <div className="footer-col">
             <p className="footer-heading">Follow</p>
-            <ul className="footer-links">
-              {SOCIAL_LINKS.map((s) => (
-                <li key={s.id}>
-                  <a href={s.href} target="_blank" rel="noopener noreferrer">
-                    {s.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {SOCIAL_LINKS.length > 0 ? (
+              <ul className="footer-links">
+                {SOCIAL_LINKS.map((s) => (
+                  <li key={s.id}>
+                    <a href={s.href} target="_blank" rel="noopener noreferrer">
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="footer-links text-sm text-slate-500">
+                Social profiles coming soon.{" "}
+                <Link href="/demo">Try the preview</Link>
+              </p>
+            )}
           </div>
         </div>
 

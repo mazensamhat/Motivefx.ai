@@ -9,7 +9,8 @@ import { MARKET_ROUTES, SITE } from "@/lib/site-config";
 
 const PRODUCT_LINKS = [
   { href: "#features", label: "Features" },
-  { href: "/topics/motive-signal", label: "Motive Signal" },
+  { href: "/motive-signal", label: "Motive Signal" },
+  { href: "/demo", label: "Product preview" },
   { href: "/ai/how-motive-signal-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
 ];

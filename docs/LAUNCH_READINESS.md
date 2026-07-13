@@ -56,7 +56,7 @@ See [MOBILE_STRATEGY.md](./MOBILE_STRATEGY.md) for full mobile plan.
 - [x] Terminal WebView loads full mobile UI (`MobileBottomNav` design parity)
 - [x] Mobile-first terminal CSS (`viewport-fit`, safe-area, `100dvh`, native-shell class)
 - [x] Mobile auth screen (login/register)
-- [ ] **Billing model decision:** web-only subscribe vs native IAP (RevenueCat)
+- [x] **Billing model decision:** web-only subscribe (document in store listings); native IAP deferred
 - [ ] Apple Developer + Google Play Console accounts
 - [ ] Privacy Nutrition Labels / Data safety form
 - [ ] Sign in with Apple (required if offering Google login on iOS)
@@ -138,6 +138,21 @@ STRIPE_WEBHOOK_SECRET=
 | Support | support@motivefx.ai |
 | Legal counsel | _TBD_ |
 
+### Legal entity (interim)
+
+- **Jurisdiction** published as Ontario, Canada (aligned with Terms governing-law clause).
+- **Registered street address** is not confirmed in-repo. Privacy/terms use: correspondence via `privacy@motivefx.ai` with mailing address available on written request to the Privacy Officer.
+- **Action:** Replace interim address string in `apps/site/src/lib/legal.ts` and `web/src/legal/entity.ts` once counsel confirms the registered office.
+
+### Public demo
+
+- Ungated product preview: `https://www.motivefxai.com/demo`
+- Read-only terminal: `https://www.motivefxai.com/terminal/?demo=1` (sets `motivefx_demo` cookie; no private user data)
+
+### Social
+
+- MotiveFX social Follow links are hidden until `SOCIAL_INSTAGRAM_URL` / `SOCIAL_FACEBOOK_URL` / `SOCIAL_LINKEDIN_URL` are set on Vercel. Do not default to MotiveLife profiles.
+
 ---
 
-*Last updated: June 26, 2026*
+*Last updated: July 13, 2026*

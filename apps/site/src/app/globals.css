@@ -826,6 +826,34 @@ body {
   color: white;
 }
 
+.pricing-tier-highlights,
+.pricing-preview-highlights {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #94a3b8;
+  text-align: left;
+}
+
+.pricing-tier-highlights li,
+.pricing-preview-highlights li {
+  padding-left: 0.85rem;
+  position: relative;
+}
+
+.pricing-tier-highlights li::before,
+.pricing-preview-highlights li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--brand-green, #22c55e);
+}
+
 .pricing-tier-btn {
   margin-top: auto;
   width: 100%;

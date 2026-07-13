@@ -15,6 +15,8 @@ export interface PricingTier {
   annualUsd: number | null;
   featured?: boolean;
   intelligenceMarketsIncluded: number | "all";
+  /** Concrete bullets shown on pricing cards (Ultra vs Ultra+ must differ visibly). */
+  highlights: string[];
 }
 
 export const INTELLIGENCE_MARKETS: { id: IntelligenceMarketId; label: string }[] = [
@@ -33,6 +35,12 @@ export const PRICING_TIERS: PricingTier[] = [
     monthlyUsd: 29.99,
     annualUsd: null,
     intelligenceMarketsIncluded: 1,
+    highlights: [
+      "1 intelligence market of your choice",
+      "AI Brief + Ask Motive AI",
+      "Limited research briefs",
+      "Market intelligence & Following",
+    ],
   },
   {
     id: "pro",
@@ -42,22 +50,43 @@ export const PRICING_TIERS: PricingTier[] = [
     annualUsd: null,
     featured: true,
     intelligenceMarketsIncluded: 2,
+    highlights: [
+      "Exactly 2 intelligence markets",
+      "Portfolio Intelligence + AI Memory",
+      "Unlimited research briefs",
+      "Push alerts + Motive Daily email",
+      "Since You Were Away summaries",
+    ],
   },
   {
     id: "ultra",
     name: "Ultra",
-    tagline: "All 5 markets · voice & analytics",
+    tagline: "All 5 markets · voice & Decision History",
     monthlyUsd: 99.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
+    highlights: [
+      "All 5 intelligence markets",
+      "Voice briefing + Motive Daily voice",
+      "Decision History journal",
+      "Advanced analytics",
+      "Everything in Pro",
+    ],
   },
   {
     id: "ultra_plus",
     name: "Ultra+",
-    tagline: "For professionals & teams",
+    tagline: "Ultra + API, teams & multi-portfolio",
     monthlyUsd: 149.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
+    highlights: [
+      "Everything in Ultra",
+      "API access for workflows",
+      "Multiple portfolios",
+      "Team workspace",
+      "Beta features + concierge support",
+    ],
   },
   {
     id: "elite",
@@ -66,6 +95,13 @@ export const PRICING_TIERS: PricingTier[] = [
     monthlyUsd: null,
     annualUsd: 999,
     intelligenceMarketsIncluded: "all",
+    highlights: [
+      "Everything in Ultra+",
+      "White-glove onboarding",
+      "Direct product feedback channel",
+      "Early access to new AI models",
+      "Annual billing only",
+    ],
   },
 ];
 

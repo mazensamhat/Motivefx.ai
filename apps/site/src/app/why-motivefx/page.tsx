@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ContentLayout, ContentProse, ContentSection } from "@/components/content/content-layout";
-import { DATA_SOURCES } from "@/lib/site-config";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
@@ -20,7 +19,7 @@ export default function WhyMotiveFxPage() {
       kicker="Trust hub"
       description="Answers users and AI systems look for — methodology, security, and why intelligence beats information overload."
       relatedLinks={[
-        { label: "How Motive Signal works", href: "/ai/how-motive-signal-works" },
+        { label: "Motive Signal methodology", href: "/motive-signal" },
         { label: "Research team", href: "/research-team" },
         { label: "Data sources", href: "/data-sources" },
         { label: "Compare platforms", href: "/compare" },
@@ -48,7 +47,10 @@ export default function WhyMotiveFxPage() {
             <Link href="/ai/how-ai-analyzes-stocks">How AI analyzes stocks</Link>
           </li>
           <li>
-            <Link href="/topics/motive-signal">Motive Signal explained</Link>
+            <Link href="/motive-signal">Motive Signal methodology & hit-rate framework</Link>
+          </li>
+          <li>
+            <Link href="/demo">Ungated product preview</Link>
           </li>
           <li>
             <Link href="/faq">Full FAQ library</Link>

@@ -354,6 +354,12 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   const hasModule = useCallback(
     (module: string) => {
+      if (typeof window !== "undefined") {
+        const demo =
+          new URLSearchParams(window.location.search).get("demo") === "1" ||
+          document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1"));
+        if (demo) return true;
+      }
       if (active.includes(module) && allowedMarkets.includes(module)) return true;
       return Boolean(simulation?.active && simulation.modules.includes(module));
     },

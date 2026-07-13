@@ -146,7 +146,8 @@ export function AuthScreen() {
       )}
 
       <Text style={styles.disclaimer}>
-        Informational only. Not financial advice. Subscriptions at motivefxai.com.
+        Informational only. Not financial advice. Subscriptions are billed on the web at
+        motivefxai.com/pricing — not inside this app.
       </Text>
       <Text style={styles.buildTag}>Build 0.1.5 (7) · performance</Text>
     </View>

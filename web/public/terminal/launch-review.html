@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MotiveFX.AI — Ship Spec (9.95)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #0b0e14; --bg-panel: #111318; --bg-card: #161b22; --border: #1e2227;
+      --text: #f1f5f9; --text-muted: #94a3b8; --text-dim: #64748b;
+      --green: #22c55e; --amber: #f59e0b; --cyan: #38bdf8; --purple: #a78bfa;
+      --radius: 12px; --font: "Inter", system-ui, sans-serif; --heading: "Space Grotesk", "Inter", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: #050608; color: var(--text); line-height: 1.5; }
+
+    .review-toolbar {
+      position: sticky; top: 0; z-index: 9999; background: #111318; border-bottom: 1px solid #2d333b;
+      padding: 0.65rem 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: center; font-size: 0.8125rem;
+    }
+    .review-toolbar h1 { font-family: var(--heading); font-size: 0.9375rem; font-weight: 600; color: var(--green); }
+    .review-toolbar label { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); }
+    .review-toolbar select, .review-toolbar button {
+      background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.8125rem; cursor: pointer;
+    }
+    .review-toolbar button.primary { background: var(--green); color: #000; border-color: var(--green); font-weight: 600; }
+    .review-toolbar a.link-btn { color: var(--cyan); text-decoration: none; font-size: 0.8125rem; }
+    .review-note { flex: 1; min-width: 160px; color: var(--text-dim); font-size: 0.75rem; }
+    .ship-banner { background: linear-gradient(90deg,rgba(34,197,94,.12),rgba(56,189,248,.08)); border-bottom: 1px solid rgba(34,197,94,.25); padding: 0.5rem 1rem; text-align: center; font-size: 0.8125rem; color: var(--text-muted); }
+    .ship-banner strong { color: var(--green); }
+
+    .review-checklist {
+      position: fixed; right: 0; top: 52px; width: 340px; max-height: calc(100vh - 52px); overflow-y: auto;
+      background: rgba(13,16,21,0.98); border-left: 1px solid var(--border); padding: 1rem; z-index: 9998;
+      transform: translateX(100%); transition: transform 0.25s;
+    }
+    .review-checklist.open { transform: translateX(0); }
+    .review-checklist h3 { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .review-checklist h4 { font-size: 0.75rem; color: var(--green); margin: 0.75rem 0 0.35rem; }
+    .review-checklist label { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; cursor: pointer; }
+    .review-checklist input { margin-top: 3px; accent-color: var(--green); }
+    .hidden { display: none !important; }
+    .review-tag { display: inline-block; font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.5rem; border-radius: 4px; background: rgba(56,189,248,.12); color: var(--cyan); margin-bottom: 0.5rem; }
+    .review-tag.green { background: rgba(34,197,94,.12); color: var(--green); }
+    .review-tag.purple { background: rgba(167,139,250,.12); color: var(--purple); }
+    .ai-spark { color: var(--cyan); font-size: 0.75rem; margin-right: 0.25rem; }
+
+    .shell { min-height: calc(100vh - 52px); display: flex; background: var(--bg-deep); }
+    .shell.checklist-open { margin-right: 340px; }
+    .sidebar { width: 210px; flex-shrink: 0; padding: 1.25rem 0.75rem; border-right: 1px solid var(--border); background: var(--bg-panel); display: flex; flex-direction: column; }
+    .logo { font-family: var(--heading); font-weight: 700; font-size: 1.05rem; }
+    .logo span { color: var(--green); }
+    .nav-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.55rem 0.65rem; background: transparent; border: none; border-radius: 8px; color: var(--text-muted); font-size: 0.8125rem; cursor: pointer; text-align: left; margin-bottom: 0.15rem; }
+    .nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+    .nav-item.active { background: rgba(34,197,94,.1); color: var(--text); font-weight: 600; }
+    .nav-item .icon { width: 18px; text-align: center; opacity: 0.7; }
+    .plan-card { margin-top: auto; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-card); font-size: 0.75rem; }
+    .plan-card strong { color: var(--purple); }
+
+    .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .home-hero-ask { padding: 1.25rem 1.5rem 0.5rem; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(56,189,248,.04), transparent); }
+    .ask-hero { display: flex; align-items: center; gap: 0.5rem; max-width: 640px; margin: 0 auto; background: var(--bg-card); border: 1px solid rgba(56,189,248,.35); border-radius: 16px; padding: 0.75rem 1rem; box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+    .ask-hero input { flex: 1; background: transparent; border: none; color: var(--text); font-size: 0.9375rem; outline: none; }
+    .ask-hero input::placeholder { color: var(--text-dim); }
+    .ask-hero .mic, .ask-hero .send { width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .ask-hero .mic { background: rgba(34,197,94,.15); color: var(--green); }
+    .ask-hero .send { background: var(--cyan); color: #000; }
+    .ask-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 640px; margin: 0.75rem auto 0; justify-content: center; }
+    .ask-chip { font-size: 0.75rem; padding: 0.35rem 0.65rem; border-radius: 999px; background: rgba(255,255,255,.04); color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; }
+    .topbar { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.5rem 1.25rem; font-size: 0.8125rem; color: var(--text-muted); }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--green), var(--cyan)); }
+
+    .content-with-rail { display: grid; grid-template-columns: 1fr 280px; gap: 1.25rem; padding: 1.25rem 1.5rem 2rem; max-width: 1100px; }
+    @media (max-width: 1000px) { .content-with-rail { grid-template-columns: 1fr; } .right-rail { display: none; } }
+
+    .greeting { font-family: var(--heading); font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .greeting-sub { font-size: 0.9375rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+    .home-section { margin-bottom: 1.25rem; }
+    .section-label { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 0.5rem; display: flex; align-items: center; }
+
+    .matters { font-size: 0.75rem; color: var(--cyan); margin-top: 0.35rem; font-style: italic; }
+    .matters::before { content: "Why this matters to you: "; font-style: normal; color: var(--text-dim); }
+
+    .away-card { background: linear-gradient(135deg, rgba(167,139,250,.1), rgba(56,189,248,.06)); border: 1px solid rgba(167,139,250,.3); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .away-card h4 { font-family: var(--heading); font-size: 0.875rem; margin-bottom: 0.5rem; }
+    .away-card ul { list-style: none; font-size: 0.8125rem; color: var(--text-muted); }
+    .away-card li { margin-bottom: 0.35rem; padding-left: 0.75rem; position: relative; }
+    .away-card li::before { content: "•"; position: absolute; left: 0; color: var(--purple); }
+
+    .briefing-block { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
+    .briefing-block .lead { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .briefing-item { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+    .briefing-item:last-child { border-bottom: none; }
+    .briefing-item strong { font-family: var(--heading); font-size: 0.9375rem; display: block; }
+    .briefing-item p { font-size: 0.8125rem; color: var(--text-muted); }
+    .briefing-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center; }
+    .reading-time { font-size: 0.75rem; color: var(--text-dim); }
+    .btn-play { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.85rem; border-radius: 8px; border: none; background: var(--green); color: #000; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .btn-podcast { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.85rem; border-radius: 8px; border: 1px solid var(--purple); background: rgba(167,139,250,.1); color: var(--purple); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+
+    .opp-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.65rem; }
+    @media (max-width: 600px) { .opp-layout { grid-template-columns: 1fr; } .opp-hero { grid-row: auto; } }
+    .opp-hero { background: var(--bg-card); border: 1px solid rgba(34,197,94,.35); border-radius: var(--radius); padding: 1.15rem; cursor: pointer; grid-row: span 2; }
+    .opp-hero .label { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--green); margin-bottom: 0.35rem; }
+    .opp-hero .sym { font-family: var(--heading); font-size: 1.375rem; font-weight: 700; }
+    .opp-hero .summary { font-size: 0.8125rem; color: var(--text-muted); margin: 0.4rem 0; }
+    .opp-mini { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 0.875rem; cursor: pointer; }
+
+    .signal-level { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; font-weight: 600; margin-top: 0.35rem; }
+    .signal-level.high { color: var(--green); }
+    .signal-level.mod { color: var(--amber); }
+    .signal-level.low { color: var(--text-dim); }
+    .signal-expand { font-size: 0.625rem; color: var(--text-dim); font-weight: 400; cursor: pointer; margin-left: 0.25rem; }
+    .signal-expand:hover { color: var(--cyan); }
+
+    .priority-row { display: flex; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; align-items: flex-start; }
+    .priority-row:last-child { border-bottom: none; }
+    .priority-label { font-weight: 600; font-size: 0.75rem; }
+    .priority-label.high { color: var(--green); }
+    .priority-label.mod { color: var(--amber); }
+    .priority-label.low { color: var(--text-dim); }
+    .priority-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .btn-intel { display: block; width: 100%; margin-top: 0.5rem; padding: 0.85rem 1rem; border-radius: var(--radius); border: 1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); font-size: 0.875rem; font-weight: 600; cursor: pointer; text-align: center; }
+    .btn-intel:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .chief-card { background: linear-gradient(160deg, rgba(34,197,94,.08), rgba(56,189,248,.06)); border: 1px solid rgba(34,197,94,.25); border-radius: var(--radius); padding: 1rem; }
+    .chief-card h4 { font-family: var(--heading); font-size: 0.875rem; margin-bottom: 0.35rem; }
+    .chief-premium { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.45; }
+    .chief-list { list-style: none; font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .chief-list li { margin-bottom: 0.35rem; padding-left: 1rem; position: relative; }
+    .chief-list li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+    .chief-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem; }
+    .chief-btn { padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-size: 0.6875rem; cursor: pointer; }
+    .chief-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .chief-reply { font-size: 0.75rem; color: var(--text-muted); padding: 0.65rem; background: rgba(0,0,0,.2); border-radius: 8px; min-height: 2.5rem; border: 1px solid var(--border); }
+    .chief-reply strong { color: var(--text); }
+
+    .memory-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem; }
+    .memory-card .tag { display: inline-block; font-size: 0.6875rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--text-muted); margin: 0.25rem 0.25rem 0 0; }
+
+    .history-item { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; }
+    .history-item:last-child { border-bottom: none; }
+    .history-item .outcome { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .daily-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+    .daily-channel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; font-size: 0.8125rem; }
+    .daily-channel .icon { font-size: 1.5rem; margin-bottom: 0.35rem; }
+
+    .brief-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin: 0.75rem 0 1rem; font-size: 0.75rem; color: var(--text-muted); }
+    .brief-tag { font-size: 0.625rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 3px; }
+    .brief-tag.high { background: rgba(34,197,94,.15); color: var(--green); }
+    .brief-tag.mod { background: rgba(245,158,11,.15); color: var(--amber); }
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; }
+    .row:last-child { border-bottom: none; }
+    .row-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .link { font-size: 0.75rem; color: var(--cyan); font-weight: 600; text-decoration: none; }
+    .app-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); font-size: 0.6875rem; color: var(--text-dim); }
+
+    .mobile-frame-wrap { display: flex; justify-content: center; padding: 1.5rem; background: #050608; min-height: calc(100vh - 52px); }
+    .mobile-frame { width: 390px; max-width: 100%; min-height: 760px; background: var(--bg-deep); border: 8px solid #1a1a1a; border-radius: 36px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+    .mobile-status { height: 28px; background: var(--bg-panel); }
+    .mobile-body { flex: 1; overflow-y: auto; padding: 1rem 1.15rem; }
+    .mobile-ask-hero { display: flex; align-items: center; gap: 0.4rem; background: var(--bg-card); border: 1px solid rgba(56,189,248,.3); border-radius: 14px; padding: 0.65rem 0.85rem; margin-bottom: 0.75rem; font-size: 0.8125rem; color: var(--text-dim); }
+    .mobile-ask-hero .mic { margin-left: auto; color: var(--green); }
+    .feed-block { margin-bottom: 1rem; }
+    .feed-block h3 { font-family: var(--heading); font-size: 0.9375rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .feed-line { font-size: 0.8125rem; color: var(--text-muted); padding: 0.4rem 0; }
+    .feed-line strong { color: var(--text); display: block; font-size: 0.875rem; }
+    .mobile-nav { display: flex; justify-content: space-around; padding: 0.65rem 0; border-top: 1px solid var(--border); background: var(--bg-panel); font-size: 0.5625rem; color: var(--text-dim); }
+    .mobile-nav span.active { color: var(--green); font-weight: 600; }
+
+    .detail-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .detail-tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .detail-tab { flex: 1; padding: 0.65rem; text-align: center; font-size: 0.75rem; color: var(--text-muted); border: none; background: none; cursor: pointer; }
+    .detail-tab.active { color: var(--green); border-bottom: 2px solid var(--green); font-weight: 600; }
+    .why-box { margin: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius); background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.25); font-size: 0.8125rem; }
+    .why-box strong { color: var(--green); display: block; margin-bottom: 0.25rem; }
+    .score-advanced { display: none; margin: 0 1rem 1rem; padding: 0.65rem; background: rgba(0,0,0,.2); border-radius: 8px; font-size: 0.75rem; color: var(--text-dim); }
+    .score-advanced.show { display: block; }
+    .data-table { margin: 0 1rem 1rem; font-size: 0.8125rem; }
+    .data-table .row { padding: 0.5rem 0; }
+    .detail-actions { display: flex; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--border); margin-top: auto; }
+    .btn { flex: 1; padding: 0.65rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.8125rem; font-weight: 600; cursor: pointer; text-align: center; }
+    .btn-primary { background: var(--green); border-color: var(--green); color: #000; }
+
+    .content { padding: 1.25rem 1.5rem 2rem; max-width: 720px; }
+    .greeting-sm { font-family: var(--heading); font-size: 1.125rem; font-weight: 700; }
+    .legal-frame-wrap { width: 100%; height: calc(100vh - 52px); }
+    .legal-frame { width: 100%; height: 100%; border: none; }
+    .pricing-toggle { display: inline-flex; background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 0.2rem; margin: 1rem 0; }
+    .pricing-toggle button { padding: 0.4rem 1rem; border: none; border-radius: 999px; background: transparent; color: var(--text-muted); font-size: 0.8125rem; cursor: pointer; }
+    .pricing-toggle button.active { background: var(--green); color: #000; font-weight: 600; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 0.65rem; max-width: 1200px; }
+    @media (max-width: 1100px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .pricing-grid { grid-template-columns: 1fr; } }
+    .pricing-scroll { overflow-x: auto; max-width: 100%; padding-bottom: 0.5rem; }
+    .compare-table { font-size: 0.6875rem; min-width: 720px; }
+    .compare-table th.featured-col { color: var(--green); }
+    .compare-limited { color: var(--amber); }
+    .compare-dash { color: var(--text-dim); }
+    .price-card.elite-tier { border-color: var(--purple); background: linear-gradient(180deg, rgba(167,139,250,.06), var(--bg-card)); }
+    .anchor-math { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; max-width: 1200px; margin: 1rem 0; }
+    .anchor-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--text-muted); }
+    .anchor-card strong { color: var(--green); }
+    .price-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.15rem; position: relative; }
+    .price-card.featured { border-color: var(--green); box-shadow: 0 0 0 1px rgba(34,197,94,.2); }
+    .price-card.platinum { border-color: var(--purple); }
+    .price-badge { position: absolute; top: -0.5rem; right: 0.75rem; font-size: 0.625rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 4px; background: var(--green); color: #000; }
+    .price-badge.purple { background: var(--purple); color: #fff; }
+    .price-card h3 { font-family: var(--heading); font-size: 1.125rem; }
+    .price-card .tagline { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+    .price-card .amt { font-family: var(--heading); font-size: 1.75rem; font-weight: 800; margin: 0.35rem 0; }
+    .price-card .equiv { font-size: 0.6875rem; color: var(--text-dim); margin-bottom: 0.75rem; }
+    .price-card ul { list-style: none; font-size: 0.75rem; color: var(--text-muted); }
+    .price-card li { margin-bottom: 0.35rem; padding-left: 0.85rem; position: relative; }
+    .price-card li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-size: 0.625rem; }
+    .price-card .btn-tier { width: 100%; margin-top: 0.75rem; padding: 0.55rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .price-card.featured .btn-tier { background: var(--green); border-color: var(--green); color: #000; }
+    .pricing-strategy { max-width: 1100px; margin-top: 1.5rem; padding: 1rem 1.25rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.8125rem; color: var(--text-muted); }
+    .pricing-strategy h4 { font-family: var(--heading); color: var(--text); margin-bottom: 0.5rem; }
+    .compare-table { width: 100%; max-width: 1100px; margin-top: 1.25rem; border-collapse: collapse; font-size: 0.75rem; }
+    .compare-table th, .compare-table td { padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .compare-table th { color: var(--text-dim); font-weight: 600; }
+    .compare-table td:first-child { color: var(--text-muted); }
+    .compare-yes { color: var(--green); }
+    .chg-up { color: var(--green); } .chg-down { color: var(--red); }
+  </style>
+</head>
+<body>
+
+<div class="review-toolbar">
+  <h1>MotiveFX.AI — Ship Spec · 9.95</h1>
+  <label>Viewport<select id="viewportSelect"><option value="desktop" selected>Desktop</option><option value="mobile">Mobile</option></select></label>
+  <label>Screen
+    <select id="screenSelect">
+      <option value="briefing" selected>Today</option>
+      <option value="intelligence">Today's Intelligence</option>
+      <option value="brief-detail">Brief — NVDA</option>
+      <option value="market-intel">Market Intelligence</option>
+      <option value="portfolio">My Portfolio</option>
+      <option value="briefs">Briefs</option>
+      <option value="memory">AI Memory</option>
+      <option value="history">Decision History</option>
+      <option value="motive-daily">Motive Daily</option>
+      <option value="pricing">Pricing</option>
+    </select>
+  </label>
+  <button type="button" id="toggleChecklist">Build checklist</button>
+  <button type="button" class="primary" id="printBtn">Print spec</button>
+  <span class="review-note">Stop redesigning · Start shipping</span>
+</div>
+<div class="ship-banner"><strong>Final verdict:</strong> Stop iterating on concept. Shift focus to intelligence — personalization, memory, explanations, data quality, trust.</div>
+
+<aside class="review-checklist" id="checklist">
+  <h3>Build — not design</h3>
+  <h4>Nav (final)</h4>
+  <label><input type="checkbox" data-key="nav-today" /> Today · Market Intelligence · My Portfolio · Briefs · Following · Settings</label>
+  <label><input type="checkbox" data-key="no-scores" /> Motive Signal: High/Moderate/Low only (no 92/81/74)</label>
+  <label><input type="checkbox" data-key="matters" /> "Why this matters to you" on every card</label>
+  <h4>Pre-launch feature</h4>
+  <label><input type="checkbox" data-key="matters-launch" /> Personal relevance sentence everywhere</label>
+  <h4>Post-launch intelligence</h4>
+  <label><input type="checkbox" data-key="memory" /> AI Memory (preferences, style, ignores)</label>
+  <label><input type="checkbox" data-key="history" /> Decision History (informational)</label>
+  <label><input type="checkbox" data-key="motive-daily" /> Motive Daily (email · push · voice · widget)</label>
+  <label><input type="checkbox" data-key="voice" /> Play Briefing + mic</label>
+  <h4>Moat</h4>
+  <label><input type="checkbox" data-key="motive-signal" /> Motive Signal = brand (like PageRank)</label>
+  <label><input type="checkbox" data-key="away" /> Since You Were Away</label>
+</aside>
+
+<!-- SIDEBAR NAV (shared pattern) -->
+<!-- Today | Market Intelligence | My Portfolio | Briefs | Following | Settings -->
+
+<!-- DESKTOP TODAY -->
+<div id="desktopBriefing" class="shell">
+  <aside class="sidebar">
+    <div class="logo">MOTIVE<span>FX</span>.AI</div>
+    <nav style="margin-top:1.25rem">
+      <button class="nav-item active"><span class="icon">☀</span> Today</button>
+      <button class="nav-item" onclick="showScreen('market-intel')"><span class="icon">◎</span> Market Intelligence</button>
+      <button class="nav-item" onclick="showScreen('portfolio')"><span class="icon">◈</span> My Portfolio</button>
+      <button class="nav-item" onclick="showScreen('briefs')"><span class="icon">📄</span> Briefs</button>
+      <button class="nav-item"><span class="icon">★</span> Following</button>
+      <button class="nav-item" onclick="showScreen('memory')"><span class="icon">⚙</span> Settings</button>
+    </nav>
+    <div class="plan-card"><strong>Elite</strong><br />Motive Daily enabled</div>
+  </aside>
+  <div class="main-col">
+    <div class="home-hero-ask">
+      <div class="ask-hero">
+        <span class="ai-spark">✦</span>
+        <input type="text" placeholder="Ask Motive…" />
+        <button class="mic" type="button" title="Voice">🎤</button>
+        <button class="send" type="button">↑</button>
+      </div>
+      <div class="ask-chips">
+        <span class="ask-chip">Why is NVDA trending?</span>
+        <span class="ask-chip">What's affecting my portfolio?</span>
+        <span class="ask-chip">Explain this signal</span>
+      </div>
+    </div>
+    <div class="topbar"><span>🔔</span><span>Mazen</span><div class="avatar"></div></div>
+
+    <div class="content-with-rail">
+      <div>
+        <div class="greeting">Good morning, Mazen.</div>
+        <div class="greeting-sub">Three things matter today.</div>
+
+        <div class="away-card">
+          <span class="review-tag purple">Since You Were Away</span>
+          <h4>What changed since your last visit</h4>
+          <ul>
+            <li>NVDA Motive Signal moved from Moderate → <strong>High</strong></li>
+            <li>Bitcoin dropped out of your top opportunities</li>
+            <li>Apple moved into Following</li>
+            <li>One earnings event starts tomorrow — affects NVDA in your portfolio</li>
+          </ul>
+        </div>
+
+        <div class="briefing-block">
+          <div class="section-label"><span class="ai-spark">✦</span> AI Brief</div>
+          <div class="lead">Your <strong>90-second briefing</strong>.</div>
+          <div class="briefing-item">
+            <strong>NVDA</strong>
+            <p>Institutional buying increased.</p>
+            <div class="matters">Because you own NVDA.</div>
+          </div>
+          <div class="briefing-item">
+            <strong>Bitcoin</strong>
+            <p>Large wallets are selling.</p>
+            <div class="matters">Because you follow Bitcoin.</div>
+          </div>
+          <div class="briefing-item">
+            <strong>Bills vs Chiefs</strong>
+            <p>Sharp money toward Bills +4.5.</p>
+            <div class="matters">Because you track this event.</div>
+          </div>
+          <div class="briefing-actions">
+            <span class="reading-time">⏱ 90 seconds</span>
+            <button class="btn-play" type="button">▶ Play briefing</button>
+            <button class="btn-podcast" type="button" onclick="showScreen('motive-daily')">Motive Daily →</button>
+          </div>
+        </div>
+
+        <div class="home-section">
+          <div class="section-label"><span class="ai-spark">✦</span> Today's Biggest Opportunity</div>
+          <div class="opp-layout">
+            <div class="opp-hero" onclick="goBriefDetail()">
+              <div class="label">Start here</div>
+              <div class="sym">NVDA</div>
+              <div class="summary">Unusual institutional buying detected before earnings.</div>
+              <div class="signal-level high">Motive Signal: <strong>High</strong> <span class="signal-expand" onclick="event.stopPropagation()">Advanced ↗</span></div>
+              <div class="matters">Because you own NVDA — earnings tomorrow may affect your position.</div>
+              <div style="margin-top:0.5rem"><a class="link">Read Brief →</a></div>
+            </div>
+            <div class="opp-mini" onclick="goBriefDetail()">
+              <div class="sym">Bitcoin</div>
+              <div class="summary">Wallets distributing</div>
+              <div class="signal-level mod">Motive Signal: <strong>Moderate</strong></div>
+              <div class="matters">Because you follow Bitcoin.</div>
+            </div>
+            <div class="opp-mini" onclick="goBriefDetail()">
+              <div class="sym">Bills +4.5</div>
+              <div class="summary">Sharp money increasing</div>
+              <div class="signal-level mod">Motive Signal: <strong>Moderate</strong></div>
+              <div class="matters">Because you track this event.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="home-section">
+          <div class="section-label"><span class="ai-spark">✦</span> My Portfolio Impact</div>
+          <div class="card">
+            <div class="priority-row">
+              <span>🟢</span>
+              <div style="flex:1">
+                <div class="priority-label high">High Priority — NVDA</div>
+                <div class="priority-desc">May materially affect your holdings.</div>
+                <div class="matters">You hold 10 shares · earnings tomorrow.</div>
+              </div>
+            </div>
+            <div class="priority-row">
+              <span>🟡</span>
+              <div style="flex:1">
+                <div class="priority-label mod">Moderate — AAPL</div>
+                <div class="priority-desc">Worth reviewing today.</div>
+                <div class="matters">Sector rotation may affect your position.</div>
+              </div>
+            </div>
+            <div class="priority-row">
+              <span>⚪</span>
+              <div style="flex:1">
+                <div class="priority-label low">Low — SPY</div>
+                <div class="priority-desc">No action required.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-intel" type="button" onclick="showScreen('intelligence')">View today's intelligence →</button>
+      </div>
+
+      <aside class="right-rail">
+        <div class="chief-card">
+          <span class="review-tag green">AI Chief of Staff</span>
+          <h4>Good morning, Mazen</h4>
+          <p class="chief-premium">I reviewed <strong>18,000</strong> events overnight. <strong>Three</strong> matter to you — filtered by your <a class="link" href="#" onclick="showScreen('memory');return false">AI Memory</a>.</p>
+          <ul class="chief-list">
+            <li>Two holdings affected</li>
+            <li>One new opportunity</li>
+            <li>One event worth monitoring</li>
+          </ul>
+          <div class="chief-actions">
+            <button class="chief-btn" type="button" onclick="chiefReply('why')">Why?</button>
+            <button class="chief-btn" type="button" onclick="chiefReply('explain')">Explain</button>
+            <button class="chief-btn" type="button" onclick="chiefReply('summarize')">Summarize</button>
+          </div>
+          <div class="chief-reply" id="chiefReply">Ask your Chief of Staff anything.</div>
+        </div>
+      </aside>
+    </div>
+    <footer class="app-footer">MotiveFX.AI — AI market intelligence. Motive Signal is our proprietary research score. Not financial advice.</footer>
+  </div>
+</div>
+
+<!-- MOBILE TODAY -->
+<div id="mobileBriefing" class="mobile-frame-wrap hidden">
+  <div class="mobile-frame">
+    <div class="mobile-status"></div>
+    <div class="mobile-body">
+      <div class="mobile-ask-hero"><span class="ai-spark">✦</span> Ask Motive…<span class="mic">🎤</span></div>
+      <div class="greeting" style="font-size:1.2rem">Good morning, Mazen.</div>
+      <div class="greeting-sub" style="margin-bottom:0.75rem">Three things matter today.</div>
+
+      <div class="feed-block" style="background:var(--bg-card);border:1px solid rgba(167,139,250,.25);border-radius:10px;padding:0.75rem">
+        <h3 style="font-size:0.8125rem">Since you were away</h3>
+        <div class="feed-line" style="font-size:0.75rem">NVDA → High · BTC out of top ops · AAPL now Following</div>
+      </div>
+
+      <div class="feed-block">
+        <h3><span class="ai-spark">✦</span> AI Brief · 90 sec</h3>
+        <div class="feed-line"><strong>NVDA</strong>Institutional buying.<div class="matters">Because you own NVDA.</div></div>
+        <div class="feed-line"><strong>Bitcoin</strong>Wallets selling.<div class="matters">Because you follow Bitcoin.</div></div>
+        <button class="btn-play" style="width:100%;justify-content:center;margin-top:0.35rem" type="button">▶ Play briefing</button>
+      </div>
+
+      <div class="feed-block" onclick="goBriefDetail()">
+        <h3>Top Opportunity</h3>
+        <div class="feed-line"><strong>NVDA</strong>Motive Signal: High<div class="matters">Because you own NVDA.</div></div>
+      </div>
+
+      <div class="feed-block">
+        <div class="feed-line"><strong>🟢 NVDA</strong>High priority<div class="matters">Earnings tomorrow · your holding.</div></div>
+      </div>
+
+      <button class="btn-intel" type="button" onclick="showScreen('intelligence')">View today's intelligence →</button>
+    </div>
+    <nav class="mobile-nav"><span class="active">Today</span><span>Intel</span><span>Portfolio</span><span>Briefs</span><span>More</span></nav>
+  </div>
+</div>
+
+<!-- TODAY'S INTELLIGENCE -->
+<div id="intelligenceView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div>
+    <nav style="margin-top:1.25rem"><button class="nav-item active" onclick="showScreen('briefing')"><span class="icon">☀</span> Today</button></nav>
+  </aside>
+  <div class="main-col"><div class="content">
+    <div class="greeting-sm">Today's Intelligence</div>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 1.25rem">Briefs, Following, and Events — opened from Today.</p>
+
+    <div class="section-label"><span class="ai-spark">✦</span> Briefs</div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="row" onclick="goBriefDetail()" style="cursor:pointer"><div><strong>NVDA — Institutional Buying</strong><div class="row-sub">45 sec · High · <span class="matters" style="display:inline;font-size:0.6875rem">you own NVDA</span></div></div><span class="brief-tag high">High</span></div>
+      <div class="row"><div><strong>BTC — Wallet Distribution</strong><div class="row-sub">38 sec · Moderate</div></div><span class="brief-tag mod">Moderate</span></div>
+    </div>
+
+    <div class="section-label"><span class="ai-spark">✦</span> Following</div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="row"><div><strong>TSLA</strong><div class="matters">New opportunity detected.</div></div><span class="brief-tag high">High</span></div>
+    </div>
+
+    <div class="section-label"><span class="ai-spark">✦</span> Events</div>
+    <div class="card">
+      <div class="row"><div><strong>NVDA Earnings</strong><div class="matters">Affects NVDA in your portfolio.</div></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- BRIEF DETAIL -->
+<div id="briefDetail" class="mobile-frame-wrap hidden">
+  <div class="mobile-frame" style="min-height:820px">
+    <div class="mobile-status"></div>
+    <div class="detail-header">
+      <button class="btn" style="flex:0;padding:0.35rem 0.65rem" onclick="goBriefing()">←</button>
+      <strong style="flex:1;font-family:var(--heading)">Brief</strong>
+      <span>🎤</span>
+    </div>
+    <div class="detail-tabs"><button class="detail-tab active">Brief</button><button class="detail-tab">Chart</button><button class="detail-tab">Data</button></div>
+    <div class="mobile-body" style="padding-bottom:0">
+      <div style="padding:1rem 0 0">
+        <div style="font-family:var(--heading);font-size:1.125rem;font-weight:700">NVDA — Institutional Buying</div>
+        <div class="brief-meta">
+          <span>Reading time · <strong>45 seconds</strong></span>
+          <span>Motive Signal · <strong class="brief-tag high">High</strong></span>
+        </div>
+        <div class="matters" style="margin-bottom:0.75rem">Because you own NVDA — earnings tomorrow may affect your position.</div>
+      </div>
+      <p style="font-size:0.875rem;color:var(--text-muted);padding-bottom:1rem">Our models detected unusual market activity that may warrant additional research.</p>
+      <div class="why-box"><strong>Why it matters</strong>Unusual call activity and volume suggest elevated institutional interest. Research highlight — not a recommendation.</div>
+      <p style="margin:0 1rem 0.5rem;font-size:0.75rem;color:var(--text-dim)">Motive Signal: High <span class="signal-expand" onclick="document.getElementById('scoreAdv').classList.toggle('show')">Show underlying score ↗</span></p>
+      <div class="score-advanced" id="scoreAdv">Advanced: composite score 92/100 · call/put 2.35 · rel vol 3.12x · institutional inflow +$128M</div>
+      <div class="data-table">
+        <div class="row"><span>Call/Put Ratio</span><span><strong>2.35</strong> High</span></div>
+        <div class="row"><span>Momentum</span><span>Positive</span></div>
+      </div>
+    </div>
+    <div class="detail-actions"><button class="btn">Following</button><button class="btn btn-primary">Share</button></div>
+  </div>
+</div>
+
+<!-- MARKET INTELLIGENCE -->
+<div id="marketIntelView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div>
+    <nav style="margin-top:1.25rem"><button class="nav-item active"><span class="icon">◎</span> Market Intelligence</button></nav>
+  </aside>
+  <div class="main-col"><div class="content">
+    <span class="review-tag">Not "Markets"</span>
+    <div class="greeting-sm">Market Intelligence</div>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 1rem">What happened — not generic tickers. S&amp;P, NASDAQ, BTC live here.</p>
+    <div class="card" style="max-width:360px">
+      <div class="row"><div>S&amp;P 500</div><span class="chg-up">+0.62%</span></div>
+      <div class="row"><div>NASDAQ</div><span class="chg-up">+0.81%</span></div>
+      <div class="row"><div>BTC/USD</div><span class="chg-down">−1.23%</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- MY PORTFOLIO -->
+<div id="portfolioView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div></aside>
+  <div class="main-col"><div class="content">
+    <div class="section-label"><span class="ai-spark">✦</span> My Portfolio</div>
+    <div class="greeting-sm">Portfolio Intelligence</div>
+    <div class="card" style="margin-top:1rem;max-width:520px">
+      <div class="priority-row"><span>🟢</span><div><div class="priority-label high">High — NVDA</div><div class="matters">You hold 10 shares · earnings tomorrow.</div></div></div>
+      <div class="priority-row"><span>🟡</span><div><div class="priority-label mod">Moderate — AAPL</div><div class="matters">Sector rotation · your position.</div></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- BRIEFS -->
+<div id="briefsView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div></aside>
+  <div class="main-col"><div class="content">
+    <div class="greeting-sm">Briefs</div>
+    <div class="card" style="margin-top:1rem;max-width:520px">
+      <div class="row" style="cursor:pointer" onclick="goBriefDetail()"><div><strong>NVDA — Institutional Buying</strong><div class="row-sub">45 sec · High</div><div class="matters">Because you own NVDA.</div></div><span class="brief-tag high">High</span></div>
+      <div class="row"><div><strong>BTC — Wallet Distribution</strong><div class="row-sub">38 sec · Moderate</div><div class="matters">Because you follow Bitcoin.</div></div><span class="brief-tag mod">Moderate</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- AI MEMORY -->
+<div id="memoryView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div></aside>
+  <div class="main-col"><div class="content">
+    <span class="review-tag purple">Post-launch · Moat</span>
+    <div class="greeting-sm">AI Memory</div>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 1.25rem">The AI remembers everything — not just portfolio. Every briefing adapts.</p>
+    <div class="memory-card">
+      <div class="section-label" style="margin-bottom:0.5rem">What Motive knows about you</div>
+      <span class="tag">Aggressive investor</span>
+      <span class="tag">Long-term focus</span>
+      <span class="tag">ETFs preferred</span>
+      <span class="tag">Don't care about betting</span>
+      <span class="tag">Ignore crypto alerts</span>
+    </div>
+    <p style="font-size:0.75rem;color:var(--text-dim)">Edit in Settings · Used to filter 18,000 overnight events → 3 that matter to you.</p>
+  </div></div>
+</div>
+
+<!-- DECISION HISTORY -->
+<div id="historyView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div></aside>
+  <div class="main-col"><div class="content">
+    <span class="review-tag purple">Post-launch</span>
+    <div class="greeting-sm">Decision History</div>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 1rem">Informational learning — not recommendations.</p>
+    <div class="card" style="max-width:520px">
+      <div class="history-item">
+        <strong>2 months ago · You saved NVDA brief</strong>
+        <div class="outcome">Since then: NVDA +18.4% · Motive Signal remained High for 6 weeks</div>
+      </div>
+      <div class="history-item">
+        <strong>3 months ago · You dismissed TSLA alert</strong>
+        <div class="outcome">Since then: TSLA −12.1% · Signal moved to Moderate</div>
+      </div>
+      <div class="history-item">
+        <strong>You followed · Bills +4.5 brief</strong>
+        <div class="outcome">Event resolved · historical context only</div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- MOTIVE DAILY -->
+<div id="motiveDailyView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div></aside>
+  <div class="main-col"><div class="content">
+    <span class="review-tag green">Business opportunity</span>
+    <div class="greeting-sm">Motive Daily</div>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 0.5rem">Same message everywhere. Consistency builds habit.</p>
+    <p style="font-size:1rem;font-family:var(--heading);margin:1rem 0"><em>Good morning Mazen. Three things matter today.</em></p>
+    <div class="daily-grid">
+      <div class="daily-channel"><div class="icon">📧</div>Email</div>
+      <div class="daily-channel"><div class="icon">🔔</div>Push</div>
+      <div class="daily-channel"><div class="icon">🎤</div>Voice briefing</div>
+      <div class="daily-channel"><div class="icon">⌚</div>Apple Watch</div>
+      <div class="daily-channel"><div class="icon">📱</div>Widget</div>
+      <div class="daily-channel"><div class="icon">🎧</div>AI Podcast</div>
+    </div>
+    <button class="btn-play" style="margin-top:1.25rem" type="button">▶ Play today's Motive Daily</button>
+  </div></div>
+</div>
+
+<!-- PRICING -->
+<div id="pricingView" class="shell hidden">
+  <aside class="sidebar"><div class="logo">MOTIVE<span>FX</span>.AI</div></aside>
+  <div class="main-col"><div class="content" style="max-width:none">
+    <span class="review-tag green">5 intelligence markets · capability unlocks</span>
+    <div class="greeting-sm">Plans</div>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.35rem 0 0">Lite keeps the $29.99 anchor. Pro is the natural upgrade. Ultra beats à la carte. Elite is access, not features.</p>
+
+    <div class="anchor-math">
+      <div class="anchor-card"><strong>2 markets à la carte</strong><br />2 × $29.99 = $59.98 → Pro $59.99 adds AI Memory, Portfolio, unlimited Briefs</div>
+      <div class="anchor-card"><strong>5 markets à la carte</strong><br />5 × $29.99 = $149.95 → Ultra $99.99 saves $50/mo + voice & analytics</div>
+      <div class="anchor-card"><strong>Language</strong><br />Say <em>5 Intelligence Markets</em> — not "5 modules"</div>
+    </div>
+
+    <div class="pricing-grid" id="pricingGrid">
+      <div class="price-card" data-tier="lite">
+        <h3>Lite</h3>
+        <div class="tagline">Pick exactly one intelligence market</div>
+        <div class="amt">$29.99<span style="font-size:0.875rem;color:var(--text-muted)">/mo</span></div>
+        <div class="equiv">Stocks · Crypto · Pink Slips · Sports · Predictions — choose one</div>
+        <ul>
+          <li><strong>One market only</strong> — your pick at signup</li>
+          <li>AI Brief + Ask Motive (for that market)</li>
+          <li>Research Briefs · limited</li>
+          <li>Market Intelligence</li>
+        </ul>
+        <button class="btn-tier" type="button">Start Lite</button>
+      </div>
+      <div class="price-card featured" data-tier="pro">
+        <span class="price-badge">⭐ Most popular</span>
+        <h3>Pro</h3>
+        <div class="tagline">Target 60–70% of subscribers</div>
+        <div class="amt">$59.99<span style="font-size:0.875rem;color:var(--text-muted)">/mo</span></div>
+        <div class="equiv">Pick exactly 2 intelligence markets</div>
+        <ul>
+          <li>Portfolio Intelligence</li>
+          <li>AI Memory</li>
+          <li>Since You Were Away</li>
+          <li>Push + Motive Daily email</li>
+          <li>Unlimited Research Briefs</li>
+        </ul>
+        <button class="btn-tier" type="button">Start Pro</button>
+      </div>
+      <div class="price-card" data-tier="ultra">
+        <h3>Ultra</h3>
+        <div class="tagline">All 5 markets · best value</div>
+        <div class="amt">$99.99<span style="font-size:0.875rem;color:var(--text-muted)">/mo</span></div>
+        <div class="equiv">vs $149.95 à la carte</div>
+        <ul>
+          <li>All 5 intelligence markets</li>
+          <li>Voice briefing</li>
+          <li>Decision History</li>
+          <li>Advanced analytics</li>
+          <li>Motive Daily voice / podcast</li>
+        </ul>
+        <button class="btn-tier" type="button">Start Ultra</button>
+      </div>
+      <div class="price-card" data-tier="ultra-plus">
+        <span class="price-badge purple">Pro tools</span>
+        <h3>Ultra+</h3>
+        <div class="tagline">Traders · analysts · creators</div>
+        <div class="amt">$149.99<span style="font-size:0.875rem;color:var(--text-muted)">/mo</span></div>
+        <div class="equiv">Productivity · not more data</div>
+        <ul>
+          <li>Everything in Ultra</li>
+          <li>API access</li>
+          <li>Multiple portfolios</li>
+          <li>Team workspace</li>
+          <li>Concierge support</li>
+        </ul>
+        <button class="btn-tier" type="button">Start Ultra+</button>
+      </div>
+      <div class="price-card elite-tier" data-tier="elite">
+        <span class="price-badge purple">VIP</span>
+        <h3>Elite</h3>
+        <div class="tagline">Access · not features</div>
+        <div class="amt">$999<span style="font-size:0.875rem;color:var(--text-muted)">/year</span></div>
+        <div class="equiv">All Ultra+ · annual only</div>
+        <ul>
+          <li>White-glove onboarding</li>
+          <li>Early AI model access</li>
+          <li>Direct product feedback</li>
+          <li>Priority feature requests</li>
+        </ul>
+        <button class="btn-tier" type="button">Join Elite</button>
+      </div>
+    </div>
+
+    <div class="pricing-scroll">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Lite</th>
+            <th class="featured-col">Pro ⭐</th>
+            <th>Ultra</th>
+            <th>Ultra+</th>
+            <th>Elite</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Monthly price</td><td>$29.99</td><td class="featured-col">$59.99</td><td>$99.99</td><td>$149.99</td><td>$999/yr</td></tr>
+          <tr><td>Intelligence markets</td><td class="compare-limited"><strong>Pick exactly 1</strong></td><td class="compare-limited featured-col"><strong>Pick exactly 2</strong></td><td>All 5</td><td>All 5</td><td>All 5</td></tr>
+          <tr><td>Stocks</td><td class="compare-limited">Available</td><td class="compare-limited featured-col">Available</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Crypto</td><td class="compare-limited">Available</td><td class="compare-limited featured-col">Available</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Pink Slips</td><td class="compare-limited">Available</td><td class="compare-limited featured-col">Available</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Sports betting</td><td class="compare-limited">Available</td><td class="compare-limited featured-col">Available</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Prediction markets</td><td class="compare-limited">Available</td><td class="compare-limited featured-col">Available</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>AI Brief</td><td class="compare-yes">✓</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Ask Motive AI</td><td class="compare-yes">✓</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Research Briefs</td><td class="compare-limited">Limited</td><td class="compare-yes featured-col">Unlimited</td><td class="compare-yes">Unlimited</td><td class="compare-yes">Unlimited</td><td class="compare-yes">Unlimited</td></tr>
+          <tr><td>Portfolio Intelligence</td><td class="compare-dash">—</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>AI Memory</td><td class="compare-dash">—</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Since You Were Away</td><td class="compare-dash">—</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Push notifications</td><td class="compare-dash">—</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Voice briefing</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Motive Daily (email)</td><td class="compare-dash">—</td><td class="compare-yes featured-col">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Motive Daily (voice / podcast)</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Decision History</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Advanced analytics</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>API access</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-dash">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Multiple portfolios</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-dash">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Team workspace</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-dash">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Concierge support</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-dash">—</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td>White-glove onboarding</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-dash">—</td><td class="compare-dash">—</td><td class="compare-yes">✓</td></tr>
+          <tr><td>Early access AI models</td><td class="compare-dash">—</td><td class="compare-dash featured-col">—</td><td class="compare-dash">—</td><td class="compare-dash">—</td><td class="compare-yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:0.6875rem;color:var(--text-dim);margin-top:0.5rem;max-width:1100px"><strong>Lite:</strong> “Available” = you may select that market as your <em>one</em> choice. You do not get all five. <strong>Pro:</strong> pick any two. <strong>Ultra+:</strong> all five included.</p>
+
+    <div class="pricing-strategy">
+      <h4>Why this works</h4>
+      <p><strong>Lite ($29.99)</strong> — Pick <strong>exactly one</strong> intelligence market at signup (Stocks, Crypto, Pink Slips, Sports, or Predictions). Not two. Not “Stocks plus something else.” Full AI Brief for that market only. No portfolio layer.</p>
+      <p style="margin-top:0.5rem"><strong>Pro ($59.99) ⭐</strong> — The penny upgrade: two markets cost $59.98 separately; Pro adds Portfolio, Memory, unlimited Briefs, Since You Were Away, push, Motive Daily email.</p>
+      <p style="margin-top:0.5rem"><strong>Ultra ($99.99)</strong> — $50/mo cheaper than five markets. Voice, Decision History, advanced analytics, Motive Daily podcast.</p>
+      <p style="margin-top:0.5rem"><strong>Ultra+ ($149.99)</strong> — API, teams, multiple portfolios — productivity for pros, not more tickers.</p>
+      <p style="margin-top:0.5rem"><strong>Elite ($999/yr)</strong> — VIP: onboarding, roadmap influence, early models. Replaces legacy annual all-access positioning.</p>
+    </div>
+  </div></div>
+</div>
+
+<script>
+const SCREENS = ['desktopBriefing','mobileBriefing','intelligenceView','briefDetail','marketIntelView','portfolioView','briefsView','memoryView','historyView','motiveDailyView','pricingView'];
+let viewport = 'desktop', screen = 'briefing';
+
+const CHIEF_REPLIES = {
+  why: '<strong>Why these three?</strong> Filtered by your portfolio (NVDA, AAPL), Following (BTC), and saved events — plus your AI Memory (long-term, no betting).',
+  explain: '<strong>Explain:</strong> I scored 18,000 overnight events. Only items with personal relevance to <em>you</em> crossed threshold. Generic market moves were ignored.',
+  summarize: '<strong>90 seconds:</strong> (1) NVDA — you own it, earnings tomorrow. (2) BTC — you follow it, wallets selling. (3) Bills — you track it, sharp money moved.',
+};
+
+function hideAll() { SCREENS.forEach(id => document.getElementById(id).classList.add('hidden')); }
+
+function showScreen(name) {
+  screen = name;
+  const sel = document.getElementById('screenSelect');
+  if ([...sel.options].some(o => o.value === name)) sel.value = name;
+  hideAll();
+  const map = {
+    briefing: viewport === 'mobile' ? 'mobileBriefing' : 'desktopBriefing',
+    intelligence: 'intelligenceView',
+    'brief-detail': 'briefDetail',
+    'market-intel': 'marketIntelView',
+    portfolio: 'portfolioView',
+    briefs: 'briefsView',
+    memory: 'memoryView',
+    history: 'historyView',
+    'motive-daily': 'motiveDailyView',
+    pricing: 'pricingView',
+  };
+  document.getElementById(map[name] || 'desktopBriefing').classList.remove('hidden');
+}
+
+function goBriefDetail() { showScreen('brief-detail'); }
+function goBriefing() { showScreen('briefing'); }
+function chiefReply(t) { document.getElementById('chiefReply').innerHTML = CHIEF_REPLIES[t] || ''; }
+
+document.getElementById('viewportSelect').onchange = e => { viewport = e.target.value; if (screen === 'briefing') showScreen('briefing'); };
+document.getElementById('screenSelect').onchange = e => showScreen(e.target.value);
+document.getElementById('toggleChecklist').onclick = () => {
+  document.getElementById('checklist').classList.toggle('open');
+  document.querySelectorAll('.shell').forEach(el => el.classList.toggle('checklist-open'));
+};
+document.getElementById('printBtn').onclick = () => window.print();
+document.querySelectorAll('#checklist input').forEach(cb => {
+  const k = cb.dataset.key;
+  cb.checked = localStorage.getItem('mfx-build-' + k) === '1';
+  cb.onchange = () => localStorage.setItem('mfx-build-' + k, cb.checked ? '1' : '0');
+});
+
+showScreen('briefing');
+</script>
+</body>
+</html>

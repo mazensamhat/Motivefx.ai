@@ -14,6 +14,54 @@ import {
   type PricingTierId,
 } from "@/lib/tiers";
 
+function TierCard({
+  tier,
+  loading,
+  onSelect,
+}: {
+  tier: (typeof PRICING_TIERS)[number];
+  loading: PricingTierId | null;
+  onSelect: (id: PricingTierId) => void;
+}) {
+  return (
+    <article className={`pricing-tier-card ${tier.featured ? "featured" : ""}`}>
+      {tier.featured && (
+        <span className="pricing-preview-badge">
+          <Star className="h-3 w-3" aria-hidden />
+          Most popular
+        </span>
+      )}
+      {tier.id === "elite" && (
+        <span className="pricing-preview-badge elite">
+          <Sparkles className="h-3 w-3" aria-hidden />
+          VIP
+        </span>
+      )}
+      <h2>{tier.name}</h2>
+      <p className="pricing-preview-tagline">{tier.tagline}</p>
+      <p className="pricing-tier-price">{formatTierPrice(tier)}</p>
+      <p className="pricing-preview-markets mb-4">
+        {tier.intelligenceMarketsIncluded === "all"
+          ? "All 5 intelligence markets"
+          : `Pick exactly ${tier.intelligenceMarketsIncluded} market${tier.intelligenceMarketsIncluded === 1 ? "" : "s"}`}
+      </p>
+      <ul className="pricing-tier-highlights mb-6">
+        {tier.highlights.map((h) => (
+          <li key={h}>{h}</li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="pricing-tier-btn"
+        disabled={loading !== null}
+        onClick={() => onSelect(tier.id)}
+      >
+        {loading === tier.id ? "Redirecting…" : "Subscribe"}
+      </button>
+    </article>
+  );
+}
+
 export default function PricingPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState<PricingTierId | null>(null);
@@ -22,7 +70,8 @@ export default function PricingPage() {
   const [selected, setSelected] = useState<IntelligenceMarketId[]>([]);
   const [currentTier, setCurrentTier] = useState<PricingTierId | null>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
-  const [planLoading, setPlanLoading] = useState(true);
+  /** Start false so first paint shows static PRICING_TIERS — never "Loading plans…". */
+  const [planReady, setPlanReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,19 +95,19 @@ export default function PricingPage() {
       })
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setPlanLoading(false);
+        if (!cancelled) setPlanReady(true);
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const visibleTiers = useMemo(
-    () => upgradeTiersFrom(currentTier, { subscribed: hasSubscription }),
-    [hasSubscription, currentTier]
-  );
+  const visibleTiers = useMemo(() => {
+    if (!planReady) return PRICING_TIERS;
+    return upgradeTiersFrom(currentTier, { subscribed: hasSubscription });
+  }, [planReady, hasSubscription, currentTier]);
 
-  const isTopTier = hasSubscription && visibleTiers.length === 0;
+  const isTopTier = planReady && hasSubscription && visibleTiers.length === 0;
 
   async function startCheckout(tierId: PricingTierId, markets: IntelligenceMarketId[]) {
     setError(null);
@@ -125,7 +174,7 @@ export default function PricingPage() {
             ? "You’re on Elite — the highest tier. Manage billing from account settings."
             : hasSubscription
               ? "Only higher tiers are shown. Lower plans are hidden while you’re subscribed."
-              : "Capabilities unlock by tier — Lite picks one market, Pro picks two, Ultra and above get all five."}
+              : "Capabilities unlock by tier — Lite picks one market, Pro picks two, Ultra and above get all five. Ultra+ adds API, teams, and multi-portfolio."}
         </p>
         {hasSubscription && currentTier && (
           <p className="mt-2 text-center text-sm text-slate-400">
@@ -158,47 +207,11 @@ export default function PricingPage() {
 
           {error && <p className="pricing-error px-4">{error}</p>}
 
-          {planLoading ? (
-            <p className="px-4 text-center text-sm text-slate-400">Loading plans…</p>
-          ) : (
-            <div className="pricing-tier-grid">
-              {visibleTiers.map((tier) => (
-                <article
-                  key={tier.id}
-                  className={`pricing-tier-card ${tier.featured ? "featured" : ""}`}
-                >
-                  {tier.featured && (
-                    <span className="pricing-preview-badge">
-                      <Star className="h-3 w-3" aria-hidden />
-                      Most popular
-                    </span>
-                  )}
-                  {tier.id === "elite" && (
-                    <span className="pricing-preview-badge elite">
-                      <Sparkles className="h-3 w-3" aria-hidden />
-                      VIP
-                    </span>
-                  )}
-                  <h2>{tier.name}</h2>
-                  <p className="pricing-preview-tagline">{tier.tagline}</p>
-                  <p className="pricing-tier-price">{formatTierPrice(tier)}</p>
-                  <p className="pricing-preview-markets mb-6">
-                    {tier.intelligenceMarketsIncluded === "all"
-                      ? "All 5 intelligence markets"
-                      : `Pick exactly ${tier.intelligenceMarketsIncluded} market${tier.intelligenceMarketsIncluded === 1 ? "" : "s"}`}
-                  </p>
-                  <button
-                    type="button"
-                    className="pricing-tier-btn"
-                    disabled={loading !== null}
-                    onClick={() => onSelectTier(tier.id)}
-                  >
-                    {loading === tier.id ? "Redirecting…" : "Subscribe"}
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
+          <div className="pricing-tier-grid">
+            {visibleTiers.map((tier) => (
+              <TierCard key={tier.id} tier={tier} loading={loading} onSelect={onSelectTier} />
+            ))}
+          </div>
         </>
       )}
 

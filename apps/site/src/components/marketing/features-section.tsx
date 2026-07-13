@@ -38,7 +38,7 @@ export function FeaturesSection() {
                 <h3>{f.title}</h3>
                 <p>{f.description}</p>
                 {f.title === "Motive Signal™" && (
-                  <Link href="/topics/motive-signal" className="feature-link">
+                  <Link href="/motive-signal" className="feature-link">
                     Learn about Motive Signal →
                   </Link>
                 )}

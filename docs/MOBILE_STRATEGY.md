@@ -64,13 +64,15 @@ If mobile conversion justifies 15–30% platform fee:
 | Requirement | Action |
 |-------------|--------|
 | Apple Developer Program ($99/yr) | Enroll as organization or individual |
-| Privacy Policy URL | `https://motivefx.ai/?page=privacy` |
+| Privacy Policy URL | `https://www.motivefxai.com/privacy` |
 | App Privacy Details | Declare: email, user ID, usage data, financial info (user-entered portfolios) |
 | Sign in with Apple | Required if Google/social login added on iOS |
-| Guideline 3.1.1 (IAP) | Do not sell digital subs in-app without IAP — use web billing |
+| Guideline 3.1.1 (IAP) | **Billing on web only for v1** — do not sell digital subscriptions in-app; link to `https://www.motivefxai.com/pricing` |
 | Guideline 3.1.3(f) | Reader apps exception does **not** apply — this is SaaS tools |
 | Financial content | Prominent disclaimer; no guaranteed returns |
 | Betting content | Geo-restrict modules; 17+ or 18+ rating; regional compliance |
+
+**Post-review launch checklist (iOS):** App Store listing live → smoke-test auth + WebView terminal → confirm subscribe opens Safari to web pricing → only then consider StoreKit / RevenueCat if needed.
 
 ### Build & submit
 
