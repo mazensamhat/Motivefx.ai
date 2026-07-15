@@ -1,6 +1,5 @@
 import { prisma } from "@motivefx/database";
 import { parseUserMarkets } from "./entitlements";
-import { isPrismaMissingColumnError } from "./load-user";
 import { getSession } from "./session";
 import { userHasActiveSubscription } from "./subscription-access";
 
@@ -8,61 +7,24 @@ export async function getAppUser() {
   const session = await getSession();
   if (!session) return null;
 
-  const selectWithApple = {
-    id: true,
-    email: true,
-    intelligenceTier: true,
-    selectedMarkets: true,
-    stripeCustomerId: true,
-    stripeSubscriptionId: true,
-    appleOriginalTransactionId: true,
-    billingProvider: true,
-    subscriptionStatus: true,
-    accessExpiresAt: true,
-    disabledAt: true,
-    totpEnabled: true,
-  } as const;
-
-  const selectLegacy = {
-    id: true,
-    email: true,
-    intelligenceTier: true,
-    selectedMarkets: true,
-    stripeCustomerId: true,
-    stripeSubscriptionId: true,
-    subscriptionStatus: true,
-    accessExpiresAt: true,
-    disabledAt: true,
-    totpEnabled: true,
-  } as const;
-
-  let user: {
-    id: string;
-    email: string;
-    intelligenceTier: string;
-    selectedMarkets: string | null;
-    stripeCustomerId: string | null;
-    stripeSubscriptionId: string | null;
-    appleOriginalTransactionId?: string | null;
-    billingProvider?: string | null;
-    subscriptionStatus: string;
-    accessExpiresAt: Date | null;
-    disabledAt: Date | null;
-    totpEnabled: boolean;
-  } | null;
-
-  try {
-    user = await prisma.user.findUnique({
-      where: { id: session.id },
-      select: selectWithApple,
-    });
-  } catch (error) {
-    if (!isPrismaMissingColumnError(error)) throw error;
-    user = await prisma.user.findUnique({
-      where: { id: session.id },
-      select: selectLegacy,
-    });
-  }
+  // Skip Apple IAP columns on the hot path — Stripe status + accessExpiresAt
+  // still gate access; Apple-only users are covered once columns are present
+  // via /api/app/sync-status and IAP webhooks.
+  const user = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: {
+      id: true,
+      email: true,
+      intelligenceTier: true,
+      selectedMarkets: true,
+      stripeCustomerId: true,
+      stripeSubscriptionId: true,
+      subscriptionStatus: true,
+      accessExpiresAt: true,
+      disabledAt: true,
+      totpEnabled: true,
+    },
+  });
 
   if (!user || user.disabledAt) return null;
 

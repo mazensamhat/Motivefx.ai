@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError } from "@/lib/api";
+import { findUserSafe } from "@/lib/load-user";
 import { hashPassword } from "@/lib/password";
 import { createSession, mobileSessionPayload } from "@/lib/session";
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     const email = parsed.data.email.trim().toLowerCase();
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await findUserSafe({ email });
     if (existing?.passwordHash) {
       return badRequest("An account with this email already exists. Sign in instead.");
     }
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       signupLongitude: Number.isFinite(signupLongitude) ? signupLongitude : null,
     };
 
+    const authSelect = { id: true, email: true } as const;
     const user = existing
       ? await prisma.user.update({
           where: { id: existing.id },
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
             privacyAcceptedAt: now,
             ...(!existing.signupCountry && country ? geoData : {}),
           },
+          select: authSelect,
         })
       : await prisma.user.create({
           data: {
@@ -70,6 +73,7 @@ export async function POST(request: Request) {
             privacyAcceptedAt: now,
             ...geoData,
           },
+          select: authSelect,
         });
 
     const accessToken = await createSession({ id: user.id, email: user.email });

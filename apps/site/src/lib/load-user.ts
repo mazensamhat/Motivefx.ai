@@ -60,23 +60,18 @@ function withNullAppleFields<T extends Record<string, unknown>>(row: T): User {
 }
 
 /**
- * Load a full User row. If production DB is behind the Prisma schema
- * (missing Apple IAP columns), fall back to a legacy column set so login
- * and the terminal stay usable instead of 500ing.
+ * Load a User for auth/terminal without selecting Apple IAP columns.
+ * Full-model findUnique 500s (and burns a pool connection) when prod DB
+ * is behind the Prisma schema — never do that on the login hot path.
  */
 export async function findUserSafe(
   where: Prisma.UserWhereUniqueInput
 ): Promise<User | null> {
-  try {
-    return await prisma.user.findUnique({ where });
-  } catch (error) {
-    if (!isPrismaMissingColumnError(error)) throw error;
-    const row = await prisma.user.findUnique({
-      where,
-      select: LEGACY_USER_SELECT,
-    });
-    return row ? withNullAppleFields(row) : null;
-  }
+  const row = await prisma.user.findUnique({
+    where,
+    select: LEGACY_USER_SELECT,
+  });
+  return row ? withNullAppleFields(row) : null;
 }
 
 export async function checkAppleIapSchema(): Promise<{
