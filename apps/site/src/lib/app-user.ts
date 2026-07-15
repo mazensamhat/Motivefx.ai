@@ -16,6 +16,8 @@ export async function getAppUser() {
       selectedMarkets: true,
       stripeCustomerId: true,
       stripeSubscriptionId: true,
+      appleOriginalTransactionId: true,
+      billingProvider: true,
       subscriptionStatus: true,
       accessExpiresAt: true,
       disabledAt: true,

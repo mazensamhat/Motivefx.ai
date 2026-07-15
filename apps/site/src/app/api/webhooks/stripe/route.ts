@@ -27,6 +27,10 @@ async function activateTier(
       selectedMarkets,
       stripeSubscriptionId: subscriptionId,
       subscriptionStatus: "active",
+      billingProvider: "stripe",
+      // Clear Apple ids so we don't treat this as Apple-managed billing.
+      appleOriginalTransactionId: null,
+      appleProductId: null,
       ...(customerId ? { stripeCustomerId: customerId } : {}),
     },
   });
@@ -45,6 +49,7 @@ async function deactivateTier(userId: string) {
       intelligenceTier: "lite",
       stripeSubscriptionId: null,
       subscriptionStatus: "none",
+      billingProvider: null,
     },
   });
 }

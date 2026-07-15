@@ -14,6 +14,15 @@ import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
+import {
+  configureIap,
+  extractTransactionId,
+  isIapConfigured,
+  isValidTier,
+  purchaseTier,
+  restorePurchases,
+  type IntelligenceTierId,
+} from "../iap";
 
 type ShouldStartLoadRequest = {
   url: string;
@@ -22,10 +31,18 @@ type ShouldStartLoadRequest = {
 
 type WebViewComponent = typeof import("react-native-webview").WebView;
 
+type NativeMsg =
+  | { type: "iap_purchase"; tier?: string; userId?: string }
+  | { type: "iap_restore"; userId?: string }
+  | { type: "session"; userId?: string }
+  | { type: "motivefx:open-external"; url?: string }
+  | { type: string; url?: string };
+
 const VIEWPORT_LOCK_SCRIPT = `
   (function () {
     try {
       document.documentElement.classList.add("motivefx-native-shell");
+      window.__MOTIVEFX_NATIVE_IAP__ = ${isIapConfigured() ? "true" : "false"};
       var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
       var meta = document.querySelector('meta[name="viewport"]');
       if (!meta) {
@@ -64,6 +81,7 @@ function buildAuthInjectionScript(
         if (accessToken) localStorage.setItem("motivefx_access_token", accessToken);
         if (refreshToken) localStorage.setItem("motivefx_refresh_token", refreshToken);
         if (userId) localStorage.setItem("motivefx_user_id", userId);
+        window.__MOTIVEFX_NATIVE_IAP__ = ${isIapConfigured() ? "true" : "false"};
       } catch (e) {}
       true;
     })();
@@ -97,7 +115,7 @@ function isBillingOrCheckoutUrl(url: string): boolean {
       path.includes("/pricing") ||
       path.includes("/checkout") ||
       path.includes("/billing") ||
-      path.includes("/api/subscription") ||
+      path.includes("/api/subscription/checkout") ||
       path.includes("/api/billing") ||
       path.includes("module-checkout") ||
       path.includes("tier-checkout") ||
@@ -118,7 +136,16 @@ export function TerminalScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
-  const webRef = useRef<{ reload?: () => void } | null>(null);
+  const [iapBusy, setIapBusy] = useState(false);
+  const [iapBanner, setIapBanner] = useState<string | null>(null);
+  const webRef = useRef<{ reload?: () => void; injectJavaScript?: (js: string) => void } | null>(
+    null
+  );
+  const appUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    void configureIap();
+  }, []);
 
   // Load WebView module as soon as Terminal mounts (Auth screen never imports it).
   useEffect(() => {
@@ -150,6 +177,10 @@ export function TerminalScreen() {
         getRefreshToken(),
         getUserId(),
       ]);
+      if (userId) {
+        appUserIdRef.current = userId;
+        void configureIap(userId);
+      }
       setInjection(
         `${buildAuthInjectionScript(accessToken, refreshToken, userId)}\n${VIEWPORT_LOCK_SCRIPT}`
       );
@@ -195,6 +226,139 @@ export function TerminalScreen() {
     void prepareSession();
   }, [prepareSession]);
 
+  const notifyWeb = useCallback((payload: Record<string, unknown>) => {
+    const js = `
+      (function(){
+        try {
+          window.dispatchEvent(new CustomEvent("motivefx-iap", { detail: ${JSON.stringify(payload)} }));
+        } catch (e) {}
+        true;
+      })();
+    `;
+    webRef.current?.injectJavaScript?.(js);
+  }, []);
+
+  const syncAppleToServer = useCallback(
+    (opts: {
+      originalTransactionId: string;
+      productId?: string | null;
+      tier?: string | null;
+      revenueCatAppUserId?: string | null;
+    }) => {
+      const syncJs = `
+        (async function(){
+          try {
+            var res = await fetch("/api/subscription/apple", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                action: "activate",
+                originalTransactionId: ${JSON.stringify(opts.originalTransactionId)},
+                productId: ${JSON.stringify(opts.productId ?? null)},
+                entitlementId: ${JSON.stringify(opts.tier ?? null)},
+                revenueCatAppUserId: ${JSON.stringify(opts.revenueCatAppUserId ?? null)},
+                entitlementActive: true
+              })
+            });
+            window.dispatchEvent(new CustomEvent("motivefx-iap", {
+              detail: { type: "iap_result", ok: res.ok, tier: ${JSON.stringify(opts.tier ?? null)} }
+            }));
+            if (res.ok) {
+              window.dispatchEvent(new Event("motivefx:entitlements-changed"));
+              window.location.reload();
+            }
+          } catch (e) {
+            window.dispatchEvent(new CustomEvent("motivefx-iap", {
+              detail: { type: "iap_result", ok: false, error: String(e) }
+            }));
+          }
+          true;
+        })();
+      `;
+      webRef.current?.injectJavaScript?.(syncJs);
+    },
+    []
+  );
+
+  const runPurchase = useCallback(
+    async (tierRaw?: string, userId?: string) => {
+      if (iapBusy) return;
+      if (!isIapConfigured()) {
+        setIapBanner("In-app purchase is not configured. Opening website…");
+        void Linking.openURL("https://www.motivefxai.com/pricing");
+        return;
+      }
+      const tier: IntelligenceTierId = isValidTier(tierRaw) ? tierRaw : "pro";
+      setIapBusy(true);
+      setIapBanner(null);
+      try {
+        if (userId) {
+          appUserIdRef.current = userId;
+          await configureIap(userId);
+        }
+        const result = await purchaseTier(tier);
+        if (!result.ok || !result.customerInfo) {
+          setIapBanner(result.error ?? "Purchase failed.");
+          notifyWeb({ type: "iap_result", ok: false, error: result.error });
+          return;
+        }
+        const tx =
+          extractTransactionId(result.customerInfo) ??
+          result.originalTransactionId ??
+          `rc:${appUserIdRef.current ?? "anon"}:${result.productId ?? tier}`;
+        syncAppleToServer({
+          originalTransactionId: tx,
+          productId: result.productId,
+          tier: result.tier ?? tier,
+          revenueCatAppUserId: appUserIdRef.current,
+        });
+        setIapBanner("Subscription unlocked.");
+      } finally {
+        setIapBusy(false);
+      }
+    },
+    [iapBusy, notifyWeb, syncAppleToServer]
+  );
+
+  const runRestore = useCallback(
+    async (userId?: string) => {
+      if (iapBusy) return;
+      if (!isIapConfigured()) {
+        setIapBanner("In-app purchase is not configured.");
+        return;
+      }
+      setIapBusy(true);
+      setIapBanner(null);
+      try {
+        if (userId) {
+          appUserIdRef.current = userId;
+          await configureIap(userId);
+        }
+        const result = await restorePurchases();
+        if (!result.ok || !result.customerInfo) {
+          setIapBanner(result.error ?? "Restore failed.");
+          notifyWeb({ type: "iap_result", ok: false, error: result.error });
+          return;
+        }
+        const tx =
+          extractTransactionId(result.customerInfo) ??
+          result.originalTransactionId ??
+          `rc:restore:${result.productId ?? "unknown"}`;
+        syncAppleToServer({
+          originalTransactionId: tx,
+          productId: result.productId,
+          tier: result.tier,
+          revenueCatAppUserId: appUserIdRef.current,
+        });
+        setIapBanner("Purchases restored.");
+      } finally {
+        setIapBusy(false);
+      }
+    },
+    [iapBusy, notifyWeb, syncAppleToServer]
+  );
+
   const onMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
       try {
@@ -204,16 +368,29 @@ export function TerminalScreen() {
           return;
         }
         if (typeof raw === "string" && raw.startsWith("{")) {
-          const parsed = JSON.parse(raw) as { type?: string; url?: string };
+          const parsed = JSON.parse(raw) as NativeMsg;
           if (parsed?.type === "motivefx:open-external" && parsed.url) {
             void Linking.openURL(parsed.url).catch((e) => console.warn("openURL failed", e));
+            return;
+          }
+          if (parsed.type === "session" && parsed.userId) {
+            appUserIdRef.current = parsed.userId;
+            void configureIap(parsed.userId);
+            return;
+          }
+          if (parsed.type === "iap_purchase") {
+            void runPurchase(parsed.tier, parsed.userId);
+            return;
+          }
+          if (parsed.type === "iap_restore") {
+            void runRestore(parsed.userId);
           }
         }
       } catch (e) {
         console.warn("Terminal onMessage failed", e);
       }
     },
-    [logout]
+    [logout, runPurchase, runRestore]
   );
 
   const onShouldStartLoadWithRequest = useCallback((req: ShouldStartLoadRequest) => {
@@ -334,6 +511,18 @@ export function TerminalScreen() {
       {showWebView && WebView ? (
         <WebView key={webViewKey} ref={webRef as never} {...webViewProps} />
       ) : null}
+
+      {iapBusy && (
+        <View style={styles.iapOverlay}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={styles.iapText}>Opening App Store…</Text>
+        </View>
+      )}
+      {iapBanner && !iapBusy && (
+        <Pressable style={styles.banner} onPress={() => setIapBanner(null)}>
+          <Text style={styles.bannerText}>{iapBanner}</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -374,4 +563,34 @@ const styles = StyleSheet.create({
   failButtonText: { color: colors.bg, fontWeight: "700" },
   link: { color: colors.accent, textAlign: "center", marginTop: 8 },
   linkMuted: { color: colors.dim, textAlign: "center", marginTop: 8 },
+  iapOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(8, 10, 12, 0.72)",
+    gap: 12,
+    zIndex: 5,
+  },
+  iapText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  banner: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0, 198, 255, 0.95)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    zIndex: 6,
+  },
+  bannerText: {
+    color: "#041018",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 });

@@ -1,5 +1,5 @@
 import { Check, Sparkles, Star } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PRICING_FEATURE_MATRIX,
   PRICING_TIERS,
@@ -10,7 +10,14 @@ import {
 } from "../config/pricingTiers";
 import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
-import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
+import { getUserId } from "../lib/api";
+import {
+  isNativeIapAvailable,
+  isNativeShell,
+  openExternalSubscribe,
+  requestNativeIapPurchase,
+  requestNativeIapRestore,
+} from "../lib/nativeShell";
 import { MarketPickerModal } from "./MarketPickerModal";
 import { BillingFinePrint } from "./BillingFinePrint";
 
@@ -28,6 +35,8 @@ export function TierPricing() {
   const { tier: currentTier, plan, subscribeTier, loading } = useModules();
   const [picker, setPicker] = useState<{ tierId: PricingTierId; name: string; picks: number } | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [nativeIap, setNativeIap] = useState(false);
+  const [iapError, setIapError] = useState<string | null>(null);
 
   const subscribed = Boolean(plan.hasAnnual || (plan.allowedMarkets?.length ?? 0) > 0);
   const visibleTiers = useMemo(
@@ -42,7 +51,30 @@ export function TierPricing() {
 
   const native = isNativeShell();
 
+  useEffect(() => {
+    setNativeIap(isNativeIapAvailable());
+    function onIap(e: Event) {
+      const detail = (e as CustomEvent).detail as { type?: string; ok?: boolean; error?: string };
+      if (detail?.type !== "iap_result") return;
+      setCheckoutBusy(false);
+      if (!detail.ok) setIapError(detail.error ?? "Purchase did not complete.");
+      else setIapError(null);
+    }
+    window.addEventListener("motivefx-iap", onIap as EventListener);
+    return () => window.removeEventListener("motivefx-iap", onIap as EventListener);
+  }, []);
+
   async function startCheckout(tierId: PricingTierId, selectedMarkets: string[] = []) {
+    if (native && nativeIap) {
+      setCheckoutBusy(true);
+      setIapError(null);
+      const ok = requestNativeIapPurchase(tierId, getUserId());
+      if (!ok) {
+        setCheckoutBusy(false);
+        openExternalSubscribe();
+      }
+      return;
+    }
     if (native) {
       openExternalSubscribe();
       return;
@@ -60,8 +92,13 @@ export function TierPricing() {
   }
 
   function onSelectTier(tierId: PricingTierId) {
-    if (native) {
+    if (native && !nativeIap) {
       openExternalSubscribe();
+      return;
+    }
+    // Native IAP: skip market picker — server defaults markets by tier.
+    if (native && nativeIap) {
+      void startCheckout(tierId, []);
       return;
     }
     const picks = requiredMarketPicks(tierId);
@@ -75,15 +112,15 @@ export function TierPricing() {
 
   if (loading) return null;
 
-  if (native) {
+  // Companion / Safari fallback when native IAP keys are not configured.
+  if (native && !nativeIap) {
     return (
       <div className="tier-pricing glass-panel pricing-terminal native-companion-billing" id="pricing">
         <div className="module-pricing-header">
           <h3 className="pricing-terminal-title">Subscriptions on the web</h3>
           <p className="pricing-terminal-sub">
-            This iOS app does not sell subscriptions in-app. Manage or purchase plans at
-            motivefxai.com in Safari. Sign in here with the same account to view markets you already
-            own.
+            In-app purchase is being set up. Manage or purchase plans at motivefxai.com in Safari.
+            Sign in here with the same account to view markets you already own.
           </p>
         </div>
         <button type="button" className="btn btn-accent-terminal" onClick={() => openExternalSubscribe()}>
@@ -104,6 +141,15 @@ export function TierPricing() {
             {" — "}you’re on the highest tier. Manage billing from Account.
           </p>
         </div>
+        {native && nativeIap && (
+          <button
+            type="button"
+            className="btn admin-btn"
+            onClick={() => requestNativeIapRestore(getUserId())}
+          >
+            Restore App Store purchases
+          </button>
+        )}
         <BillingFinePrint annualPrice={999} className="tier-pricing-fine-print" />
       </div>
     );
@@ -116,9 +162,11 @@ export function TierPricing() {
           {subscribed ? "Upgrade your plan" : "Intelligence plans"}
         </h3>
         <p className="pricing-terminal-sub">
-          {subscribed
-            ? "Only higher tiers are shown — no downgrades here."
-            : "Capabilities unlock by tier — Lite picks exactly one market, Pro picks two, Ultra and above get all five."}
+          {native && nativeIap
+            ? "Purchase with Apple In-App Purchase. Stripe checkout is not available inside the app."
+            : subscribed
+              ? "Only higher tiers are shown — no downgrades here."
+              : "Capabilities unlock by tier — Lite picks exactly one market, Pro picks two, Ultra and above get all five."}
         </p>
         {subscribed && (
           <p className="tier-pricing-current">
@@ -186,7 +234,17 @@ export function TierPricing() {
                   disabled={checkoutBusy}
                   onClick={() => onSelectTier(t.id)}
                 >
-                  {checkoutBusy ? "Loading…" : t.id === "elite" ? "Get Elite" : "Start free trial"}
+                  {checkoutBusy
+                    ? nativeIap
+                      ? "Opening App Store…"
+                      : "Loading…"
+                    : native && nativeIap
+                      ? t.id === "elite"
+                        ? "Subscribe with Apple"
+                        : "Subscribe with Apple"
+                      : t.id === "elite"
+                        ? "Get Elite"
+                        : "Start free trial"}
                 </button>
               )}
             </article>
@@ -194,7 +252,19 @@ export function TierPricing() {
         })}
       </div>
 
-      {!subscribed && (
+      {iapError && <p className="auth-error">{iapError}</p>}
+
+      {native && nativeIap && (
+        <button
+          type="button"
+          className="btn admin-btn"
+          onClick={() => requestNativeIapRestore(getUserId())}
+        >
+          Restore purchases
+        </button>
+      )}
+
+      {!subscribed && !native && (
         <details className="tier-pricing-comparison">
           <summary>Full feature comparison</summary>
           <div className="tier-comparison-scroll">

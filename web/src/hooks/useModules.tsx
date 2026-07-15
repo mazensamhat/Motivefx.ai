@@ -3,7 +3,12 @@ import { WinHookModal } from "../components/WinHookModal";
 import { useAuth } from "./useAuth";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
 import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
-import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
+import {
+  isNativeIapAvailable,
+  isNativeShell,
+  openExternalSubscribe,
+  requestNativeIapPurchase,
+} from "../lib/nativeShell";
 import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
 import {
   applySitePlanToModulesPayload,
@@ -179,6 +184,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   const subscribeModule = useCallback(async (module: string) => {
     // App Store 3.1.1: never start Stripe Checkout inside the native WebView.
     if (isNativeShell()) {
+      if (isNativeIapAvailable()) {
+        requestNativeIapPurchase("lite", getUserId());
+        return;
+      }
       openExternalSubscribe();
       return;
     }
@@ -209,6 +218,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   const subscribeTier = useCallback(
     async (tier: PricingTierId, selectedMarkets: string[] = []) => {
       if (isNativeShell()) {
+        if (isNativeIapAvailable()) {
+          requestNativeIapPurchase(tier, getUserId());
+          return;
+        }
         openExternalSubscribe();
         return;
       }
@@ -243,6 +256,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   const subscribeAnnual = useCallback(async () => {
     if (isNativeShell()) {
+      if (isNativeIapAvailable()) {
+        requestNativeIapPurchase("elite", getUserId());
+        return;
+      }
       openExternalSubscribe();
       return;
     }

@@ -38,6 +38,15 @@ model User {
 
   subscriptionStatus   String    @default("none")
 
+  /** stripe | apple — which store currently owns billing */
+  billingProvider      String?
+
+  appleOriginalTransactionId String?
+
+  appleProductId       String?
+
+  revenueCatAppUserId  String?
+
   accessExpiresAt      DateTime?
 
   disabledAt           DateTime?

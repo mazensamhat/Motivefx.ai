@@ -16,6 +16,8 @@ export async function GET() {
       intelligenceTier: true,
       selectedMarkets: true,
       stripeSubscriptionId: true,
+      appleOriginalTransactionId: true,
+      billingProvider: true,
       subscriptionStatus: true,
       accessExpiresAt: true,
       disabledAt: true,

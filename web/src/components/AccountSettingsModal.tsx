@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Trash2, X } from "lucide-react";
 import { authGet, authPost, clearSession, apiPost, getUserId } from "../lib/api";
 import { SITE_EMBED } from "../lib/siteSession";
 import { openSiteBillingPortal } from "../lib/siteSecurity";
+import {
+  isNativeIapAvailable,
+  isNativeShell,
+  requestNativeIapRestore,
+} from "../lib/nativeShell";
 import { SecuritySettingsModal } from "./SecuritySettingsModal";
 import type { AuthUser } from "../lib/api";
 
@@ -20,6 +25,20 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [nativeIap, setNativeIap] = useState(false);
+
+  useEffect(() => {
+    setNativeIap(isNativeShell() && isNativeIapAvailable());
+    function onIap(e: Event) {
+      const detail = (e as CustomEvent).detail as { type?: string; ok?: boolean; error?: string };
+      if (detail?.type !== "iap_result") return;
+      setLoading(false);
+      if (detail.ok) setMessage("Purchases restored.");
+      else setError(detail.error ?? "Restore failed.");
+    }
+    window.addEventListener("motivefx-iap", onIap as EventListener);
+    return () => window.removeEventListener("motivefx-iap", onIap as EventListener);
+  }, []);
 
   async function exportData() {
     setLoading(true);
@@ -106,6 +125,24 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
           <button type="button" className="btn admin-btn" onClick={openBillingPortal} disabled={loading}>
             Manage billing
           </button>
+          {nativeIap && (
+            <button
+              type="button"
+              className="btn admin-btn"
+              disabled={loading}
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                setMessage(null);
+                if (!requestNativeIapRestore(getUserId())) {
+                  setLoading(false);
+                  setError("Restore unavailable.");
+                }
+              }}
+            >
+              Restore App Store purchases
+            </button>
+          )}
           <a className="btn admin-btn" href="/?page=forgot-password">
             Change password
           </a>

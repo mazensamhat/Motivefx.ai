@@ -2,6 +2,8 @@ import { isCompAccessExpired } from "./comp-access";
 
 export type SubscriptionAccessUser = {
   stripeSubscriptionId: string | null;
+  appleOriginalTransactionId?: string | null;
+  billingProvider?: string | null;
   subscriptionStatus: string;
   accessExpiresAt: Date | string | null;
   disabledAt?: Date | string | null;
@@ -13,6 +15,7 @@ export function userHasActiveSubscription(user: SubscriptionAccessUser): boolean
     return false;
   }
   if (user.stripeSubscriptionId) return true;
+  if (user.appleOriginalTransactionId) return true;
   if (user.subscriptionStatus !== "comp" && user.subscriptionStatus !== "active") {
     return false;
   }

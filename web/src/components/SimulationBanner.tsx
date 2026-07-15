@@ -1,6 +1,13 @@
 import { Clock, FlaskConical, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useModules } from "../hooks/useModules";
-import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
+import { getUserId } from "../lib/api";
+import {
+  isNativeIapAvailable,
+  isNativeShell,
+  openExternalSubscribe,
+  requestNativeIapPurchase,
+} from "../lib/nativeShell";
 
 interface Props {
   module: "betting" | "predictions";
@@ -9,6 +16,11 @@ interface Props {
 export function SimulationBanner({ module }: Props) {
   const { isSimulationOnly, simulation, subscribeModule } = useModules();
   const native = isNativeShell();
+  const [nativeIap, setNativeIap] = useState(false);
+
+  useEffect(() => {
+    setNativeIap(isNativeIapAvailable());
+  }, []);
 
   if (!isSimulationOnly(module) || !simulation?.active) {
     return null;
@@ -50,9 +62,23 @@ export function SimulationBanner({ module }: Props) {
         <button
           type="button"
           className="btn btn-primary btn-sm simulation-banner-cta"
-          onClick={() => (native ? openExternalSubscribe() : subscribeModule(module))}
+          onClick={() => {
+            if (native && nativeIap) {
+              requestNativeIapPurchase("lite", getUserId());
+              return;
+            }
+            if (native) {
+              openExternalSubscribe();
+              return;
+            }
+            subscribeModule(module);
+          }}
         >
-          {native ? "Manage on website" : "Upgrade to live module"}
+          {native && nativeIap
+            ? "Subscribe with Apple"
+            : native
+              ? "Manage on website"
+              : "Upgrade to live module"}
         </button>
       </div>
     </div>
