@@ -214,15 +214,37 @@ export function demoLineMoves(): LineMoveItem[] {
   ];
 }
 
-/** Prefer in-season sports so July users are not stuck on empty NFL + stale demo slips. */
+/**
+ * Prefer sports that usually have games year-round, then seasonal.
+ * `upcoming` is The Odds API cross-sport feed (next ~8 events) — try first to avoid
+ * empty NFL in July and to burn only one quota unit instead of six sequential calls.
+ */
 const ODDS_SPORT_FALLBACKS = [
+  "upcoming",
   "baseball_mlb",
+  "soccer_usa_mls",
+  "mma_mixed_martial_arts",
   "americanfootball_nfl",
   "basketball_nba",
   "icehockey_nhl",
-  "soccer_usa_mls",
-  "mma_mixed_martial_arts",
 ];
+
+type OddsOutcome = { name: string; price?: number; point?: number };
+
+function formatOddsLine(outcomes: OddsOutcome[], home: string): string | undefined {
+  const homeOut = outcomes.find((o) => o.name === home);
+  const primary = homeOut ?? outcomes[0];
+  if (!primary) return undefined;
+  const short = primary.name.split(" ").pop() ?? primary.name;
+  if (primary.point != null) {
+    return `${short} ${primary.point > 0 ? "+" : ""}${primary.point}`;
+  }
+  if (primary.price != null) {
+    const price = primary.price > 0 ? `+${primary.price}` : String(primary.price);
+    return `${short} ${price}`;
+  }
+  return short;
+}
 
 function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
   return games.slice(0, 12).map((game) => {
@@ -230,17 +252,13 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
     const away = String(game.away_team ?? "Away");
     const bookmakers = (game.bookmakers as Array<Record<string, unknown>>) ?? [];
     const markets = (bookmakers[0]?.markets as Array<Record<string, unknown>>) ?? [];
-    const spread = markets.find((m) => m.key === "spreads") ?? markets[0] ?? {};
-    const outcomes = (spread.outcomes as Array<{ name: string; price?: number; point?: number }>) ?? [];
-    const homeOut = outcomes.find((o) => o.name === home);
-    const awayOut = outcomes.find((o) => o.name === away);
-    const pointLabel = (o?: { name: string; point?: number }) =>
-      o?.point != null ? `${o.name.split(" ").pop() ?? o.name} ${o.point > 0 ? "+" : ""}${o.point}` : undefined;
-    const currentLine =
-      pointLabel(homeOut) ??
-      (outcomes[0]
-        ? `${outcomes[0].name}${outcomes[0].point != null ? ` ${outcomes[0].point}` : ""}`
-        : undefined);
+    const preferred =
+      markets.find((m) => m.key === "spreads") ??
+      markets.find((m) => m.key === "h2h") ??
+      markets[0] ??
+      {};
+    const outcomes = (preferred.outcomes as OddsOutcome[]) ?? [];
+    const currentLine = formatOddsLine(outcomes, home);
     return {
       matchup: `${away} @ ${home}`,
       sport: String(game.sport_title ?? "—"),
@@ -256,16 +274,51 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
   });
 }
 
-async function fetchOddsForSport(sport: string, key: string): Promise<LineMoveItem[]> {
+type OddsSportResult =
+  | { ok: true; items: LineMoveItem[] }
+  | { ok: false; status: number; message: string; fatal: boolean };
+
+function formatOddsHttpError(status: number, bodyText: string): string {
+  let detail = bodyText.trim();
+  try {
+    const parsed = JSON.parse(bodyText) as { message?: string; error_code?: string };
+    if (parsed.message) detail = parsed.message;
+    else if (parsed.error_code) detail = parsed.error_code;
+  } catch {
+    /* keep raw body */
+  }
+  if (status === 401) {
+    return `The Odds API unauthorized (${detail || "HTTP 401"}) — check API key or usage credits.`;
+  }
+  if (status === 403) {
+    return `The Odds API forbidden (${detail || "HTTP 403"}).`;
+  }
+  if (status === 429) {
+    return `The Odds API rate limited (${detail || "HTTP 429"}) — try again shortly.`;
+  }
+  return `The Odds API error HTTP ${status}${detail ? `: ${detail}` : ""}.`;
+}
+
+async function fetchOddsForSport(sport: string, key: string): Promise<OddsSportResult> {
   const url = new URL(`https://api.the-odds-api.com/v4/sports/${sport}/odds`);
   url.searchParams.set("apiKey", key);
   url.searchParams.set("regions", "us");
-  url.searchParams.set("markets", "h2h,spreads");
+  // Single market = 1 quota unit per call; spreads+h2h was burning 2× per sport in the fallback loop.
+  url.searchParams.set("markets", "h2h");
   url.searchParams.set("oddsFormat", "american");
   const res = await fetch(url.toString(), { cache: "no-store" });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => "");
+    const fatal = res.status === 401 || res.status === 403 || res.status === 429;
+    return {
+      ok: false,
+      status: res.status,
+      message: formatOddsHttpError(res.status, bodyText),
+      fatal,
+    };
+  }
   const games = (await res.json()) as Array<Record<string, unknown>>;
-  return mapOddsGames(games);
+  return { ok: true, items: mapOddsGames(Array.isArray(games) ? games : []) };
 }
 
 export async function fetchLineMoves(sport = "baseball_mlb"): Promise<LineMoveItem[]> {
@@ -287,25 +340,51 @@ export async function fetchLineMovesWithMeta(
     };
   }
 
-  const sports = [sport, ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport)];
-  const errors: string[] = [];
+  const sports = [
+    "upcoming",
+    sport,
+    ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport && s !== "upcoming"),
+  ];
+  const seen = new Set<string>();
+  const emptySports: string[] = [];
+  const softErrors: string[] = [];
 
   try {
     for (const s of sports) {
+      if (seen.has(s)) continue;
+      seen.add(s);
       try {
-        const items = await fetchOddsForSport(s, key);
-        if (items.length) {
-          return { items, source: "live", updatedAt };
+        const result = await fetchOddsForSport(s, key);
+        if (result.ok) {
+          if (result.items.length) {
+            return { items: result.items, source: "live", updatedAt };
+          }
+          emptySports.push(s);
+          continue;
+        }
+        softErrors.push(`${s}: ${result.message}`);
+        // Auth / quota / rate-limit: stop immediately — further calls waste credits and still fail.
+        if (result.fatal) {
+          return {
+            items: [],
+            source: "demo",
+            updatedAt,
+            error: result.message,
+          };
         }
       } catch (err) {
-        errors.push(`${s}: ${err instanceof Error ? err.message : "failed"}`);
+        softErrors.push(`${s}: ${err instanceof Error ? err.message : "failed"}`);
       }
     }
     return {
       items: demoLineMoves(),
       source: "demo",
       updatedAt,
-      error: errors[0] || "No live games from The Odds API — showing sample lines.",
+      error:
+        softErrors[0] ||
+        (emptySports.length
+          ? `No live games from The Odds API (${emptySports.slice(0, 4).join(", ")}${emptySports.length > 4 ? "…" : ""}) — showing sample lines.`
+          : "No live games from The Odds API — showing sample lines."),
     };
   } catch (err) {
     return {

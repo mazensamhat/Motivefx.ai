@@ -111,7 +111,9 @@ export function TabBetting() {
             {lines.loading ? (
               <div className="loading">Loading line moves…</div>
             ) : (lines.data?.items.length ?? 0) === 0 ? (
-              <div className="empty">No line moves yet.</div>
+              <div className="empty">
+                {lines.data?.error ? "Live odds unavailable." : "No line moves yet."}
+              </div>
             ) : (
               <VirtualizedScoopList
                 items={lines.data?.items ?? []}
