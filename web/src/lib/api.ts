@@ -32,7 +32,16 @@ export function getAccessToken(): string | null {
 }
 
 export function hasAuthSession(): boolean {
-  return !!getAccessToken();
+  if (getAccessToken()) return true;
+  /* Site embed uses httpOnly cookie auth; AUTH_USER_KEY is synced from /api/auth/me. */
+  if (import.meta.env.BASE_URL === "/terminal/") {
+    try {
+      return Boolean(localStorage.getItem(AUTH_USER_KEY));
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 export function getRefreshToken(): string | null {

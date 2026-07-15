@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Globe, Wand2 } from "lucide-react";
-import { apiGet, apiPost, getUserId, hasAuthSession } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
 import type { AdvisorResult, PredictionMarket } from "../types";
 import { TerminalRow } from "./TerminalRow";
 
 interface PositionRow {
-  id: number;
+  id: number | string;
   market: string;
   category: string;
   pick: string;
@@ -14,7 +15,7 @@ interface PositionRow {
   yes_price?: number;
   outcome?: string;
   pnl?: number;
-  is_simulation?: number;
+  is_simulation?: number | boolean;
 }
 
 interface Props {
@@ -34,6 +35,7 @@ const CATEGORIES = [
 ];
 
 export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode }: Props) {
+  const { isAuthenticated, user, openAuth } = useAuth();
   const { refresh: refreshModules } = useModules();
   const [market, setMarket] = useState("");
   const [category, setCategory] = useState("geopolitics");
@@ -41,49 +43,79 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
   const [stake, setStake] = useState("");
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [markets, setMarkets] = useState<PredictionMarket[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [lastResult, setLastResult] = useState<{ won: boolean; pnl: number } | null>(null);
 
+  const userId = user?.userId ?? getUserId();
+
   useEffect(() => {
-    apiGet<{ items: PredictionMarket[] }>("/predictions/markets?limit=12")
+    apiGet<{ items: PredictionMarket[] }>("/predictions/markets?limit=20")
       .then((d) => setMarkets(d.items ?? []))
       .catch(() => {});
-    if (!hasAuthSession()) return;
-    apiGet<{ positions: typeof positions }>(`/advisor/predictions/positions/${getUserId()}`)
-      .then((d) => setPositions(d.positions ?? []))
-      .catch(() => setPositions([]));
   }, []);
 
-  async function addPosition() {
-    if (!hasAuthSession() || !market || !pick) return;
-    const m = markets.find((x) => x.market === market);
-    const res = await apiPost<{ simulation?: { won: boolean; pnl: number } }>(
-      "/advisor/predictions/positions",
-      {
-        user_id: getUserId(),
-        market,
-        category,
-        pick,
-        stake: stake ? parseFloat(stake) : 0,
-        yes_price: m?.yes ?? 0.5,
-      }
-    );
-    if (res.simulation) {
-      setLastResult({ won: res.simulation.won, pnl: res.simulation.pnl });
-      await refreshModules();
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPositions([]);
+      return;
     }
-    const updated = await apiGet<{ positions: PositionRow[] }>(
-      `/advisor/predictions/positions/${getUserId()}`
-    );
-    setPositions(updated.positions ?? []);
-    setMarket("");
-    setStake("");
+    apiGet<{ positions: PositionRow[] }>(`/advisor/predictions/positions/${userId}`)
+      .then((d) => setPositions(d.positions ?? []))
+      .catch(() => setPositions([]));
+  }, [isAuthenticated, userId]);
+
+  async function addPosition() {
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
+    if (!market.trim() || !pick) {
+      setFormError("Enter a market and pick.");
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const m = markets.find((x) => x.market === market);
+      const res = await apiPost<{ simulation?: { won: boolean; pnl: number } }>(
+        "/advisor/predictions/positions",
+        {
+          user_id: userId,
+          market: market.trim(),
+          category,
+          pick,
+          stake: stake ? parseFloat(stake) : 0,
+          yes_price: m?.yes ?? 0.5,
+        }
+      );
+      if (res.simulation) {
+        setLastResult({ won: res.simulation.won, pnl: res.simulation.pnl });
+        await refreshModules();
+      }
+      const updated = await apiGet<{ positions: PositionRow[] }>(
+        `/advisor/predictions/positions/${userId}`
+      );
+      setPositions(updated.positions ?? []);
+      setMarket("");
+      setStake("");
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Could not save position");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function analyze() {
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
     setAnalyzing(true);
     try {
       const data = await apiPost<AdvisorResult>(
-        `/advisor/predictions/analyze?user_id=${encodeURIComponent(getUserId())}`,
+        `/advisor/predictions/analyze?user_id=${encodeURIComponent(userId)}`,
         {}
       );
       onAnalyzed(data);
@@ -117,7 +149,11 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
           list="prediction-markets"
           placeholder="Market (war, marriage, election…)"
           value={market}
-          onChange={(e) => setMarket(e.target.value)}
+          onChange={(e) => {
+            setMarket(e.target.value);
+            const hit = markets.find((m) => m.market === e.target.value);
+            if (hit?.category) setCategory(hit.category);
+          }}
         />
         <datalist id="prediction-markets">
           {markets.map((m) => (
@@ -135,10 +171,12 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
           onChange={(e) => setStake(e.target.value)}
           type="number"
         />
-        <button className="btn btn-form-add pf-span-12" type="button" onClick={addPosition}>
-          + {simulationMode ? "Add & simulate position" : "Add Position"}
+        <button className="btn btn-form-add pf-span-12" type="button" onClick={addPosition} disabled={saving}>
+          + {saving ? "Saving…" : simulationMode ? "Add & simulate position" : "Add Position"}
         </button>
       </div>
+
+      {formError && <div className="form-error" style={{ padding: "0 1rem 0.5rem" }}>{formError}</div>}
 
       {lastResult && simulationMode && (
         <div className={`simulation-result-toast ${lastResult.won ? "won" : "lost"}`}>
@@ -148,7 +186,14 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
       )}
 
       <div className="card-body flush terminal-feed">
-        {positions.length === 0 ? (
+        {!isAuthenticated ? (
+          <div className="empty">
+            Sign in to save prediction positions to your portfolio ledger.
+            <button type="button" className="btn btn-sm" style={{ marginLeft: "0.5rem" }} onClick={() => openAuth("login")}>
+              Sign in
+            </button>
+          </div>
+        ) : positions.length === 0 ? (
           <div className="empty">
             {simulationMode
               ? "Pick a market with virtual stake — we simulate the outcome instantly."

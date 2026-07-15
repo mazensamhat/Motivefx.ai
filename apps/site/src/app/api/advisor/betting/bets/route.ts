@@ -1,6 +1,6 @@
 import { badRequest, json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
-import { requireModule } from "@/lib/terminal/access";
+import { requireModuleOrSim } from "@/lib/terminal/access";
 import { planForUser, hasModule } from "@/lib/terminal/plan";
 import { addBet } from "@/lib/terminal/bets";
 import { simHasModule } from "@/lib/terminal/simulation";
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   try {
     assertUserMatch(auth.session, body.user_id);
     const plan = planForUser(auth.session.user);
-    requireModule(plan, "betting");
+    requireModuleOrSim(plan, auth.session.user, "betting");
     const isSim = simHasModule(auth.session.user, "betting") && !hasModule(plan, "betting");
     const betId = await addBet(body.user_id, {
       matchup: body.matchup,

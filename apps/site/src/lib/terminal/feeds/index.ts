@@ -175,7 +175,38 @@ export async function fetchWhaleAlerts() {
   return raced?.length ? raced : demo;
 }
 
-export function demoLineMoves() {
+export type FeedMeta = {
+  source: "live" | "demo";
+  updatedAt: string;
+  error?: string;
+};
+
+export type LineMoveItem = {
+  matchup: string;
+  sport: string;
+  commenceTime?: unknown;
+  openingLine?: string;
+  currentLine?: string;
+  movement?: string;
+  direction?: string;
+  book?: unknown;
+  line?: Record<string, number | undefined>;
+  timestamp?: string;
+};
+
+export type PredictionMarketItem = {
+  market: string;
+  platform: string;
+  yes: number;
+  no: number;
+  volume24h: string;
+  category: string;
+  categoryLabel: string;
+  slug?: string;
+  timestamp?: string;
+};
+
+export function demoLineMoves(): LineMoveItem[] {
   return [
     { matchup: "Chiefs @ Bills", sport: "NFL", commenceTime: "2026-09-07T20:20:00Z", openingLine: "KC -2.5", currentLine: "KC -4.5", movement: "-2.0", direction: "sharp_on_home", book: "Pinnacle", timestamp: now() },
     { matchup: "Lakers @ Celtics", sport: "NBA", commenceTime: "2026-06-28T00:30:00Z", openingLine: "BOS -6.5", currentLine: "BOS -4.0", movement: "+2.5", direction: "public_on_home", book: "DraftKings", timestamp: now() },
@@ -183,37 +214,106 @@ export function demoLineMoves() {
   ];
 }
 
-export async function fetchLineMoves(sport = "americanfootball_nfl") {
+/** Prefer in-season sports so July users are not stuck on empty NFL + stale demo slips. */
+const ODDS_SPORT_FALLBACKS = [
+  "baseball_mlb",
+  "americanfootball_nfl",
+  "basketball_nba",
+  "icehockey_nhl",
+  "soccer_usa_mls",
+  "mma_mixed_martial_arts",
+];
+
+function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
+  return games.slice(0, 12).map((game) => {
+    const home = String(game.home_team ?? "Home");
+    const away = String(game.away_team ?? "Away");
+    const bookmakers = (game.bookmakers as Array<Record<string, unknown>>) ?? [];
+    const markets = (bookmakers[0]?.markets as Array<Record<string, unknown>>) ?? [];
+    const spread = markets.find((m) => m.key === "spreads") ?? markets[0] ?? {};
+    const outcomes = (spread.outcomes as Array<{ name: string; price?: number; point?: number }>) ?? [];
+    const homeOut = outcomes.find((o) => o.name === home);
+    const awayOut = outcomes.find((o) => o.name === away);
+    const pointLabel = (o?: { name: string; point?: number }) =>
+      o?.point != null ? `${o.name.split(" ").pop() ?? o.name} ${o.point > 0 ? "+" : ""}${o.point}` : undefined;
+    const currentLine =
+      pointLabel(homeOut) ??
+      (outcomes[0]
+        ? `${outcomes[0].name}${outcomes[0].point != null ? ` ${outcomes[0].point}` : ""}`
+        : undefined);
+    return {
+      matchup: `${away} @ ${home}`,
+      sport: String(game.sport_title ?? "—"),
+      commenceTime: game.commence_time,
+      openingLine: currentLine,
+      currentLine,
+      movement: "—",
+      direction: "live",
+      book: bookmakers[0]?.title,
+      line: Object.fromEntries(outcomes.map((o) => [o.name, o.price])),
+      timestamp: now(),
+    };
+  });
+}
+
+async function fetchOddsForSport(sport: string, key: string): Promise<LineMoveItem[]> {
+  const url = new URL(`https://api.the-odds-api.com/v4/sports/${sport}/odds`);
+  url.searchParams.set("apiKey", key);
+  url.searchParams.set("regions", "us");
+  url.searchParams.set("markets", "h2h,spreads");
+  url.searchParams.set("oddsFormat", "american");
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  if (!res.ok) return [];
+  const games = (await res.json()) as Array<Record<string, unknown>>;
+  return mapOddsGames(games);
+}
+
+export async function fetchLineMoves(sport = "baseball_mlb"): Promise<LineMoveItem[]> {
+  const result = await fetchLineMovesWithMeta(sport);
+  return result.items;
+}
+
+export async function fetchLineMovesWithMeta(
+  sport = "baseball_mlb"
+): Promise<{ items: LineMoveItem[] } & FeedMeta> {
+  const updatedAt = now();
   const key = process.env.THE_ODDS_API_KEY?.trim();
-  if (!key) return demoLineMoves();
+  if (!key) {
+    return {
+      items: demoLineMoves(),
+      source: "demo",
+      updatedAt,
+      error: "THE_ODDS_API_KEY not configured — showing sample lines.",
+    };
+  }
+
+  const sports = [sport, ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport)];
+  const errors: string[] = [];
+
   try {
-    const url = new URL(`https://api.the-odds-api.com/v4/sports/${sport}/odds`);
-    url.searchParams.set("apiKey", key);
-    url.searchParams.set("regions", "us");
-    url.searchParams.set("markets", "h2h,spreads");
-    url.searchParams.set("oddsFormat", "american");
-    const res = await fetch(url, { next: { revalidate: 120 } });
-    if (!res.ok) return demoLineMoves();
-    const games = (await res.json()) as Array<Record<string, unknown>>;
-    const items = games.slice(0, 12).map((game) => {
-      const home = String(game.home_team ?? "Home");
-      const away = String(game.away_team ?? "Away");
-      const bookmakers = (game.bookmakers as Array<Record<string, unknown>>) ?? [];
-      const market = ((bookmakers[0]?.markets as Array<Record<string, unknown>>) ?? [{}])[0];
-      const outcomes = Object.fromEntries(
-        ((market.outcomes as Array<{ name: string; price?: number }>) ?? []).map((o) => [o.name, o.price])
-      );
-      return {
-        matchup: `${away} @ ${home}`,
-        sport: String(game.sport_title ?? "—"),
-        commenceTime: game.commence_time,
-        line: outcomes,
-        book: bookmakers[0]?.title,
-      };
-    });
-    return items.length ? items : demoLineMoves();
-  } catch {
-    return demoLineMoves();
+    for (const s of sports) {
+      try {
+        const items = await fetchOddsForSport(s, key);
+        if (items.length) {
+          return { items, source: "live", updatedAt };
+        }
+      } catch (err) {
+        errors.push(`${s}: ${err instanceof Error ? err.message : "failed"}`);
+      }
+    }
+    return {
+      items: demoLineMoves(),
+      source: "demo",
+      updatedAt,
+      error: errors[0] || "No live games from The Odds API — showing sample lines.",
+    };
+  } catch (err) {
+    return {
+      items: demoLineMoves(),
+      source: "demo",
+      updatedAt,
+      error: err instanceof Error ? err.message : "Odds feed unavailable — showing sample lines.",
+    };
   }
 }
 
@@ -229,48 +329,142 @@ export async function fetchSharpAction() {
   return demoSharpAction();
 }
 
-export function demoPredictionMarkets() {
+export function demoPredictionMarkets(): PredictionMarketItem[] {
   return [
-    { market: "Fed rate cut in July 2026", platform: "Polymarket", yes: 0.62, no: 0.38, volume24h: "$2.1M", category: "economy", categoryLabel: "Economy & Fed" },
-    { market: "Ceasefire in Ukraine before Dec 2026?", platform: "Polymarket", yes: 0.34, no: 0.66, volume24h: "$890K", category: "geopolitics", categoryLabel: "Geopolitics & War" },
-    { market: "Taylor Swift announces engagement in 2026?", platform: "Polymarket", yes: 0.41, no: 0.59, volume24h: "$420K", category: "entertainment", categoryLabel: "Celebrity & Culture" },
+    { market: "Fed rate cut in July 2026", platform: "Polymarket", yes: 0.62, no: 0.38, volume24h: "$2.1M", category: "economy", categoryLabel: "Economy & Fed", timestamp: now() },
+    { market: "Ceasefire in Ukraine before Dec 2026?", platform: "Polymarket", yes: 0.34, no: 0.66, volume24h: "$890K", category: "geopolitics", categoryLabel: "Geopolitics & War", timestamp: now() },
+    { market: "Taylor Swift announces engagement in 2026?", platform: "Polymarket", yes: 0.41, no: 0.59, volume24h: "$420K", category: "entertainment", categoryLabel: "Celebrity & Culture", timestamp: now() },
   ];
 }
 
-export async function fetchPredictionMarkets(limit = 20) {
+function categorizePolymarketTags(tags: Array<{ label?: string; slug?: string }> | undefined): {
+  category: string;
+  categoryLabel: string;
+} {
+  const blob = (tags ?? [])
+    .map((t) => `${t.label ?? ""} ${t.slug ?? ""}`.toLowerCase())
+    .join(" ");
+  if (/war|geopolit|ukraine|israel|gaza|military|ceasefire/.test(blob)) {
+    return { category: "geopolitics", categoryLabel: "Geopolitics & War" };
+  }
+  if (/politic|election|president|senate|trump|biden|macron|parliament/.test(blob)) {
+    return { category: "politics", categoryLabel: "Politics & Elections" };
+  }
+  if (/celebrity|culture|music|movie|sports|nba|nfl|soccer|football/.test(blob)) {
+    return { category: "entertainment", categoryLabel: "Celebrity & Culture" };
+  }
+  if (/crypto|bitcoin|ethereum|ipo|token/.test(blob)) {
+    return { category: "crypto", categoryLabel: "Crypto Events" };
+  }
+  if (/fed|economy|rate|inflation|gdp|jobs|finance|business/.test(blob)) {
+    return { category: "economy", categoryLabel: "Economy & Fed" };
+  }
+  if (/science|tech|ai|space|nasa/.test(blob)) {
+    return { category: "science", categoryLabel: "Science & Tech" };
+  }
+  return { category: "politics", categoryLabel: "Politics & Elections" };
+}
+
+function parseOutcomeYes(raw: unknown): number {
+  try {
+    const prices = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
+    if (Array.isArray(prices) && prices.length) {
+      const n = Number(prices[0]);
+      return Number.isFinite(n) ? n : 0.5;
+    }
+  } catch {
+    /* ok */
+  }
+  return 0.5;
+}
+
+function isOpenChildMarket(m: Record<string, unknown>): boolean {
+  if (m.closed === true || m.archived === true) return false;
+  if (m.active === false) return false;
+  if (m.acceptingOrders === false) return false;
+  return true;
+}
+
+function pickOpenMarket(markets: Array<Record<string, unknown>>): Record<string, unknown> | null {
+  const open = markets.filter(isOpenChildMarket);
+  if (!open.length) return null;
+  open.sort((a, b) => Number(b.volume24hr ?? 0) - Number(a.volume24hr ?? 0));
+  return open[0] ?? null;
+}
+
+function formatUsdVolume(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "$0";
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${Math.round(n)}`;
+}
+
+export async function fetchPredictionMarkets(limit = 20): Promise<PredictionMarketItem[]> {
+  const result = await fetchPredictionMarketsWithMeta(limit);
+  return result.items;
+}
+
+export async function fetchPredictionMarketsWithMeta(
+  limit = 20
+): Promise<{ items: PredictionMarketItem[] } & FeedMeta> {
+  const updatedAt = now();
   try {
     const url = new URL("https://gamma-api.polymarket.com/events");
     url.searchParams.set("active", "true");
     url.searchParams.set("closed", "false");
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("order", "volume24hr");
-    const res = await fetch(url, { next: { revalidate: 120 } });
-    if (!res.ok) return demoPredictionMarkets().slice(0, limit);
+    /* Over-fetch: many “active” events only have closed child markets. */
+    url.searchParams.set("limit", String(Math.min(Math.max(limit * 4, 40), 100)));
+    url.searchParams.set("order", "volume_24hr");
+    url.searchParams.set("ascending", "false");
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) {
+      return {
+        items: demoPredictionMarkets().slice(0, limit),
+        source: "demo",
+        updatedAt,
+        error: `Polymarket Gamma HTTP ${res.status} — showing sample markets.`,
+      };
+    }
     const events = (await res.json()) as Array<Record<string, unknown>>;
-    const items = events.slice(0, limit).flatMap((ev) => {
+    const items: PredictionMarketItem[] = [];
+    for (const ev of events) {
+      if (ev.closed === true || ev.archived === true) continue;
       const markets = (ev.markets as Array<Record<string, unknown>>) ?? [];
-      if (!markets.length) return [];
-      const m = markets[0];
-      let yes = 0.5;
-      try {
-        const prices = JSON.parse(String(m.outcomePrices ?? "[]")) as number[];
-        yes = prices[0] ?? 0.5;
-      } catch {
-        /* ok */
-      }
-      return [{
-        market: String(ev.title ?? m.question ?? "—"),
+      const m = pickOpenMarket(markets);
+      if (!m) continue;
+      const yes = parseOutcomeYes(m.outcomePrices);
+      const vol = Number(m.volume24hr ?? ev.volume24hr ?? 0);
+      const cats = categorizePolymarketTags(ev.tags as Array<{ label?: string; slug?: string }>);
+      const question = String(m.question ?? ev.title ?? "—");
+      items.push({
+        market: question,
         platform: "Polymarket",
         yes,
         no: Math.round((1 - yes) * 1000) / 1000,
-        volume24h: `$${Number(ev.volume24hr ?? 0).toLocaleString()}`,
-        category: "economy",
-        categoryLabel: "Economy & Fed",
-      }];
-    });
-    return items.length ? items : demoPredictionMarkets().slice(0, limit);
-  } catch {
-    return demoPredictionMarkets().slice(0, limit);
+        volume24h: formatUsdVolume(vol),
+        category: cats.category,
+        categoryLabel: cats.categoryLabel,
+        slug: String(m.slug ?? ev.slug ?? ""),
+        timestamp: updatedAt,
+      });
+      if (items.length >= limit) break;
+    }
+    if (!items.length) {
+      return {
+        items: demoPredictionMarkets().slice(0, limit),
+        source: "demo",
+        updatedAt,
+        error: "No open Polymarket markets in feed — showing sample markets.",
+      };
+    }
+    return { items, source: "live", updatedAt };
+  } catch (err) {
+    return {
+      items: demoPredictionMarkets().slice(0, limit),
+      source: "demo",
+      updatedAt,
+      error: err instanceof Error ? err.message : "Polymarket unavailable — showing sample markets.",
+    };
   }
 }
 

@@ -294,18 +294,19 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       }
       const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
 
-      if (!getAccessToken()) {
-        if (SITE_EMBED) {
-          applySitePlanOnly(sitePlan);
-        }
+      /* Cookie-auth site embed has no bearer token — still load modules + sim trial. */
+      const hasBearer = Boolean(getAccessToken());
+      if (!hasBearer && !SITE_EMBED) {
         setLoading(false);
         return;
       }
 
-      try {
-        await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
-      } catch {
-        /* ok */
+      if (hasBearer) {
+        try {
+          await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
+        } catch {
+          /* ok */
+        }
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -341,6 +342,8 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
           );
           applyModulesPayload(merged);
           isAnnual = merged.hasAnnual ?? isAnnual;
+        } else if (SITE_EMBED) {
+          applySitePlanOnly(sitePlan);
         } else {
           setActive([]);
         }

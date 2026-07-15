@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Ticket, Wand2 } from "lucide-react";
-import { apiGet, apiPost, getUserId, hasAuthSession } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
 import type { AdvisorResult } from "../types";
 import { TerminalRow } from "./TerminalRow";
 
 interface BetRow {
-  id: number;
+  id: number | string;
   matchup: string;
   pick: string;
   odds: string;
@@ -14,7 +15,7 @@ interface BetRow {
   sport?: string;
   outcome?: string;
   pnl?: number;
-  is_simulation?: number;
+  is_simulation?: number | boolean;
 }
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode }: Props) {
+  const { isAuthenticated, user, openAuth } = useAuth();
   const { refresh: refreshModules } = useModules();
   const [matchup, setMatchup] = useState("");
   const [pick, setPick] = useState("");
@@ -32,43 +34,70 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
   const [stake, setStake] = useState("");
   const [sport, setSport] = useState("football");
   const [bets, setBets] = useState<BetRow[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [lastResult, setLastResult] = useState<{ won: boolean; pnl: number } | null>(null);
 
+  const userId = user?.userId ?? getUserId();
+
   useEffect(() => {
-    if (!hasAuthSession()) return;
-    apiGet<{ bets: typeof bets }>(`/advisor/betting/bets/${getUserId()}`)
+    if (!isAuthenticated) {
+      setBets([]);
+      return;
+    }
+    apiGet<{ bets: BetRow[] }>(`/advisor/betting/bets/${userId}`)
       .then((d) => setBets(d.bets ?? []))
       .catch(() => setBets([]));
-  }, []);
+  }, [isAuthenticated, userId]);
 
   async function addBet() {
-    if (!hasAuthSession() || !matchup || !pick) return;
-    const res = await apiPost<{ simulation?: { won: boolean; pnl: number } }>("/advisor/betting/bets", {
-      user_id: getUserId(),
-      matchup,
-      pick,
-      odds,
-      stake: stake ? parseFloat(stake) : 0,
-      sport,
-    });
-    if (res.simulation) {
-      setLastResult({ won: res.simulation.won, pnl: res.simulation.pnl });
-      await refreshModules();
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
     }
-    const updated = await apiGet<{ bets: BetRow[] }>(`/advisor/betting/bets/${getUserId()}`);
-    setBets(updated.bets ?? []);
-    setMatchup("");
-    setPick("");
-    setOdds("");
-    setStake("");
+    if (!matchup.trim() || !pick.trim()) {
+      setFormError("Enter a matchup and pick.");
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const res = await apiPost<{ simulation?: { won: boolean; pnl: number } }>("/advisor/betting/bets", {
+        user_id: userId,
+        matchup: matchup.trim(),
+        pick: pick.trim(),
+        odds: odds.trim() || "-110",
+        stake: stake ? parseFloat(stake) : 0,
+        sport,
+      });
+      if (res.simulation) {
+        setLastResult({ won: res.simulation.won, pnl: res.simulation.pnl });
+        await refreshModules();
+      }
+      const updated = await apiGet<{ bets: BetRow[] }>(`/advisor/betting/bets/${userId}`);
+      setBets(updated.bets ?? []);
+      setMatchup("");
+      setPick("");
+      setOdds("");
+      setStake("");
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Could not save bet");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function analyze() {
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
     setAnalyzing(true);
     try {
       const picks = await apiGet<{ picks: AdvisorResult["picks"] }>("/advisor/betting/picks");
       const analyzed = await apiPost<AdvisorResult>(
-        `/advisor/betting/analyze?user_id=${encodeURIComponent(getUserId())}`,
+        `/advisor/betting/analyze?user_id=${encodeURIComponent(userId)}`,
         {}
       );
       onAnalyzed({ ...analyzed, picks: analyzed.picks?.length ? analyzed.picks : picks.picks });
@@ -126,10 +155,12 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
           onChange={(e) => setStake(e.target.value)}
           type="number"
         />
-        <button className="btn btn-form-add pf-span-12" type="button" onClick={addBet}>
-          + {simulationMode ? "Add & simulate bet" : "Add Bet"}
+        <button className="btn btn-form-add pf-span-12" type="button" onClick={addBet} disabled={saving}>
+          + {saving ? "Saving…" : simulationMode ? "Add & simulate bet" : "Add Bet"}
         </button>
       </div>
+
+      {formError && <div className="form-error" style={{ padding: "0 1rem 0.5rem" }}>{formError}</div>}
 
       {lastResult && simulationMode && (
         <div className={`simulation-result-toast ${lastResult.won ? "won" : "lost"}`}>
@@ -139,7 +170,14 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
       )}
 
       <div className="card-body flush terminal-feed">
-        {bets.length === 0 ? (
+        {!isAuthenticated ? (
+          <div className="empty">
+            Sign in to save bets to your portfolio ledger.
+            <button type="button" className="btn btn-sm" style={{ marginLeft: "0.5rem" }} onClick={() => openAuth("login")}>
+              Sign in
+            </button>
+          </div>
+        ) : bets.length === 0 ? (
           <div className="empty">
             {simulationMode
               ? "Log a virtual bet — we settle it instantly against implied odds so you can feel the workflow."

@@ -23,8 +23,18 @@ export function TabPredictions() {
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("predictions");
   const simMode = isSimulationOnly("predictions");
-  const markets = useApi<{ items: PredictionMarket[] }>("/predictions/markets?limit=10");
+  const markets = useApi<{
+    items: PredictionMarket[];
+    source?: "live" | "demo";
+    updatedAt?: string;
+    error?: string | null;
+  }>("/predictions/markets?limit=20");
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("predictions", enabled);
+
+  const marketsUpdated =
+    markets.data?.updatedAt != null
+      ? new Date(markets.data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : null;
 
   useEffect(() => {
     if (enabled) analyze(true);
@@ -60,8 +70,16 @@ export function TabPredictions() {
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="card-header">
           <h2 className="card-title"><Globe size={18} /> Trending Markets</h2>
+          {marketsUpdated && (
+            <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+              {markets.data?.source === "live" ? "Polymarket live" : "Sample"} · {marketsUpdated}
+            </span>
+          )}
         </div>
         <div className="card-body flush">
+          {markets.data?.error && (
+            <div className="form-error" style={{ padding: "0.75rem 1rem 0" }}>{markets.data.error}</div>
+          )}
           {markets.loading ? (
             <div className="loading">Loading event markets…</div>
           ) : (markets.data?.items.length ?? 0) === 0 ? (

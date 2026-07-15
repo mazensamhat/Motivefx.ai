@@ -24,9 +24,19 @@ export function TabBetting() {
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("betting");
   const simMode = isSimulationOnly("betting");
-  const lines = useApi<{ items: LineMove[] }>("/betting/line-moves");
+  const lines = useApi<{
+    items: LineMove[];
+    source?: "live" | "demo";
+    updatedAt?: string;
+    error?: string | null;
+  }>("/betting/line-moves");
   const sharp = useApi<{ items: SharpAction[] }>("/betting/sharp-action");
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
+
+  const linesUpdated =
+    lines.data?.updatedAt != null
+      ? new Date(lines.data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : null;
 
   useEffect(() => {
     if (enabled) analyze(true);
@@ -88,8 +98,16 @@ export function TabBetting() {
             <h2 className="card-title">
               <TrendingDown size={18} /> Line Movement
             </h2>
+            {linesUpdated && (
+              <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                {lines.data?.source === "live" ? "Live" : "Sample"} · {linesUpdated}
+              </span>
+            )}
           </div>
           <div className="card-body flush">
+            {lines.data?.error && (
+              <div className="form-error" style={{ padding: "0.75rem 1rem 0" }}>{lines.data.error}</div>
+            )}
             {lines.loading ? (
               <div className="loading">Loading line moves…</div>
             ) : (lines.data?.items.length ?? 0) === 0 ? (
@@ -105,7 +123,11 @@ export function TabBetting() {
                     title={`Line move: ${l.matchup}`}
                     symbol={l.matchup}
                     name={`${l.sport} · ${l.book}`}
-                    price={`${l.openingLine} → ${l.currentLine}`}
+                    price={
+                      l.openingLine && l.currentLine && l.openingLine !== l.currentLine
+                        ? `${l.openingLine} → ${l.currentLine}`
+                        : (l.currentLine ?? l.openingLine ?? String(l.book ?? "Live"))
+                    }
                     changeLabel="Active"
                     change={1}
                   />

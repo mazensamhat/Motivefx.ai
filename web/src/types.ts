@@ -52,6 +52,7 @@ export interface FeedStatus {
   finnhub: boolean;
   coinstats: boolean;
   the_odds_api: boolean;
+  polymarket?: boolean;
   stripe: boolean;
 }
 
@@ -63,6 +64,8 @@ export interface LineMove {
   movement?: string;
   direction?: string;
   book?: string;
+  commenceTime?: string;
+  timestamp?: string;
 }
 
 export interface SharpAction {
