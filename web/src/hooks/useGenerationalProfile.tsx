@@ -49,12 +49,13 @@ export function GenerationalProvider({ children }: { children: ReactNode }) {
   const profile = useMemo(() => profileForCohort(cohort), [cohort]);
 
   const syncProfile = useCallback((data: Partial<ProfileSetupData> & { cohort: CohortId }) => {
+    // Onboarding never collects sex/gender — always send prefer_not_to_say (App Store 5.1.1(v)).
     apiPost("/advisor/profile", {
       user_id: getUserId(),
       cohort: data.cohort,
       age: cohortAge(data.cohort),
-      sex: data.sex,
-      gender: data.gender,
+      sex: "prefer_not_to_say",
+      gender: "prefer_not_to_say",
       acquisition_channel: data.acquisitionChannel ?? getAcquisitionChannel(),
     }).catch(() => {});
   }, []);

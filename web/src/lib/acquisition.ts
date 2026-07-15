@@ -80,7 +80,10 @@ export const ACQUISITION_CHANNELS = [
   { id: "other", label: "Other" },
 ];
 
-/** Optional demographics only — Prefer not to say is the default (App Store 5.1.1(v)). */
+/**
+ * Optional demographics for future Account settings only — never used in onboarding.
+ * Prefer not to say is the safe default (App Store 5.1.1(v)).
+ */
 export const SEX_OPTIONS = [
   { id: "prefer_not_to_say", label: "Prefer not to say" },
   { id: "female", label: "Female" },
