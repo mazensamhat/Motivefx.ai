@@ -14,7 +14,10 @@
 | Primary UI | **Terminal WebView** — loads `/terminal/` for full mobile design parity |
 | Legacy screens | Feed, Stocks, Crypto, Betting (native stubs, not in main nav) |
 | Auth | Login/register + secure token storage → injected into WebView |
-| Billing | **Not in app** — subscribe on web |
+| Billing | **Companion mode** — no in-app Stripe; Safari for manage/subscribe; StoreKit deferred |
+| Age assurance | **18+ gate** on first iOS launch + module gates for betting/predictions |
+
+See **`docs/APP_STORE_REVIEW_RESPONSE.md`** for App Review reply text and Connect checklist.
 | API | `EXPO_PUBLIC_API_URL` env (defaults to production) |
 
 ---

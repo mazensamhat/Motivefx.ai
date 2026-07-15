@@ -146,10 +146,11 @@ export function AuthScreen() {
       )}
 
       <Text style={styles.disclaimer}>
-        Informational only. Not financial advice. Subscriptions are billed on the web at
-        motivefxai.com/pricing — not inside this app.
+        Informational only. Not financial advice. This app is an account companion — subscriptions are
+        managed on the web at motivefxai.com/pricing (opens in Safari). Digital content is not sold
+        inside this app.
       </Text>
-      <Text style={styles.buildTag}>Build 0.1.5 (7) · performance</Text>
+      <Text style={styles.buildTag}>Build 1.0.0 (9) · App Store review</Text>
     </View>
   );
 }

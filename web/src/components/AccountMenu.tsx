@@ -2,6 +2,7 @@ import { LayoutDashboard, LogIn, LogOut, Settings2, User } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
+import { isNativeShell } from "../lib/nativeShell";
 
 const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
 
@@ -9,9 +10,7 @@ export function AccountMenu() {
   const { user, isAuthenticated, isAdmin, openAuth, openAccount, logout, loading } = useAuth();
   const { openSetup } = usePlatformPrefs();
   const isMobile = useMediaQuery("(max-width: 900px)");
-  const isNativeShell =
-    typeof navigator !== "undefined" && /MotiveFXNative/i.test(navigator.userAgent);
-  const compactChrome = isMobile || isNativeShell;
+  const compactChrome = isMobile || isNativeShell();
 
   if (loading) {
     return <span className="account-menu-loading">…</span>;

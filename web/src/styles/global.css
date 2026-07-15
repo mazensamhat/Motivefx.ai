@@ -269,6 +269,30 @@ html.motivefx-native-shell .feed-item {
   text-overflow: ellipsis;
 }
 
+/* Companion mode: suppress stray web checkout CTAs if any remain */
+html.motivefx-native-shell .module-pricing .btn-module-trial,
+html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
+  display: none !important;
+}
+
+.gen-optional-tag {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--text-dim, #5f6f84);
+  font-size: 0.85em;
+}
+
+.gen-setup-optional-link {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.native-companion-billing .btn {
+  margin-top: 1rem;
+}
+
 .app-body {
   display: flex;
   flex: 1;

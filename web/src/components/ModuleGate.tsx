@@ -3,6 +3,7 @@ import { ReactNode, useState } from "react";
 import { AgeGateModal, isAgeVerified } from "./AgeGateModal";
 import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
+import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
 
 interface Props {
   module: string;
@@ -16,6 +17,7 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
   const { isAuthenticated, openAuth } = useAuth();
   const { hasModule, loading, subscribeModule, simulation } = useModules();
   const [ageOk, setAgeOk] = useState(() => isAgeVerified() || !AGE_GATED.has(module));
+  const native = isNativeShell();
   const simEligible = AGE_GATED.has(module);
   const simExpired = simEligible && isAuthenticated && simulation && !simulation.active;
 
@@ -36,21 +38,39 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
       <div className="module-gate-preview">{children}</div>
       <div className="module-gate-overlay">
         <Lock size={32} />
-        <h3>Unlock {moduleLabel}</h3>
-        <p>AI market intelligence, live scoops, and GPT-powered signal research — $29/mo with 3-day free trial.</p>
-        {simEligible && !isAuthenticated && (
+        <h3>{native ? `${moduleLabel} — companion preview` : `Unlock ${moduleLabel}`}</h3>
+        {native ? (
+          <p>
+            This iOS app is an account companion. Subscriptions are purchased on the website (Safari),
+            not inside the app. Sign in with a subscribed account to access paid markets, or continue
+            with free / demo content here.
+          </p>
+        ) : (
+          <p>
+            AI market intelligence, live scoops, and GPT-powered signal research — $29/mo with 3-day free
+            trial.
+          </p>
+        )}
+        {simEligible && !isAuthenticated && !native && (
           <p className="module-gate-sim-hint">
             Create a free account to get 3 days of simulation on betting &amp; predictions — no card required.
           </p>
         )}
         {simExpired && (
           <p className="module-gate-sim-hint">
-            Your simulation period has ended. Subscribe to keep tracking live signals and AI research.
+            Your simulation period has ended.{" "}
+            {native
+              ? "Manage your subscription on the website in Safari."
+              : "Subscribe to keep tracking live signals and AI research."}
           </p>
         )}
         <button
           className="btn btn-primary"
           onClick={() => {
+            if (native) {
+              openExternalSubscribe();
+              return;
+            }
             if (!isAuthenticated && simEligible) {
               openAuth("register");
               return;
@@ -58,7 +78,11 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
             subscribeModule(module);
           }}
         >
-          {!isAuthenticated && simEligible ? "Create free account" : "Start free trial"}
+          {native
+            ? "Manage subscription on website"
+            : !isAuthenticated && simEligible
+              ? "Create free account"
+              : "Start free trial"}
         </button>
       </div>
     </div>

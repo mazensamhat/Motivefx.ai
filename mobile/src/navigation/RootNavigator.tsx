@@ -1,5 +1,8 @@
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { isAgeVerified, setAgeVerified } from "../lib/ageGate";
+import { AgeGateScreen } from "../screens/AgeGateScreen";
 import { AuthScreen } from "../screens/AuthScreen";
 import { TerminalScreen } from "../screens/TerminalScreen";
 import { colors } from "../theme";
@@ -10,13 +13,38 @@ import { colors } from "../theme";
  */
 function Root() {
   const { loading, isAuthenticated } = useAuth();
+  const [ageChecked, setAgeChecked] = useState(false);
+  const [ageOk, setAgeOk] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const ok = await isAgeVerified();
+      if (!cancelled) {
+        setAgeOk(ok);
+        setAgeChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const acceptAge = useCallback(async () => {
+    await setAgeVerified();
+    setAgeOk(true);
+  }, []);
+
+  if (!ageChecked || loading) {
     return (
       <View style={styles.boot}>
         <ActivityIndicator color={colors.accent} size="large" />
       </View>
     );
+  }
+
+  if (!ageOk) {
+    return <AgeGateScreen onAccepted={() => void acceptAge()} />;
   }
 
   return isAuthenticated ? <TerminalScreen /> : <AuthScreen />;

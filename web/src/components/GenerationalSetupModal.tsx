@@ -32,21 +32,22 @@ interface Props {
   onDismiss: () => void;
 }
 
+/** Sex/gender are optional demographics (App Store 5.1.1(v)). Never block signup. */
 export function GenerationalSetupModal({ cohort, onComplete, onDismiss }: Props) {
   const [step, setStep] = useState<1 | 2>(1);
   const [selected, setSelected] = useState<CohortId>(cohort);
-  const [sex, setSex] = useState("");
-  const [gender, setGender] = useState("");
+  const [sex, setSex] = useState("prefer_not_to_say");
+  const [gender, setGender] = useState("prefer_not_to_say");
   const [channel, setChannel] = useState(() => getAcquisitionChannel() ?? "");
 
   const preview = GENERATIONAL_PROFILES[selected];
 
-  function finish() {
+  function finish(opts?: { skipDemographics?: boolean }) {
     onComplete({
       cohort: selected,
-      sex: sex || "prefer_not_to_say",
-      gender: gender || "prefer_not_to_say",
-      acquisitionChannel: channel || "other",
+      sex: opts?.skipDemographics ? "prefer_not_to_say" : sex || "prefer_not_to_say",
+      gender: opts?.skipDemographics ? "prefer_not_to_say" : gender || "prefer_not_to_say",
+      acquisitionChannel: opts?.skipDemographics ? channel || "other" : channel || "other",
     });
   }
 
@@ -61,12 +62,12 @@ export function GenerationalSetupModal({ cohort, onComplete, onDismiss }: Props)
           <Users size={22} className="gen-setup-header-icon" />
           <div>
             <h2 className="gen-setup-title">
-              {step === 1 ? "Personalize Your Terminal" : "Tell Us About You"}
+              {step === 1 ? "Personalize Your Terminal" : "Optional demographics"}
             </h2>
             <p className="gen-setup-sub">
               {step === 1
                 ? "Select your experience profile — copy and pricing hooks adapt to your cohort."
-                : "Optional demographics help us optimize modules and track what channels work best."}
+                : "Sex and gender are optional. You can skip or choose Prefer not to say."}
             </p>
           </div>
         </header>
@@ -118,9 +119,16 @@ export function GenerationalSetupModal({ cohort, onComplete, onDismiss }: Props)
               type="button"
               className="btn btn-annual-cta gen-setup-confirm"
               style={{ backgroundColor: preview.accent, color: selected === "boomer" ? "#fff" : "#000" }}
+              onClick={() => finish({ skipDemographics: true })}
+            >
+              Apply {preview.name} Experience
+            </button>
+            <button
+              type="button"
+              className="btn admin-btn gen-setup-optional-link"
               onClick={() => setStep(2)}
             >
-              Continue — demographics
+              Add optional demographics
             </button>
           </>
         ) : (
@@ -131,29 +139,39 @@ export function GenerationalSetupModal({ cohort, onComplete, onDismiss }: Props)
 
             <div className="gen-demo-fields">
               <label className="gen-demo-field">
-                <span>Sex</span>
+                <span>
+                  Sex <em className="gen-optional-tag">(optional)</em>
+                </span>
                 <select value={sex} onChange={(e) => setSex(e.target.value)}>
-                  <option value="">Select…</option>
                   {SEX_OPTIONS.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className="gen-demo-field">
-                <span>Gender identity</span>
+                <span>
+                  Gender identity <em className="gen-optional-tag">(optional)</em>
+                </span>
                 <select value={gender} onChange={(e) => setGender(e.target.value)}>
-                  <option value="">Select…</option>
                   {GENDER_OPTIONS.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className="gen-demo-field">
-                <span>How did you find MotiveFX?</span>
+                <span>
+                  How did you find MotiveFX? <em className="gen-optional-tag">(optional)</em>
+                </span>
                 <select value={channel} onChange={(e) => setChannel(e.target.value)}>
-                  <option value="">Select channel…</option>
+                  <option value="">Prefer not to say</option>
                   {ACQUISITION_CHANNELS.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -163,9 +181,16 @@ export function GenerationalSetupModal({ cohort, onComplete, onDismiss }: Props)
               type="button"
               className="btn btn-annual-cta gen-setup-confirm"
               style={{ backgroundColor: preview.accent, color: selected === "boomer" ? "#fff" : "#000" }}
-              onClick={finish}
+              onClick={() => finish()}
             >
-              Apply {preview.name} Experience
+              Save and continue
+            </button>
+            <button
+              type="button"
+              className="btn admin-btn gen-setup-optional-link"
+              onClick={() => finish({ skipDemographics: true })}
+            >
+              Skip — prefer not to say
             </button>
           </>
         )}

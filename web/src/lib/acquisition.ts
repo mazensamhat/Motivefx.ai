@@ -80,16 +80,17 @@ export const ACQUISITION_CHANNELS = [
   { id: "other", label: "Other" },
 ];
 
+/** Optional demographics only — Prefer not to say is the default (App Store 5.1.1(v)). */
 export const SEX_OPTIONS = [
+  { id: "prefer_not_to_say", label: "Prefer not to say" },
   { id: "female", label: "Female" },
   { id: "male", label: "Male" },
   { id: "non-binary", label: "Non-binary" },
-  { id: "prefer_not_to_say", label: "Prefer not to say" },
 ];
 
 export const GENDER_OPTIONS = [
+  { id: "prefer_not_to_say", label: "Prefer not to say" },
   { id: "woman", label: "Woman" },
   { id: "man", label: "Man" },
   { id: "non-binary", label: "Non-binary" },
-  { id: "prefer_not_to_say", label: "Prefer not to say" },
 ];

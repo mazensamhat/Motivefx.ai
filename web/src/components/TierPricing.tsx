@@ -10,6 +10,7 @@ import {
 } from "../config/pricingTiers";
 import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
+import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
 import { MarketPickerModal } from "./MarketPickerModal";
 import { BillingFinePrint } from "./BillingFinePrint";
 
@@ -39,7 +40,13 @@ export function TierPricing() {
 
   const isTopTier = subscribed && visibleTiers.length === 0;
 
+  const native = isNativeShell();
+
   async function startCheckout(tierId: PricingTierId, selectedMarkets: string[] = []) {
+    if (native) {
+      openExternalSubscribe();
+      return;
+    }
     if (!isAuthenticated) {
       openAuth("register");
       return;
@@ -53,6 +60,10 @@ export function TierPricing() {
   }
 
   function onSelectTier(tierId: PricingTierId) {
+    if (native) {
+      openExternalSubscribe();
+      return;
+    }
     const picks = requiredMarketPicks(tierId);
     const t = PRICING_TIERS.find((x) => x.id === tierId)!;
     if (picks != null) {
@@ -63,6 +74,25 @@ export function TierPricing() {
   }
 
   if (loading) return null;
+
+  if (native) {
+    return (
+      <div className="tier-pricing glass-panel pricing-terminal native-companion-billing" id="pricing">
+        <div className="module-pricing-header">
+          <h3 className="pricing-terminal-title">Subscriptions on the web</h3>
+          <p className="pricing-terminal-sub">
+            This iOS app does not sell subscriptions in-app. Manage or purchase plans at
+            motivefxai.com in Safari. Sign in here with the same account to view markets you already
+            own.
+          </p>
+        </div>
+        <button type="button" className="btn btn-accent-terminal" onClick={() => openExternalSubscribe()}>
+          Manage subscription on website
+        </button>
+        <BillingFinePrint annualPrice={999} className="tier-pricing-fine-print" />
+      </div>
+    );
+  }
 
   if (isTopTier) {
     return (

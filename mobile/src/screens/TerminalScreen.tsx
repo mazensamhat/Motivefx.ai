@@ -86,6 +86,28 @@ function isAllowedOrigin(url: string): boolean {
   }
 }
 
+/** Paths that must never run Stripe/web checkout inside the WebView (App Store 3.1.1). */
+function isBillingOrCheckoutUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host.includes("stripe.com") || host.includes("checkout.stripe.com")) return true;
+    const path = `${u.pathname}${u.search}`.toLowerCase();
+    return (
+      path.includes("/pricing") ||
+      path.includes("/checkout") ||
+      path.includes("/billing") ||
+      path.includes("/api/subscription") ||
+      path.includes("/api/billing") ||
+      path.includes("module-checkout") ||
+      path.includes("tier-checkout") ||
+      path.includes("annual-checkout")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function TerminalScreen() {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
@@ -176,7 +198,17 @@ export function TerminalScreen() {
   const onMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
       try {
-        if (event.nativeEvent.data === "motivefx:logout") void logout();
+        const raw = event.nativeEvent.data;
+        if (raw === "motivefx:logout") {
+          void logout();
+          return;
+        }
+        if (typeof raw === "string" && raw.startsWith("{")) {
+          const parsed = JSON.parse(raw) as { type?: string; url?: string };
+          if (parsed?.type === "motivefx:open-external" && parsed.url) {
+            void Linking.openURL(parsed.url).catch((e) => console.warn("openURL failed", e));
+          }
+        }
       } catch (e) {
         console.warn("Terminal onMessage failed", e);
       }
@@ -189,6 +221,11 @@ export function TerminalScreen() {
       const url = req.url ?? "";
       if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
       if (Platform.OS === "android" && req.isTopFrame === false) return true;
+      // Never load Stripe / pricing / checkout inside the WebView.
+      if (isBillingOrCheckoutUrl(url)) {
+        void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
+        return false;
+      }
       if (isAllowedOrigin(url)) return true;
       void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
       return false;

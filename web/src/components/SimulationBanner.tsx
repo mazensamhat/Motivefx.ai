@@ -1,5 +1,6 @@
 import { Clock, FlaskConical, TrendingUp } from "lucide-react";
 import { useModules } from "../hooks/useModules";
+import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
 
 interface Props {
   module: "betting" | "predictions";
@@ -7,6 +8,7 @@ interface Props {
 
 export function SimulationBanner({ module }: Props) {
   const { isSimulationOnly, simulation, subscribeModule } = useModules();
+  const native = isNativeShell();
 
   if (!isSimulationOnly(module) || !simulation?.active) {
     return null;
@@ -48,9 +50,9 @@ export function SimulationBanner({ module }: Props) {
         <button
           type="button"
           className="btn btn-primary btn-sm simulation-banner-cta"
-          onClick={() => subscribeModule(module)}
+          onClick={() => (native ? openExternalSubscribe() : subscribeModule(module))}
         >
-          Upgrade to live module
+          {native ? "Manage on website" : "Upgrade to live module"}
         </button>
       </div>
     </div>

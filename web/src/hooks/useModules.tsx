@@ -3,6 +3,7 @@ import { WinHookModal } from "../components/WinHookModal";
 import { useAuth } from "./useAuth";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
 import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
+import { isNativeShell, openExternalSubscribe } from "../lib/nativeShell";
 import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
 import {
   applySitePlanToModulesPayload,
@@ -176,6 +177,11 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   }, [hasAnnual]);
 
   const subscribeModule = useCallback(async (module: string) => {
+    // App Store 3.1.1: never start Stripe Checkout inside the native WebView.
+    if (isNativeShell()) {
+      openExternalSubscribe();
+      return;
+    }
     if (!getAccessToken()) {
       openAuth("register");
       return;
@@ -202,6 +208,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   const subscribeTier = useCallback(
     async (tier: PricingTierId, selectedMarkets: string[] = []) => {
+      if (isNativeShell()) {
+        openExternalSubscribe();
+        return;
+      }
       if (!getAccessToken()) {
         openAuth("register");
         return;
@@ -232,6 +242,10 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const subscribeAnnual = useCallback(async () => {
+    if (isNativeShell()) {
+      openExternalSubscribe();
+      return;
+    }
     if (!getAccessToken()) {
       openAuth("register");
       return;
