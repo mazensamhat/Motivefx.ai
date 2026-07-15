@@ -30,7 +30,12 @@ export function TabBetting() {
     updatedAt?: string;
     error?: string | null;
   }>("/betting/line-moves");
-  const sharp = useApi<{ items: SharpAction[] }>("/betting/sharp-action");
+  const sharp = useApi<{
+    items: SharpAction[];
+    source?: "live" | "demo";
+    updatedAt?: string;
+    error?: string | null;
+  }>("/betting/sharp-action");
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
 
   const linesUpdated =
@@ -143,12 +148,24 @@ export function TabBetting() {
             <h2 className="card-title">
               <Target size={18} /> Public vs Sharp Money
             </h2>
+            {sharp.data?.error && (
+              <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                Unavailable
+              </span>
+            )}
           </div>
           <div className="card-body flush">
+            {sharp.data?.error && (
+              <div className="form-error" style={{ padding: "0.75rem 1rem 0" }}>{sharp.data.error}</div>
+            )}
             {sharp.loading ? (
               <div className="loading">Loading sharp action…</div>
             ) : (sharp.data?.items.length ?? 0) === 0 ? (
-              <div className="empty">No sharp signals yet.</div>
+              <div className="empty">
+                {sharp.data?.error
+                  ? "Sharp money model unavailable."
+                  : "No sharp signals yet."}
+              </div>
             ) : (
               <VirtualizedScoopList
                 items={sharp.data?.items ?? []}

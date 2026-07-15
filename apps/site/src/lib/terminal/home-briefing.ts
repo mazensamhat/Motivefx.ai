@@ -7,7 +7,6 @@ import {
   fetchCongressTrades,
   fetchLineMoves,
   fetchPredictionMarkets,
-  fetchSharpAction,
   fetchWhaleAlerts,
   scanPennyMovers,
   scanUnusualOptions,
@@ -198,10 +197,9 @@ export async function buildHomeBriefing(opts: {
   const name = (opts.displayName ?? "Trader").split(/\s+/)[0];
   const greeting = `Good ${period}, ${name}`;
 
-  const [whales, lines, sharp, markets, congressTrades] = await Promise.all([
+  const [whales, lines, markets, congressTrades] = await Promise.all([
     fetchWhaleAlerts(),
     fetchLineMoves(),
-    fetchSharpAction(),
     fetchPredictionMarkets(4),
     fetchCongressTrades(10),
   ]);
@@ -267,22 +265,22 @@ export async function buildHomeBriefing(opts: {
     });
   }
 
-  for (const s of sharp.slice(0, 2)) {
-    const conf = s.confidence === "high" ? 72 : 64;
+  for (const l of lines.slice(0, 2)) {
+    const conf = 60;
     opportunities.push({
-      id: `betting-${String(s.matchup).slice(0, 20)}`,
+      id: `betting-${String(l.matchup).slice(0, 20)}`,
       module: "betting",
-      symbol: s.matchup,
-      title: "Sharp money signal",
+      symbol: l.matchup,
+      title: "Live odds signal",
       confidence: conf,
       expectedMove: "Line context",
       riskLevel: riskFromConfidence(conf, "betting"),
       stars: stars(conf),
-      signals: ["Sharp Money", "Line Movement", "Public Split"],
+      signals: ["Line Movement"],
       reasons: [
-        `Sharp side: ${s.sharpSide} — signal ${String(s.signal).replace(/_/g, " ")}.`,
-        `Public ${s.publicPct}% vs money ${s.moneyPct}%.`,
-        "Professional book modeling favors this side.",
+        `${l.sport}${l.book ? ` · ${l.book}` : ""} — ${l.currentLine ?? "live board"}.`,
+        "Public vs sharp ticket splits are not available on this feed.",
+        "Informational odds context only — not a wager recommendation.",
       ],
     });
   }
@@ -349,7 +347,7 @@ export async function buildHomeBriefing(opts: {
     trades: `Today's lens: ${moduleCounts.trades} options-flow flag${moduleCounts.trades !== 1 ? "s" : ""}${options[0] ? ` — $${options[0].symbol} leading Vol/OI.` : "."}`,
     penny: `Pink slip desk: ${moduleCounts.penny} microcap signal${moduleCounts.penny !== 1 ? "s" : ""}${penny[0] ? ` — $${penny[0].symbol} volume ${penny[0].volRatio}x avg.` : "."}`,
     crypto: `On-chain lens: ${moduleCounts.crypto} whale flag${moduleCounts.crypto !== 1 ? "s" : ""}${whales[0] ? ` — ${whales[0].asset ?? "BTC"} transfer flagged.` : "."}`,
-    betting: `Sharp desk: ${moduleCounts.betting} line signal${moduleCounts.betting !== 1 ? "s" : ""}${sharp[0] ? ` — ${sharp[0].matchup} sharp side ${sharp[0].sharpSide}.` : "."}`,
+    betting: `Odds desk: ${moduleCounts.betting} line signal${moduleCounts.betting !== 1 ? "s" : ""}${lines[0] ? ` — ${lines[0].matchup} @ ${lines[0].currentLine ?? "live"}.` : "."}`,
     predictions: `Event markets: ${moduleCounts.predictions} contract${moduleCounts.predictions !== 1 ? "s" : ""} flagged${markets[0] ? ` — top yes ${Math.round((Number(markets[0].yes) || 0.5) * 100)}%.` : "."}`,
   };
 

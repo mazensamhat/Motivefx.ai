@@ -1,8 +1,14 @@
 import { json } from "@/lib/api";
-import { demoSharpAction } from "@/lib/terminal/feeds";
+import { fetchSharpActionWithMeta } from "@/lib/terminal/feeds";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return json({ items: demoSharpAction() });
+  const result = await fetchSharpActionWithMeta();
+  return json({
+    items: result.items,
+    source: result.source,
+    updatedAt: result.updatedAt,
+    error: result.error ?? null,
+  });
 }

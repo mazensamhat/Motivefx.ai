@@ -184,6 +184,8 @@ export type FeedMeta = {
 export type LineMoveItem = {
   matchup: string;
   sport: string;
+  /** Odds API sport_key when available (e.g. baseball_mlb). */
+  sportKey?: string;
   commenceTime?: unknown;
   openingLine?: string;
   currentLine?: string;
@@ -192,6 +194,15 @@ export type LineMoveItem = {
   book?: unknown;
   line?: Record<string, number | undefined>;
   timestamp?: string;
+};
+
+export type SharpActionItem = {
+  matchup: string;
+  publicPct: number;
+  moneyPct: number;
+  sharpSide: string;
+  signal: string;
+  confidence: string;
 };
 
 export type PredictionMarketItem = {
@@ -215,19 +226,40 @@ export function demoLineMoves(): LineMoveItem[] {
 }
 
 /**
- * Prefer sports that usually have games year-round, then seasonal.
- * `upcoming` is The Odds API cross-sport feed (next ~8 events) — try first to avoid
- * empty NFL in July and to burn only one quota unit instead of six sequential calls.
+ * US major leagues first (in-season coverage), then seasonal.
+ * `upcoming` is still tried early (1 quota unit) but results are re-ranked so
+ * NPB/KBO/etc. cannot flood the list when MLB/MLS/WNBA/NBA are available.
  */
 const ODDS_SPORT_FALLBACKS = [
   "upcoming",
   "baseball_mlb",
   "soccer_usa_mls",
+  "basketball_wnba",
+  "basketball_nba",
   "mma_mixed_martial_arts",
   "americanfootball_nfl",
-  "basketball_nba",
   "icehockey_nhl",
 ];
+
+/** Prefer these Odds API sport_keys when diversifying the line board. */
+const PREFERRED_SPORT_KEYS = new Set([
+  "baseball_mlb",
+  "soccer_usa_mls",
+  "basketball_nba",
+  "basketball_wnba",
+  "basketball_ncaab",
+  "americanfootball_nfl",
+  "americanfootball_ncaaf",
+  "icehockey_nhl",
+  "mma_mixed_martial_arts",
+  "boxing_boxing",
+]);
+
+const LINE_MOVE_LIMIT = 12;
+/** Max non-preferred (e.g. NPB) rows when we already have preferred coverage. */
+const SECONDARY_SPORT_CAP = 2;
+/** Stop fetching more sports once we have this many preferred games. */
+const PREFERRED_COVERAGE_TARGET = 6;
 
 type OddsOutcome = { name: string; price?: number; point?: number };
 
@@ -246,8 +278,22 @@ function formatOddsLine(outcomes: OddsOutcome[], home: string): string | undefin
   return short;
 }
 
+function sportKeyPriority(sportKey: string): number {
+  const key = sportKey.trim().toLowerCase();
+  if (!key) return 2;
+  if (PREFERRED_SPORT_KEYS.has(key)) return 0;
+  // Other soccer after MLS; still ahead of NPB/KBO flood.
+  if (key.startsWith("soccer_")) return 1;
+  if (key.includes("nba") || key.includes("wnba")) return 0;
+  return 2;
+}
+
+function isPreferredLine(item: LineMoveItem): boolean {
+  return sportKeyPriority(item.sportKey ?? "") <= 1;
+}
+
 function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
-  return games.slice(0, 12).map((game) => {
+  return games.map((game) => {
     const home = String(game.home_team ?? "Home");
     const away = String(game.away_team ?? "Away");
     const bookmakers = (game.bookmakers as Array<Record<string, unknown>>) ?? [];
@@ -259,9 +305,11 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
       {};
     const outcomes = (preferred.outcomes as OddsOutcome[]) ?? [];
     const currentLine = formatOddsLine(outcomes, home);
+    const sportKey = String(game.sport_key ?? "");
     return {
       matchup: `${away} @ ${home}`,
       sport: String(game.sport_title ?? "—"),
+      sportKey,
       commenceTime: game.commence_time,
       openingLine: currentLine,
       currentLine,
@@ -272,6 +320,38 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
       timestamp: now(),
     };
   });
+}
+
+function mergeLineMoves(existing: LineMoveItem[], incoming: LineMoveItem[]): LineMoveItem[] {
+  const seen = new Set(existing.map((i) => i.matchup.toLowerCase()));
+  const merged = [...existing];
+  for (const item of incoming) {
+    const key = item.matchup.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  return merged;
+}
+
+/** Prefer US majors; allow a small NPB/etc. tail only when preferred coverage exists (or as last resort). */
+function diversifyLineMoves(items: LineMoveItem[]): LineMoveItem[] {
+  const preferred = items
+    .filter(isPreferredLine)
+    .sort((a, b) => sportKeyPriority(a.sportKey ?? "") - sportKeyPriority(b.sportKey ?? ""));
+  const secondary = items.filter((i) => !isPreferredLine(i));
+
+  if (preferred.length === 0) {
+    // Nothing preferred live — still show whatever is available (e.g. NPB-only window).
+    return secondary.slice(0, LINE_MOVE_LIMIT);
+  }
+
+  const secondaryCap = preferred.length >= 3 ? SECONDARY_SPORT_CAP : Math.min(4, SECONDARY_SPORT_CAP + 2);
+  return [...preferred, ...secondary.slice(0, secondaryCap)].slice(0, LINE_MOVE_LIMIT);
+}
+
+function preferredCoverageCount(items: LineMoveItem[]): number {
+  return items.filter(isPreferredLine).length;
 }
 
 type OddsSportResult =
@@ -348,6 +428,7 @@ export async function fetchLineMovesWithMeta(
   const seen = new Set<string>();
   const emptySports: string[] = [];
   const softErrors: string[] = [];
+  let collected: LineMoveItem[] = [];
 
   try {
     for (const s of sports) {
@@ -357,7 +438,18 @@ export async function fetchLineMovesWithMeta(
         const result = await fetchOddsForSport(s, key);
         if (result.ok) {
           if (result.items.length) {
-            return { items: result.items, source: "live", updatedAt };
+            collected = mergeLineMoves(collected, result.items);
+            const diversified = diversifyLineMoves(collected);
+            const preferredCount = preferredCoverageCount(diversified);
+            // After upcoming: only stop early when preferred majors are present.
+            // Otherwise keep fetching MLB/MLS/WNBA so NPB cannot dominate.
+            const enoughPreferred = preferredCount >= PREFERRED_COVERAGE_TARGET;
+            const enoughMixed =
+              s !== "upcoming" && diversified.length >= 8 && preferredCount >= 3;
+            if (enoughPreferred || enoughMixed) {
+              return { items: diversified, source: "live", updatedAt };
+            }
+            continue;
           }
           emptySports.push(s);
           continue;
@@ -365,6 +457,14 @@ export async function fetchLineMovesWithMeta(
         softErrors.push(`${s}: ${result.message}`);
         // Auth / quota / rate-limit: stop immediately — further calls waste credits and still fail.
         if (result.fatal) {
+          if (collected.length) {
+            return {
+              items: diversifyLineMoves(collected),
+              source: "live",
+              updatedAt,
+              error: result.message,
+            };
+          }
           return {
             items: [],
             source: "demo",
@@ -375,6 +475,9 @@ export async function fetchLineMovesWithMeta(
       } catch (err) {
         softErrors.push(`${s}: ${err instanceof Error ? err.message : "failed"}`);
       }
+    }
+    if (collected.length) {
+      return { items: diversifyLineMoves(collected), source: "live", updatedAt };
     }
     return {
       items: demoLineMoves(),
@@ -396,7 +499,8 @@ export async function fetchLineMovesWithMeta(
   }
 }
 
-export function demoSharpAction() {
+/** Legacy demo rows — kept for reference/tests only; never served to the Bets UI. */
+export function demoSharpAction(): SharpActionItem[] {
   return [
     { matchup: "Chiefs @ Bills", publicPct: 78, moneyPct: 32, sharpSide: "Bills +4.5", signal: "reverse_line_move", confidence: "high" },
     { matchup: "Lakers @ Celtics", publicPct: 65, moneyPct: 71, sharpSide: "Celtics -4", signal: "aligned_sharp", confidence: "medium" },
@@ -404,8 +508,22 @@ export function demoSharpAction() {
   ];
 }
 
-export async function fetchSharpAction() {
-  return demoSharpAction();
+export const SHARP_MONEY_UNAVAILABLE_MESSAGE =
+  "Sharp money model unavailable — public vs sharp ticket splits need a dedicated consensus feed.";
+
+export async function fetchSharpActionWithMeta(): Promise<{ items: SharpActionItem[] } & FeedMeta> {
+  // Honesty over fake July NFL/NBA slips: we do not have a live public/sharp split vendor.
+  return {
+    items: [],
+    source: "demo",
+    updatedAt: now(),
+    error: SHARP_MONEY_UNAVAILABLE_MESSAGE,
+  };
+}
+
+export async function fetchSharpAction(): Promise<SharpActionItem[]> {
+  const result = await fetchSharpActionWithMeta();
+  return result.items;
 }
 
 export function demoPredictionMarkets(): PredictionMarketItem[] {

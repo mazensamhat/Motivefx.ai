@@ -110,7 +110,7 @@ export const DATA_SOURCES: DataSourceEntry[] = [
   {
     name: "Sharp-money / public-vs-money splits",
     status: "demo",
-    detail: "Educational sample sharp-action cards; not a live sportsbook ticket feed.",
+    detail: "Unavailable — no live public/sharp ticket-split vendor; Bets UI shows an empty state instead of sample NFL/NBA slips.",
   },
   {
     name: "Pink-sheet / microcap movers",

@@ -1,4 +1,4 @@
-import { scanUnusualOptions, fetchCongressTrades, fetchPredictionMarkets, demoSharpAction, scanPennyMovers, fetchWhaleAlerts } from "./feeds";
+import { scanUnusualOptions, fetchCongressTrades, fetchPredictionMarkets, fetchLineMoves, scanPennyMovers, fetchWhaleAlerts, SHARP_MONEY_UNAVAILABLE_MESSAGE } from "./feeds";
 
 export type Recommendation = {
 
@@ -614,33 +614,36 @@ function buildBetReasons(
 
 export async function analyzeBets(bets: Array<{ matchup?: string; pick?: string; stake?: number | null }>) {
 
-  const sharpList = demoSharpAction();
+  const lines = await fetchLineMoves();
 
-  const sharpByMatchup = Object.fromEntries(sharpList.map((s) => [s.matchup, s]));
+  const picks: Recommendation[] = lines.slice(0, 3).map((l) => {
 
+    const confidence = 58;
 
+    const action = "hold";
 
-  const picks: Recommendation[] = sharpList.slice(0, 3).map((s) => {
+    const headline = l.currentLine ? `Live line: ${l.currentLine}` : "Live odds context";
 
-    const confidence = s.confidence === "high" ? 72 : 64;
-
-    const action = "buy";
-
-    const reasons = buildBetReasons(s.matchup, `Sharp side: ${s.sharpSide}`, 0, action, confidence, s);
+    const reasons = [
+      `${l.matchup} · ${l.sport}${l.book ? ` · ${l.book}` : ""}.`,
+      headline,
+      SHARP_MONEY_UNAVAILABLE_MESSAGE,
+      "Informational context only — not a wager recommendation.",
+    ];
 
     return {
 
-      symbol: s.matchup,
+      symbol: l.matchup,
 
       action,
 
       confidence,
 
-      headline: `Sharp side: ${s.sharpSide}`,
+      headline,
 
-      reasoning: reasons[0] ?? s.matchup,
+      reasoning: reasons[0] ?? l.matchup,
 
-      signals: ["Sharp Money", "Line Movement"],
+      signals: ["Line Movement"],
 
       reasons,
 
@@ -654,11 +657,16 @@ export async function analyzeBets(bets: Array<{ matchup?: string; pick?: string;
 
     const matchup = b.matchup ?? "Game";
 
-    const sharp = sharpByMatchup[matchup];
+    const line = lines.find((l) => l.matchup.toLowerCase() === matchup.toLowerCase());
 
-    const confidence = sharp ? (sharp.confidence === "high" ? 68 : 62) : 60;
+    const confidence = line ? 62 : 58;
 
-    const reasons = buildBetReasons(matchup, b.pick, Number(b.stake ?? 0), "hold", confidence, sharp);
+    const reasons = buildBetReasons(matchup, b.pick, Number(b.stake ?? 0), "hold", confidence, undefined);
+
+    if (line?.currentLine) {
+      reasons.unshift(`Live board: ${line.currentLine}${line.book ? ` (${line.book})` : ""}.`);
+    }
+    reasons.push(SHARP_MONEY_UNAVAILABLE_MESSAGE);
 
     return {
 
@@ -672,9 +680,9 @@ export async function analyzeBets(bets: Array<{ matchup?: string; pick?: string;
 
       reasoning: reasons[0] ?? matchup,
 
-      signals: sharp ? ["Sharp Money", "Bet Grader"] : ["Bet Grader"],
+      signals: line ? ["Line Movement", "Bet Grader"] : ["Bet Grader"],
 
-      reasons,
+      reasons: reasons.slice(0, 6),
 
     };
 
@@ -682,7 +690,11 @@ export async function analyzeBets(bets: Array<{ matchup?: string; pick?: string;
 
 
 
-  const summary = bets.length ? `Graded ${bets.length} open bets against line and sharp feeds.` : "No bets yet — here are AI sharp-side picks.";
+  const summary = bets.length
+    ? `Graded ${bets.length} open bets against live odds (sharp splits unavailable).`
+    : lines.length
+      ? "No bets yet — live board context below (sharp money model unavailable)."
+      : SHARP_MONEY_UNAVAILABLE_MESSAGE;
 
   return { summary, recs, picks };
 
