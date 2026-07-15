@@ -334,7 +334,7 @@ function mergeLineMoves(existing: LineMoveItem[], incoming: LineMoveItem[]): Lin
   return merged;
 }
 
-/** Prefer US majors; allow a small NPB/etc. tail only when preferred coverage exists (or as last resort). */
+/** Prefer US majors; interleave sports; allow a small NPB/etc. tail when preferred coverage exists. */
 function diversifyLineMoves(items: LineMoveItem[]): LineMoveItem[] {
   const preferred = items
     .filter(isPreferredLine)
@@ -346,12 +346,37 @@ function diversifyLineMoves(items: LineMoveItem[]): LineMoveItem[] {
     return secondary.slice(0, LINE_MOVE_LIMIT);
   }
 
-  const secondaryCap = preferred.length >= 3 ? SECONDARY_SPORT_CAP : Math.min(4, SECONDARY_SPORT_CAP + 2);
-  return [...preferred, ...secondary.slice(0, secondaryCap)].slice(0, LINE_MOVE_LIMIT);
+  // Round-robin by sport so MLB/MLS/WNBA aren't buried under one summer board.
+  const bySport = new Map<string, LineMoveItem[]>();
+  for (const item of preferred) {
+    const k = (item.sportKey || item.sport || "other").toLowerCase();
+    const list = bySport.get(k);
+    if (list) list.push(item);
+    else bySport.set(k, [item]);
+  }
+  const interleaved: LineMoveItem[] = [];
+  let progressed = true;
+  while (progressed && interleaved.length < LINE_MOVE_LIMIT) {
+    progressed = false;
+    for (const list of bySport.values()) {
+      if (!list.length || interleaved.length >= LINE_MOVE_LIMIT) continue;
+      interleaved.push(list.shift()!);
+      progressed = true;
+    }
+  }
+
+  const secondaryCap = interleaved.length >= 3 ? SECONDARY_SPORT_CAP : Math.min(4, SECONDARY_SPORT_CAP + 2);
+  return [...interleaved, ...secondary.slice(0, secondaryCap)].slice(0, LINE_MOVE_LIMIT);
 }
 
 function preferredCoverageCount(items: LineMoveItem[]): number {
   return items.filter(isPreferredLine).length;
+}
+
+function preferredSportVariety(items: LineMoveItem[]): number {
+  return new Set(
+    items.filter(isPreferredLine).map((i) => (i.sportKey || i.sport || "").toLowerCase()).filter(Boolean)
+  ).size;
 }
 
 type OddsSportResult =
@@ -441,11 +466,15 @@ export async function fetchLineMovesWithMeta(
             collected = mergeLineMoves(collected, result.items);
             const diversified = diversifyLineMoves(collected);
             const preferredCount = preferredCoverageCount(diversified);
-            // After upcoming: only stop early when preferred majors are present.
-            // Otherwise keep fetching MLB/MLS/WNBA so NPB cannot dominate.
-            const enoughPreferred = preferredCount >= PREFERRED_COVERAGE_TARGET;
+            const variety = preferredSportVariety(diversified);
+            // Never stop after `upcoming` alone — it often skews to one league (NPB or summer NBA).
+            // Require preferred majors from ≥2 sport keys before ending the fallback loop.
+            const enoughPreferred =
+              s !== "upcoming" &&
+              preferredCount >= PREFERRED_COVERAGE_TARGET &&
+              variety >= 2;
             const enoughMixed =
-              s !== "upcoming" && diversified.length >= 8 && preferredCount >= 3;
+              s !== "upcoming" && diversified.length >= 8 && preferredCount >= 3 && variety >= 2;
             if (enoughPreferred || enoughMixed) {
               return { items: diversified, source: "live", updatedAt };
             }
