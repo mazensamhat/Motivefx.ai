@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
+import { findUserSafe } from "@/lib/load-user";
 import { verifyPassword } from "@/lib/password";
 import { createPending2faToken } from "@/lib/pending-2fa";
 import { createSession, mobileSessionPayload } from "@/lib/session";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (!parsed.success) return badRequest("Invalid email or password.");
 
     const email = parsed.data.email.trim().toLowerCase();
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await findUserSafe({ email });
     if (!user) return unauthorized("Invalid email or password.");
     if (user.disabledAt) {
       return unauthorized("This account is disabled. Contact support.");

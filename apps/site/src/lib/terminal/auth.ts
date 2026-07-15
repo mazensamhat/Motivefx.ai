@@ -1,5 +1,6 @@
 import { prisma } from "@motivefx/database";
 import { forbidden, unauthorized } from "../api";
+import { findUserSafe } from "../load-user";
 import { getSession } from "../session";
 import type { User } from "@prisma/client";
 
@@ -15,7 +16,7 @@ export async function requireTerminalSession(): Promise<
     return { ok: false, response: unauthorized() };
   }
 
-  const user = await prisma.user.findUnique({ where: { id: cookie.id } });
+  const user = await findUserSafe({ id: cookie.id });
   if (!user || user.disabledAt) {
     return { ok: false, response: unauthorized() };
   }

@@ -1,5 +1,5 @@
-import { prisma } from "@motivefx/database";
 import { requireTerminalSession } from "./auth";
+import { findUserSafe } from "../load-user";
 import { planForUser, sandboxDemoPlan } from "./plan";
 import { requireModule } from "./access";
 
@@ -31,7 +31,7 @@ export async function resolveAccess(request: Request, module?: string) {
   }
 
   if (userIdParam && userIdParam !== "demo") {
-    const user = await prisma.user.findUnique({ where: { id: userIdParam } });
+    const user = await findUserSafe({ id: userIdParam });
     if (user && !user.disabledAt) {
       const plan = planForUser(user);
       if (module) requireModule(plan, module);
@@ -44,7 +44,6 @@ export async function resolveAccess(request: Request, module?: string) {
   }
   return { userId: userIdParam ?? "demo", plan: null, user: null, authenticated: false };
 }
-
 export class ModuleAccessError extends Error {
   module: string;
   constructor(module: string) {
