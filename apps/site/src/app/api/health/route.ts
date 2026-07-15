@@ -14,8 +14,8 @@ export async function GET() {
     polymarket = false;
   }
 
-  // /v4/sports does not consume Odds API quota — use it to verify the key works,
-  // not merely that THE_ODDS_API_KEY is non-empty (which hid 401/OUT_OF_USAGE_CREDITS).
+  // /v4/sports does not consume Odds API quota. Use it to verify the key, and
+  // treat x-requests-remaining=0 as unhealthy so health matches odds fetch reality.
   let theOddsApi = false;
   const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
   if (oddsKey) {
@@ -24,7 +24,11 @@ export async function GET() {
         `https://api.the-odds-api.com/v4/sports/?apiKey=${encodeURIComponent(oddsKey)}`,
         { cache: "no-store" }
       );
-      theOddsApi = oddsRes.ok;
+      if (oddsRes.ok) {
+        const remainingRaw = oddsRes.headers.get("x-requests-remaining");
+        const remaining = remainingRaw != null ? Number(remainingRaw) : null;
+        theOddsApi = remaining == null || Number.isNaN(remaining) ? true : remaining > 0;
+      }
     } catch {
       theOddsApi = false;
     }
