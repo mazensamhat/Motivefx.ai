@@ -179,6 +179,8 @@ export type FeedMeta = {
   source: "live" | "demo";
   updatedAt: string;
   error?: string;
+  /** Which odds vendor produced the board when source is live. */
+  provider?: "sharp_api" | "the_odds_api";
 };
 
 export type LineMoveItem = {
@@ -273,14 +275,34 @@ export type OddsApiQuota = {
   lastUpdatedAt: string | null;
 };
 
+export type SharpApiQuota = {
+  remaining: number | null;
+  limit: number | null;
+  reset: number | null;
+  dataDelay: number | null;
+  lastUpdatedAt: string | null;
+};
+
 let oddsApiQuota: OddsApiQuota = {
   remaining: null,
   used: null,
   lastUpdatedAt: null,
 };
 
+let sharpApiQuota: SharpApiQuota = {
+  remaining: null,
+  limit: null,
+  reset: null,
+  dataDelay: null,
+  lastUpdatedAt: null,
+};
+
 export function getOddsApiQuota(): OddsApiQuota {
   return { ...oddsApiQuota };
+}
+
+export function getSharpApiQuota(): SharpApiQuota {
+  return { ...sharpApiQuota };
 }
 
 function rememberOddsQuotaHeaders(res: Headers) {
@@ -295,6 +317,263 @@ function rememberOddsQuotaHeaders(res: Headers) {
       lastUpdatedAt: now(),
     };
   }
+}
+
+function rememberSharpQuotaHeaders(res: Headers) {
+  const remainingRaw = res.get("x-ratelimit-remaining");
+  const limitRaw = res.get("x-ratelimit-limit");
+  const resetRaw = res.get("x-ratelimit-reset");
+  const delayRaw = res.get("x-data-delay");
+  const remaining = remainingRaw != null ? Number(remainingRaw) : null;
+  const limit = limitRaw != null ? Number(limitRaw) : null;
+  const reset = resetRaw != null ? Number(resetRaw) : null;
+  const dataDelay = delayRaw != null ? Number(delayRaw) : null;
+  if (
+    (remaining != null && !Number.isNaN(remaining)) ||
+    (limit != null && !Number.isNaN(limit)) ||
+    (reset != null && !Number.isNaN(reset)) ||
+    (dataDelay != null && !Number.isNaN(dataDelay))
+  ) {
+    sharpApiQuota = {
+      remaining: remaining != null && !Number.isNaN(remaining) ? remaining : sharpApiQuota.remaining,
+      limit: limit != null && !Number.isNaN(limit) ? limit : sharpApiQuota.limit,
+      reset: reset != null && !Number.isNaN(reset) ? reset : sharpApiQuota.reset,
+      dataDelay: dataDelay != null && !Number.isNaN(dataDelay) ? dataDelay : sharpApiQuota.dataDelay,
+      lastUpdatedAt: now(),
+    };
+  }
+}
+
+function sharpApiBaseUrl(): string {
+  const raw = process.env.SHARP_API_BASE_URL?.trim() || "https://api.sharpapi.io/api/v1";
+  return raw.replace(/\/+$/, "");
+}
+
+/** Map SharpAPI league slugs onto Odds-API-style keys for board diversification. */
+function sharpLeagueToSportKey(league: string, sport: string): string {
+  const l = league.trim().toLowerCase();
+  const s = sport.trim().toLowerCase();
+  const byLeague: Record<string, string> = {
+    mlb: "baseball_mlb",
+    nba: "basketball_nba",
+    wnba: "basketball_wnba",
+    ncaab: "basketball_ncaab",
+    cbb: "basketball_ncaab",
+    nfl: "americanfootball_nfl",
+    ncaaf: "americanfootball_ncaaf",
+    cfb: "americanfootball_ncaaf",
+    nhl: "icehockey_nhl",
+    mls: "soccer_usa_mls",
+    ufc: "mma_mixed_martial_arts",
+    mma: "mma_mixed_martial_arts",
+    boxing: "boxing_boxing",
+  };
+  if (byLeague[l]) return byLeague[l];
+  if (s === "soccer") return `soccer_${l || "other"}`;
+  if (s) return `${s}_${l || "other"}`;
+  return l || "other";
+}
+
+function formatSharpBook(id: string): string {
+  const known: Record<string, string> = {
+    draftkings: "DraftKings",
+    fanduel: "FanDuel",
+    betmgm: "BetMGM",
+    caesars: "Caesars",
+    pinnacle: "Pinnacle",
+    betrivers: "BetRivers",
+    bet365: "Bet365",
+  };
+  const key = id.trim().toLowerCase();
+  if (known[key]) return known[key];
+  if (!key) return "—";
+  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+type SharpOddsRow = {
+  id?: string;
+  sportsbook?: string;
+  event_id?: string;
+  sport?: string;
+  league?: string;
+  home_team?: string;
+  away_team?: string;
+  market_type?: string;
+  selection?: string;
+  selection_type?: string;
+  odds_american?: number;
+  line?: number | null;
+  event_start_time?: string;
+  is_main_line?: boolean;
+  is_alternate_line?: boolean;
+  is_live?: boolean;
+};
+
+function isMainMoneyMarket(marketType: string): boolean {
+  const m = marketType.trim().toLowerCase();
+  return (
+    m === "moneyline" ||
+    m === "moneyline_3-way" ||
+    m === "point_spread" ||
+    m === "run_line" ||
+    m === "puck_line"
+  );
+}
+
+function formatSharpSelectionLine(row: SharpOddsRow, home: string): string | undefined {
+  const selection = String(row.selection ?? "").trim();
+  const short =
+    selection.split(" ").pop() ||
+    (row.selection_type === "home" ? home.split(" ").pop() : selection) ||
+    selection;
+  if (!short) return undefined;
+  if (row.line != null && Number.isFinite(Number(row.line))) {
+    const pt = Number(row.line);
+    return `${short} ${pt > 0 ? "+" : ""}${pt}`;
+  }
+  if (row.odds_american != null && Number.isFinite(Number(row.odds_american))) {
+    const price = Number(row.odds_american);
+    return `${short} ${price > 0 ? "+" : ""}${price}`;
+  }
+  return short;
+}
+
+/** Collapse flat SharpAPI odds rows into one LineMoveItem per event. */
+function mapSharpOddsRows(rows: SharpOddsRow[]): LineMoveItem[] {
+  type Acc = {
+    home: string;
+    away: string;
+    league: string;
+    sport: string;
+    commenceTime?: string;
+    bookId: string;
+    preferred: SharpOddsRow[];
+    line: Record<string, number | undefined>;
+  };
+  const byEvent = new Map<string, Acc>();
+  const bookRank = (id: string) => {
+    const k = id.toLowerCase();
+    if (k === "draftkings") return 0;
+    if (k === "fanduel") return 1;
+    if (k === "pinnacle") return 2;
+    return 5;
+  };
+
+  for (const row of rows) {
+    const market = String(row.market_type ?? "");
+    if (!isMainMoneyMarket(market)) continue;
+    if (row.is_alternate_line === true) continue;
+    const eventId = String(row.event_id ?? row.id ?? "");
+    if (!eventId) continue;
+    const home = String(row.home_team ?? "Home");
+    const away = String(row.away_team ?? "Away");
+    const bookId = String(row.sportsbook ?? "");
+    const existing = byEvent.get(eventId);
+    if (!existing) {
+      const line: Record<string, number | undefined> = {};
+      if (row.selection && row.odds_american != null) {
+        line[String(row.selection)] = Number(row.odds_american);
+      }
+      byEvent.set(eventId, {
+        home,
+        away,
+        league: String(row.league ?? ""),
+        sport: String(row.sport ?? ""),
+        commenceTime: row.event_start_time,
+        bookId,
+        preferred: [row],
+        line,
+      });
+      continue;
+    }
+    const preferNewBook = bookRank(bookId) < bookRank(existing.bookId);
+    const sameBook = bookId.toLowerCase() === existing.bookId.toLowerCase();
+    if (preferNewBook) {
+      existing.bookId = bookId;
+      existing.preferred = [row];
+      existing.line = {};
+      if (row.selection && row.odds_american != null) {
+        existing.line[String(row.selection)] = Number(row.odds_american);
+      }
+    } else if (sameBook) {
+      existing.preferred.push(row);
+      if (row.selection && row.odds_american != null) {
+        existing.line[String(row.selection)] = Number(row.odds_american);
+      }
+    }
+  }
+
+  const items: LineMoveItem[] = [];
+  for (const acc of byEvent.values()) {
+    const homeRow =
+      acc.preferred.find((r) => r.selection_type === "home") ??
+      acc.preferred.find((r) => String(r.selection ?? "").includes(acc.home)) ??
+      acc.preferred[0];
+    const currentLine = homeRow ? formatSharpSelectionLine(homeRow, acc.home) : undefined;
+    const sportKey = sharpLeagueToSportKey(acc.league, acc.sport);
+    items.push({
+      matchup: `${acc.away} @ ${acc.home}`,
+      sport: (acc.league || acc.sport || "—").toUpperCase(),
+      sportKey,
+      commenceTime: acc.commenceTime,
+      openingLine: currentLine,
+      currentLine,
+      movement: "—",
+      direction: "live",
+      book: formatSharpBook(acc.bookId),
+      line: acc.line,
+      timestamp: now(),
+    });
+  }
+  return items;
+}
+
+type SharpFetchResult =
+  | { ok: true; items: LineMoveItem[] }
+  | { ok: false; status: number; message: string };
+
+function formatSharpHttpError(status: number, bodyText: string): string {
+  let detail = bodyText.trim();
+  try {
+    const parsed = JSON.parse(bodyText) as {
+      error?: { message?: string; code?: string };
+      message?: string;
+    };
+    if (parsed.error?.message) detail = parsed.error.message;
+    else if (parsed.error?.code) detail = parsed.error.code;
+    else if (parsed.message) detail = parsed.message;
+  } catch {
+    /* keep raw */
+  }
+  if (status === 401) {
+    return `SharpAPI unauthorized (${detail || "HTTP 401"}) — check SHARP_API_KEY.`;
+  }
+  if (status === 403) {
+    return `SharpAPI forbidden (${detail || "HTTP 403"}).`;
+  }
+  if (status === 429) {
+    return `SharpAPI rate limited (${detail || "HTTP 429"}) — free tier is 12 req/min.`;
+  }
+  return `SharpAPI error HTTP ${status}${detail ? `: ${detail}` : ""}.`;
+}
+
+async function fetchSharpLineMoves(apiKey: string): Promise<SharpFetchResult> {
+  const url = new URL(`${sharpApiBaseUrl()}/odds`);
+  // One request for the board — free tier is request-rate limited (12/min), not credit-based.
+  url.searchParams.set("market", "moneyline");
+  url.searchParams.set("limit", "200");
+  const res = await fetch(url.toString(), {
+    headers: { "X-API-Key": apiKey },
+    cache: "no-store",
+  });
+  rememberSharpQuotaHeaders(res.headers);
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => "");
+    return { ok: false, status: res.status, message: formatSharpHttpError(res.status, bodyText) };
+  }
+  const payload = (await res.json()) as { data?: SharpOddsRow[] } | SharpOddsRow[];
+  const rows = Array.isArray(payload) ? payload : payload.data ?? [];
+  return { ok: true, items: mapSharpOddsRows(rows) };
 }
 
 type TtlCacheEntry<T> = {
@@ -511,20 +790,12 @@ export async function fetchLineMoves(sport = "baseball_mlb"): Promise<LineMoveIt
   return result.items;
 }
 
-async function fetchLineMovesUncached(
-  sport: string
+async function fetchLineMovesFromOddsApi(
+  sport: string,
+  key: string,
+  updatedAt: string,
+  sharpNote?: string
 ): Promise<{ items: LineMoveItem[] } & FeedMeta> {
-  const updatedAt = now();
-  const key = process.env.THE_ODDS_API_KEY?.trim();
-  if (!key) {
-    return {
-      items: demoLineMoves(),
-      source: "demo",
-      updatedAt,
-      error: "THE_ODDS_API_KEY not configured — showing sample lines.",
-    };
-  }
-
   // Requested sport first, then short fallback list — max ODDS_MAX_SPORTS_PER_REFRESH calls.
   const sports = [sport, ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport)].slice(
     0,
@@ -534,6 +805,10 @@ async function fetchLineMovesUncached(
   const emptySports: string[] = [];
   const softErrors: string[] = [];
   let collected: LineMoveItem[] = [];
+  const withSharpNote = (error?: string) => {
+    const parts = [sharpNote, error].filter(Boolean);
+    return parts.length ? parts.join(" ") : undefined;
+  };
 
   try {
     for (const s of sports) {
@@ -551,7 +826,13 @@ async function fetchLineMovesUncached(
             const enoughPreferred = preferredCount >= PREFERRED_COVERAGE_TARGET && variety >= 1;
             const enoughMixed = diversified.length >= 6 && preferredCount >= 2;
             if (enoughPreferred || enoughMixed) {
-              return { items: diversified, source: "live", updatedAt };
+              return {
+                items: diversified,
+                source: "live",
+                updatedAt,
+                provider: "the_odds_api",
+                error: withSharpNote(),
+              };
             }
             continue;
           }
@@ -566,14 +847,15 @@ async function fetchLineMovesUncached(
               items: diversifyLineMoves(collected),
               source: "live",
               updatedAt,
-              error: result.message,
+              provider: "the_odds_api",
+              error: withSharpNote(result.message),
             };
           }
           return {
             items: [],
             source: "demo",
             updatedAt,
-            error: result.message,
+            error: withSharpNote(result.message),
           };
         }
       } catch (err) {
@@ -581,26 +863,88 @@ async function fetchLineMovesUncached(
       }
     }
     if (collected.length) {
-      return { items: diversifyLineMoves(collected), source: "live", updatedAt };
+      return {
+        items: diversifyLineMoves(collected),
+        source: "live",
+        updatedAt,
+        provider: "the_odds_api",
+        error: withSharpNote(),
+      };
     }
     return {
       items: demoLineMoves(),
       source: "demo",
       updatedAt,
-      error:
+      error: withSharpNote(
         softErrors[0] ||
-        (emptySports.length
-          ? `No live games from The Odds API (${emptySports.slice(0, 4).join(", ")}${emptySports.length > 4 ? "…" : ""}) — showing sample lines.`
-          : "No live games from The Odds API — showing sample lines."),
+          (emptySports.length
+            ? `No live games from The Odds API (${emptySports.slice(0, 4).join(", ")}${emptySports.length > 4 ? "…" : ""}) — showing sample lines.`
+            : "No live games from The Odds API — showing sample lines.")
+      ),
     };
   } catch (err) {
     return {
       items: demoLineMoves(),
       source: "demo",
       updatedAt,
-      error: err instanceof Error ? err.message : "Odds feed unavailable — showing sample lines.",
+      error: withSharpNote(
+        err instanceof Error ? err.message : "Odds feed unavailable — showing sample lines."
+      ),
     };
   }
+}
+
+async function fetchLineMovesUncached(
+  sport: string
+): Promise<{ items: LineMoveItem[] } & FeedMeta> {
+  const updatedAt = now();
+  const sharpKey = process.env.SHARP_API_KEY?.trim();
+  const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
+  let sharpNote: string | undefined;
+
+  // Primary: SharpAPI (request-rate limited; one board call).
+  if (sharpKey) {
+    try {
+      const sharp = await fetchSharpLineMoves(sharpKey);
+      if (sharp.ok && sharp.items.length) {
+        return {
+          items: diversifyLineMoves(sharp.items),
+          source: "live",
+          updatedAt,
+          provider: "sharp_api",
+        };
+      }
+      if (sharp.ok) {
+        sharpNote = "SharpAPI returned no lines — falling back to The Odds API.";
+      } else {
+        sharpNote = `${sharp.message} Falling back to The Odds API.`;
+      }
+    } catch (err) {
+      sharpNote = `SharpAPI unavailable (${err instanceof Error ? err.message : "error"}) — falling back to The Odds API.`;
+    }
+  }
+
+  // Backup: The Odds API (cached + max 3 sports).
+  if (oddsKey) {
+    return fetchLineMovesFromOddsApi(sport, oddsKey, updatedAt, sharpNote);
+  }
+
+  if (sharpKey && sharpNote) {
+    return {
+      items: demoLineMoves(),
+      source: "demo",
+      updatedAt,
+      error: `${sharpNote} THE_ODDS_API_KEY not configured — showing sample lines.`,
+    };
+  }
+
+  return {
+    items: demoLineMoves(),
+    source: "demo",
+    updatedAt,
+    error:
+      "SHARP_API_KEY and THE_ODDS_API_KEY not configured — showing sample lines.",
+  };
 }
 
 /**

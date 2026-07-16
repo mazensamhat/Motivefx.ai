@@ -58,7 +58,7 @@ Public preview (no login): `/demo` → `/terminal/?demo=1`
 |-----|----------|---------|
 | Stocks | Finnhub | `FINNHUB_API_KEY` |
 | Crypto | CoinStats (+ CoinGecko fallback) | `COINSTATS_API_KEY` |
-| Betting | The Odds API | `THE_ODDS_API_KEY` |
+| Betting | SharpAPI (primary) + The Odds API (backup) | `SHARP_API_KEY`, `THE_ODDS_API_KEY` |
 | Predictions | Polymarket Gamma | (public) |
 | AI briefs | OpenAI | `OPENAI_API_KEY` |
 

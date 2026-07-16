@@ -51,6 +51,7 @@ export interface PredictionMarket {
 export interface FeedStatus {
   finnhub: boolean;
   coinstats: boolean;
+  sharp_api?: boolean;
   the_odds_api: boolean;
   polymarket?: boolean;
   stripe: boolean;
@@ -62,9 +63,18 @@ export interface OddsQuotaStatus {
   configured?: boolean;
 }
 
+export interface SharpQuotaStatus {
+  remaining: number | null;
+  limit?: number | null;
+  reset?: number | null;
+  dataDelay?: number | null;
+  configured?: boolean;
+}
+
 export interface HealthPayload {
   feeds?: FeedStatus & Record<string, boolean>;
   quota?: {
+    sharp_api?: SharpQuotaStatus;
     the_odds_api?: OddsQuotaStatus;
   };
 }

@@ -27,9 +27,13 @@ export function TabBetting() {
   const lines = useApi<{
     items: LineMove[];
     source?: "live" | "demo";
+    provider?: "sharp_api" | "the_odds_api" | null;
     updatedAt?: string;
     error?: string | null;
-    quota?: { remaining: number | null; used: number | null };
+    quota?: {
+      sharp_api?: { remaining: number | null };
+      the_odds_api?: { remaining: number | null; used: number | null };
+    };
   }>("/betting/line-moves", 300_000);
   const sharp = useApi<{
     items: SharpAction[];
@@ -106,10 +110,25 @@ export function TabBetting() {
             </h2>
             {linesUpdated && (
               <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-                {lines.data?.source === "live" ? "Live" : "Sample"} · {linesUpdated}
-                {lines.data?.quota?.remaining != null
-                  ? ` · ${Math.round(lines.data.quota.remaining).toLocaleString()} credits left`
-                  : ""}
+                {lines.data?.source === "live"
+                  ? lines.data?.provider === "sharp_api"
+                    ? "Live · SharpAPI"
+                    : lines.data?.provider === "the_odds_api"
+                      ? "Live · Odds API"
+                      : "Live"
+                  : "Sample"}{" "}
+                · {linesUpdated}
+                {(() => {
+                  const sharpLeft = lines.data?.quota?.sharp_api?.remaining;
+                  const oddsLeft = lines.data?.quota?.the_odds_api?.remaining;
+                  const left =
+                    sharpLeft != null && Number.isFinite(sharpLeft) ? sharpLeft : oddsLeft;
+                  const label =
+                    sharpLeft != null && Number.isFinite(sharpLeft) ? "Sharp" : "credits";
+                  return left != null
+                    ? ` · ${Math.round(left).toLocaleString()} ${label} left`
+                    : "";
+                })()}
               </span>
             )}
           </div>

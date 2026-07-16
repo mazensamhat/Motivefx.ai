@@ -1,5 +1,9 @@
 import { json } from "@/lib/api";
-import { fetchLineMovesWithMeta, getOddsApiQuota } from "@/lib/terminal/feeds";
+import {
+  fetchLineMovesWithMeta,
+  getOddsApiQuota,
+  getSharpApiQuota,
+} from "@/lib/terminal/feeds";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +14,12 @@ export async function GET(request: Request) {
   return json({
     items: result.items,
     source: result.source,
+    provider: result.provider ?? null,
     updatedAt: result.updatedAt,
     error: result.error ?? null,
-    quota: getOddsApiQuota(),
+    quota: {
+      sharp_api: getSharpApiQuota(),
+      the_odds_api: getOddsApiQuota(),
+    },
   });
 }

@@ -66,13 +66,21 @@ export default function App() {
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const health = useApi<{
     feeds: Record<string, boolean>;
-    quota?: { the_odds_api?: { remaining: number | null; used: number | null } };
+    quota?: {
+      sharp_api?: { remaining: number | null; limit?: number | null };
+      the_odds_api?: { remaining: number | null; used: number | null };
+    };
   }>("/health", 60_000);
   const { badges: pulseBadges } = useModulePulse(activeTab);
   const { hasModule, annualPrice, active: activeModules } = useModules();
   const { isAuthenticated, openAuth, isAdmin } = useAuth();
   const liveCount = Object.values(health.data?.feeds ?? {}).filter(Boolean).length;
+  const sharpRemaining = health.data?.quota?.sharp_api?.remaining;
   const oddsRemaining = health.data?.quota?.the_odds_api?.remaining;
+  const preferredRemaining =
+    sharpRemaining != null && Number.isFinite(sharpRemaining) ? sharpRemaining : oddsRemaining;
+  const preferredQuotaLabel =
+    sharpRemaining != null && Number.isFinite(sharpRemaining) ? "Sharp" : "Odds";
 
   const active = TABS.find((t) => t.id === activeTab)!;
 
@@ -87,8 +95,8 @@ export default function App() {
   }, [activeTab, active.module, hasModule]);
 
   const statusLabel =
-    oddsRemaining != null && Number.isFinite(oddsRemaining)
-      ? `Odds ${Math.round(oddsRemaining).toLocaleString()} left`
+    preferredRemaining != null && Number.isFinite(preferredRemaining)
+      ? `${preferredQuotaLabel} ${Math.round(preferredRemaining).toLocaleString()} left`
       : health.data?.feeds?.openai
         ? "GPT insights live"
         : liveCount > 0

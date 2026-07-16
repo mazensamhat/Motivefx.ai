@@ -127,28 +127,36 @@ async function terminalApiCard(): Promise<PlatformCard> {
       ? ((await res.json()) as {
           status?: string;
           feeds?: Record<string, boolean>;
-          quota?: { the_odds_api?: { remaining?: number | null } };
+          quota?: {
+            sharp_api?: { remaining?: number | null };
+            the_odds_api?: { remaining?: number | null };
+          };
         })
       : null;
     const feeds = body?.feeds ?? {};
     const feedOk = Object.values(feeds).filter(Boolean).length;
     const feedTotal = Object.keys(feeds).length;
+    const sharpLeft = body?.quota?.sharp_api?.remaining;
     const oddsLeft = body?.quota?.the_odds_api?.remaining;
+    const preferredLeft =
+      sharpLeft != null && Number.isFinite(sharpLeft) ? sharpLeft : oddsLeft;
+    const preferredLabel =
+      sharpLeft != null && Number.isFinite(sharpLeft) ? "Sharp" : "Odds";
     return {
       id: "terminal-api",
       name: "Terminal API",
       status: res.ok ? "healthy" : "error",
       summary: res.ok
         ? `Native API online · ${feedOk}/${feedTotal} feeds configured${
-            oddsLeft != null && Number.isFinite(oddsLeft)
-              ? ` · Odds ${Math.round(oddsLeft).toLocaleString()} left`
+            preferredLeft != null && Number.isFinite(preferredLeft)
+              ? ` · ${preferredLabel} ${Math.round(preferredLeft).toLocaleString()} left`
               : ""
           }`
         : `HTTP ${res.status}`,
       metrics: [
         { label: "Host", value: appUrl.replace("https://", "") },
-        ...(oddsLeft != null && Number.isFinite(oddsLeft)
-          ? [{ label: "Odds quota", value: String(Math.round(oddsLeft)) }]
+        ...(preferredLeft != null && Number.isFinite(preferredLeft)
+          ? [{ label: `${preferredLabel} quota`, value: String(Math.round(preferredLeft)) }]
           : []),
       ],
       checklist: Object.entries(feeds).map(([key, value]) => ({ ok: value, label: `${key} feed` })),

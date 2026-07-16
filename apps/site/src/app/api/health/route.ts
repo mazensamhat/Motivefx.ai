@@ -1,5 +1,5 @@
 import { json } from "@/lib/api";
-import { getOddsApiQuota } from "@/lib/terminal/feeds";
+import { getOddsApiQuota, getSharpApiQuota } from "@/lib/terminal/feeds";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,46 @@ export async function GET() {
     polymarket = res.ok;
   } catch {
     polymarket = false;
+  }
+
+  // SharpAPI: light /sports probe (counts toward req/min). Prefer cached rate-limit headers.
+  let sharpApi = false;
+  const sharpKey = process.env.SHARP_API_KEY?.trim();
+  let sharpRemaining: number | null = getSharpApiQuota().remaining;
+  let sharpLimit: number | null = getSharpApiQuota().limit;
+  let sharpReset: number | null = getSharpApiQuota().reset;
+  let sharpDataDelay: number | null = getSharpApiQuota().dataDelay;
+  if (sharpKey) {
+    try {
+      const base =
+        (process.env.SHARP_API_BASE_URL?.trim() || "https://api.sharpapi.io/api/v1").replace(
+          /\/+$/,
+          ""
+        );
+      const sharpRes = await fetch(`${base}/sports`, {
+        headers: { "X-API-Key": sharpKey },
+        cache: "no-store",
+      });
+      const remainingRaw = sharpRes.headers.get("x-ratelimit-remaining");
+      const limitRaw = sharpRes.headers.get("x-ratelimit-limit");
+      const resetRaw = sharpRes.headers.get("x-ratelimit-reset");
+      const delayRaw = sharpRes.headers.get("x-data-delay");
+      if (remainingRaw != null && !Number.isNaN(Number(remainingRaw))) {
+        sharpRemaining = Number(remainingRaw);
+      }
+      if (limitRaw != null && !Number.isNaN(Number(limitRaw))) {
+        sharpLimit = Number(limitRaw);
+      }
+      if (resetRaw != null && !Number.isNaN(Number(resetRaw))) {
+        sharpReset = Number(resetRaw);
+      }
+      if (delayRaw != null && !Number.isNaN(Number(delayRaw))) {
+        sharpDataDelay = Number(delayRaw);
+      }
+      sharpApi = sharpRes.ok;
+    } catch {
+      sharpApi = false;
+    }
   }
 
   // /v4/sports does not consume Odds API quota. Use it to verify the key, and
@@ -44,6 +84,7 @@ export async function GET() {
   const feeds = {
     finnhub: Boolean(process.env.FINNHUB_API_KEY?.trim()),
     coinstats: Boolean(process.env.COINSTATS_API_KEY?.trim()),
+    sharp_api: sharpApi,
     the_odds_api: theOddsApi,
     polymarket,
     stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
@@ -55,8 +96,15 @@ export async function GET() {
     app: "MotiveFX.AI",
     timestamp: new Date().toISOString(),
     feeds,
-    /** Remaining Odds API credits when header is present (free probe or last odds fetch). */
+    /** Prefer SharpAPI remaining (req/min window); Odds credits are backup. */
     quota: {
+      sharp_api: {
+        remaining: sharpRemaining,
+        limit: sharpLimit,
+        reset: sharpReset,
+        dataDelay: sharpDataDelay,
+        configured: Boolean(sharpKey),
+      },
       the_odds_api: {
         remaining: oddsRemaining,
         used: oddsUsed,
