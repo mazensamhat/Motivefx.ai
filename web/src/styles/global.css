@@ -3256,6 +3256,44 @@ button.data-row,
   text-align: left;
 }
 
+.vtable-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.vtable-th-sortable:hover {
+  color: var(--text);
+}
+
+.vtable-th-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.vtable-sort-icon {
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.vtable-sort-icon.active {
+  opacity: 0.95;
+  color: var(--accent, var(--green));
+}
+
+.vtable-sort-icon.muted {
+  opacity: 0.35;
+}
+
+.badge-sport {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
 /* Mobile card layout for activity / screener tables */
 .vtable-mobile {
   overflow-x: hidden;

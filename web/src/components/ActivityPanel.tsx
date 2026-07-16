@@ -315,6 +315,7 @@ export function ActivityPanel({
               columns={tableColumns}
               rowHeight={56}
               maxHeight="min(28rem, 62vh)"
+              sortable
               onRowClick={handleRowClick}
             />
           )}

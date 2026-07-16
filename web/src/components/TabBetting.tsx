@@ -40,6 +40,8 @@ export function TabBetting() {
     source?: "live" | "demo";
     updatedAt?: string;
     error?: string | null;
+    derivedNote?: string | null;
+    provider?: "sharp_api" | "the_odds_api" | null;
   }>("/betting/sharp-action");
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
 
@@ -171,14 +173,28 @@ export function TabBetting() {
             <h2 className="card-title">
               <Target size={18} /> Public vs Sharp Money
             </h2>
-            {sharp.data?.error && (
+            {(sharp.data?.items.length ?? 0) > 0 ? (
+              <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                Derived
+                {sharp.data?.provider === "sharp_api"
+                  ? " · SharpAPI"
+                  : sharp.data?.provider === "the_odds_api"
+                    ? " · Odds API"
+                    : ""}
+              </span>
+            ) : sharp.data?.error ? (
               <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
                 Unavailable
               </span>
-            )}
+            ) : null}
           </div>
           <div className="card-body flush">
-            {sharp.data?.error && (
+            {sharp.data?.derivedNote && (sharp.data?.items.length ?? 0) > 0 && (
+              <div className="card-meta" style={{ padding: "0.65rem 1rem 0", fontSize: "0.75rem", opacity: 0.75 }}>
+                {sharp.data.derivedNote}
+              </div>
+            )}
+            {sharp.data?.error && (sharp.data?.items.length ?? 0) === 0 && (
               <div className="form-error" style={{ padding: "0.75rem 1rem 0" }}>{sharp.data.error}</div>
             )}
             {sharp.loading ? (
@@ -186,7 +202,7 @@ export function TabBetting() {
             ) : (sharp.data?.items.length ?? 0) === 0 ? (
               <div className="empty">
                 {sharp.data?.error
-                  ? "Sharp money model unavailable."
+                  ? "No live odds to derive a consensus lean. Set SHARP_API_KEY (primary) or THE_ODDS_API_KEY (backup)."
                   : "No sharp signals yet."}
               </div>
             ) : (
@@ -197,12 +213,12 @@ export function TabBetting() {
                 renderItem={(s) => (
                   <ModuleItemCard
                     onClick={() => inspectDetail(sharpMoneyDetail(s))}
-                    title={`Sharp money: ${s.matchup}`}
+                    title={`Derived lean: ${s.matchup}`}
                     symbol={s.matchup}
-                    name={`Sharp: ${s.sharpSide}`}
+                    name={`Lean: ${s.sharpSide} · public ~${s.publicPct}%`}
                     price={s.signal.replace(/_/g, " ")}
                     changeLabel={s.confidence}
-                    change={s.confidence === "high" ? 1 : 0}
+                    change={s.confidence === "high" || s.confidence === "medium" ? 1 : 0}
                   />
                 )}
               />

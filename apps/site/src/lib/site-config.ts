@@ -116,8 +116,15 @@ export const DATA_SOURCES: DataSourceEntry[] = [
   },
   {
     name: "Sharp-money / public-vs-money splits",
-    status: "demo",
-    detail: "Unavailable — no live public/sharp ticket-split vendor; Bets UI shows an empty state instead of sample NFL/NBA slips.",
+    status: "live",
+    detail:
+      "Derived lean from SharpAPI/Odds moneyline consensus (soft vs sharp books when available) — labeled derived, not true ticket splits. Demo Chiefs/Bills slips are never served.",
+  },
+  {
+    name: "Bitquery Polymarket sports",
+    status: "infra",
+    detail:
+      "Optional enrichment (cricket/NBA/NFL/esports) when BITQUERY_API_KEY is set. Gamma remains primary for Predictions.",
   },
   {
     name: "Pink-sheet / microcap movers",

@@ -1,5 +1,6 @@
 import { json } from "@/lib/api";
 import { getOddsApiQuota, getSharpApiQuota } from "@/lib/terminal/feeds";
+import { isBitqueryConfigured, isBitqueryEnabled } from "@/lib/terminal/feeds/bitquery";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,7 @@ export async function GET() {
     sharp_api: sharpApi,
     the_odds_api: theOddsApi,
     polymarket,
+    bitquery: isBitqueryEnabled(),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
     openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
   };
@@ -109,6 +111,10 @@ export async function GET() {
         remaining: oddsRemaining,
         used: oddsUsed,
         configured: Boolean(oddsKey),
+      },
+      bitquery: {
+        configured: isBitqueryConfigured(),
+        enabled: isBitqueryEnabled(),
       },
     },
     platform: "vercel",

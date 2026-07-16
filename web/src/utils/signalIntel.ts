@@ -256,14 +256,18 @@ export function sharpMoneyDetail(s: {
   matchup: string;
   sharpSide: string;
   signal: string;
+  publicPct?: number;
+  moneyPct?: number;
 }): SignalDetailPayload {
-  return resolveSignalDetail("Sharp Money", {
+  return resolveSignalDetail("Derived Sharp Lean", {
     category: "Betting",
     contextLines: [
       s.matchup,
-      `Sharp side: ${s.sharpSide}`,
+      `Lean side: ${s.sharpSide}`,
       `Signal: ${s.signal.replace(/_/g, " ")}`,
-    ],
+      s.publicPct != null ? `Consensus favorite share ~${s.publicPct}%` : "",
+      "Derived from moneyline consensus — not true public/sharp ticket splits.",
+    ].filter(Boolean),
   });
 }
 

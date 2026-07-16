@@ -1,5 +1,6 @@
 import {
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -8,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 
 export interface VirtualColumn<T extends Record<string, unknown>> {
@@ -20,6 +21,10 @@ export interface VirtualColumn<T extends Record<string, unknown>> {
   mobilePriority?: number;
   /** Shorthand: include in the mobile card summary (ranked ahead of defaults). */
   mobilePrimary?: boolean;
+  /** When table sortable=true, allow header click (default true if label set). */
+  sortable?: boolean;
+  /** Optional accessor for sort value (defaults to row[key]). */
+  sortValue?: (row: T) => string | number | null | undefined;
   render?: (row: T) => ReactNode;
 }
 
@@ -34,6 +39,8 @@ interface VirtualizedTableProps<T extends Record<string, unknown>> {
   selectedIndex?: number | null;
   onRowClick?: (row: T, index: number) => void;
   measureDynamic?: boolean;
+  /** Enable clickable column headers with asc/desc toggle. */
+  sortable?: boolean;
 }
 
 const ACTION_KEYS = new Set(["_why", "_dive"]);
@@ -89,6 +96,31 @@ function cellValue<T extends Record<string, unknown>>(col: VirtualColumn<T>, row
   return col.render ? col.render(row) : String(row[col.key] ?? "—");
 }
 
+function rawSortValue<T extends Record<string, unknown>>(
+  col: VirtualColumn<T>,
+  row: T
+): string | number {
+  if (col.sortValue) {
+    const v = col.sortValue(row);
+    if (v == null) return "";
+    return typeof v === "number" ? v : String(v);
+  }
+  const v = row[col.key];
+  if (v == null) return "";
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  const n = Number(v);
+  if (typeof v === "string" && v.trim() !== "" && Number.isFinite(n) && /^-?\d+(\.\d+)?$/.test(v.trim())) {
+    return n;
+  }
+  return String(v);
+}
+
+function compareSortValues(a: string | number, b: string | number): number {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
 export function VirtualizedTable<T extends Record<string, unknown>>({
   items,
   columns,
@@ -100,19 +132,35 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
   selectedIndex = null,
   onRowClick,
   measureDynamic = true,
+  sortable = false,
 }: VirtualizedTableProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery("(max-width: 900px)");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const gridCols = columns.map((c) => c.width ?? "minmax(0, 1fr)").join(" ");
   const mobileRowHeight = 96;
   const effectiveRowHeight = isMobile ? mobileRowHeight : rowHeight;
-  const contentHeight = Math.max(items.length * effectiveRowHeight, effectiveRowHeight);
-  const needsScroll = items.length > scrollThreshold;
   const { primary, secondary, actions } = splitColumns(columns);
 
+  const sortedItems = useMemo(() => {
+    if (!sortable || !sortKey) return items;
+    const col = columns.find((c) => c.key === sortKey);
+    if (!col) return items;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...items].sort((ra, rb) => {
+      const av = rawSortValue(col, ra);
+      const bv = rawSortValue(col, rb);
+      return compareSortValues(av, bv) * dir;
+    });
+  }, [items, columns, sortable, sortKey, sortDir]);
+
+  const contentHeight = Math.max(sortedItems.length * effectiveRowHeight, effectiveRowHeight);
+  const needsScroll = sortedItems.length > scrollThreshold;
+
   const virtualizer = useVirtualizer({
-    count: items.length,
+    count: sortedItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => effectiveRowHeight,
     overscan: 10,
@@ -122,11 +170,11 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
   });
 
   const virtualRows = virtualizer.getVirtualItems();
-  const useFallback = items.length > 0 && virtualRows.length === 0;
+  const useFallback = sortedItems.length > 0 && virtualRows.length === 0;
 
   useLayoutEffect(() => {
     virtualizer.measure();
-  }, [items.length, isMobile, expanded]);
+  }, [sortedItems.length, isMobile, expanded]);
 
   const scrollStyle: CSSProperties = needsScroll
     ? { maxHeight, height: maxHeight }
@@ -139,6 +187,33 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
   function toggleExpand(key: string, e: MouseEvent | KeyboardEvent) {
     e.stopPropagation();
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function columnIsSortable(col: VirtualColumn<T>): boolean {
+    if (!sortable) return false;
+    if (ACTION_KEYS.has(col.key)) return false;
+    if (col.sortable === false) return false;
+    return Boolean(col.label);
+  }
+
+  function onHeaderClick(col: VirtualColumn<T>) {
+    if (!columnIsSortable(col)) return;
+    if (sortKey === col.key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(col.key);
+      setSortDir("asc");
+    }
+  }
+
+  function sortIcon(col: VirtualColumn<T>) {
+    if (!columnIsSortable(col)) return null;
+    if (sortKey !== col.key) return <ArrowUpDown size={12} className="vtable-sort-icon muted" />;
+    return sortDir === "asc" ? (
+      <ArrowUp size={12} className="vtable-sort-icon active" />
+    ) : (
+      <ArrowDown size={12} className="vtable-sort-icon active" />
+    );
   }
 
   function renderDesktopCells(row: T) {
@@ -223,11 +298,42 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
         {!isMobile ? (
           <div className="vtable-head">
             <div className="vtable-row vtable-head-row">
-              {columns.map((c) => (
-                <div key={c.key} className={`vtable-cell vtable-th ${c.className ?? ""}`.trim()}>
-                  {c.label}
-                </div>
-              ))}
+              {columns.map((c) => {
+                const canSort = columnIsSortable(c);
+                return (
+                  <div
+                    key={c.key}
+                    className={`vtable-cell vtable-th ${c.className ?? ""} ${canSort ? "vtable-th-sortable" : ""}`.trim()}
+                    role={canSort ? "button" : undefined}
+                    tabIndex={canSort ? 0 : undefined}
+                    aria-sort={
+                      canSort && sortKey === c.key
+                        ? sortDir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : canSort
+                          ? "none"
+                          : undefined
+                    }
+                    onClick={canSort ? () => onHeaderClick(c) : undefined}
+                    onKeyDown={
+                      canSort
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              onHeaderClick(c);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className="vtable-th-label">
+                      {c.label}
+                      {sortIcon(c)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -241,7 +347,7 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
             }
           >
             {useFallback
-              ? items.map((row, i) => {
+              ? sortedItems.map((row, i) => {
                   const key = getRowKey(row, i);
                   return (
                     <div
@@ -257,7 +363,7 @@ export function VirtualizedTable<T extends Record<string, unknown>>({
                   );
                 })
               : virtualRows.map((vRow) => {
-                  const row = items[vRow.index];
+                  const row = sortedItems[vRow.index];
                   const key = getRowKey(row, vRow.index);
                   return (
                     <div

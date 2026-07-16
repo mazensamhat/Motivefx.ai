@@ -181,6 +181,8 @@ export type FeedMeta = {
   error?: string;
   /** Which odds vendor produced the board when source is live. */
   provider?: "sharp_api" | "the_odds_api";
+  /** Honest label when public/sharp panel is odds-derived, not ticket splits. */
+  derivedNote?: string;
 };
 
 export type LineMoveItem = {
@@ -205,6 +207,33 @@ export type SharpActionItem = {
   sharpSide: string;
   signal: string;
   confidence: string;
+};
+
+/** Screener / activity-table row shape expected by BetMarketActivityPanel. */
+export type MarketActivityItem = {
+  id: string;
+  timestamp: string;
+  bettor: string;
+  pick: string;
+  stake: number | null;
+  matchup: string;
+  sport: string;
+  sportLabel: string;
+  odds: string;
+  gameBetCount: number;
+  note?: string;
+};
+
+export type MarketActivitySummary = {
+  matchup: string;
+  sport: string;
+  sportLabel: string;
+  betCount: number;
+  totalStake: number | null;
+  lastActivity: string;
+  sharpSide?: string;
+  publicPct?: number;
+  signal?: string;
 };
 
 export type PredictionMarketItem = {
@@ -438,6 +467,260 @@ function formatSharpSelectionLine(row: SharpOddsRow, home: string): string | und
   return short;
 }
 
+function americanToImplied(american: number): number {
+  if (!Number.isFinite(american)) return 0.5;
+  if (american > 0) return 100 / (american + 100);
+  const a = Math.abs(american);
+  return a / (a + 100);
+}
+
+function formatAmericanOdds(american: number): string {
+  if (!Number.isFinite(american)) return "—";
+  return american > 0 ? `+${Math.round(american)}` : String(Math.round(american));
+}
+
+function extractAmericanFromPick(pick: string): string | null {
+  const m = pick.match(/([+-]\d{2,4})\s*$/);
+  return m ? m[1] : null;
+}
+
+function sportLabelFromLine(item: LineMoveItem): string {
+  const raw = (item.sport || "").trim();
+  if (raw && raw !== "—") return raw.length > 12 ? raw.slice(0, 11) + "…" : raw;
+  const key = (item.sportKey || "").toLowerCase();
+  if (key.includes("mlb") || key.includes("baseball")) return "MLB";
+  if (key.includes("nba") || key.includes("basketball")) return "NBA";
+  if (key.includes("nfl") || key.includes("football")) return "NFL";
+  if (key.includes("nhl") || key.includes("hockey")) return "NHL";
+  if (key.includes("soccer") || key.includes("mls")) return "Soccer";
+  if (key.includes("mma") || key.includes("ufc")) return "MMA";
+  return "Sport";
+}
+
+/** Map line-board rows into the screener columns (Who/Pick/Odds/…). */
+export function mapLineMovesToMarketActivity(lines: LineMoveItem[]): MarketActivityItem[] {
+  return lines.map((l, i) => {
+    const lineEntries = Object.entries(l.line ?? {}).filter(
+      ([, v]) => v != null && Number.isFinite(Number(v))
+    ) as [string, number][];
+    const pick = String(l.currentLine ?? l.openingLine ?? lineEntries[0]?.[0] ?? "—");
+    const odds =
+      extractAmericanFromPick(pick) ??
+      (lineEntries[0] ? formatAmericanOdds(Number(lineEntries[0][1])) : "—");
+    return {
+      id: `${l.matchup}|${l.book ?? "book"}|${i}`,
+      timestamp: l.timestamp ?? now(),
+      bettor: String(l.book ?? "Market"),
+      pick,
+      stake: null,
+      matchup: l.matchup,
+      sport: l.sport,
+      sportLabel: sportLabelFromLine(l),
+      odds,
+      gameBetCount: Math.max(lineEntries.length, 1),
+      note: "Sportsbook quote from line board — not a ticket fill",
+    };
+  });
+}
+
+export function summarizeMarketActivity(
+  items: MarketActivityItem[],
+  sharp: SharpActionItem[] = []
+): MarketActivitySummary[] {
+  const sharpByMatchup = new Map(sharp.map((s) => [s.matchup.toLowerCase(), s]));
+  const byMatchup = new Map<string, MarketActivityItem[]>();
+  for (const item of items) {
+    const key = item.matchup.toLowerCase();
+    const list = byMatchup.get(key);
+    if (list) list.push(item);
+    else byMatchup.set(key, [item]);
+  }
+  return [...byMatchup.entries()].map(([, rows]) => {
+    const head = rows[0]!;
+    const sharpHit = sharpByMatchup.get(head.matchup.toLowerCase());
+    const last = rows
+      .map((r) => r.timestamp)
+      .sort()
+      .at(-1)!;
+    return {
+      matchup: head.matchup,
+      sport: head.sport,
+      sportLabel: head.sportLabel,
+      betCount: rows.length,
+      totalStake: null,
+      lastActivity: last,
+      sharpSide: sharpHit?.sharpSide,
+      publicPct: sharpHit?.publicPct,
+      signal: sharpHit?.signal,
+    };
+  });
+}
+
+const SHARP_BOOK_IDS = new Set([
+  "pinnacle",
+  "circa",
+  "bookmaker",
+  "betonlineag",
+  "betonline",
+  "bovada",
+  "lowvig",
+  "betfair_ex_eu",
+]);
+
+function isSharpBookId(id: string): boolean {
+  return SHARP_BOOK_IDS.has(id.trim().toLowerCase());
+}
+
+/** Soft-vs-sharp (or soft consensus) heuristic — labeled derived, not ticket splits. */
+export function deriveSharpActionFromSharpRows(rows: SharpOddsRow[]): SharpActionItem[] {
+  type SidePrices = { soft: number[]; sharp: number[] };
+  type Acc = {
+    home: string;
+    away: string;
+    sides: Map<string, SidePrices>;
+  };
+  const byEvent = new Map<string, Acc>();
+
+  for (const row of rows) {
+    const market = String(row.market_type ?? "");
+    if (!isMainMoneyMarket(market)) continue;
+    if (row.is_alternate_line === true) continue;
+    if (row.odds_american == null || !Number.isFinite(Number(row.odds_american))) continue;
+    const eventId = String(row.event_id ?? row.id ?? "");
+    if (!eventId) continue;
+    const selection = String(row.selection ?? "").trim();
+    if (!selection) continue;
+    const bookId = String(row.sportsbook ?? "").toLowerCase();
+    const american = Number(row.odds_american);
+    let acc = byEvent.get(eventId);
+    if (!acc) {
+      acc = {
+        home: String(row.home_team ?? "Home"),
+        away: String(row.away_team ?? "Away"),
+        sides: new Map(),
+      };
+      byEvent.set(eventId, acc);
+    }
+    let side = acc.sides.get(selection);
+    if (!side) {
+      side = { soft: [], sharp: [] };
+      acc.sides.set(selection, side);
+    }
+    if (isSharpBookId(bookId)) side.sharp.push(american);
+    else side.soft.push(american);
+  }
+
+  const items: SharpActionItem[] = [];
+  for (const acc of byEvent.values()) {
+    if (acc.sides.size < 2) continue;
+    const sideStats = [...acc.sides.entries()].map(([name, prices]) => {
+      const softAvg =
+        prices.soft.length > 0
+          ? prices.soft.reduce((s, n) => s + n, 0) / prices.soft.length
+          : null;
+      const sharpAvg =
+        prices.sharp.length > 0
+          ? prices.sharp.reduce((s, n) => s + n, 0) / prices.sharp.length
+          : null;
+      const softImp = softAvg != null ? americanToImplied(softAvg) : null;
+      const sharpImp = sharpAvg != null ? americanToImplied(sharpAvg) : null;
+      const consensusAm =
+        softAvg != null ? softAvg : sharpAvg != null ? sharpAvg : null;
+      const consensusImp = consensusAm != null ? americanToImplied(consensusAm) : 0.5;
+      return { name, softImp, sharpImp, consensusImp, hasSharp: sharpAvg != null };
+    });
+
+    const totalCons = sideStats.reduce((s, x) => s + x.consensusImp, 0) || 1;
+    const normalized = sideStats.map((s) => ({
+      ...s,
+      publicPct: (s.consensusImp / totalCons) * 100,
+    }));
+    normalized.sort((a, b) => b.publicPct - a.publicPct);
+    const favorite = normalized[0]!;
+    const dog = normalized[normalized.length - 1]!;
+
+    const hasAnySharp = normalized.some((s) => s.hasSharp);
+    let publicPct = Math.round(favorite.publicPct);
+    let moneyPct = Math.round(100 - publicPct);
+    let sharpSide = favorite.name;
+    let signal = "derived_soft_consensus";
+    let confidence: string = "low";
+
+    if (hasAnySharp) {
+      // Compare soft favorite vs sharp favorite (lower implied = better price for bettor).
+      const softFav = [...normalized].sort(
+        (a, b) => (b.softImp ?? b.consensusImp) - (a.softImp ?? a.consensusImp)
+      )[0]!;
+      const sharpFav = [...normalized]
+        .filter((s) => s.sharpImp != null)
+        .sort((a, b) => (a.sharpImp ?? 1) - (b.sharpImp ?? 1))[0];
+      publicPct = Math.round(softFav.publicPct);
+      if (sharpFav && sharpFav.name !== softFav.name) {
+        sharpSide = sharpFav.name;
+        moneyPct = Math.round(100 - publicPct);
+        signal = "derived_soft_vs_sharp_diverge";
+        confidence = "medium";
+      } else {
+        sharpSide = softFav.name;
+        moneyPct = Math.round(Math.min(publicPct + 5, 95));
+        signal = "derived_soft_vs_sharp_aligned";
+        confidence = "medium";
+      }
+    } else if (publicPct >= 62) {
+      // No true sharp book: fade heavy consensus favorite as derived lean.
+      sharpSide = dog.name;
+      moneyPct = Math.round(100 - publicPct);
+      signal = "derived_fade_consensus_favorite";
+      confidence = "low";
+    }
+
+    items.push({
+      matchup: `${acc.away} @ ${acc.home}`,
+      publicPct,
+      moneyPct,
+      sharpSide,
+      signal,
+      confidence,
+    });
+  }
+  return items.slice(0, 12);
+}
+
+/** Fallback when only collapsed line maps exist (Odds API / single-book board). */
+export function deriveSharpActionFromLineMoves(items: LineMoveItem[]): SharpActionItem[] {
+  const out: SharpActionItem[] = [];
+  for (const item of items) {
+    const entries = Object.entries(item.line ?? {}).filter(
+      ([, v]) => v != null && Number.isFinite(Number(v))
+    ) as [string, number][];
+    if (entries.length < 2) continue;
+    const withImp = entries.map(([name, am]) => ({
+      name,
+      am: Number(am),
+      imp: americanToImplied(Number(am)),
+    }));
+    const total = withImp.reduce((s, x) => s + x.imp, 0) || 1;
+    const normalized = withImp
+      .map((x) => ({ ...x, pct: (x.imp / total) * 100 }))
+      .sort((a, b) => b.pct - a.pct);
+    const favorite = normalized[0]!;
+    const dog = normalized[normalized.length - 1]!;
+    const publicPct = Math.round(favorite.pct);
+    const moneyPct = Math.round(100 - publicPct);
+    const fade = publicPct >= 62;
+    out.push({
+      matchup: item.matchup,
+      publicPct,
+      moneyPct,
+      sharpSide: fade ? dog.name : favorite.name,
+      signal: fade ? "derived_fade_consensus_favorite" : "derived_soft_consensus",
+      confidence: "low",
+    });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
 /** Collapse flat SharpAPI odds rows into one LineMoveItem per event. */
 function mapSharpOddsRows(rows: SharpOddsRow[]): LineMoveItem[] {
   type Acc = {
@@ -529,7 +812,7 @@ function mapSharpOddsRows(rows: SharpOddsRow[]): LineMoveItem[] {
 }
 
 type SharpFetchResult =
-  | { ok: true; items: LineMoveItem[] }
+  | { ok: true; items: LineMoveItem[]; derived: SharpActionItem[] }
   | { ok: false; status: number; message: string };
 
 function formatSharpHttpError(status: number, bodyText: string): string {
@@ -573,7 +856,11 @@ async function fetchSharpLineMoves(apiKey: string): Promise<SharpFetchResult> {
   }
   const payload = (await res.json()) as { data?: SharpOddsRow[] } | SharpOddsRow[];
   const rows = Array.isArray(payload) ? payload : payload.data ?? [];
-  return { ok: true, items: mapSharpOddsRows(rows) };
+  return {
+    ok: true,
+    items: mapSharpOddsRows(rows),
+    derived: deriveSharpActionFromSharpRows(rows),
+  };
 }
 
 type TtlCacheEntry<T> = {
@@ -582,7 +869,10 @@ type TtlCacheEntry<T> = {
   inflight?: Promise<T>;
 };
 
-const lineMovesCache = new Map<string, TtlCacheEntry<{ items: LineMoveItem[] } & FeedMeta>>();
+const lineMovesCache = new Map<
+  string,
+  TtlCacheEntry<{ items: LineMoveItem[]; sharpDerived?: SharpActionItem[] } & FeedMeta>
+>();
 const predictionMarketsCache = new Map<
   string,
   TtlCacheEntry<{ items: PredictionMarketItem[] } & FeedMeta>
@@ -655,7 +945,8 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
     const home = String(game.home_team ?? "Home");
     const away = String(game.away_team ?? "Away");
     const bookmakers = (game.bookmakers as Array<Record<string, unknown>>) ?? [];
-    const markets = (bookmakers[0]?.markets as Array<Record<string, unknown>>) ?? [];
+    const preferredBook = bookmakers[0];
+    const markets = (preferredBook?.markets as Array<Record<string, unknown>>) ?? [];
     const preferred =
       markets.find((m) => m.key === "spreads") ??
       markets.find((m) => m.key === "h2h") ??
@@ -664,6 +955,30 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
     const outcomes = (preferred.outcomes as OddsOutcome[]) ?? [];
     const currentLine = formatOddsLine(outcomes, home);
     const sportKey = String(game.sport_key ?? "");
+
+    // Average American prices across books for consensus line map (derived sharp money).
+    const priceBuckets = new Map<string, number[]>();
+    for (const bm of bookmakers) {
+      const mkts = (bm.markets as Array<Record<string, unknown>>) ?? [];
+      const h2h = mkts.find((m) => m.key === "h2h") ?? mkts[0];
+      const outs = ((h2h?.outcomes as OddsOutcome[]) ?? []);
+      for (const o of outs) {
+        if (o.price == null || !Number.isFinite(o.price)) continue;
+        const list = priceBuckets.get(o.name) ?? [];
+        list.push(o.price);
+        priceBuckets.set(o.name, list);
+      }
+    }
+    const consensusLine =
+      priceBuckets.size > 0
+        ? Object.fromEntries(
+            [...priceBuckets.entries()].map(([name, prices]) => [
+              name,
+              prices.reduce((s, n) => s + n, 0) / prices.length,
+            ])
+          )
+        : Object.fromEntries(outcomes.map((o) => [o.name, o.price]));
+
     return {
       matchup: `${away} @ ${home}`,
       sport: String(game.sport_title ?? "—"),
@@ -673,8 +988,8 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
       currentLine,
       movement: "—",
       direction: "live",
-      book: bookmakers[0]?.title,
-      line: Object.fromEntries(outcomes.map((o) => [o.name, o.price])),
+      book: preferredBook?.title,
+      line: consensusLine,
       timestamp: now(),
     };
   });
@@ -896,7 +1211,7 @@ async function fetchLineMovesFromOddsApi(
 
 async function fetchLineMovesUncached(
   sport: string
-): Promise<{ items: LineMoveItem[] } & FeedMeta> {
+): Promise<{ items: LineMoveItem[]; sharpDerived?: SharpActionItem[] } & FeedMeta> {
   const updatedAt = now();
   const sharpKey = process.env.SHARP_API_KEY?.trim();
   const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
@@ -909,6 +1224,7 @@ async function fetchLineMovesUncached(
       if (sharp.ok && sharp.items.length) {
         return {
           items: diversifyLineMoves(sharp.items),
+          sharpDerived: sharp.derived,
           source: "live",
           updatedAt,
           provider: "sharp_api",
@@ -953,7 +1269,7 @@ async function fetchLineMovesUncached(
  */
 export async function fetchLineMovesWithMeta(
   sport = "baseball_mlb"
-): Promise<{ items: LineMoveItem[] } & FeedMeta> {
+): Promise<{ items: LineMoveItem[]; sharpDerived?: SharpActionItem[] } & FeedMeta> {
   const cacheKey = "board";
   return withTtlCache(lineMovesCache, cacheKey, ODDS_CACHE_TTL_MS, () =>
     fetchLineMovesUncached(sport)
@@ -970,15 +1286,38 @@ export function demoSharpAction(): SharpActionItem[] {
 }
 
 export const SHARP_MONEY_UNAVAILABLE_MESSAGE =
-  "Sharp money model unavailable — public vs sharp ticket splits need a dedicated consensus feed.";
+  "Sharp money model unavailable — public vs sharp ticket splits need a dedicated consensus feed (or live odds via SHARP_API_KEY / THE_ODDS_API_KEY).";
+
+export const SHARP_MONEY_DERIVED_NOTE =
+  "Derived from moneyline consensus (soft books vs sharp books when available) — not true public/sharp ticket splits.";
 
 export async function fetchSharpActionWithMeta(): Promise<{ items: SharpActionItem[] } & FeedMeta> {
-  // Honesty over fake July NFL/NBA slips: we do not have a live public/sharp split vendor.
+  const board = await fetchLineMovesWithMeta();
+  const fromSharpRows = board.sharpDerived?.length ? board.sharpDerived : [];
+  const items =
+    fromSharpRows.length > 0
+      ? fromSharpRows
+      : board.source === "live"
+        ? deriveSharpActionFromLineMoves(board.items)
+        : [];
+
+  if (!items.length) {
+    return {
+      items: [],
+      source: "demo",
+      updatedAt: board.updatedAt ?? now(),
+      error: board.error
+        ? `${SHARP_MONEY_UNAVAILABLE_MESSAGE} (${board.error})`
+        : SHARP_MONEY_UNAVAILABLE_MESSAGE,
+    };
+  }
+
   return {
-    items: [],
-    source: "demo",
-    updatedAt: now(),
-    error: SHARP_MONEY_UNAVAILABLE_MESSAGE,
+    items,
+    source: "live",
+    updatedAt: board.updatedAt ?? now(),
+    provider: board.provider,
+    derivedNote: SHARP_MONEY_DERIVED_NOTE,
   };
 }
 
@@ -1156,6 +1495,7 @@ export const PREDICTION_CATEGORIES = [
   { id: "economy", label: "Economy & Fed" },
   { id: "science", label: "Science & Tech" },
   { id: "crypto", label: "Crypto Events" },
+  { id: "sports", label: "Sports & Predictions" },
 ];
 
 /* Keep Finnhub fan-out small — 10 parallel calls made activity panels feel stuck. */

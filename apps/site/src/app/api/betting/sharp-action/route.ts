@@ -10,5 +10,7 @@ export async function GET() {
     source: result.source,
     updatedAt: result.updatedAt,
     error: result.error ?? null,
+    derivedNote: result.derivedNote ?? null,
+    provider: result.provider ?? null,
   });
 }

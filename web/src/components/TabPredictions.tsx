@@ -28,6 +28,7 @@ export function TabPredictions() {
     source?: "live" | "demo";
     updatedAt?: string;
     error?: string | null;
+    bitquery?: { enabled?: boolean; count?: number; error?: string | null };
   }>("/predictions/markets?limit=20");
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("predictions", enabled);
 
@@ -72,7 +73,11 @@ export function TabPredictions() {
           <h2 className="card-title"><Globe size={18} /> Trending Markets</h2>
           {marketsUpdated && (
             <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-              {markets.data?.source === "live" ? "Polymarket live" : "Sample"} · {marketsUpdated}
+              {markets.data?.source === "live" ? "Polymarket live" : "Sample"}
+              {markets.data?.bitquery?.enabled && (markets.data.bitquery.count ?? 0) > 0
+                ? ` · Bitquery +${markets.data.bitquery.count}`
+                : ""}
+              {" "}· {marketsUpdated}
             </span>
           )}
         </div>

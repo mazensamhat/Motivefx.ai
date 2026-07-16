@@ -30,7 +30,9 @@ MotiveFX uses **SharpAPI** as the primary sports odds provider for the Bets / Li
 | Callers | Same board routes; only hit when Sharp misses |
 | Caps | Max **3 sports** per cache miss; **10-min** shared server cache |
 
-**Polymarket** uses `https://gamma-api.polymarket.com` only — keep it that way.
+**Polymarket (primary)** uses `https://gamma-api.polymarket.com` only for the main Predictions board — keep that path free of Sharp / Odds keys.
+
+**Bitquery (optional enrichment)** can add on-chain Polymarket sports/esports rows (cricket via `ResolutionSource`, NBA/NFL/Esports via `Question.Title`) when `BITQUERY_API_KEY` is set. It never replaces Gamma or SharpAPI.
 
 ## Mitigations shipped in-app
 
@@ -72,4 +74,32 @@ Sources: [SharpAPI](https://sharpapi.io/), [The Odds API](https://the-odds-api.c
 - Do not scrape DraftKings / FanDuel / etc.
 - Do not commit API keys to the MotiveFX repo (or paste them into tracked docs).
 - Do not poll Odds more often than the server cache TTL.
-- Do not treat Sharp “sharp money” / ticket-split endpoints as available on free — public-vs-sharp splits remain unavailable until a dedicated consensus feed is wired.
+- Do not serve fake Chiefs/Bills demo slips in the Public vs Sharp Money panel.
+- Do not claim derived moneyline consensus is true public/sharp ticket splits — the UI labels it **Derived**.
+
+---
+
+## Public vs Sharp Money (derived)
+
+MotiveFX does **not** have a ticket-split vendor. Instead, `/api/betting/sharp-action` derives a lean from live moneylines:
+
+1. Prefer SharpAPI multi-book rows: soft books (DK/FD/…) vs sharp books (Pinnacle/Circa/…) when both exist
+2. Else consensus favorite from the line board (`line` map) — fade heavy favorites as a low-confidence derived lean
+3. Always returns `derivedNote` explaining the heuristic
+
+Unlock: `SHARP_API_KEY` (best) or `THE_ODDS_API_KEY` (backup). Without either, the panel shows the next-step empty state.
+
+---
+
+## Bitquery sports / prediction enrichment
+
+| Factor | Behavior |
+|--------|----------|
+| Role | **Optional** Predictions enrichment (cricket, NBA, NFL, esports-style Polymarket markets on Polygon) |
+| Env | `BITQUERY_API_KEY` (Bearer token) · optional `BITQUERY_ENABLED=false` to disable |
+| Endpoint | `https://streaming.bitquery.io/graphql` |
+| Signup | [account.bitquery.io](https://account.bitquery.io) — points-based; IDE tokens expire; production needs a paid/points plan for sustained use |
+| Docs | [Polymarket Sports API](https://docs.bitquery.io/docs/examples/polymarket-api/polymarket-sports-api/) |
+| Routes | Merged into `/api/predictions/markets` · probe `/api/predictions/bitquery-sports` · health `feeds.bitquery` |
+
+Gamma stays primary. SharpAPI stays primary for the sports line board.

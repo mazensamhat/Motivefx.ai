@@ -1,5 +1,9 @@
 import { json } from "@/lib/api";
 import { fetchPredictionMarketsWithMeta } from "@/lib/terminal/feeds";
+import {
+  fetchBitquerySportsMarkets,
+  isBitqueryEnabled,
+} from "@/lib/terminal/feeds/bitquery";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +13,32 @@ export async function GET(request: Request) {
   const category = url.searchParams.get("category");
   const result = await fetchPredictionMarketsWithMeta(limit);
   let items = result.items;
+  let bitqueryNote: string | null = null;
+  let bitqueryCount = 0;
+
+  // Optional enrichment: Bitquery on-chain Polymarket sports (cricket/NBA/NFL/esports).
+  // Gamma remains primary; Bitquery never replaces it.
+  if (isBitqueryEnabled()) {
+    const bq = await fetchBitquerySportsMarkets(Math.min(10, limit));
+    bitqueryNote = bq.error ?? null;
+    if (bq.items.length) {
+      bitqueryCount = bq.items.length;
+      const seen = new Set(items.map((m) => m.market.toLowerCase()));
+      const extra = bq.items.filter((m) => !seen.has(m.market.toLowerCase()));
+      items = [...extra.slice(0, 8), ...items].slice(0, limit);
+    }
+  }
+
   if (category) items = items.filter((m) => m.category === category);
   return json({
     items,
     source: result.source,
     updatedAt: result.updatedAt,
     error: result.error ?? null,
+    bitquery: {
+      enabled: isBitqueryEnabled(),
+      count: bitqueryCount,
+      error: bitqueryNote,
+    },
   });
 }

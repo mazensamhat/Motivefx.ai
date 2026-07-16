@@ -34,6 +34,24 @@ function ActivitySkeleton() {
   );
 }
 
+function displayOdds(v: unknown): string {
+  if (v == null || v === "") return "—";
+  return String(v);
+}
+
+function displayStake(v: unknown): string {
+  if (v == null || v === "") return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return formatUsd(n);
+}
+
+function displayCount(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString();
+}
+
 export function BetMarketActivityPanel() {
   const isMobile = useMediaQuery("(max-width: 900px)");
   const [sport, setSport] = useState("");
@@ -99,8 +117,8 @@ export function BetMarketActivityPanel() {
         <input placeholder="Chiefs, Lakers…" value={matchup} onChange={(e) => setMatchup(e.target.value)} />
       </label>
       <label className="filter-field">
-        <span>Min bets on game</span>
-        <input type="number" placeholder="200" value={minBets} onChange={(e) => setMinBets(e.target.value)} />
+        <span>Min quotes on game</span>
+        <input type="number" placeholder="1" value={minBets} onChange={(e) => setMinBets(e.target.value)} />
       </label>
     </>
   );
@@ -112,7 +130,9 @@ export function BetMarketActivityPanel() {
           <div>
             <h2 className="card-title card-title-lg">Sports Bet Activity</h2>
             <p className="activity-panel-sub">
-              {isMobile ? "Who's betting on what right now." : "Live market flow ledger. Click any bet row for deep-dive analytics."}
+              {isMobile
+                ? "Live sportsbook quotes from the line board."
+                : "Live sportsbook quotes (SharpAPI / Odds API). Click a row for deep-dive context."}
             </p>
           </div>
           <div className="activity-actions">
@@ -121,9 +141,9 @@ export function BetMarketActivityPanel() {
                 ? "Loading…"
                 : isMobile
                   ? items.length === 0
-                    ? "No activity yet"
-                    : `${items.length} bets`
-                  : `${items.length} bets · ${summaries.length} games`}
+                    ? "No quotes yet"
+                    : `${items.length} quotes`
+                  : `${items.length} quotes · ${summaries.length} games`}
             </span>
             <button
               type="button"
@@ -183,15 +203,22 @@ export function BetMarketActivityPanel() {
               rowHeight={44}
               scrollThreshold={12}
               maxHeight="min(16rem, 40vh)"
-              onRowClick={(row) => setDeepDiveRow({ ...row, pick: row.matchup, note: `${row.betCount} bets · ${formatUsd(row.totalStake)} total` })}
+              sortable
+              onRowClick={(row) =>
+                setDeepDiveRow({
+                  ...row,
+                  pick: row.matchup,
+                  note: `${displayCount(row.betCount)} quotes${row.sharpSide ? ` · lean ${row.sharpSide}` : ""}`,
+                })
+              }
               columns={[
                 {
                   key: "sport",
                   label: "Sport",
-                  width: "6.5rem",
+                  width: "5.5rem",
                   mobilePrimary: true,
                   render: (s) => (
-                    <span className="badge badge-neutral">{String(s.sportLabel ?? s.sport)}</span>
+                    <span className="badge badge-neutral badge-sport">{String(s.sportLabel ?? s.sport)}</span>
                   ),
                 },
                 {
@@ -203,18 +230,18 @@ export function BetMarketActivityPanel() {
                 },
                 {
                   key: "betCount",
-                  label: "Bets entered",
-                  width: "6rem",
+                  label: "Quotes",
+                  width: "5.5rem",
                   className: "cell-mono",
                   mobilePrimary: true,
-                  render: (s) => Number(s.betCount).toLocaleString(),
+                  render: (s) => displayCount(s.betCount),
                 },
                 {
                   key: "totalStake",
-                  label: "Total stake",
-                  width: "6.5rem",
+                  label: "Stake",
+                  width: "5.5rem",
                   mobilePrimary: true,
-                  render: (s) => formatUsd(s.totalStake),
+                  render: (s) => displayStake(s.totalStake),
                 },
                 { key: "lastActivity", label: "Last activity", width: "7.5rem", render: (s) => formatTime(s.lastActivity) },
               ]}
@@ -227,8 +254,8 @@ export function BetMarketActivityPanel() {
             <ActivitySkeleton />
           ) : items.length === 0 ? (
             <div className="activity-empty">
-              <strong>No activity yet</strong>
-              <p>No bet flow for these filters. Try clearing filters or check back soon.</p>
+              <strong>No quotes yet</strong>
+              <p>No line-board quotes for these filters. Try clearing filters or check SharpAPI / Odds keys.</p>
               {activeFilterCount > 0 ? (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
                   Clear filters
@@ -240,6 +267,7 @@ export function BetMarketActivityPanel() {
               items={items}
               rowHeight={44}
               maxHeight="min(28rem, 62vh)"
+              sortable
               onRowClick={(row) => setDeepDiveRow(row)}
               columns={[
                 { key: "timestamp", label: "Time", width: "7rem", render: (r) => formatTime(r.timestamp) },
@@ -249,7 +277,7 @@ export function BetMarketActivityPanel() {
                   width: "6.5rem",
                   mobilePrimary: true,
                   mobilePriority: 0,
-                  render: (r) => String(r.bettor),
+                  render: (r) => String(r.bettor ?? "—"),
                 },
                 {
                   key: "pick",
@@ -257,15 +285,15 @@ export function BetMarketActivityPanel() {
                   width: "1fr",
                   mobilePrimary: true,
                   mobilePriority: 1,
-                  render: (r) => String(r.pick),
+                  render: (r) => String(r.pick ?? "—"),
                 },
                 {
                   key: "stake",
                   label: "Stake",
-                  width: "5.5rem",
+                  width: "5rem",
                   mobilePrimary: true,
                   mobilePriority: 2,
-                  render: (r) => formatUsd(r.stake),
+                  render: (r) => displayStake(r.stake),
                 },
                 {
                   key: "matchup",
@@ -278,18 +306,24 @@ export function BetMarketActivityPanel() {
                 {
                   key: "sport",
                   label: "Sport",
-                  width: "5.5rem",
+                  width: "5rem",
                   render: (r) => (
-                    <span className="badge badge-neutral">{String(r.sportLabel ?? r.sport)}</span>
+                    <span className="badge badge-neutral badge-sport">{String(r.sportLabel ?? r.sport ?? "—")}</span>
                   ),
                 },
-                { key: "odds", label: "Odds", width: "4rem", className: "cell-mono", render: (r) => String(r.odds) },
+                {
+                  key: "odds",
+                  label: "Odds",
+                  width: "4.5rem",
+                  className: "cell-mono",
+                  render: (r) => displayOdds(r.odds),
+                },
                 {
                   key: "gameBetCount",
-                  label: "Game bets",
-                  width: "5.5rem",
+                  label: "Sides",
+                  width: "4.5rem",
                   className: "cell-mono",
-                  render: (r) => Number(r.gameBetCount).toLocaleString(),
+                  render: (r) => displayCount(r.gameBetCount),
                 },
               ]}
             />
