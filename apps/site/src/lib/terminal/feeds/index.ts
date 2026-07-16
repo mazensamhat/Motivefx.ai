@@ -226,12 +226,11 @@ export function demoLineMoves(): LineMoveItem[] {
 }
 
 /**
- * US major leagues first (in-season coverage), then seasonal.
- * `upcoming` is still tried early (1 quota unit) but results are re-ranked so
- * NPB/KBO/etc. cannot flood the list when MLB/MLS/WNBA/NBA are available.
+ * Cap sports polled per uncached refresh. Each sport costs 1 quota unit (h2h × us).
+ * Prefer the requested league, then a short in-season list — never stampede 8 sports.
+ * Skip `upcoming` as a first hop (it often returns NPB/KBO and still burns a credit).
  */
 const ODDS_SPORT_FALLBACKS = [
-  "upcoming",
   "baseball_mlb",
   "soccer_usa_mls",
   "basketball_wnba",
@@ -240,6 +239,13 @@ const ODDS_SPORT_FALLBACKS = [
   "americanfootball_nfl",
   "icehockey_nhl",
 ];
+
+/** Hard cap on Odds API calls per cache miss (quota protection). */
+const ODDS_MAX_SPORTS_PER_REFRESH = 3;
+
+/** Server-side TTL so LiveFeed / briefing / line-moves share one refresh. */
+const ODDS_CACHE_TTL_MS = 10 * 60 * 1000;
+const POLYMARKET_CACHE_TTL_MS = 10 * 60 * 1000;
 
 /** Prefer these Odds API sport_keys when diversifying the line board. */
 const PREFERRED_SPORT_KEYS = new Set([
@@ -259,7 +265,80 @@ const LINE_MOVE_LIMIT = 12;
 /** Max non-preferred (e.g. NPB) rows when we already have preferred coverage. */
 const SECONDARY_SPORT_CAP = 2;
 /** Stop fetching more sports once we have this many preferred games. */
-const PREFERRED_COVERAGE_TARGET = 6;
+const PREFERRED_COVERAGE_TARGET = 4;
+
+export type OddsApiQuota = {
+  remaining: number | null;
+  used: number | null;
+  lastUpdatedAt: string | null;
+};
+
+let oddsApiQuota: OddsApiQuota = {
+  remaining: null,
+  used: null,
+  lastUpdatedAt: null,
+};
+
+export function getOddsApiQuota(): OddsApiQuota {
+  return { ...oddsApiQuota };
+}
+
+function rememberOddsQuotaHeaders(res: Headers) {
+  const remainingRaw = res.get("x-requests-remaining");
+  const usedRaw = res.get("x-requests-used");
+  const remaining = remainingRaw != null ? Number(remainingRaw) : null;
+  const used = usedRaw != null ? Number(usedRaw) : null;
+  if ((remaining != null && !Number.isNaN(remaining)) || (used != null && !Number.isNaN(used))) {
+    oddsApiQuota = {
+      remaining: remaining != null && !Number.isNaN(remaining) ? remaining : oddsApiQuota.remaining,
+      used: used != null && !Number.isNaN(used) ? used : oddsApiQuota.used,
+      lastUpdatedAt: now(),
+    };
+  }
+}
+
+type TtlCacheEntry<T> = {
+  expires: number;
+  value: T;
+  inflight?: Promise<T>;
+};
+
+const lineMovesCache = new Map<string, TtlCacheEntry<{ items: LineMoveItem[] } & FeedMeta>>();
+const predictionMarketsCache = new Map<
+  string,
+  TtlCacheEntry<{ items: PredictionMarketItem[] } & FeedMeta>
+>();
+
+async function withTtlCache<T>(
+  cache: Map<string, TtlCacheEntry<T>>,
+  key: string,
+  ttlMs: number,
+  loader: () => Promise<T>
+): Promise<T> {
+  const hit = cache.get(key);
+  const nowMs = Date.now();
+  if (hit && hit.expires > nowMs && hit.value) {
+    return hit.value;
+  }
+  if (hit?.inflight) return hit.inflight;
+
+  const inflight = loader()
+    .then((value) => {
+      cache.set(key, { expires: Date.now() + ttlMs, value });
+      return value;
+    })
+    .catch((err) => {
+      cache.delete(key);
+      throw err;
+    });
+
+  cache.set(key, {
+    expires: 0,
+    value: hit?.value as T,
+    inflight,
+  });
+  return inflight;
+}
 
 type OddsOutcome = { name: string; price?: number; point?: number };
 
@@ -412,6 +491,7 @@ async function fetchOddsForSport(sport: string, key: string): Promise<OddsSportR
   url.searchParams.set("markets", "h2h");
   url.searchParams.set("oddsFormat", "american");
   const res = await fetch(url.toString(), { cache: "no-store" });
+  rememberOddsQuotaHeaders(res.headers);
   if (!res.ok) {
     const bodyText = await res.text().catch(() => "");
     const fatal = res.status === 401 || res.status === 403 || res.status === 429;
@@ -431,8 +511,8 @@ export async function fetchLineMoves(sport = "baseball_mlb"): Promise<LineMoveIt
   return result.items;
 }
 
-export async function fetchLineMovesWithMeta(
-  sport = "baseball_mlb"
+async function fetchLineMovesUncached(
+  sport: string
 ): Promise<{ items: LineMoveItem[] } & FeedMeta> {
   const updatedAt = now();
   const key = process.env.THE_ODDS_API_KEY?.trim();
@@ -445,11 +525,11 @@ export async function fetchLineMovesWithMeta(
     };
   }
 
-  const sports = [
-    "upcoming",
-    sport,
-    ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport && s !== "upcoming"),
-  ];
+  // Requested sport first, then short fallback list — max ODDS_MAX_SPORTS_PER_REFRESH calls.
+  const sports = [sport, ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport)].slice(
+    0,
+    ODDS_MAX_SPORTS_PER_REFRESH
+  );
   const seen = new Set<string>();
   const emptySports: string[] = [];
   const softErrors: string[] = [];
@@ -467,14 +547,9 @@ export async function fetchLineMovesWithMeta(
             const diversified = diversifyLineMoves(collected);
             const preferredCount = preferredCoverageCount(diversified);
             const variety = preferredSportVariety(diversified);
-            // Never stop after `upcoming` alone — it often skews to one league (NPB or summer NBA).
-            // Require preferred majors from ≥2 sport keys before ending the fallback loop.
-            const enoughPreferred =
-              s !== "upcoming" &&
-              preferredCount >= PREFERRED_COVERAGE_TARGET &&
-              variety >= 2;
-            const enoughMixed =
-              s !== "upcoming" && diversified.length >= 8 && preferredCount >= 3 && variety >= 2;
+            // Stop early once we have usable preferred coverage (quota-first).
+            const enoughPreferred = preferredCount >= PREFERRED_COVERAGE_TARGET && variety >= 1;
+            const enoughMixed = diversified.length >= 6 && preferredCount >= 2;
             if (enoughPreferred || enoughMixed) {
               return { items: diversified, source: "live", updatedAt };
             }
@@ -526,6 +601,19 @@ export async function fetchLineMovesWithMeta(
       error: err instanceof Error ? err.message : "Odds feed unavailable — showing sample lines.",
     };
   }
+}
+
+/**
+ * Shared board cache across sport keys — callers (live-feed, briefing, line-moves)
+ * previously each triggered a multi-sport stampede. One 10-minute board is enough.
+ */
+export async function fetchLineMovesWithMeta(
+  sport = "baseball_mlb"
+): Promise<{ items: LineMoveItem[] } & FeedMeta> {
+  const cacheKey = "board";
+  return withTtlCache(lineMovesCache, cacheKey, ODDS_CACHE_TTL_MS, () =>
+    fetchLineMovesUncached(sport)
+  );
 }
 
 /** Legacy demo rows — kept for reference/tests only; never served to the Bets UI. */
@@ -630,8 +718,8 @@ export async function fetchPredictionMarkets(limit = 20): Promise<PredictionMark
   return result.items;
 }
 
-export async function fetchPredictionMarketsWithMeta(
-  limit = 20
+async function fetchPredictionMarketsUncached(
+  limit: number
 ): Promise<{ items: PredictionMarketItem[] } & FeedMeta> {
   const updatedAt = now();
   try {
@@ -642,7 +730,8 @@ export async function fetchPredictionMarketsWithMeta(
     url.searchParams.set("limit", String(Math.min(Math.max(limit * 4, 40), 100)));
     url.searchParams.set("order", "volume_24hr");
     url.searchParams.set("ascending", "false");
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    // Free public Gamma API — no Odds API key and no THE_ODDS_API_KEY usage.
+    const res = await fetch(url.toString(), { next: { revalidate: 600 } });
     if (!res.ok) {
       return {
         items: demoPredictionMarkets().slice(0, limit),
@@ -692,6 +781,16 @@ export async function fetchPredictionMarketsWithMeta(
       error: err instanceof Error ? err.message : "Polymarket unavailable — showing sample markets.",
     };
   }
+}
+
+/** Gamma-only path — never calls The Odds API. Cached ~10 min to avoid over-fetching. */
+export async function fetchPredictionMarketsWithMeta(
+  limit = 20
+): Promise<{ items: PredictionMarketItem[] } & FeedMeta> {
+  const cacheKey = `gamma:${limit}`;
+  return withTtlCache(predictionMarketsCache, cacheKey, POLYMARKET_CACHE_TTL_MS, () =>
+    fetchPredictionMarketsUncached(limit)
+  );
 }
 
 export function demoCongressTrades() {

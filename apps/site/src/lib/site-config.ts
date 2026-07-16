@@ -80,12 +80,13 @@ export const DATA_SOURCES: DataSourceEntry[] = [
   {
     name: "The Odds API",
     status: "live",
-    detail: "Sports odds and line context when THE_ODDS_API_KEY is set.",
+    detail:
+      "Sports odds / line board when THE_ODDS_API_KEY is set. Server-cached ~10 min; max 3 sports per refresh. See docs/ODDS_DATA_SOURCES.md.",
   },
   {
     name: "Polymarket Gamma API",
     status: "live",
-    detail: "Public prediction-market events and prices (no API key).",
+    detail: "Public prediction-market events and prices (no API key). Never uses The Odds API.",
   },
   {
     name: "OpenAI",

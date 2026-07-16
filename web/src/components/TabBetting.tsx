@@ -29,7 +29,8 @@ export function TabBetting() {
     source?: "live" | "demo";
     updatedAt?: string;
     error?: string | null;
-  }>("/betting/line-moves");
+    quota?: { remaining: number | null; used: number | null };
+  }>("/betting/line-moves", 300_000);
   const sharp = useApi<{
     items: SharpAction[];
     source?: "live" | "demo";
@@ -106,6 +107,9 @@ export function TabBetting() {
             {linesUpdated && (
               <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
                 {lines.data?.source === "live" ? "Live" : "Sample"} · {linesUpdated}
+                {lines.data?.quota?.remaining != null
+                  ? ` · ${Math.round(lines.data.quota.remaining).toLocaleString()} credits left`
+                  : ""}
               </span>
             )}
           </div>

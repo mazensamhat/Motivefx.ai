@@ -1,4 +1,5 @@
 import { json } from "@/lib/api";
+import { getOddsApiQuota } from "@/lib/terminal/feeds";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     const res = await fetch(
       "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=1&order=volume_24hr&ascending=false",
-      { cache: "no-store" }
+      { next: { revalidate: 600 } }
     );
     polymarket = res.ok;
   } catch {
@@ -17,6 +18,8 @@ export async function GET() {
   // /v4/sports does not consume Odds API quota. Use it to verify the key, and
   // treat x-requests-remaining=0 as unhealthy so health matches odds fetch reality.
   let theOddsApi = false;
+  let oddsRemaining: number | null = getOddsApiQuota().remaining;
+  let oddsUsed: number | null = getOddsApiQuota().used;
   const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
   if (oddsKey) {
     try {
@@ -26,7 +29,11 @@ export async function GET() {
       );
       if (oddsRes.ok) {
         const remainingRaw = oddsRes.headers.get("x-requests-remaining");
+        const usedRaw = oddsRes.headers.get("x-requests-used");
         const remaining = remainingRaw != null ? Number(remainingRaw) : null;
+        const used = usedRaw != null ? Number(usedRaw) : null;
+        if (remaining != null && !Number.isNaN(remaining)) oddsRemaining = remaining;
+        if (used != null && !Number.isNaN(used)) oddsUsed = used;
         theOddsApi = remaining == null || Number.isNaN(remaining) ? true : remaining > 0;
       }
     } catch {
@@ -42,11 +49,20 @@ export async function GET() {
     stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
     openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
   };
+
   return json({
     status: "ok",
     app: "MotiveFX.AI",
     timestamp: new Date().toISOString(),
     feeds,
+    /** Remaining Odds API credits when header is present (free probe or last odds fetch). */
+    quota: {
+      the_odds_api: {
+        remaining: oddsRemaining,
+        used: oddsUsed,
+        configured: Boolean(oddsKey),
+      },
+    },
     platform: "vercel",
   });
 }

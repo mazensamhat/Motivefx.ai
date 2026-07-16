@@ -56,6 +56,19 @@ export interface FeedStatus {
   stripe: boolean;
 }
 
+export interface OddsQuotaStatus {
+  remaining: number | null;
+  used: number | null;
+  configured?: boolean;
+}
+
+export interface HealthPayload {
+  feeds?: FeedStatus & Record<string, boolean>;
+  quota?: {
+    the_odds_api?: OddsQuotaStatus;
+  };
+}
+
 export interface LineMove {
   matchup: string;
   sport: string;

@@ -124,17 +124,33 @@ async function terminalApiCard(): Promise<PlatformCard> {
   try {
     const res = await fetch(`${appUrl}/api/health`, { cache: "no-store" });
     const body = res.ok
-      ? ((await res.json()) as { status?: string; feeds?: Record<string, boolean> })
+      ? ((await res.json()) as {
+          status?: string;
+          feeds?: Record<string, boolean>;
+          quota?: { the_odds_api?: { remaining?: number | null } };
+        })
       : null;
     const feeds = body?.feeds ?? {};
     const feedOk = Object.values(feeds).filter(Boolean).length;
     const feedTotal = Object.keys(feeds).length;
+    const oddsLeft = body?.quota?.the_odds_api?.remaining;
     return {
       id: "terminal-api",
       name: "Terminal API",
       status: res.ok ? "healthy" : "error",
-      summary: res.ok ? `Native API online · ${feedOk}/${feedTotal} feeds configured` : `HTTP ${res.status}`,
-      metrics: [{ label: "Host", value: appUrl.replace("https://", "") }],
+      summary: res.ok
+        ? `Native API online · ${feedOk}/${feedTotal} feeds configured${
+            oddsLeft != null && Number.isFinite(oddsLeft)
+              ? ` · Odds ${Math.round(oddsLeft).toLocaleString()} left`
+              : ""
+          }`
+        : `HTTP ${res.status}`,
+      metrics: [
+        { label: "Host", value: appUrl.replace("https://", "") },
+        ...(oddsLeft != null && Number.isFinite(oddsLeft)
+          ? [{ label: "Odds quota", value: String(Math.round(oddsLeft)) }]
+          : []),
+      ],
       checklist: Object.entries(feeds).map(([key, value]) => ({ ok: value, label: `${key} feed` })),
       dashboardUrl: "https://vercel.com/dashboard",
       billingUrl: null,

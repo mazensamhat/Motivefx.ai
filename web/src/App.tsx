@@ -64,11 +64,15 @@ export default function App() {
       document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1")));
   const [activeTab, setActiveTab] = useState<TabId>(initialTabFromUrl);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const health = useApi<{ feeds: Record<string, boolean> }>("/health", 60_000);
+  const health = useApi<{
+    feeds: Record<string, boolean>;
+    quota?: { the_odds_api?: { remaining: number | null; used: number | null } };
+  }>("/health", 60_000);
   const { badges: pulseBadges } = useModulePulse(activeTab);
   const { hasModule, annualPrice, active: activeModules } = useModules();
   const { isAuthenticated, openAuth, isAdmin } = useAuth();
   const liveCount = Object.values(health.data?.feeds ?? {}).filter(Boolean).length;
+  const oddsRemaining = health.data?.quota?.the_odds_api?.remaining;
 
   const active = TABS.find((t) => t.id === activeTab)!;
 
@@ -82,11 +86,14 @@ export default function App() {
     return () => window.removeEventListener("motivefx:entitlements-changed", onEntitlements);
   }, [activeTab, active.module, hasModule]);
 
-  const statusLabel = health.data?.feeds?.openai
-    ? "GPT insights live"
-    : liveCount > 0
-      ? `${liveCount} feeds`
-      : "Free data mode";
+  const statusLabel =
+    oddsRemaining != null && Number.isFinite(oddsRemaining)
+      ? `Odds ${Math.round(oddsRemaining).toLocaleString()} left`
+      : health.data?.feeds?.openai
+        ? "GPT insights live"
+        : liveCount > 0
+          ? `${liveCount} feeds`
+          : "Free data mode";
 
   if (legalPage === "privacy") return <PrivacyPage />;
   if (legalPage === "terms") return <TermsPage />;
