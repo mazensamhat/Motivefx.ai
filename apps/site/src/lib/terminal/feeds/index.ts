@@ -1411,7 +1411,8 @@ async function fetchPredictionMarketsUncached(
     url.searchParams.set("closed", "false");
     /* Over-fetch: many “active” events only have closed child markets. */
     url.searchParams.set("limit", String(Math.min(Math.max(limit * 4, 40), 100)));
-    url.searchParams.set("order", "volume_24hr");
+    /* Gamma rejects volume_24hr (HTTP 422); field name is volume24hr. */
+    url.searchParams.set("order", "volume24hr");
     url.searchParams.set("ascending", "false");
     // Free public Gamma API — no Odds API key and no THE_ODDS_API_KEY usage.
     const res = await fetch(url.toString(), { next: { revalidate: 600 } });

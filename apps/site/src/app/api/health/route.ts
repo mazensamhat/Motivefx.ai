@@ -8,7 +8,7 @@ export async function GET() {
   let polymarket = false;
   try {
     const res = await fetch(
-      "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=1&order=volume_24hr&ascending=false",
+      "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=1&order=volume24hr&ascending=false",
       { next: { revalidate: 600 } }
     );
     polymarket = res.ok;
