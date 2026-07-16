@@ -12,6 +12,25 @@ import {
   scanUnusualOptions,
 } from "./feeds";
 
+/** Browser-local anonymous ids (u_…) are not persisted users — skip DB lookups. */
+function isEphemeralUserId(userId: string | null | undefined): boolean {
+  if (!userId || userId === "demo") return true;
+  return userId.startsWith("u_");
+}
+
+async function withFeedTimeout<T>(promise: Promise<T>, fallback: T, ms = 9000): Promise<T> {
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error("feed timeout")), ms);
+      }),
+    ]);
+  } catch {
+    return fallback;
+  }
+}
+
 function riskFromConfidence(confidence: number, module: string): string {
   if (module === "penny") return confidence < 70 ? "high" : "medium";
   if (confidence >= 80) return "low";
@@ -50,7 +69,7 @@ function matchedFeedSignals(
 }
 
 async function ledgerPulse(userId: string | null, opportunities: Array<Record<string, unknown>>) {
-  if (!userId || userId === "demo") {
+  if (isEphemeralUserId(userId)) {
     return {
       trades: 0,
       penny: 0,
@@ -61,10 +80,11 @@ async function ledgerPulse(userId: string | null, opportunities: Array<Record<st
     };
   }
 
+  const uid = userId as string;
   const [{ counts, symbols }, bets, preds] = await Promise.all([
-    portfolioSnapshot(userId),
-    listBets(userId),
-    listPredictions(userId),
+    portfolioSnapshot(uid),
+    listBets(uid),
+    listPredictions(uid),
   ]);
 
   const realBets = bets.filter((b) => !b.is_simulation);
@@ -87,7 +107,7 @@ async function ledgerPulse(userId: string | null, opportunities: Array<Record<st
 }
 
 async function personalizedIntel(userId: string | null, opportunities: Array<Record<string, unknown>>) {
-  if (!userId || userId === "demo") {
+  if (isEphemeralUserId(userId)) {
     return {
       holdingsCount: 0,
       watchlistCount: 0,
@@ -99,12 +119,13 @@ async function personalizedIntel(userId: string | null, opportunities: Array<Rec
     };
   }
 
+  const uid = userId as string;
   const [holdingsTotal, watchlist, tracked, bets, preds] = await Promise.all([
-    countAllHoldings(userId),
-    listWatchlist(userId),
-    userTrackedSymbols(userId),
-    listBets(userId),
-    listPredictions(userId),
+    countAllHoldings(uid),
+    listWatchlist(uid),
+    userTrackedSymbols(uid),
+    listBets(uid),
+    listPredictions(uid),
   ]);
 
   const radarHits = opportunities.filter((o) => symbolMatch(tracked, String(o.symbol ?? "")));
@@ -198,10 +219,10 @@ export async function buildHomeBriefing(opts: {
   const greeting = `Good ${period}, ${name}`;
 
   const [whales, lines, markets, congressTrades] = await Promise.all([
-    fetchWhaleAlerts(),
-    fetchLineMoves(),
-    fetchPredictionMarkets(4),
-    fetchCongressTrades(10),
+    withFeedTimeout(fetchWhaleAlerts(), []),
+    withFeedTimeout(fetchLineMoves(), []),
+    withFeedTimeout(fetchPredictionMarkets(4), []),
+    withFeedTimeout(fetchCongressTrades(10), []),
   ]);
 
   const options = scanUnusualOptions().slice(0, 4);

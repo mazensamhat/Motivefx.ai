@@ -15,6 +15,7 @@ import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
 import { AccountMenu } from "./AccountMenu";
 import { AlertCenterBell } from "./AlertCenterBell";
+import { MotiveFxBrandLogo } from "./MotivFxLogo";
 
 interface Props {
   activeTab: TabId;
@@ -35,26 +36,15 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
       <div className="workspace-header-top">
         <div className="workspace-header-left">
           <div className="workspace-header-brand-block workspace-header-brand-mobile">
-            <div className="workspace-header-brand-title">
-              MOTIVEFX<span className="ai-chip">AI</span>
+            <MotiveFxBrandLogo compact />
+          </div>
+          {!isHome && (
+            <div className="workspace-header-desktop-brand">
+              <span className="workspace-module-badge">{brand.name.toUpperCase()}</span>
+              <span className="workspace-header-dot">·</span>
+              <p className="workspace-subheader">{brand.tagline}</p>
             </div>
-          </div>
-          <div className="workspace-header-desktop-brand">
-            {isHome ? (
-              <div className="workspace-header-brand-block">
-                <div className="workspace-header-brand-title">
-                  MOTIVEFX<span className="ai-chip">AI</span>
-                </div>
-                <p className="workspace-header-edge">AI-Powered Markets. Real-Time Edge.</p>
-              </div>
-            ) : (
-              <>
-                <span className="workspace-module-badge">{brand.name.toUpperCase()}</span>
-                <span className="workspace-header-dot">·</span>
-                <p className="workspace-subheader">{brand.tagline}</p>
-              </>
-            )}
-          </div>
+          )}
         </div>
         <div className="workspace-header-right">
           <span className="monitor-only-pill" title="Monitor only — no execution">

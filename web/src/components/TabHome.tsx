@@ -48,7 +48,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const { hasFeature } = useModules();
   const { profile } = useGenerationalProfile();
   const { inspectDetail } = useSignalDetail();
-  const { data, loading } = useHomeBriefing(60_000);
+  const { data, loading, error, refresh } = useHomeBriefing(60_000);
   const [sinceNewCount, setSinceNewCount] = useState(0);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [explain, setExplain] = useState<{
@@ -84,7 +84,14 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   }
 
   if (!b) {
-    return <div className="empty">Unable to load briefing.</div>;
+    return (
+      <div className="empty">
+        Unable to load briefing.{error ? ` ${error}` : ""}{" "}
+        <button type="button" className="btn btn-sm btn-ghost" onClick={() => void refresh()}>
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const p = b.personalized;
