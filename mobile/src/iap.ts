@@ -10,16 +10,16 @@ const ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY?.trim
 /** Explicit feature flag — set true when RC keys are present in EAS. */
 const IAP_ENABLED = process.env.EXPO_PUBLIC_IAP_ENABLED?.trim() === "true";
 
-/** Subscription group in App Store Connect. */
-export const SUBSCRIPTION_GROUP = "motivefx_intelligence";
+/** Subscription group reference name in App Store Connect. */
+export const SUBSCRIPTION_GROUP = "Monthly";
 
-/** Apple product IDs ↔ MotiveFX intelligence tiers. */
+/** Apple product IDs ↔ MotiveFX intelligence tiers (exact ASC Product IDs). */
 export const APPLE_PRODUCT_IDS = {
-  lite: "ai.motivefx.app.lite.monthly",
-  pro: "ai.motivefx.app.pro.monthly",
-  ultra: "ai.motivefx.app.ultra.monthly",
-  ultra_plus: "ai.motivefx.app.ultra_plus.monthly",
-  elite: "ai.motivefx.app.elite.yearly",
+  lite: "Lite",
+  pro: "Pro",
+  ultra: "Ultra",
+  ultra_plus: "Ultra.Plus",
+  elite: "Elite",
 } as const;
 
 export type IntelligenceTierId = keyof typeof APPLE_PRODUCT_IDS;
@@ -91,16 +91,19 @@ function pickPackageForTier(
   const hints = [
     tier,
     tier.replace("_", ""),
+    tier.replace("_", "."), // ultra_plus → ultra.plus (matches Ultra.Plus case-insensitively below)
     `$rc_${tier}`,
     tier === "elite" ? "$rc_annual" : "$rc_monthly",
     tier === "elite" ? "annual" : "monthly",
   ];
   for (const hint of hints) {
+    const hintLower = hint.toLowerCase();
     const match = packages.find(
       (p) =>
         p.identifier === hint ||
-        p.identifier.includes(hint) ||
-        p.product.identifier.includes(hint)
+        p.identifier.toLowerCase().includes(hintLower) ||
+        p.product.identifier === productId ||
+        p.product.identifier.toLowerCase() === hintLower
     );
     if (match) return match;
   }

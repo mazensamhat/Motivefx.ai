@@ -4,28 +4,34 @@ Checklist for shipping StoreKit subscriptions via RevenueCat — same architectu
 
 ## Product IDs (create exactly)
 
-**Subscription group:** `motivefx_intelligence`
+**Subscription group reference name:** `Monthly` (display name can differ)
 
 | Tier | Apple Product ID | Period | Price |
 |------|------------------|--------|-------|
-| Lite | `ai.motivefx.app.lite.monthly` | monthly | $29.99 |
-| Pro | `ai.motivefx.app.pro.monthly` | monthly | $59.99 |
-| Ultra | `ai.motivefx.app.ultra.monthly` | monthly | $99.99 |
-| Ultra+ | `ai.motivefx.app.ultra_plus.monthly` | monthly | $149.99 |
-| Elite | `ai.motivefx.app.elite.yearly` | yearly | $999 |
+| Lite | `Lite` | monthly | $29.99 |
+| Pro | `Pro` | monthly | $59.99 |
+| Ultra | `Ultra` | monthly | $99.99 |
+| Ultra+ | `Ultra.Plus` | monthly | $149.99 |
+| Elite | `Elite` | yearly | $999 |
+
+> **ASC subscription levels:** Order highest service first so upgrades/downgrades work correctly — **Elite = level 1**, Ultra.Plus = 2, Ultra = 3, Pro = 4, **Lite = level 5**. If Lite is currently level 1 and Elite level 5, that ordering is inverted; fix it in App Store Connect → Subscriptions → group → Subscription Levels.
 
 ## 1. App Store Connect
 
 1. **Paid Apps Agreement** must be active (Agreements, Tax, and Banking).
-2. Create subscription group **`motivefx_intelligence`**.
+2. Create subscription group with reference name **`Monthly`**.
 3. Create the five auto-renewable subscriptions with the **exact** product IDs above.
-4. Fill localization, pricing, and review screenshot/notes for each product.
-5. Products must exist in ASC **before** App Review (submit them with the binary).
+4. Set subscription **levels** highest-first (Elite → Lite); see note above.
+5. Fill localization, pricing, and review screenshot/notes for each product.
+6. Products must exist in ASC **before** App Review (submit them with the binary).
 
 ## 2. RevenueCat
 
 1. Create / open project → add iOS app with bundle id **`ai.motivefx.app`** (Android package same if shipping Play).
-2. Link App Store Connect API key / shared secret.
+2. **Link App Store Connect to RevenueCat** (do this after ASC products exist):
+   1. In **App Store Connect** → **Users and Access** → **Integrations** → **In-App Purchase** → generate a key (role that can manage IAPs). Download the `.p8` once; note **Issuer ID** and **Key ID**.
+   2. In **RevenueCat** → project → **Apps** → iOS app `ai.motivefx.app` → **App Store Connect API** (or Service credentials) → paste Issuer ID + Key ID and upload the `.p8`.
+   3. Optional legacy: App-Specific Shared Secret under ASC app → App Information — only if RevenueCat still prompts for it; prefer the In-App Purchase API key above.
 3. Import / create products matching the five Apple product IDs.
 4. Create **one entitlement per tier**, named exactly:
    - `lite`
@@ -34,15 +40,17 @@ Checklist for shipping StoreKit subscriptions via RevenueCat — same architectu
    - `ultra_plus`
    - `elite`
 5. Attach each product to its entitlement.
-6. Create a **default Offering** with packages that map to those products (monthly packages + yearly Elite).
-7. Copy public SDK keys:
-   - iOS: `appl_…` → `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
-   - Android: `goog_…` → `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
+6. Create a **default Offering** with packages that map to those products (monthly packages + yearly Elite). Prefer package product identifiers equal to the Apple product IDs so native `pickPackageForTier` matches first.
+7. Copy public SDK keys (Project settings → API keys) — do **not** commit them:
+   - iOS: `appl_…` → EAS secret `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
+   - Android: `goog_…` → EAS secret `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
 8. Webhooks → URL:
 
    `https://www.motivefxai.com/api/webhooks/revenuecat`
 
    Authorization header: `Bearer <REVENUECAT_WEBHOOK_SECRET>`
+
+   Put the same secret in Vercel as `REVENUECAT_WEBHOOK_SECRET`, then redeploy the site.
 
 ## 3. Database
 

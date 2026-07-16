@@ -49,8 +49,8 @@ Thank you for the feedback on MotiveFX.AI. We have addressed each guideline as f
 
 This build sells MotiveFX intelligence subscriptions via **Apple In-App Purchase** (StoreKit through RevenueCat).
 
-- Subscription group: `motivefx_intelligence`
-- Products: Lite / Pro / Ultra / Ultra+ (monthly) and Elite (yearly) — purchased with Apple IAP inside the app.
+- Subscription group: `Monthly` (ASC reference name)
+- Products: `Lite` / `Pro` / `Ultra` / `Ultra.Plus` (monthly) and `Elite` (yearly) — purchased with Apple IAP inside the app.
 - Native WebView subscribe CTAs call StoreKit; **Stripe Checkout is not used inside the iOS app**.
 - Web / Safari customers may still subscribe via Stripe on motivefxai.com (multiplatform account access).
 - Users can **Restore purchases** from Account settings.

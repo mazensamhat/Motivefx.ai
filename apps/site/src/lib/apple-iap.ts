@@ -6,13 +6,13 @@ import {
   validateSelectedMarkets,
 } from "./tiers";
 
-/** Apple product IDs (App Store Connect + RevenueCat). */
+/** Apple product IDs (App Store Connect + RevenueCat) — exact ASC Product IDs. */
 export const APPLE_PRODUCT_IDS: Record<PricingTierId, string> = {
-  lite: "ai.motivefx.app.lite.monthly",
-  pro: "ai.motivefx.app.pro.monthly",
-  ultra: "ai.motivefx.app.ultra.monthly",
-  ultra_plus: "ai.motivefx.app.ultra_plus.monthly",
-  elite: "ai.motivefx.app.elite.yearly",
+  lite: "Lite",
+  pro: "Pro",
+  ultra: "Ultra",
+  ultra_plus: "Ultra.Plus",
+  elite: "Elite",
 };
 
 const PRODUCT_TO_TIER = Object.fromEntries(
