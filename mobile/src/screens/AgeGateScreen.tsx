@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import {
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -48,7 +51,7 @@ export function AgeGateScreen({ onAccepted }: Props) {
 
   if (declined || tooYoung) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.flex, styles.container]}>
         <Text style={styles.title}>Access restricted</Text>
         <Text style={styles.body}>
           MotiveFX.AI includes sports-betting and event-market intelligence modules. You must be{" "}
@@ -70,8 +73,16 @@ export function AgeGateScreen({ onAccepted }: Props) {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.brand}>MotiveFX.AI</Text>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.brand}>MotiveFX.AI</Text>
       <Text style={styles.title}>Age verification</Text>
       <Text style={styles.body}>
         This app includes gambling-adjacent sports betting and prediction-market intelligence. Enter
@@ -108,24 +119,26 @@ export function AgeGateScreen({ onAccepted }: Props) {
       <Pressable style={styles.secondary} onPress={() => setDeclined(true)}>
         <Text style={styles.secondaryText}>I am under {MIN_AGE}</Text>
       </Pressable>
-      <Text style={styles.legal}>
-        See our{" "}
-        <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
-          Terms
-        </Text>{" "}
-        and{" "}
-        <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
-          Privacy Policy
+        <Text style={styles.legal}>
+          See our{" "}
+          <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
+            Terms
+          </Text>{" "}
+          and{" "}
+          <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
+            Privacy Policy
+          </Text>
+          .
         </Text>
-        .
-      </Text>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.bg },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: colors.bg,
     padding: 28,
     justifyContent: "center",

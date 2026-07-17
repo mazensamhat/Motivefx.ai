@@ -31,12 +31,12 @@ type ShouldStartLoadRequest = {
 
 type WebViewComponent = typeof import("react-native-webview").WebView;
 
-type NativeMsg =
-  | { type: "iap_purchase"; tier?: string; userId?: string }
-  | { type: "iap_restore"; userId?: string }
-  | { type: "session"; userId?: string }
-  | { type: "motivefx:open-external"; url?: string }
-  | { type: string; url?: string };
+type NativeMsg = {
+  type: string;
+  tier?: string;
+  userId?: string;
+  url?: string;
+};
 
 const VIEWPORT_LOCK_SCRIPT = `
   (function () {
@@ -134,6 +134,7 @@ export function TerminalScreen() {
   const [sourceUri, setSourceUri] = useState<string | null>(null);
   const [injection, setInjection] = useState(VIEWPORT_LOCK_SCRIPT);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
   const [iapBusy, setIapBusy] = useState(false);
@@ -142,6 +143,26 @@ export function TerminalScreen() {
     null
   );
   const appUserIdRef = useRef<string | null>(null);
+  const loadWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearLoadWatchdog = useCallback(() => {
+    if (loadWatchdogRef.current) {
+      clearTimeout(loadWatchdogRef.current);
+      loadWatchdogRef.current = null;
+    }
+  }, []);
+
+  /* If the page never finishes loading, drop the spinner instead of freezing
+     the screen behind an eternal loader (Play "app not responding" policy). */
+  const armLoadWatchdog = useCallback(() => {
+    clearLoadWatchdog();
+    loadWatchdogRef.current = setTimeout(() => {
+      setLoading(false);
+      setError("Terminal is taking too long to load. Check your connection and tap Retry.");
+    }, 20_000);
+  }, [clearLoadWatchdog]);
+
+  useEffect(() => clearLoadWatchdog, [clearLoadWatchdog]);
 
   useEffect(() => {
     void configureIap();
@@ -424,9 +445,19 @@ export function TerminalScreen() {
     () => ({
       source: { uri: sourceUri! },
       style: styles.webview,
-      onLoadStart: () => setLoading(true),
-      onLoadEnd: () => setLoading(false),
+      onLoadStart: () => {
+        // Only block the screen with the loader on the very first load;
+        // in-page navigations must never re-cover the UI.
+        if (!hasLoadedOnce) setLoading(true);
+        armLoadWatchdog();
+      },
+      onLoadEnd: () => {
+        clearLoadWatchdog();
+        setLoading(false);
+        setHasLoadedOnce(true);
+      },
       onError: (e: { nativeEvent: { description?: string } }) => {
+        clearLoadWatchdog();
         setLoading(false);
         setError(e.nativeEvent.description || "Could not load terminal.");
       },
@@ -436,10 +467,14 @@ export function TerminalScreen() {
         }
       },
       onRenderProcessGone: () => {
-        setLoading(false);
-        setError("Terminal view crashed. Tap Retry.");
+        // Android renderer death: auto-remount instead of leaving a dead view.
+        clearLoadWatchdog();
+        setLoading(true);
+        setError(null);
+        setWebViewKey((k) => k + 1);
       },
       onContentProcessDidTerminate: () => {
+        clearLoadWatchdog();
         setLoading(false);
         setError("Terminal view terminated. Tap Retry.");
       },
@@ -453,6 +488,10 @@ export function TerminalScreen() {
       setSupportMultipleWindows: false,
       allowsBackForwardNavigationGestures: false,
       pullToRefreshEnabled: false,
+      // Scrolling must always work inside the terminal page (Play policy flag).
+      scrollEnabled: true,
+      nestedScrollEnabled: true,
+      overScrollMode: "content" as const,
       bounces: false,
       scalesPageToFit: false,
       setBuiltInZoomControls: false,
@@ -467,7 +506,15 @@ export function TerminalScreen() {
       // Hardware layer = smooth scroll; software layer was the main glitch/slowness cause.
       ...(Platform.OS === "android" ? { androidLayerType: "hardware" as const } : {}),
     }),
-    [sourceUri, injection, onMessage, onShouldStartLoadWithRequest]
+    [
+      sourceUri,
+      injection,
+      onMessage,
+      onShouldStartLoadWithRequest,
+      hasLoadedOnce,
+      armLoadWatchdog,
+      clearLoadWatchdog,
+    ]
   );
 
   if (phase === "failed") {
@@ -564,7 +611,7 @@ const styles = StyleSheet.create({
   link: { color: colors.accent, textAlign: "center", marginTop: 8 },
   linkMuted: { color: colors.dim, textAlign: "center", marginTop: 8 },
   iapOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(8, 10, 12, 0.72)",

@@ -1,11 +1,42 @@
 import { API_BASE } from "../config";
 import { clearSession, getAccessToken, getRefreshToken, setSession, type AuthUser } from "./auth";
 
+/** Default network timeout — a hung fetch must never freeze the UI (Play ANR policy). */
+const FETCH_TIMEOUT_MS = 12_000;
+
+export async function fetchWithTimeout(
+  url: string,
+  init?: RequestInit,
+  timeoutMs = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Network timeout — check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function authHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = await getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
+}
+
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
 }
 
 async function readError(res: Response): Promise<string> {
@@ -31,13 +62,13 @@ function normalizeUser(raw: Record<string, unknown> | undefined): AuthUser | nul
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: await authHeaders() });
-  if (!res.ok) throw new Error(await readError(res));
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, { headers: await authHeaders() });
+  if (!res.ok) throw new ApiError(await readError(res), res.status);
   return res.json();
 }
 
 export async function authPublicPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}/auth${path}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/auth${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -95,11 +126,15 @@ export async function fetchProfile(): Promise<AuthUser> {
 export async function logout(): Promise<void> {
   const refresh = await getRefreshToken();
   try {
-    await fetch(`${API_BASE}/auth/logout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
+    await fetchWithTimeout(
+      `${API_BASE}/auth/logout`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+        body: JSON.stringify({ refresh_token: refresh }),
+      },
+      5_000
+    );
   } catch {
     /* ok */
   }

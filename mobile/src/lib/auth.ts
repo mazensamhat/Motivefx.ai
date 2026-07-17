@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const ACCESS_KEY = "motivefx_access_token";
 const REFRESH_KEY = "motivefx_refresh_token";
 const USER_KEY = "motivefx_auth_user_id";
+const USER_JSON_KEY = "motivefx_auth_user_json";
 
 export interface AuthUser {
   userId: string;
@@ -60,10 +61,27 @@ export async function setSession(
   await safeSet(ACCESS_KEY, accessToken);
   await safeSet(REFRESH_KEY, refreshToken);
   await safeSet(USER_KEY, user.userId);
+  await safeSet(USER_JSON_KEY, JSON.stringify(user));
+}
+
+/** Last-known profile so app boot never blocks on the network. */
+export async function getCachedUser(): Promise<AuthUser | null> {
+  const raw = await safeGet(USER_JSON_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as AuthUser;
+    if (parsed && typeof parsed.userId === "string" && typeof parsed.email === "string") {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function clearSession(): Promise<void> {
   await safeDelete(ACCESS_KEY);
   await safeDelete(REFRESH_KEY);
   await safeDelete(USER_KEY);
+  await safeDelete(USER_JSON_KEY);
 }

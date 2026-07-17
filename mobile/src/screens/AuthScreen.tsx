@@ -1,13 +1,14 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { LEGAL } from "../config";
@@ -68,8 +69,16 @@ export function AuthScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>MotiveFX.AI</Text>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>MotiveFX.AI</Text>
       <Text style={styles.sub}>
         {pendingToken ? "Enter your 2FA code" : mode === "login" ? "Sign in to your account" : "Create your account"}
       </Text>
@@ -150,13 +159,15 @@ export function AuthScreen() {
         managed on the web at motivefxai.com/pricing (opens in Safari). Digital content is not sold
         inside this app.
       </Text>
-      <Text style={styles.buildTag}>Build 1.0.0 (9) · App Store review</Text>
-    </View>
+      <Text style={styles.buildTag}>Build 1.0.0</Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: 24, justifyContent: "center" },
+  flex: { flex: 1, backgroundColor: colors.bg },
+  container: { flexGrow: 1, backgroundColor: colors.bg, padding: 24, justifyContent: "center" },
   title: { fontSize: 28, fontWeight: "700", color: colors.text, marginBottom: 8 },
   sub: { fontSize: 14, color: colors.muted, marginBottom: 24 },
   input: {
