@@ -16,12 +16,13 @@ import {
 } from "lucide-react";
 import { BarList } from "@/components/admin/admin-bar-list";
 import { FeedbackInboxPanel } from "@/components/admin/feedback-inbox-panel";
+import { FinancialPanel } from "@/components/admin/financial-panel";
 import { PlatformMonitorPanel } from "@/components/admin/platform-monitor-panel";
 import { SignupMap, type SignupMapData } from "@/components/admin/signup-map";
 import { SiteUsersPanel } from "@/components/admin/site-users-panel";
 import { adminGet, type AdminDashboard } from "@/lib/admin-api";
 import { clientLogout } from "@/lib/auth-client";
-import { MOTIVELIFE_OPS_URL } from "@/lib/ops-links";
+import { MOTIVELIFE_OPS_URL, MOTIVEPULSE_OPS_URL } from "@/lib/ops-links";
 
 function heatColor(value: number, max: number): string {
   if (max <= 0 || value <= 0) return "rgba(255,255,255,0.03)";
@@ -102,6 +103,9 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <a href={MOTIVELIFE_OPS_URL} target="_blank" rel="noopener noreferrer" className="admin-btn">
             <ExternalLink className="h-3.5 w-3.5" /> Motive Life Ops
           </a>
+          <a href={MOTIVEPULSE_OPS_URL} target="_blank" rel="noopener noreferrer" className="admin-btn">
+            <ExternalLink className="h-3.5 w-3.5" /> MotivePulse Ops
+          </a>
           <Link href="/app" className="admin-btn">
             <LayoutDashboard className="h-3.5 w-3.5" /> Terminal
           </Link>
@@ -124,7 +128,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         </div>
         <div className="admin-kpi app-panel">
           <BarChart3 className="h-4 w-4" />
-          <span className="admin-kpi-label">Active module subs</span>
+          <span className="admin-kpi-label">Paying accounts</span>
           <strong>{kpis.activeModuleSubscriptions}</strong>
         </div>
         <div className="admin-kpi app-panel">
@@ -146,6 +150,8 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <strong>{kpis.churnEvents30d}</strong>
         </div>
       </section>
+
+      <FinancialPanel />
 
       <PlatformMonitorPanel />
       <SiteUsersPanel />

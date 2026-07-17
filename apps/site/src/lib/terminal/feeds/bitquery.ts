@@ -4,11 +4,12 @@
  * Primary sports odds remain SharpAPI (+ The Odds API backup).
  * Primary Polymarket board remains Gamma (free, no key).
  * Bitquery is optional enrichment for cricket / NBA / NFL / esports-style markets
- * when BITQUERY_API_KEY is set (Bearer token from account.bitquery.io).
+ * when BITQUERY_API_KEY (OAuth access token) or client credentials are set.
  *
  * Docs: https://docs.bitquery.io/docs/examples/polymarket-api/polymarket-sports-api/
  * Endpoint: https://streaming.bitquery.io/graphql
- * Auth: Authorization: Bearer <token> — points-based billing; not a free unlimited feed.
+ * Auth: Authorization: Bearer <ory_at_...> — not a v1 API key.
+ * Prefer BITQUERY_CLIENT_ID + BITQUERY_CLIENT_SECRET for long-lived production use.
  */
 
 /** Compatible with PredictionMarketItem in feeds/index.ts (avoid circular import). */
@@ -25,15 +26,87 @@ export type BitqueryMarketItem = {
 };
 
 const BITQUERY_ENDPOINT = "https://streaming.bitquery.io/graphql";
+const BITQUERY_OAUTH_URL = "https://oauth2.bitquery.io/oauth2/token";
+
+/** Strip accidental "Bearer " prefix from env paste. */
+function normalizeBitqueryToken(raw: string): string {
+  const t = raw.trim();
+  return t.replace(/^Bearer\s+/i, "").trim();
+}
+
+function hasBitqueryClientCredentials(): boolean {
+  return Boolean(
+    process.env.BITQUERY_CLIENT_ID?.trim() && process.env.BITQUERY_CLIENT_SECRET?.trim()
+  );
+}
 
 export function isBitqueryConfigured(): boolean {
-  return Boolean(process.env.BITQUERY_API_KEY?.trim());
+  return Boolean(process.env.BITQUERY_API_KEY?.trim()) || hasBitqueryClientCredentials();
 }
 
 /** Off unless key present; set BITQUERY_ENABLED=false to keep key but disable calls. */
 export function isBitqueryEnabled(): boolean {
   if (process.env.BITQUERY_ENABLED?.trim().toLowerCase() === "false") return false;
   return isBitqueryConfigured();
+}
+
+let cachedOAuth: { token: string; expiresAt: number } | null = null;
+
+async function resolveBitqueryAccessToken(): Promise<{ token: string; error?: string }> {
+  const staticKey = process.env.BITQUERY_API_KEY?.trim();
+  if (staticKey) {
+    return { token: normalizeBitqueryToken(staticKey) };
+  }
+
+  const clientId = process.env.BITQUERY_CLIENT_ID?.trim();
+  const clientSecret = process.env.BITQUERY_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) {
+    return {
+      token: "",
+      error:
+        "Bitquery disabled — set BITQUERY_API_KEY (ory_at_… access token) or BITQUERY_CLIENT_ID + BITQUERY_CLIENT_SECRET.",
+    };
+  }
+
+  const now = Date.now();
+  if (cachedOAuth && cachedOAuth.expiresAt > now + 60_000) {
+    return { token: cachedOAuth.token };
+  }
+
+  try {
+    const body = new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: "api",
+    });
+    const res = await fetch(BITQUERY_OAUTH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return {
+        token: "",
+        error: `Bitquery OAuth HTTP ${res.status}${text ? `: ${text.slice(0, 160)}` : ""}`,
+      };
+    }
+    const json = (await res.json()) as { access_token?: string; expires_in?: number };
+    const token = json.access_token?.trim();
+    if (!token) {
+      return { token: "", error: "Bitquery OAuth response missing access_token." };
+    }
+    const expiresInSec = Number(json.expires_in) || 3600;
+    cachedOAuth = { token, expiresAt: now + expiresInSec * 1000 };
+    return { token };
+  } catch (err) {
+    return {
+      token: "",
+      error: err instanceof Error ? err.message : "Bitquery OAuth failed.",
+    };
+  }
 }
 
 type BitqueryTradeRow = {
@@ -199,15 +272,20 @@ async function bitqueryGraphql(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "X-API-KEY": token,
     },
     body: JSON.stringify({ query, variables }),
     cache: "no-store",
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    const hint =
+      res.status === 401
+        ? " Use an OAuth access token (ory_at_…) from Access Tokens, or BITQUERY_CLIENT_ID + BITQUERY_CLIENT_SECRET — not a v1 API key."
+        : "";
     return {
       rows: [],
-      error: `Bitquery HTTP ${res.status}${body ? `: ${body.slice(0, 180)}` : ""}`,
+      error: `Bitquery HTTP ${res.status}${body ? `: ${body.slice(0, 180)}` : ""}${hint}`,
     };
   }
   const payload = (await res.json()) as {
@@ -230,10 +308,14 @@ export async function fetchBitquerySportsMarkets(
     return {
       items: [],
       error:
-        "Bitquery disabled — set BITQUERY_API_KEY (and leave BITQUERY_ENABLED unset/true). Signup: https://account.bitquery.io",
+        "Bitquery disabled — set BITQUERY_API_KEY (ory_at_… token) or client credentials; leave BITQUERY_ENABLED unset/true. Signup: https://account.bitquery.io",
     };
   }
-  const token = process.env.BITQUERY_API_KEY!.trim();
+  const auth = await resolveBitqueryAccessToken();
+  if (!auth.token) {
+    return { items: [], error: auth.error ?? "Bitquery auth missing." };
+  }
+  const token = auth.token;
   const updatedAt = new Date().toISOString();
   const perQuery = Math.min(Math.max(Math.ceil(limit / 2), 5), 20);
 

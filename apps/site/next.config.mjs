@@ -1,6 +1,12 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  transpilePackages: ["@motivefx/database"],
-};
-
-export default nextConfig;
+/** @type {import('next').NextConfig} */
+
+const nextConfig = {
+
+  transpilePackages: ["@motivefx/database"],
+
+};
+
+
+
+export default nextConfig;
+
