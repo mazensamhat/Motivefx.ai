@@ -31,7 +31,11 @@ export function middleware(request: NextRequest) {
 
   if (!session && !demo) {
     // Prefer ungated read-only demo over a hard login wall for bare /terminal.
-    const demoUrl = new URL("/terminal/", request.url);
+    // Use /terminal?demo=1 (no trailing slash) — /terminal/ 308s back to
+    // /terminal under Next's default trailingSlash:false, which created a
+    // multi-hop redirect Google Search Console flags as a redirect error.
+    const demoUrl = request.nextUrl.clone();
+    demoUrl.pathname = "/terminal";
     demoUrl.searchParams.set("demo", "1");
     const response = NextResponse.redirect(demoUrl);
     response.cookies.set(DEMO_COOKIE, "1", {

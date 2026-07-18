@@ -3,7 +3,7 @@ import { DEFAULT_CONTACT_EMAIL } from "@/lib/email-config";
 export const SITE = {
   name: "MotiveFX.AI",
   tagline: "AI Market Intelligence Platform",
-  url: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://motivefxai.com",
+  url: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://www.motivefxai.com",
   description:
     "Your AI Chief of Staff for market intelligence — stocks, crypto, sports betting, prediction markets, and pink sheets.",
   email: DEFAULT_CONTACT_EMAIL,
