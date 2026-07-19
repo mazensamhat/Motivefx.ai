@@ -35,8 +35,17 @@ export const metadata: Metadata = {
     siteName: "MotiveFX.AI",
   },
   icons: {
-    icon: "/brand/motivefx-icon.png",
-    apple: "/brand/motivefx-icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      { url: "/brand/motivefx-icon.png", type: "image/png", sizes: "1024x1024" },
+      { url: "/brand/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/brand/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
