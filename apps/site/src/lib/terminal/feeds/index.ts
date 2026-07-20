@@ -1,44 +1,54 @@
 const now = () => new Date().toISOString();
 
+function futureExpiryIso(daysAhead: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + daysAhead);
+  // Snap to the next Friday (common weekly options expiry).
+  const day = d.getUTCDay();
+  const toFriday = (5 - day + 7) % 7;
+  d.setUTCDate(d.getUTCDate() + toFriday);
+  return d.toISOString().slice(0, 10);
+}
+
 export function demoUnusualOptions() {
   return [
     {
       symbol: "NVDA",
       type: "call",
       strike: 950,
-      expiry: "2026-07-18",
+      expiry: futureExpiryIso(14),
       volume: 12400,
       openInterest: 820,
       premium: 1840000,
       volOiRatio: 15.1,
       sentiment: "bullish",
-      note: "Vol/OI 15.1x — block flow",
+      note: "Vol/OI 15.1x — block flow (sample)",
       timestamp: now(),
     },
     {
       symbol: "TSLA",
       type: "put",
       strike: 180,
-      expiry: "2026-07-11",
+      expiry: futureExpiryIso(21),
       volume: 8900,
       openInterest: 2100,
       premium: 620000,
       volOiRatio: 4.2,
       sentiment: "bearish",
-      note: "Vol/OI 4.2x — defensive flow",
+      note: "Vol/OI 4.2x — defensive flow (sample)",
       timestamp: now(),
     },
     {
       symbol: "AAPL",
       type: "call",
       strike: 210,
-      expiry: "2026-07-18",
+      expiry: futureExpiryIso(7),
       volume: 15200,
       openInterest: 4800,
       premium: 980000,
       volOiRatio: 3.2,
       sentiment: "bullish",
-      note: "Vol/OI 3.2x — unusual activity",
+      note: "Vol/OI 3.2x — unusual activity (sample)",
       timestamp: now(),
     },
   ];
@@ -99,10 +109,10 @@ async function fetchCoinGeckoWhaleLike() {
         return {
           asset: String(r.symbol ?? "").toUpperCase(),
           amountUsd,
-          from: bullish ? "Market buyers" : "Exchange reserves",
-          to: bullish ? "Exchange / spot" : "Market sellers",
+          from: "24h volume proxy",
+          to: bullish ? "spot bid (net)" : "spot offer (net)",
           direction: bullish ? "deposit" : "withdrawal",
-          note: `${r.name ?? r.symbol} · 24h vol $${(amountUsd / 1_000_000).toFixed(1)}M`,
+          note: `${r.name ?? r.symbol} · 24h vol $${(amountUsd / 1_000_000).toFixed(1)}M (not a single whale tx)`,
           price: r.current_price,
           timestamp: now(),
         };
@@ -155,10 +165,10 @@ export async function fetchWhaleAlerts() {
           return {
             asset: String(r.symbol ?? r.coin ?? "—").toUpperCase(),
             amountUsd,
-            from: bullish ? "Spot buyers" : "Exchange flow",
-            to: bullish ? "Market" : "Distribution",
+            from: "24h volume proxy",
+            to: bullish ? "spot bid (net)" : "spot offer (net)",
             direction: bullish ? "deposit" : "withdrawal",
-            note: String(r.name ?? r.symbol ?? "Market flow"),
+            note: `${String(r.name ?? r.symbol ?? "Market")} · 24h vol proxy (not a single whale tx)`,
             price: Number(r.price ?? 0) || undefined,
             timestamp: now(),
           };
@@ -1264,16 +1274,103 @@ async function fetchLineMovesUncached(
 }
 
 /**
- * Shared board cache across sport keys — callers (live-feed, briefing, line-moves)
+ * Shared board cache across callers (live-feed, briefing, line-moves)
  * previously each triggered a multi-sport stampede. One 10-minute board is enough.
+ * Responses are filtered by the requested sport so NFL/NBA tabs don't show MLB.
  */
+function matchesRequestedSport(item: LineMoveItem, sport: string): boolean {
+  const requested = sport.trim().toLowerCase();
+  if (!requested || requested === "upcoming" || requested === "all") return true;
+  const key = (item.sportKey || "").toLowerCase();
+  const label = (item.sport || "").toLowerCase();
+  if (key === requested) return true;
+  if (key.startsWith(`${requested}_`) || requested.startsWith(`${key}_`)) return true;
+
+  // Family matches: americanfootball_nfl ↔ americanfootball_ncaaf when asked for americanfootball_*
+  const family = requested.split("_")[0];
+  if (family && key.startsWith(`${family}_`)) {
+    // Exact league preference when the request includes a league suffix.
+    if (requested.includes("_") && key !== requested) {
+      // Still allow family if exact miss — e.g. nfl request with only ncaaf live.
+      const reqLeague = requested.split("_").slice(1).join("_");
+      const keyLeague = key.split("_").slice(1).join("_");
+      if (reqLeague && keyLeague && reqLeague !== keyLeague) {
+        // Prefer exact; caller decides whether to accept family-only boards.
+        return false;
+      }
+    } else if (!requested.includes("_")) {
+      return true;
+    }
+  }
+
+  // Label shortcuts from UI / SharpAPI (MLB, NFL, NBA, …)
+  const aliases: Record<string, string[]> = {
+    baseball_mlb: ["mlb", "baseball"],
+    basketball_nba: ["nba", "basketball"],
+    basketball_wnba: ["wnba"],
+    basketball_ncaab: ["ncaab", "cbb"],
+    americanfootball_nfl: ["nfl", "football"],
+    americanfootball_ncaaf: ["ncaaf", "cfb"],
+    icehockey_nhl: ["nhl", "hockey"],
+    soccer_usa_mls: ["mls", "soccer"],
+    mma_mixed_martial_arts: ["mma", "ufc"],
+  };
+  const aliasList = aliases[requested] ?? [];
+  if (aliasList.some((a) => label === a || key.includes(a))) return true;
+  if (label && (requested.endsWith(`_${label}`) || requested === label)) return true;
+  return false;
+}
+
+function filterBoardBySport(items: LineMoveItem[], sport: string): LineMoveItem[] {
+  const exact = items.filter((i) => matchesRequestedSport(i, sport));
+  if (exact.length) return exact;
+  // Soft family fallback: americanfootball_nfl → any americanfootball_*
+  const family = sport.trim().toLowerCase().split("_")[0];
+  if (!family) return [];
+  return items.filter((i) => (i.sportKey || "").toLowerCase().startsWith(`${family}_`));
+}
+
 export async function fetchLineMovesWithMeta(
   sport = "baseball_mlb"
 ): Promise<{ items: LineMoveItem[]; sharpDerived?: SharpActionItem[] } & FeedMeta> {
-  const cacheKey = "board";
-  return withTtlCache(lineMovesCache, cacheKey, ODDS_CACHE_TTL_MS, () =>
+  const board = await withTtlCache(lineMovesCache, "board", ODDS_CACHE_TTL_MS, () =>
     fetchLineMovesUncached(sport)
   );
+
+  const filtered = filterBoardBySport(board.items, sport);
+  if (filtered.length > 0) {
+    return {
+      ...board,
+      items: diversifyLineMoves(filtered),
+      sharpDerived: board.sharpDerived?.filter((s) =>
+        filtered.some((f) => f.matchup.toLowerCase() === s.matchup.toLowerCase())
+      ),
+    };
+  }
+
+  // Requested sport missing from the shared Sharp board — try Odds API for that sport only.
+  const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
+  if (oddsKey) {
+    const sportKey = `sport:${sport.trim().toLowerCase() || "default"}`;
+    const sportBoard = await withTtlCache(lineMovesCache, sportKey, ODDS_CACHE_TTL_MS, () =>
+      fetchLineMovesFromOddsApi(
+        sport,
+        oddsKey,
+        now(),
+        board.error ?? "Requested sport not on Sharp board — querying The Odds API."
+      )
+    );
+    if (sportBoard.items.length) return sportBoard;
+  }
+
+  // Last resort: return diversified mixed board with a clear note (better than empty).
+  return {
+    ...board,
+    items: diversifyLineMoves(board.items),
+    error:
+      board.error ??
+      `No live ${sport} lines right now — showing mixed board.`,
+  };
 }
 
 /** Legacy demo rows — kept for reference/tests only; never served to the Bets UI. */
@@ -1334,23 +1431,30 @@ export function demoPredictionMarkets(): PredictionMarketItem[] {
   ];
 }
 
-function categorizePolymarketTags(tags: Array<{ label?: string; slug?: string }> | undefined): {
+function categorizePolymarketTags(
+  tags: Array<{ label?: string; slug?: string }> | undefined,
+  title = ""
+): {
   category: string;
   categoryLabel: string;
 } {
-  const blob = (tags ?? [])
+  const blob = `${title} ${(tags ?? [])
     .map((t) => `${t.label ?? ""} ${t.slug ?? ""}`.toLowerCase())
-    .join(" ");
+    .join(" ")}`.toLowerCase();
   if (/war|geopolit|ukraine|israel|gaza|military|ceasefire/.test(blob)) {
     return { category: "geopolitics", categoryLabel: "Geopolitics & War" };
   }
   if (/politic|election|president|senate|trump|biden|macron|parliament/.test(blob)) {
     return { category: "politics", categoryLabel: "Politics & Elections" };
   }
-  if (/celebrity|culture|music|movie|sports|nba|nfl|soccer|football/.test(blob)) {
+  // Sports before entertainment — "sports|nba|nfl" used to mis-label as celebrity.
+  if (/\bsports?\b|nba|nfl|mlb|nhl|soccer|football|tennis|ufc|mma|cricket|olympics/.test(blob)) {
+    return { category: "sports", categoryLabel: "Sports & Predictions" };
+  }
+  if (/celebrity|culture|music|movie|tv|awards|oscar|grammy/.test(blob)) {
     return { category: "entertainment", categoryLabel: "Celebrity & Culture" };
   }
-  if (/crypto|bitcoin|ethereum|ipo|token/.test(blob)) {
+  if (/crypto|bitcoin|ethereum|btc|eth|solana|ipo|token/.test(blob)) {
     return { category: "crypto", categoryLabel: "Crypto Events" };
   }
   if (/fed|economy|rate|inflation|gdp|jobs|finance|business/.test(blob)) {
@@ -1433,8 +1537,11 @@ async function fetchPredictionMarketsUncached(
       if (!m) continue;
       const yes = parseOutcomeYes(m.outcomePrices);
       const vol = Number(m.volume24hr ?? ev.volume24hr ?? 0);
-      const cats = categorizePolymarketTags(ev.tags as Array<{ label?: string; slug?: string }>);
       const question = String(m.question ?? ev.title ?? "—");
+      const cats = categorizePolymarketTags(
+        ev.tags as Array<{ label?: string; slug?: string }>,
+        question
+      );
       items.push({
         market: question,
         platform: "Polymarket",
@@ -1478,10 +1585,15 @@ export async function fetchPredictionMarketsWithMeta(
 }
 
 export function demoCongressTrades() {
+  const d = (daysAgo: number) => {
+    const x = new Date();
+    x.setUTCDate(x.getUTCDate() - daysAgo);
+    return x.toISOString().slice(0, 10);
+  };
   return [
-    { politician: "Sen. Smith", symbol: "NVDA", transaction: "Purchase", amount: "$15,001 - $50,000", filedAt: "2026-06-20", date: "2026-06-20" },
-    { politician: "Rep. Jones", symbol: "MSFT", transaction: "Sale", amount: "$1,001 - $15,000", filedAt: "2026-06-18", date: "2026-06-18" },
-    { politician: "Sen. Warren", symbol: "AAPL", transaction: "Purchase", amount: "$50,001 - $100,000", filedAt: "2026-06-15", date: "2026-06-15" },
+    { politician: "Sen. Smith", symbol: "NVDA", transaction: "Purchase", amount: "$15,001 - $50,000", filedAt: d(3), date: d(5) },
+    { politician: "Rep. Jones", symbol: "MSFT", transaction: "Sale", amount: "$1,001 - $15,000", filedAt: d(5), date: d(8) },
+    { politician: "Sen. Warren", symbol: "AAPL", transaction: "Purchase", amount: "$50,001 - $100,000", filedAt: d(8), date: d(12) },
   ];
 }
 
