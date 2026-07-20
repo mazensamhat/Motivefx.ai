@@ -1,6 +1,9 @@
 import { json } from "@/lib/api";
 import { getOddsApiQuota, getSharpApiQuota } from "@/lib/terminal/feeds";
-import { isBitqueryConfigured, isBitqueryEnabled } from "@/lib/terminal/feeds/bitquery";
+import {
+  getBitqueryQuotaStatus,
+  isBitqueryEnabled,
+} from "@/lib/terminal/feeds/bitquery";
 
 export const dynamic = "force-dynamic";
 
@@ -112,10 +115,7 @@ export async function GET() {
         used: oddsUsed,
         configured: Boolean(oddsKey),
       },
-      bitquery: {
-        configured: isBitqueryConfigured(),
-        enabled: isBitqueryEnabled(),
-      },
+      bitquery: getBitqueryQuotaStatus(),
     },
     platform: "vercel",
   });

@@ -1,15 +1,19 @@
 /**
  * Bitquery GraphQL adapter — Polymarket sports / prediction enrichment on Polygon.
  *
- * Primary sports odds remain SharpAPI (+ The Odds API backup).
  * Primary Polymarket board remains Gamma (free, no key).
- * Bitquery is optional enrichment for cricket / NBA / NFL / esports-style markets
- * when BITQUERY_API_KEY (OAuth access token) or client credentials are set.
+ * Bitquery is optional enrichment only — must never break or delay the Gamma board.
+ *
+ * Hardening (quota / session limits):
+ * - 15-minute TTL cache + stale-while-revalidate (serve last good up to 2h)
+ * - Circuit-breaker cooldown after 403/429 / concurrent-session errors
+ * - Single-flight coalescing (no stampede across /markets + /bitquery-sports)
+ * - Sequential GraphQL (never 4 parallel queries — that caused session-limit 403s)
+ * - Short per-request timeout so callers fall back to Gamma quickly
  *
  * Docs: https://docs.bitquery.io/docs/examples/polymarket-api/polymarket-sports-api/
  * Endpoint: https://streaming.bitquery.io/graphql
  * Auth: Authorization: Bearer <ory_at_...> — not a v1 API key.
- * Prefer BITQUERY_CLIENT_ID + BITQUERY_CLIENT_SECRET for long-lived production use.
  */
 
 /** Compatible with PredictionMarketItem in feeds/index.ts (avoid circular import). */
@@ -27,6 +31,15 @@ export type BitqueryMarketItem = {
 
 const BITQUERY_ENDPOINT = "https://streaming.bitquery.io/graphql";
 const BITQUERY_OAUTH_URL = "https://oauth2.bitquery.io/oauth2/token";
+
+/** Fresh window — most Polymarket traffic hits cached enrichment. */
+const CACHE_TTL_MS = 15 * 60 * 1000;
+/** Serve last-good results this long when Bitquery is limited / down. */
+const STALE_MAX_MS = 2 * 60 * 60 * 1000;
+/** After 403/429/session-limit, stop calling Bitquery for this long. */
+const COOLDOWN_MS = 12 * 60 * 1000;
+/** Hard cap so /predictions/markets never waits on Bitquery. */
+const REQUEST_TIMEOUT_MS = 6_000;
 
 /** Strip accidental "Bearer " prefix from env paste. */
 function normalizeBitqueryToken(raw: string): string {
@@ -262,48 +275,185 @@ function mapRows(rows: BitqueryTradeRow[], updatedAt: string): BitqueryMarketIte
   return items;
 }
 
+function isRateLimitedMessage(msg: string): boolean {
+  return /403|429|session limit|concurrent|rate.?limit|quota|too many|throttl/i.test(msg);
+}
+
+type BitqueryCacheEntry = {
+  items: BitqueryMarketItem[];
+  fetchedAt: number;
+  lastError?: string;
+};
+
+type BitqueryFetchResult = {
+  items: BitqueryMarketItem[];
+  error?: string;
+  cached?: boolean;
+  stale?: boolean;
+  coolingDown?: boolean;
+};
+
+let bitqueryCache: BitqueryCacheEntry | null = null;
+let cooldownUntil = 0;
+let inflight: Promise<BitqueryFetchResult> | null = null;
+/** Rotate secondary title keyword so we don't burn 4 queries every refresh. */
+let titleRotation = 0;
+const TITLE_KEYWORDS = ["NBA", "NFL", "Esports"] as const;
+
+export function getBitqueryQuotaStatus() {
+  const now = Date.now();
+  return {
+    configured: isBitqueryConfigured(),
+    enabled: isBitqueryEnabled(),
+    coolingDown: now < cooldownUntil,
+    cooldownEndsAt: cooldownUntil > now ? new Date(cooldownUntil).toISOString() : null,
+    cacheAgeMs: bitqueryCache ? now - bitqueryCache.fetchedAt : null,
+    cacheItems: bitqueryCache?.items.length ?? 0,
+    lastError: bitqueryCache?.lastError ?? null,
+  };
+}
+
+function staleFromCache(limit: number, note?: string): BitqueryFetchResult | null {
+  if (!bitqueryCache) return null;
+  const age = Date.now() - bitqueryCache.fetchedAt;
+  if (age > STALE_MAX_MS || !bitqueryCache.items.length) return null;
+  return {
+    items: bitqueryCache.items.slice(0, limit),
+    cached: true,
+    stale: age > CACHE_TTL_MS,
+    coolingDown: Date.now() < cooldownUntil,
+    // Soft note only — never a hard failure for the Gamma board.
+    error: note,
+  };
+}
+
 async function bitqueryGraphql(
   token: string,
   query: string,
   variables: Record<string, unknown>
 ): Promise<{ rows: BitqueryTradeRow[]; error?: string }> {
-  const res = await fetch(BITQUERY_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      "X-API-KEY": token,
-    },
-    body: JSON.stringify({ query, variables }),
-    cache: "no-store",
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(BITQUERY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "X-API-KEY": token,
+      },
+      body: JSON.stringify({ query, variables }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      const hint =
+        res.status === 401
+          ? " Use an OAuth access token (ory_at_…) from Access Tokens, or BITQUERY_CLIENT_ID + BITQUERY_CLIENT_SECRET — not a v1 API key."
+          : "";
+      return {
+        rows: [],
+        error: `Bitquery HTTP ${res.status}${body ? `: ${body.slice(0, 180)}` : ""}${hint}`,
+      };
+    }
+    const payload = (await res.json()) as {
+      data?: { EVM?: { PredictionTrades?: BitqueryTradeRow[] } };
+      errors?: Array<{ message?: string }>;
+    };
+    if (payload.errors?.length) {
+      return {
+        rows: [],
+        error: `Bitquery GraphQL: ${payload.errors.map((e) => e.message).filter(Boolean).join("; ") || "error"}`,
+      };
+    }
+    return { rows: payload.data?.EVM?.PredictionTrades ?? [] };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { rows: [], error: "Bitquery timeout — using Gamma / cache." };
+    }
+    return {
+      rows: [],
+      error: err instanceof Error ? err.message : "Bitquery request failed",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * At most 2 sequential GraphQL calls per refresh (never parallel).
+ * Cricket first (unique value vs Gamma), then one rotating title keyword.
+ */
+async function fetchLiveBitquery(token: string, limit: number): Promise<BitqueryFetchResult> {
+  const updatedAt = new Date().toISOString();
+  const perQuery = Math.min(Math.max(limit, 6), 16);
+  const rows: BitqueryTradeRow[] = [];
+  const errors: string[] = [];
+
+  const cricket = await bitqueryGraphql(token, CRICKET_RESOLUTION_QUERY, {
+    time_ago: 24,
+    limit: perQuery,
   });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    const hint =
-      res.status === 401
-        ? " Use an OAuth access token (ory_at_…) from Access Tokens, or BITQUERY_CLIENT_ID + BITQUERY_CLIENT_SECRET — not a v1 API key."
-        : "";
+  if (cricket.error) {
+    errors.push(cricket.error);
+    if (isRateLimitedMessage(cricket.error)) {
+      cooldownUntil = Date.now() + COOLDOWN_MS;
+      const stale = staleFromCache(limit, "Bitquery rate-limited — serving cached enrichment.");
+      if (stale) return stale;
+      return { items: [], error: cricket.error, coolingDown: true };
+    }
+  } else {
+    rows.push(...cricket.rows);
+  }
+
+  // Only spend a second query if we still need rows and aren't cooling down.
+  if (rows.length < limit && Date.now() >= cooldownUntil) {
+    const keyword = TITLE_KEYWORDS[titleRotation % TITLE_KEYWORDS.length];
+    titleRotation += 1;
+    const second = await bitqueryGraphql(token, SPORTS_TITLE_QUERY, {
+      time_ago: 24,
+      limit: perQuery,
+      title: keyword,
+    });
+    if (second.error) {
+      errors.push(second.error);
+      if (isRateLimitedMessage(second.error)) {
+        cooldownUntil = Date.now() + COOLDOWN_MS;
+      }
+    } else {
+      rows.push(...second.rows);
+    }
+  }
+
+  const merged = mapRows(rows, updatedAt).slice(0, limit);
+  if (merged.length) {
+    bitqueryCache = {
+      items: merged,
+      fetchedAt: Date.now(),
+      lastError: errors[0],
+    };
     return {
-      rows: [],
-      error: `Bitquery HTTP ${res.status}${body ? `: ${body.slice(0, 180)}` : ""}${hint}`,
+      items: merged,
+      error: errors.length ? `Partial Bitquery: ${errors[0]}` : undefined,
     };
   }
-  const payload = (await res.json()) as {
-    data?: { EVM?: { PredictionTrades?: BitqueryTradeRow[] } };
-    errors?: Array<{ message?: string }>;
+
+  const stale = staleFromCache(
+    limit,
+    errors[0] ? `Bitquery empty (${errors[0]}) — serving cache.` : "Bitquery empty — serving cache."
+  );
+  if (stale) return stale;
+
+  return {
+    items: [],
+    error: errors[0] ?? "Bitquery returned no sports markets in the last 24h.",
   };
-  if (payload.errors?.length) {
-    return {
-      rows: [],
-      error: `Bitquery GraphQL: ${payload.errors.map((e) => e.message).filter(Boolean).join("; ") || "error"}`,
-    };
-  }
-  return { rows: payload.data?.EVM?.PredictionTrades ?? [] };
 }
 
 export async function fetchBitquerySportsMarkets(
   limit = 12
-): Promise<{ items: BitqueryMarketItem[]; error?: string }> {
+): Promise<BitqueryFetchResult> {
   if (!isBitqueryEnabled()) {
     return {
       items: [],
@@ -311,47 +461,60 @@ export async function fetchBitquerySportsMarkets(
         "Bitquery disabled — set BITQUERY_API_KEY (ory_at_… token) or client credentials; leave BITQUERY_ENABLED unset/true. Signup: https://account.bitquery.io",
     };
   }
-  const auth = await resolveBitqueryAccessToken();
-  if (!auth.token) {
-    return { items: [], error: auth.error ?? "Bitquery auth missing." };
-  }
-  const token = auth.token;
-  const updatedAt = new Date().toISOString();
-  const perQuery = Math.min(Math.max(Math.ceil(limit / 2), 5), 20);
 
-  try {
-    // Parallel documented filters: cricket ResolutionSource + NBA/NFL/Esports Title keywords.
-    const [cricket, nba, nfl, esports] = await Promise.all([
-      bitqueryGraphql(token, CRICKET_RESOLUTION_QUERY, { time_ago: 24, limit: perQuery }),
-      bitqueryGraphql(token, SPORTS_TITLE_QUERY, { time_ago: 24, limit: perQuery, title: "NBA" }),
-      bitqueryGraphql(token, SPORTS_TITLE_QUERY, { time_ago: 24, limit: perQuery, title: "NFL" }),
-      bitqueryGraphql(token, SPORTS_TITLE_QUERY, {
-        time_ago: 24,
-        limit: perQuery,
-        title: "Esports",
-      }),
-    ]);
+  const now = Date.now();
+  const capped = Math.min(Math.max(limit, 1), 40);
 
-    const errors = [cricket.error, nba.error, nfl.error, esports.error].filter(Boolean);
-    const merged = mapRows(
-      [...cricket.rows, ...nba.rows, ...nfl.rows, ...esports.rows],
-      updatedAt
-    ).slice(0, limit);
-
-    if (!merged.length) {
-      return {
-        items: [],
-        error: errors[0] ?? "Bitquery returned no sports markets in the last 24h.",
-      };
-    }
+  // Fresh cache hit — zero Bitquery cost.
+  if (bitqueryCache && now - bitqueryCache.fetchedAt < CACHE_TTL_MS && bitqueryCache.items.length) {
     return {
-      items: merged,
-      error: errors.length ? `Partial Bitquery errors: ${errors.join(" | ")}` : undefined,
+      items: bitqueryCache.items.slice(0, capped),
+      cached: true,
     };
-  } catch (err) {
+  }
+
+  // Cooldown: never hammer a limited session — Gamma is enough.
+  if (now < cooldownUntil) {
+    const stale = staleFromCache(capped);
+    if (stale) return { ...stale, coolingDown: true, error: undefined };
     return {
       items: [],
-      error: err instanceof Error ? err.message : "Bitquery request failed",
+      coolingDown: true,
+      error: undefined, // silent — UI should not glitch
     };
+  }
+
+  // Coalesce concurrent callers (markets + bitquery-sports + briefing).
+  if (inflight) {
+    const shared = await inflight;
+    return {
+      ...shared,
+      items: shared.items.slice(0, capped),
+      cached: true,
+    };
+  }
+
+  inflight = (async (): Promise<BitqueryFetchResult> => {
+    const auth = await resolveBitqueryAccessToken();
+    if (!auth.token) {
+      const stale = staleFromCache(capped, auth.error);
+      if (stale) return stale;
+      return { items: [], error: auth.error ?? "Bitquery auth missing." };
+    }
+    try {
+      return await fetchLiveBitquery(auth.token, capped);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bitquery request failed";
+      if (isRateLimitedMessage(msg)) cooldownUntil = Date.now() + COOLDOWN_MS;
+      const stale = staleFromCache(capped, msg);
+      if (stale) return stale;
+      return { items: [], error: msg };
+    }
+  })();
+
+  try {
+    return await inflight;
+  } finally {
+    inflight = null;
   }
 }
