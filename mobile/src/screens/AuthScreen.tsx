@@ -159,7 +159,7 @@ export function AuthScreen() {
         managed on the web at motivefxai.com/pricing (opens in Safari). Digital content is not sold
         inside this app.
       </Text>
-      <Text style={styles.buildTag}>Build 1.0.0</Text>
+      <Text style={styles.buildTag}>Build 1.0.1</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

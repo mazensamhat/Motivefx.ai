@@ -51,6 +51,18 @@ const VIEWPORT_LOCK_SCRIPT = `
         if (document.head) document.head.appendChild(meta);
       }
       if (meta) meta.setAttribute("content", content);
+      // Belt-and-suspenders scroll fix for Android WebView reviewers.
+      if (!document.getElementById("motivefx-native-scroll-fix")) {
+        var style = document.createElement("style");
+        style.id = "motivefx-native-scroll-fix";
+        style.textContent = [
+          "html.motivefx-native-shell,html.motivefx-native-shell body{height:100%!important;overflow:hidden!important;}",
+          "html.motivefx-native-shell #root,html.motivefx-native-shell .app{height:100%!important;min-height:0!important;overflow:hidden!important;display:flex;flex-direction:column;}",
+          "html.motivefx-native-shell .app-body{flex:1 1 auto;min-height:0!important;overflow:hidden!important;}",
+          "html.motivefx-native-shell .app-content{flex:1 1 auto;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;touch-action:pan-y;}",
+        ].join("");
+        (document.head || document.documentElement).appendChild(style);
+      }
     } catch (e) {}
     true;
   })();
@@ -159,14 +171,13 @@ export function TerminalScreen() {
     loadWatchdogRef.current = setTimeout(() => {
       setLoading(false);
       setError("Terminal is taking too long to load. Check your connection and tap Retry.");
-    }, 20_000);
+    }, 12_000);
   }, [clearLoadWatchdog]);
 
   useEffect(() => clearLoadWatchdog, [clearLoadWatchdog]);
 
-  useEffect(() => {
-    void configureIap();
-  }, []);
+  // Do NOT configure RevenueCat / Play Billing on cold start — that native
+  // path has caused Play "app not responding" reviews. Defer until terminal loads.
 
   // Load WebView module as soon as Terminal mounts (Auth screen never imports it).
   useEffect(() => {
@@ -200,7 +211,7 @@ export function TerminalScreen() {
       ]);
       if (userId) {
         appUserIdRef.current = userId;
-        void configureIap(userId);
+        // Defer IAP — never await billing SDK during first paint.
       }
       setInjection(
         `${buildAuthInjectionScript(accessToken, refreshToken, userId)}\n${VIEWPORT_LOCK_SCRIPT}`
@@ -455,6 +466,11 @@ export function TerminalScreen() {
         clearLoadWatchdog();
         setLoading(false);
         setHasLoadedOnce(true);
+        // Safe window: configure billing only after the UI is interactive.
+        const uid = appUserIdRef.current;
+        setTimeout(() => {
+          void configureIap(uid);
+        }, 750);
       },
       onError: (e: { nativeEvent: { description?: string } }) => {
         clearLoadWatchdog();
@@ -491,8 +507,8 @@ export function TerminalScreen() {
       // Scrolling must always work inside the terminal page (Play policy flag).
       scrollEnabled: true,
       nestedScrollEnabled: true,
-      overScrollMode: "content" as const,
-      bounces: false,
+      overScrollMode: "always" as const,
+      bounces: true,
       scalesPageToFit: false,
       setBuiltInZoomControls: false,
       setDisplayZoomControls: false,
@@ -500,11 +516,11 @@ export function TerminalScreen() {
       cacheEnabled: true,
       cacheMode: "LOAD_DEFAULT" as const,
       mixedContentMode: "always" as const,
-      userAgent: "MotiveFXNative/1.0",
+      userAgent: "MotiveFXNative/1.0 (AndroidScrollFix)",
       originWhitelist: ["https://*", "http://*", "about:blank"],
       onShouldStartLoadWithRequest,
-      // Hardware layer = smooth scroll; software layer was the main glitch/slowness cause.
-      ...(Platform.OS === "android" ? { androidLayerType: "hardware" as const } : {}),
+      // Avoid hardware layer — on some review devices it freezes WebView scrolling.
+      ...(Platform.OS === "android" ? { androidLayerType: "none" as const } : {}),
     }),
     [
       sourceUri,

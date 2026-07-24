@@ -58,22 +58,38 @@ export async function configureIap(appUserId?: string | null): Promise<boolean> 
   if (configured) {
     if (appUserId) {
       try {
-        await Purchases.logIn(appUserId);
+        await Promise.race([
+          Purchases.logIn(appUserId),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("iap login timeout")), 4_000);
+          }),
+        ]);
       } catch {
-        // ignore login races
+        // ignore login races / timeouts — never block the UI thread path
       }
     }
     return true;
   }
 
-  Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.VERBOSE : LOG_LEVEL.INFO);
-  const apiKey = Platform.OS === "ios" ? IOS_API_KEY : ANDROID_API_KEY;
-  await Purchases.configure({
-    apiKey,
-    appUserID: appUserId || undefined,
-  });
-  configured = true;
-  return true;
+  try {
+    Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.VERBOSE : LOG_LEVEL.INFO);
+    const apiKey = Platform.OS === "ios" ? IOS_API_KEY : ANDROID_API_KEY;
+    await Promise.race([
+      Purchases.configure({
+        apiKey,
+        appUserID: appUserId || undefined,
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("iap configure timeout")), 5_000);
+      }),
+    ]);
+    configured = true;
+    return true;
+  } catch (e) {
+    console.warn("configureIap failed/timed out", e);
+    // Leave configured=false so a later tap can retry; do not throw.
+    return false;
+  }
 }
 
 function productIdForTier(tier: IntelligenceTierId): string {
