@@ -157,9 +157,6 @@ export default function App() {
             onOpenGlossary={() => setGlossaryOpen(true)}
           />
           <LiveFeed />
-          <div className="monitor-only-strip" role="note">
-            No Trading. No Buying. No Selling. Monitor Only.
-          </div>
 
           <main className="main terminal-main">
             {activeTab === "home" ? (
@@ -177,10 +174,19 @@ export default function App() {
           </main>
 
           <footer className="app-footer">
-            <FinancialDisclaimer compact />
-            <BillingFinePrint annualPrice={annualPrice} />
+            {/* Desktop: fuller copy. Mobile: short lines + links (see CSS + .mobile / .desktop variants). */}
+            <div className="app-footer-legal-desktop">
+              <FinancialDisclaimer compact />
+              <BillingFinePrint annualPrice={annualPrice} />
+            </div>
+            <div className="app-footer-legal-mobile">
+              <FinancialDisclaimer mobile />
+              <BillingFinePrint annualPrice={annualPrice} compact />
+            </div>
             <div className="app-footer-links">
-              <a href="/legal-documents.html" target="_blank" rel="noreferrer">All legal documents</a>
+              <a href="/legal-documents.html" target="_blank" rel="noreferrer">
+                Legal
+              </a>
               <a href={legalHref("privacy")}>Privacy</a>
               <a href={legalHref("terms")}>Terms</a>
               <a href={legalHref("data-deletion")}>Data deletion</a>
@@ -189,7 +195,9 @@ export default function App() {
               {SITE_EMBED && <a href="/app/settings">Site account</a>}
               {SITE_EMBED && isAdmin && <a href="/admin">Ops Console</a>}
               {!SITE_EMBED && (
-                <a href="?view=admin" className="admin-footer-link">Ops Console</a>
+                <a href="?view=admin" className="admin-footer-link">
+                  Ops Console
+                </a>
               )}
             </div>
           </footer>

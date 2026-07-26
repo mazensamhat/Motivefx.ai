@@ -111,7 +111,7 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
       </nav>
 
       <p className="mobile-header-monitor monitor-only-pill-compact" role="note">
-        No Trading. No Buying. No Selling. Monitor Only.
+        Monitor only — no trading
       </p>
     </header>
   );

@@ -825,7 +825,60 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   }
 
   .app-footer {
-    padding-bottom: 0.5rem;
+    padding: 0.85rem 0.85rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    margin-top: 1.25rem;
+  }
+
+  .app-footer-legal-desktop {
+    display: none;
+  }
+
+  .app-footer-legal-mobile {
+    display: block;
+  }
+
+  .financial-disclaimer-mobile,
+  .billing-fine-print-compact {
+    margin: 0 0 0.55rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    max-width: none;
+  }
+
+  .disclaimer-more-link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 600;
+  }
+
+  .app-footer-links {
+    flex-wrap: wrap;
+    gap: 0.55rem 0.85rem;
+    margin-top: 0.35rem;
+    font-size: 0.8125rem;
+  }
+
+  .app-footer-links a {
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Pricing card already points to web — don't repeat a wall of billing text */
+  .tier-pricing-fine-print {
+    display: none;
+  }
+
+  .native-companion-billing .pricing-terminal-sub {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  /* Header already shows monitor-only — strip was a third duplicate */
+  .monitor-only-strip {
+    display: none !important;
   }
 
   .data-row {
@@ -4192,6 +4245,14 @@ button.data-row,
   padding: 1.25rem 1.5rem 2rem;
   border-top: 1px solid var(--border);
   margin-top: 2rem;
+}
+
+.app-footer-legal-mobile {
+  display: none;
+}
+
+.app-footer-legal-desktop {
+  display: block;
 }
 
 .annual-banner {
@@ -8053,23 +8114,6 @@ html[data-gen="boomer"] .gen-setup-preview {
 /* ── MotiveFX mockup card system (mobile-first) ── */
 .monitor-only-strip {
   display: none;
-}
-
-@media (max-width: 900px) {
-  .monitor-only-strip {
-    display: block;
-    margin: 0 0.75rem 0.75rem;
-    padding: 0.45rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid rgba(168, 85, 247, 0.4);
-    background: rgba(123, 47, 247, 0.12);
-    color: #e9d5ff;
-    font-family: var(--heading);
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-align: center;
-  }
 }
 
 .monitor-only-pill {
