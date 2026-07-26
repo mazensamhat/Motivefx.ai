@@ -2,7 +2,7 @@
   "expo": {
     "name": "MotiveFX.AI",
     "slug": "motivefx",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#080a0c"
+      "backgroundColor": "#0c1118"
     },
     "ios": {
       "supportsTablet": true,
@@ -22,14 +22,14 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "13"
+      "buildNumber": "15"
     },
     "android": {
       "package": "ai.motivefx.app",
-      "versionCode": 13,
+      "versionCode": 15,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#080a0c"
+        "backgroundColor": "#0c1118"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
