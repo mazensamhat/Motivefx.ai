@@ -1365,7 +1365,13 @@ body {
 
 @media (min-width: 640px) {
   .ecosystem-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .ecosystem-grid {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -1544,14 +1550,37 @@ body {
 
 @media (min-width: 768px) {
   .footer-columns {
-    grid-template-columns: 1.5fr repeat(3, 1fr);
+    grid-template-columns: 1.4fr repeat(2, 1fr);
   }
 }
 
 @media (min-width: 1100px) {
   .footer-columns {
-    grid-template-columns: 1.4fr repeat(6, 1fr);
+    grid-template-columns: 1.3fr repeat(4, 1fr);
   }
+}
+
+@media (min-width: 1400px) {
+  .footer-columns {
+    grid-template-columns: 1.2fr repeat(7, 1fr);
+  }
+}
+
+.motive-family-strip {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.motive-family-strip a {
+  color: #94a3b8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.motive-family-strip a:hover {
+  color: #e2e8f0;
 }
 
 .footer-brand-lockup {

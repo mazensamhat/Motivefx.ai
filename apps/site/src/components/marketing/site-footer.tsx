@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/logo";
 import { FOOTER_MARKETS, FOOTER_RESOURCES } from "@/lib/marketing-copy";
+import { MOTIVE_CORP, MOTIVE_FAMILY_LINKS } from "@/lib/motive-family";
 import { SITE } from "@/lib/site-config";
 import { SOCIAL_LINKS } from "@/lib/social";
+import { MotiveFamilyStrip } from "./ecosystem-section";
 
 export function SiteFooter() {
   return (
@@ -29,18 +31,30 @@ export function SiteFooter() {
           <div className="footer-col">
             <p className="footer-heading">Product</p>
             <ul className="footer-links">
-              <li><Link href="#features">Features</Link></li>
-              <li><Link href="/motive-signal">Motive Signal</Link></li>
-              <li><Link href="/demo">Product preview</Link></li>
-              <li><Link href="/pricing">Pricing</Link></li>
-              <li><Link href="/tools">Tools</Link></li>
+              <li>
+                <Link href="#features">Features</Link>
+              </li>
+              <li>
+                <Link href="/motive-signal">Motive Signal</Link>
+              </li>
+              <li>
+                <Link href="/demo">Product preview</Link>
+              </li>
+              <li>
+                <Link href="/pricing">Pricing</Link>
+              </li>
+              <li>
+                <Link href="/tools">Tools</Link>
+              </li>
             </ul>
           </div>
           <div className="footer-col">
             <p className="footer-heading">Markets</p>
             <ul className="footer-links">
               {FOOTER_MARKETS.map((m) => (
-                <li key={m.href}><Link href={m.href}>{m.label}</Link></li>
+                <li key={m.href}>
+                  <Link href={m.href}>{m.label}</Link>
+                </li>
               ))}
             </ul>
           </div>
@@ -48,25 +62,62 @@ export function SiteFooter() {
             <p className="footer-heading">Resources</p>
             <ul className="footer-links">
               {FOOTER_RESOURCES.map((r) => (
-                <li key={r.href}><Link href={r.href}>{r.label}</Link></li>
+                <li key={r.href}>
+                  <Link href={r.href}>{r.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="footer-col">
+            <p className="footer-heading">Sister tools</p>
+            <ul className="footer-links">
+              {MOTIVE_FAMILY_LINKS.map((b) => (
+                <li key={b.id}>
+                  {b.current ? (
+                    <span title={b.tagline}>{b.name} (this site)</span>
+                  ) : (
+                    <a href={b.href} target="_blank" rel="noopener noreferrer" title={b.tagline}>
+                      {b.name}
+                    </a>
+                  )}
+                </li>
               ))}
             </ul>
           </div>
           <div className="footer-col">
             <p className="footer-heading">Company</p>
             <ul className="footer-links">
-              <li><Link href="/why-motivefx">Why MotiveFX</Link></li>
-              <li><Link href="/research-team">Research team</Link></li>
-              <li><Link href="/data-sources">Data sources</Link></li>
-              <li><a href={`mailto:${SITE.email}`}>Contact</a></li>
+              <li>
+                <Link href="/why-motivefx">Why MotiveFX</Link>
+              </li>
+              <li>
+                <Link href="/research-team">Research team</Link>
+              </li>
+              <li>
+                <Link href="/data-sources">Data sources</Link>
+              </li>
+              <li>
+                <a href={MOTIVE_CORP.href} target="_blank" rel="noopener noreferrer">
+                  {MOTIVE_CORP.name}
+                </a>
+              </li>
+              <li>
+                <a href={`mailto:${SITE.email}`}>Contact</a>
+              </li>
             </ul>
           </div>
           <div className="footer-col">
             <p className="footer-heading">Legal</p>
             <ul className="footer-links">
-              <li><Link href="/privacy">Privacy Policy</Link></li>
-              <li><Link href="/terms">Terms of Service</Link></li>
-              <li><Link href="/data-deletion">Data deletion</Link></li>
+              <li>
+                <Link href="/privacy">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link href="/terms">Terms of Service</Link>
+              </li>
+              <li>
+                <Link href="/data-deletion">Data deletion</Link>
+              </li>
             </ul>
           </div>
           <div className="footer-col">
@@ -83,8 +134,7 @@ export function SiteFooter() {
               </ul>
             ) : (
               <p className="footer-links text-sm text-slate-500">
-                Social profiles coming soon.{" "}
-                <Link href="/demo">Try the preview</Link>
+                Social profiles coming soon. <Link href="/demo">Try the preview</Link>
               </p>
             )}
           </div>
@@ -97,8 +147,13 @@ export function SiteFooter() {
         </div>
 
         <div className="footer-bottom">
+          <MotiveFamilyStrip />
           <p>
-            © {new Date().getFullYear()} MotiveFX.AI ·{" "}
+            © {new Date().getFullYear()} MotiveFX.AI · Part of{" "}
+            <a href={MOTIVE_CORP.href} target="_blank" rel="noopener noreferrer">
+              {MOTIVE_CORP.name}
+            </a>
+            {" · "}
             <Link href="/privacy">Privacy</Link>
             {" · "}
             <Link href="/terms">Terms</Link>
@@ -108,8 +163,8 @@ export function SiteFooter() {
             Not financial advice.
           </p>
           <p className="footer-disclaimer">
-            MotiveFX provides informational market intelligence only. Past performance does not guarantee
-            future results. Read our methodology at /data-sources.
+            MotiveFX provides informational market intelligence only. Past performance does not
+            guarantee future results. Read our methodology at /data-sources.
           </p>
         </div>
       </div>

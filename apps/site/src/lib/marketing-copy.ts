@@ -55,9 +55,11 @@ export const FEATURES = [
 ];
 
 export const ECOSYSTEM = [
+  { name: "Motive Corp", role: "Parent company", href: "https://www.motive-corp.com" },
   { name: "MotiveFX.AI", role: "Market Intelligence", href: "/", active: true },
-  { name: "MotiveLife.ai", role: "Personal Intelligence", href: "https://www.mymotivelife.com" },
-  { name: "Motive Pulse IQ", role: "AI Data Platform", href: "/topics/market-intelligence" },
+  { name: "Motive Life", role: "Personal Intelligence", href: "https://www.mymotivelife.com" },
+  { name: "My Motive Pulse", role: "Local business growth", href: "https://www.mymotivepulse.com" },
+  { name: "Motive IQ", role: "Automotive Intelligence", href: "https://www.motiveiqs.com/gate" },
 ];
 
 export const FOOTER_MARKETS = [
