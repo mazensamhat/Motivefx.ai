@@ -100,16 +100,27 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 async function fetchWithAuth(input: string, init: RequestInit, retry = true): Promise<Response> {
-  const res = await fetch(input, init);
-  if (res.status === 401 && retry && getRefreshToken()) {
-    const ok = await refreshAccessToken();
-    if (ok) {
-      const headers = { ...(init.headers as Record<string, string>), ...buildHeaders() };
-      return fetch(input, { ...init, headers });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12_000);
+  try {
+    const res = await fetch(input, { ...init, signal: ctrl.signal });
+    if (res.status === 401 && retry && getRefreshToken()) {
+      const ok = await refreshAccessToken();
+      if (ok) {
+        const headers = { ...(init.headers as Record<string, string>), ...buildHeaders() };
+        return fetch(input, { ...init, headers, signal: AbortSignal.timeout(12_000) });
+      }
+      clearSession();
     }
-    clearSession();
+    return res;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Request timed out. Pull to refresh.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return res;
 }
 
 async function parseApiError(res: Response): Promise<string> {
@@ -120,7 +131,13 @@ async function parseApiError(res: Response): Promise<string> {
   }
   if (typeof detail === "string") return detail;
   const error = (err as { error?: unknown }).error;
-  if (typeof error === "string" && error) return error;
+  if (typeof error === "string" && error) {
+    if (/connection pool|pris\.ly|P2024/i.test(error)) {
+      return "Server is busy — try again in a moment.";
+    }
+    return error;
+  }
+  if (res.status >= 500) return "Server is busy — try again in a moment.";
   return `Request failed: ${res.status}`;
 }
 
