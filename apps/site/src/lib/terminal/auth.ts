@@ -1,12 +1,32 @@
 import { prisma } from "@motivefx/database";
 import { forbidden, unauthorized } from "../api";
-import { findUserSafe } from "../load-user";
+import { findUserSafe, findUserSafeCached } from "../load-user";
 import { getSession } from "../session";
 import type { User } from "@prisma/client";
 
 export type TerminalSession = {
   user: User;
 };
+
+const LAST_SEEN_TTL_MS = 15 * 60 * 1000;
+const lastSeenAt = (globalThis as unknown as { __motivefxLastSeen?: Map<string, number> })
+  .__motivefxLastSeen ?? new Map<string, number>();
+(globalThis as unknown as { __motivefxLastSeen?: Map<string, number> }).__motivefxLastSeen =
+  lastSeenAt;
+
+function touchLastSeen(userId: string) {
+  const now = Date.now();
+  const prev = lastSeenAt.get(userId) ?? 0;
+  if (now - prev < LAST_SEEN_TTL_MS) return;
+  lastSeenAt.set(userId, now);
+  // Fire-and-forget; never block the request or hold the pool waiting.
+  void prisma.user
+    .update({
+      where: { id: userId },
+      data: { lastSeenAt: new Date() },
+    })
+    .catch(() => undefined);
+}
 
 export async function requireTerminalSession(): Promise<
   { ok: true; session: TerminalSession } | { ok: false; response: Response }
@@ -16,17 +36,12 @@ export async function requireTerminalSession(): Promise<
     return { ok: false, response: unauthorized() };
   }
 
-  const user = await findUserSafe({ id: cookie.id });
+  const user = await findUserSafeCached({ id: cookie.id });
   if (!user || user.disabledAt) {
     return { ok: false, response: unauthorized() };
   }
 
-  void prisma.user
-    .update({
-      where: { id: user.id },
-      data: { lastSeenAt: new Date() },
-    })
-    .catch(() => undefined);
+  touchLastSeen(user.id);
 
   return { ok: true, session: { user } };
 }
@@ -80,3 +95,5 @@ export function accessErrorResponse(err: unknown) {
   }
   throw err;
 }
+
+export { findUserSafe };

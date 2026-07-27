@@ -829,6 +829,11 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
     margin-top: 1.25rem;
   }
 
+  /* Push legal footer below the fold so market content owns the screen */
+  .terminal-main {
+    min-height: calc(100dvh - 11rem);
+  }
+
   .app-footer-legal-desktop {
     display: none;
   }
@@ -1063,8 +1068,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   .home-snapshot-meta,
   .mf-summary-sub,
   .daily-intel-footer,
-  .feed-item .tag,
-  .monitor-only-strip {
+  .feed-item .tag {
     font-size: var(--font-body-sm) !important;
     color: var(--text-muted) !important;
     line-height: 1.45;

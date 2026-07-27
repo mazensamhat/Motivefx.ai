@@ -12,7 +12,10 @@ export interface SiteSessionUser extends AuthUser {
 export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
   if (!SITE_EMBED) return null;
   try {
-    const res = await fetch("/api/auth/me", { cache: "no-store" });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8_000);
+    const res = await fetch("/api/auth/me", { cache: "no-store", signal: ctrl.signal });
+    clearTimeout(timer);
     if (!res.ok) return null;
     const data = (await res.json()) as {
       user?: { id?: string; email?: string; isAdmin?: boolean; totpEnabled?: boolean };

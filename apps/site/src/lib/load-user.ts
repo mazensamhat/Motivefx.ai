@@ -74,6 +74,53 @@ export async function findUserSafe(
   return row ? withNullAppleFields(row) : null;
 }
 
+const USER_CACHE_TTL_MS = 45_000;
+type CacheEntry = { user: User | null; expires: number; inflight?: Promise<User | null> };
+
+const userCache = (globalThis as unknown as { __motivefxUserCache?: Map<string, CacheEntry> })
+  .__motivefxUserCache ?? new Map<string, CacheEntry>();
+(globalThis as unknown as { __motivefxUserCache?: Map<string, CacheEntry> }).__motivefxUserCache =
+  userCache;
+
+function cacheKey(where: Prisma.UserWhereUniqueInput): string | null {
+  if ("id" in where && typeof where.id === "string") return `id:${where.id}`;
+  if ("email" in where && typeof where.email === "string") return `email:${where.email}`;
+  return null;
+}
+
+/**
+ * Short in-memory cache + single-flight for warm serverless isolates.
+ * Collapses the burst of parallel terminal feed calls into one DB hit.
+ */
+export async function findUserSafeCached(
+  where: Prisma.UserWhereUniqueInput
+): Promise<User | null> {
+  const key = cacheKey(where);
+  if (!key) return findUserSafe(where);
+
+  const now = Date.now();
+  const hit = userCache.get(key);
+  if (hit && hit.expires > now && !hit.inflight) return hit.user;
+  if (hit?.inflight) return hit.inflight;
+
+  const inflight = findUserSafe(where)
+    .then((user) => {
+      userCache.set(key, { user, expires: Date.now() + USER_CACHE_TTL_MS });
+      return user;
+    })
+    .catch((err) => {
+      userCache.delete(key);
+      throw err;
+    });
+
+  userCache.set(key, { user: hit?.user ?? null, expires: now + USER_CACHE_TTL_MS, inflight });
+  return inflight;
+}
+
+export function invalidateUserCache(userId: string) {
+  userCache.delete(`id:${userId}`);
+}
+
 export async function checkAppleIapSchema(): Promise<{
   ok: boolean;
   missing: string[];

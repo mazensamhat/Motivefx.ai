@@ -1,6 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies, headers } from "next/headers";
-import { prisma } from "@motivefx/database";
 
 export const SESSION_COOKIE = "motivefx_session";
 export const SESSION_DURATION = 60 * 60 * 24 * 30;
@@ -51,21 +50,20 @@ export async function destroySession() {
   });
 }
 
+/**
+ * Verify JWT only — no DB round-trip.
+ * (Previously every getSession() did prisma.user.findUnique, which burned the
+ * serverless pool when the terminal fired many parallel feed requests.)
+ */
 async function sessionFromToken(token: string | undefined | null): Promise<SessionUser | null> {
   if (!token) return null;
 
   try {
     const { payload } = await jwtVerify(token, getSecret());
     const id = payload.sub;
-    if (!id || typeof id !== "string") return null;
-
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, email: true },
-    });
-
-    if (!user) return null;
-    return { id: user.id, email: user.email };
+    const email = typeof payload.email === "string" ? payload.email : null;
+    if (!id || typeof id !== "string" || !email) return null;
+    return { id, email };
   } catch {
     return null;
   }
