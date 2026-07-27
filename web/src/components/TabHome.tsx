@@ -48,7 +48,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const { hasFeature } = useModules();
   const { profile } = useGenerationalProfile();
   const { inspectDetail } = useSignalDetail();
-  const { data, loading, error, refresh } = useHomeBriefing(60_000);
+  const { data, loading, error, refreshing, refresh } = useHomeBriefing(60_000);
   const [sinceNewCount, setSinceNewCount] = useState(0);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [explain, setExplain] = useState<{
@@ -94,6 +94,8 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
     );
   }
 
+  const showWarmup = Boolean(refreshing || error || (b as { degraded?: boolean }).degraded);
+
   const p = b.personalized;
   const delta = b.portfolioDelta;
   const deltaCls = delta == null ? "flat" : delta >= 0 ? "up" : "down";
@@ -119,6 +121,19 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
       {sinceNewCount > 0 && hasFeature("since_you_were_away") && (
         <div className="home-since-banner">
           <strong>{sinceNewCount} new signal{sinceNewCount === 1 ? "" : "s"}</strong> since your last visit
+        </div>
+      )}
+
+      {showWarmup && (
+        <div className="home-since-banner" role="status">
+          {refreshing
+            ? "Refreshing signal review…"
+            : error
+              ? "Live feeds are catching up — showing the last briefing."
+              : "Partial briefing while desks warm up."}{" "}
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => void refresh()}>
+            Retry
+          </button>
         </div>
       )}
 

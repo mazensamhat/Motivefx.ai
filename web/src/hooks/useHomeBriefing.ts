@@ -6,24 +6,29 @@ export function useHomeBriefing(intervalMs = 60_000) {
   const [data, setData] = useState<HomeBriefing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
+    setRefreshing(true);
     try {
       const result = await apiGet<HomeBriefing>("/home/briefing");
       setData(result);
       setError(null);
     } catch (e) {
+      // Keep last good briefing on screen — don't wipe the home desk.
       setError(e instanceof Error ? e.message : "Failed to load");
-      setData(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    refresh();
-    const id = setInterval(refresh, intervalMs);
+    void refresh();
+    const id = setInterval(() => {
+      void refresh();
+    }, intervalMs);
     const onRefresh = () => {
       void refresh();
     };
@@ -34,5 +39,5 @@ export function useHomeBriefing(intervalMs = 60_000) {
     };
   }, [refresh, intervalMs]);
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, refreshing, refresh };
 }

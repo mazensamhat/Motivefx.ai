@@ -1513,13 +1513,17 @@ async function fetchPredictionMarketsUncached(
     const url = new URL("https://gamma-api.polymarket.com/events");
     url.searchParams.set("active", "true");
     url.searchParams.set("closed", "false");
-    /* Over-fetch: many “active” events only have closed child markets. */
-    url.searchParams.set("limit", String(Math.min(Math.max(limit * 4, 40), 100)));
+    /* Keep over-fetch tiny — Gamma event payloads are multi-MB and blow the 30s limit. */
+    url.searchParams.set("limit", String(Math.min(Math.max(limit * 2, 8), 12)));
     /* Gamma rejects volume_24hr (HTTP 422); field name is volume24hr. */
     url.searchParams.set("order", "volume24hr");
     url.searchParams.set("ascending", "false");
     // Free public Gamma API — no Odds API key and no THE_ODDS_API_KEY usage.
-    const res = await fetch(url.toString(), { next: { revalidate: 600 } });
+    // no-store: Next data cache rejects >2MB and stalls the serverless function.
+    const res = await fetch(url.toString(), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(4500),
+    });
     if (!res.ok) {
       return {
         items: demoPredictionMarkets().slice(0, limit),

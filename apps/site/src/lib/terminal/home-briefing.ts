@@ -18,7 +18,7 @@ function isEphemeralUserId(userId: string | null | undefined): boolean {
   return userId.startsWith("u_");
 }
 
-async function withFeedTimeout<T>(promise: Promise<T>, fallback: T, ms = 9000): Promise<T> {
+async function withFeedTimeout<T>(promise: Promise<T>, fallback: T, ms = 4000): Promise<T> {
   try {
     return await Promise.race([
       promise,
@@ -29,6 +29,29 @@ async function withFeedTimeout<T>(promise: Promise<T>, fallback: T, ms = 9000): 
   } catch {
     return fallback;
   }
+}
+
+function emptyLedger() {
+  return {
+    trades: 0,
+    penny: 0,
+    crypto: 0,
+    betting: 0,
+    predictions: 0,
+    matched: { trades: 0, penny: 0, crypto: 0, betting: 0, predictions: 0 },
+  };
+}
+
+function emptyPersonalized() {
+  return {
+    holdingsCount: 0,
+    watchlistCount: 0,
+    radarSignalCount: 0,
+    coverageLine: null as string | null,
+    intelNote: "Add holdings or star symbols on your radar for personalized intel.",
+    simRecord: null as string | null,
+    radarHits: [] as Array<Record<string, unknown>>,
+  };
 }
 
 function riskFromConfidence(confidence: number, module: string): string {
@@ -219,10 +242,10 @@ export async function buildHomeBriefing(opts: {
   const greeting = `Good ${period}, ${name}`;
 
   const [whales, lines, markets, congressTrades] = await Promise.all([
-    withFeedTimeout(fetchWhaleAlerts(), []),
-    withFeedTimeout(fetchLineMoves(), []),
-    withFeedTimeout(fetchPredictionMarkets(4), []),
-    withFeedTimeout(fetchCongressTrades(10), []),
+    withFeedTimeout(fetchWhaleAlerts(), [], 3500),
+    withFeedTimeout(fetchLineMoves(), [], 3500),
+    withFeedTimeout(fetchPredictionMarkets(4), [], 3500),
+    withFeedTimeout(fetchCongressTrades(10), [], 2000),
   ]);
 
   const options = scanUnusualOptions().slice(0, 4);
@@ -341,11 +364,15 @@ export async function buildHomeBriefing(opts: {
     predictions: top8.filter((o) => o.module === "predictions").length,
   };
 
-  const ledger = await ledgerPulse(opts.userId ?? null, top8);
+  const ledger = await withFeedTimeout(ledgerPulse(opts.userId ?? null, top8), emptyLedger(), 2500);
+  const personalized = await withFeedTimeout(
+    personalizedIntel(opts.userId ?? null, top8),
+    emptyPersonalized(),
+    2500
+  );
 
   const top = top8[0];
   const congressBuy = congressTrades.find((t) => String(t.transaction).toLowerCase().includes("purchase"));
-  const personalized = await personalizedIntel(opts.userId ?? null, top8);
 
   const compareLens = top8.slice(0, 4).map((o) => {
     const prior = Math.max(45, Number(o.confidence) - 12);
