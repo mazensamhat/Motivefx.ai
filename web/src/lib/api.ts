@@ -101,21 +101,22 @@ async function refreshAccessToken(): Promise<boolean> {
 
 async function fetchWithAuth(input: string, init: RequestInit, retry = true): Promise<Response> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12_000);
+  // Cold Vercel + DB can exceed 12s on first hit after reload — give it room.
+  const timer = setTimeout(() => ctrl.abort(), 25_000);
   try {
     const res = await fetch(input, { ...init, signal: ctrl.signal });
     if (res.status === 401 && retry && getRefreshToken()) {
       const ok = await refreshAccessToken();
       if (ok) {
         const headers = { ...(init.headers as Record<string, string>), ...buildHeaders() };
-        return fetch(input, { ...init, headers, signal: AbortSignal.timeout(12_000) });
+        return fetch(input, { ...init, headers, signal: AbortSignal.timeout(25_000) });
       }
       clearSession();
     }
     return res;
   } catch (e) {
-    if (e instanceof Error && e.name === "AbortError") {
-      throw new Error("Request timed out. Pull to refresh.");
+    if (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) {
+      throw new Error("Still loading — try again in a moment.");
     }
     throw e;
   } finally {
@@ -129,15 +130,20 @@ async function parseApiError(res: Response): Promise<string> {
   if (typeof detail === "object" && detail && "message" in detail) {
     return String((detail as { message: string }).message);
   }
-  if (typeof detail === "string") return detail;
+  if (typeof detail === "string") {
+    if (/connection pool|pris\.ly|P2024|timed out/i.test(detail)) {
+      return "Still loading — try again in a moment.";
+    }
+    return detail;
+  }
   const error = (err as { error?: unknown }).error;
   if (typeof error === "string" && error) {
-    if (/connection pool|pris\.ly|P2024/i.test(error)) {
-      return "Server is busy — try again in a moment.";
+    if (/connection pool|pris\.ly|P2024|timed out/i.test(error)) {
+      return "Still loading — try again in a moment.";
     }
     return error;
   }
-  if (res.status >= 500) return "Server is busy — try again in a moment.";
+  if (res.status >= 500) return "Still loading — try again in a moment.";
   return `Request failed: ${res.status}`;
 }
 

@@ -83,9 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const sync = await syncSiteEntitlementsFromServer(true);
       if (sync.isAdmin) setIsAdmin(true);
       await refreshUser();
+      // Don't fire entitlements-changed on cold boot — useModules already inits.
+      // That event was re-triggering a second modules fetch and racing the pool.
       if (sync.ok) {
         window.dispatchEvent(new Event("motivefx:auth-changed"));
-        window.dispatchEvent(new Event("motivefx:entitlements-changed"));
       }
     })().finally(() => setLoading(false));
   }, [refreshUser]);

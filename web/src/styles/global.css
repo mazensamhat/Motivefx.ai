@@ -82,23 +82,73 @@ body {
   overflow-x: hidden;
 }
 
-/* Phones / tablets / native WebView: larger type + brighter secondary text */
+/* Phones / tablets / native WebView: larger, brighter, bolder type */
 @media (max-width: 900px) {
   :root {
     --bg-deep: #0c1118;
     --bg-panel: #111821;
     --bg-card: #161e28;
     --bg-card-hover: #1e2834;
-    --text-muted: #a8b6c9;
-    --text-dim: #8b9bb0;
-    --font-caption: 0.8125rem;
-    --font-body-sm: 0.875rem;
-    --font-nav: 0.6875rem;
+    --text: #ffffff;
+    --text-muted: #d2dbe8;
+    --text-dim: #b0bdcf;
+    --font-caption: 0.875rem;
+    --font-body-sm: 0.9375rem;
+    --font-nav: 0.75rem;
   }
 
   body {
     font-size: 16px;
     line-height: 1.55;
+    font-weight: 500;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .row-primary,
+  .vtable-card-title,
+  .vtable-card-field-value,
+  .home-overview-value,
+  .mobile-header-tool,
+  .mobile-bottom-nav-item,
+  .mobile-more-row,
+  .workspace-header-brand-title {
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .row-secondary,
+  .row-meta,
+  .vtable-card-field-label,
+  .home-overview-label,
+  .home-insight-label,
+  .home-module-tile-sub,
+  .home-activity-meta,
+  .daily-intel-label,
+  .daily-intel-footer,
+  .mf-summary-label,
+  .mf-summary-sub {
+    font-weight: 600;
+    color: var(--text-muted) !important;
+  }
+
+  .mobile-bottom-nav-item {
+    color: var(--text-muted);
+  }
+
+  .mobile-bottom-nav-item.active {
+    font-weight: 800;
+  }
+
+  .mobile-header-tool {
+    font-size: var(--font-caption);
+    color: var(--text-muted);
+  }
+
+  .mobile-header-monitor,
+  .monitor-only-pill-compact {
+    font-weight: 700;
+    color: #e9d5ff;
   }
 }
 
@@ -213,10 +263,11 @@ html.motivefx-native-shell {
   --bg-panel: #111821;
   --bg-card: #161e28;
   --bg-card-hover: #1e2834;
-  --text-muted: #a8b6c9;
-  --text-dim: #8b9bb0;
-  --font-caption: 0.8125rem;
-  --font-body-sm: 0.875rem;
+  --text: #ffffff;
+  --text-muted: #d2dbe8;
+  --text-dim: #b0bdcf;
+  --font-caption: 0.875rem;
+  --font-body-sm: 0.9375rem;
   --font-nav: 0.75rem;
 }
 
@@ -229,6 +280,8 @@ html.motivefx-native-shell body {
   -webkit-overflow-scrolling: touch;
   font-size: 16px;
   line-height: 1.55;
+  font-weight: 500;
+  color: var(--text);
 }
 
 html.motivefx-native-shell #root,
@@ -900,17 +953,21 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   }
 
   .row-primary {
-    font-size: 0.9375rem;
+    font-size: 1rem;
     line-height: 1.4;
+    font-weight: 700;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.35rem 0.5rem;
+    color: var(--text);
   }
 
   .row-secondary {
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.4;
+    font-weight: 600;
+    color: var(--text-muted);
     white-space: normal;
     word-break: break-word;
   }

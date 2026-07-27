@@ -1,5 +1,6 @@
 import type { AuthUser } from "./api";
 import { SITE_EMBED } from "./embed";
+import { fetchAuthMe } from "./authMe";
 
 export { SITE_EMBED } from "./embed";
 
@@ -11,26 +12,15 @@ export interface SiteSessionUser extends AuthUser {
 /** Site cookie session — works even when FastAPI bridge is down. */
 export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
   if (!SITE_EMBED) return null;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8_000);
-    const res = await fetch("/api/auth/me", { cache: "no-store", signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      user?: { id?: string; email?: string; isAdmin?: boolean; totpEnabled?: boolean };
-    };
-    const user = data.user;
-    if (!user?.email) return null;
-    return {
-      userId: user.id ?? user.email,
-      email: user.email,
-      isAdmin: Boolean(user.isAdmin),
-      totpEnabled: Boolean(user.totpEnabled),
-    };
-  } catch {
-    return null;
-  }
+  const data = await fetchAuthMe();
+  const user = data?.user;
+  if (!user?.email) return null;
+  return {
+    userId: user.id ?? user.email,
+    email: user.email,
+    isAdmin: Boolean(user.isAdmin),
+    totpEnabled: Boolean(user.totpEnabled),
+  };
 }
 
 /** Site cookie session — Postgres is the source of truth for entitlements. */

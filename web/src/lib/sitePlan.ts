@@ -4,6 +4,7 @@ import {
 } from "./entitlements";
 import type { IntelligenceMarketId, PricingTierId } from "../config/pricingTiers";
 import { PRICING_TIERS } from "../config/pricingTiers";
+import { fetchAuthMe } from "./authMe";
 
 export interface SitePlan {
   tier: PricingTierId;
@@ -71,32 +72,17 @@ export function featuresForSiteTier(tier: PricingTierId): Record<string, boolean
 }
 
 export async function fetchSitePlan(): Promise<SitePlan | null> {
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8_000);
-    const res = await fetch("/api/auth/me", { cache: "no-store", signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      user?: {
-        intelligenceTier?: string;
-        selectedMarkets?: string[];
-        hasSubscription?: boolean;
-      };
-    };
-    const user = data.user;
-    if (!user?.intelligenceTier) return null;
-    return {
-      tier: user.intelligenceTier as PricingTierId,
-      selectedMarkets: (user.selectedMarkets ?? []).filter(
-        (m): m is IntelligenceMarketId =>
-          typeof m === "string" && m in SITE_TO_MODULE
-      ),
-      hasSubscription: Boolean(user.hasSubscription),
-    };
-  } catch {
-    return null;
-  }
+  const data = await fetchAuthMe();
+  const user = data?.user;
+  if (!user?.intelligenceTier) return null;
+  return {
+    tier: user.intelligenceTier as PricingTierId,
+    selectedMarkets: (user.selectedMarkets ?? []).filter(
+      (m): m is IntelligenceMarketId =>
+        typeof m === "string" && m in SITE_TO_MODULE
+    ),
+    hasSubscription: Boolean(user.hasSubscription),
+  };
 }
 
 export function applySitePlanToModulesPayload<T extends {
