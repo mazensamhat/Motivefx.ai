@@ -9,7 +9,7 @@ import {
   openExternalSubscribe,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
-import { syncSiteEntitlementsFromServer, SITE_EMBED } from "../lib/siteSession";
+import { SITE_EMBED } from "../lib/siteSession";
 import {
   applySitePlanToModulesPayload,
   fetchSitePlan,
@@ -306,9 +306,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       if (authLoading) return;
 
       setLoading(true);
-      if (SITE_EMBED) {
-        await syncSiteEntitlementsFromServer(true);
-      }
+      // Auth boot already warmed /api/auth/me via shared cache — just read plan.
       const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
 
       /* Cookie-auth site embed has no bearer token — still load modules + sim trial. */
