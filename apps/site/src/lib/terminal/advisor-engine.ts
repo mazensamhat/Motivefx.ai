@@ -42,6 +42,62 @@ export type AdvisorResult = {
 
 };
 
+function resolveStanceFromScore(score: number): string {
+
+  const s = Math.min(100, Math.max(0, Math.round(score)));
+
+  if (s >= 82) return "long_term_hold";
+
+  if (s >= 72) return "would_hold";
+
+  if (s >= 62) return "short_term_hold";
+
+  if (s >= 48) return "hold";
+
+  if (s >= 40) return "wouldnt_buy";
+
+  if (s >= 32) return "would_avoid";
+
+  return "sell";
+
+}
+
+function stancePhrase(action: string): string {
+
+  switch (action) {
+
+    case "long_term_hold": return "Long-term hold";
+
+    case "would_hold": return "I would hold";
+
+    case "short_term_hold": return "Short-term hold";
+
+    case "wouldnt_buy": return "I wouldn't buy";
+
+    case "would_avoid": return "I would avoid";
+
+    case "sell": return "Sell";
+
+    case "buy": return "I would hold";
+
+    default: return "Hold";
+
+  }
+
+}
+
+function isConstructiveStance(action: string): boolean {
+
+  return ["long_term_hold", "would_hold", "short_term_hold", "buy"].includes(action);
+
+}
+
+function isDefensiveStance(action: string): boolean {
+
+  return ["sell", "would_avoid", "wouldnt_buy"].includes(action);
+
+}
+
 
 
 function localNarrative(module: string, summary: string, recs: Recommendation[]): string {
@@ -50,11 +106,11 @@ function localNarrative(module: string, summary: string, recs: Recommendation[])
 
   const conclusion =
 
-    recs.filter((r) => r.action === "buy").length >= recs.filter((r) => r.action === "sell").length
+    recs.filter((r) => isConstructiveStance(r.action)).length >= recs.filter((r) => isDefensiveStance(r.action)).length
 
-      ? "Bullish Continuation Likely"
+      ? "Constructive Stance Bias"
 
-      : "Wait for Confirmation";
+      : "Cautious Stance Bias";
 
   return [
 
@@ -74,19 +130,21 @@ function localNarrative(module: string, summary: string, recs: Recommendation[])
 
 function scoreVerdict(action: string, confidence: number): string {
 
-  if (action === "buy") {
+  const phrase = stancePhrase(action);
 
-    return `Composite Motive Signal ${confidence}/100 — bullish flow and cross-checks outweigh neutral factors.`;
+  if (isConstructiveStance(action)) {
 
-  }
-
-  if (action === "sell") {
-
-    return `Composite Motive Signal ${confidence}/100 — defensive flow or negative cross-checks pulled sentiment bearish.`;
+    return `Composite Motive Signal ${confidence}/100 — stance: ${phrase}. Constructive flow and cross-checks outweigh neutral factors.`;
 
   }
 
-  return `Composite Motive Signal ${confidence}/100 — mixed or insufficient directional inputs; labeled Neutral.`;
+  if (isDefensiveStance(action)) {
+
+    return `Composite Motive Signal ${confidence}/100 — stance: ${phrase}. Defensive or weak cross-checks pulled sentiment cautious.`;
+
+  }
+
+  return `Composite Motive Signal ${confidence}/100 — stance: Hold. Mixed or insufficient directional inputs.`;
 
 }
 
@@ -264,9 +322,7 @@ export async function analyzeStockPortfolio(holdings: Array<{ symbol: string; sh
 
 
 
-    if (score >= 65) action = "buy";
-
-    else if (score <= 35) action = "sell";
+    action = resolveStanceFromScore(score);
 
 
 
@@ -274,15 +330,15 @@ export async function analyzeStockPortfolio(holdings: Array<{ symbol: string; sh
 
     const headline =
 
-      action === "buy"
+      isConstructiveStance(action)
 
-        ? `Bullish sentiment building in $${sym}`
+        ? `${stancePhrase(action)} on $${sym}`
 
-        : action === "sell"
+        : isDefensiveStance(action)
 
-          ? `Bearish flow detected in $${sym}`
+          ? `${stancePhrase(action)} on $${sym}`
 
-          : `Mixed signals on $${sym}`;
+          : `Hold / mixed signals on $${sym}`;
 
 
 
@@ -312,7 +368,7 @@ export async function analyzeStockPortfolio(holdings: Array<{ symbol: string; sh
 
 
 
-  const summary = `Analyzed ${holdings.length} positions. ${recs.filter((r) => r.action === "buy").length} bullish, ${recs.filter((r) => r.action === "sell").length} bearish. Cross-checked options flow and disclosure feeds (informational only).`;
+  const summary = `Analyzed ${holdings.length} positions. ${recs.filter((r) => isConstructiveStance(r.action)).length} constructive, ${recs.filter((r) => isDefensiveStance(r.action)).length} defensive. Cross-checked options flow and disclosure feeds (informational only).`;
 
   return { summary, recs };
 
@@ -400,7 +456,7 @@ export async function analyzeCryptoPortfolio(holdings: Array<{ symbol: string; a
 
     const score = sym === "BTC" || sym === "ETH" ? 68 : 55;
 
-    const action = score >= 65 ? "buy" : "hold";
+    const action = resolveStanceFromScore(score);
 
     const confidence = score;
 
@@ -532,7 +588,7 @@ export async function analyzePennyPortfolio(holdings: Array<{ symbol: string; sh
 
     if (mover && Math.abs(mover.changePct ?? 0) >= 10) score += 8;
 
-    const action = score >= 65 ? "buy" : "hold";
+    const action = resolveStanceFromScore(score);
 
     const confidence = Math.min(90, score);
 
@@ -772,15 +828,17 @@ export async function analyzePredictions(positions: Array<{ market?: string; pic
 
     const yes = 62;
 
-    const reasons = buildPredictionReasons(market, p.pick, Number(p.stake ?? 0), "hold", 62);
+    const action = resolveStanceFromScore(yes);
+
+    const reasons = buildPredictionReasons(market, p.pick, Number(p.stake ?? 0), action, yes);
 
     return {
 
       symbol: market,
 
-      action: "hold",
+      action,
 
-      confidence: 62,
+      confidence: yes,
 
       headline: p.pick ?? "Open position",
 
@@ -804,7 +862,7 @@ export async function analyzePredictions(positions: Array<{ market?: string; pic
 
       const confidence = Math.round((Number(m.yes) || 0.5) * 100);
 
-      const action = Number(m.yes) >= 0.5 ? "buy" : "hold";
+      const action = resolveStanceFromScore(confidence);
 
       const reasons = buildPredictionReasons(
 

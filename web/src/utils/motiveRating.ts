@@ -1,8 +1,17 @@
-/** MotiveFX proprietary sentiment rating — descriptive, not prescriptive. */
+/** MotiveFX proprietary stance rating — descriptive, not prescriptive. */
 
 export type MotiveRatingVariant = "buy" | "sell" | "neutral";
 
 export type MotiveRatingContext = "markets" | "betting" | "predictions";
+
+export type MotiveStance =
+  | "long_term_hold"
+  | "would_hold"
+  | "short_term_hold"
+  | "hold"
+  | "wouldnt_buy"
+  | "would_avoid"
+  | "sell";
 
 export interface MotiveRating {
   score: number;
@@ -15,26 +24,73 @@ export interface MotiveRating {
 export const MOTIVE_RATING_DISCLAIMER =
   "Based on algorithmic analysis of market data. Not financial advice.";
 
-function direction(action: string): "bull" | "bear" | "neutral" {
-  const a = action.toLowerCase();
-  if (a === "buy" || a === "lean") return "bull";
-  if (a === "sell" || a === "fade") return "bear";
-  return "neutral";
+const STANCE_LABELS: Record<string, string> = {
+  long_term_hold: "Long-term hold",
+  would_hold: "I would hold",
+  short_term_hold: "Short-term hold",
+  hold: "Hold",
+  wouldnt_buy: "I wouldn't buy",
+  would_avoid: "I would avoid",
+  sell: "Sell",
+  // legacy engine keys
+  buy: "I would hold",
+  lean: "Short-term hold",
+  fade: "I would avoid",
+};
+
+/** Map composite score (0–100) to a stance key used by the advisor engine. */
+export function resolveStanceFromScore(score: number): MotiveStance {
+  const s = Math.min(100, Math.max(0, Math.round(score)));
+  if (s >= 82) return "long_term_hold";
+  if (s >= 72) return "would_hold";
+  if (s >= 62) return "short_term_hold";
+  if (s >= 48) return "hold";
+  if (s >= 40) return "wouldnt_buy";
+  if (s >= 32) return "would_avoid";
+  return "sell";
 }
 
-function marketLabel(tier: MotiveRating["tier"]): string {
-  switch (tier) {
-    case "strong-bullish":
-      return "Strong Bullish";
-    case "bullish":
-      return "Bullish";
-    case "bearish":
-      return "Bearish";
-    case "strong-bearish":
-      return "Strong Bearish";
-    default:
-      return "Neutral";
+export function stanceLabel(action: string): string {
+  const key = normalizeAction(action);
+  if (STANCE_LABELS[key]) return STANCE_LABELS[key];
+  // Already a human phrase from the engine
+  if (/hold|sell|avoid|wouldn't|would/i.test(action)) return action.trim();
+  return "Hold";
+}
+
+function normalizeAction(action: string): string {
+  return action
+    .trim()
+    .toLowerCase()
+    .replace(/['']/g, "")
+    .replace(/[\s-]+/g, "_");
+}
+
+function direction(action: string): "bull" | "bear" | "neutral" {
+  const a = normalizeAction(action);
+  if (
+    a === "buy" ||
+    a === "lean" ||
+    a === "long_term_hold" ||
+    a === "would_hold" ||
+    a === "short_term_hold" ||
+    a === "i_would_hold" ||
+    a === "longterm_hold" ||
+    a === "shortterm_hold"
+  ) {
+    return "bull";
   }
+  if (
+    a === "sell" ||
+    a === "fade" ||
+    a === "would_avoid" ||
+    a === "i_would_avoid" ||
+    a === "wouldnt_buy" ||
+    a === "i_wouldnt_buy"
+  ) {
+    return "bear";
+  }
+  return "neutral";
 }
 
 function bettingLabel(tier: MotiveRating["tier"], action: string): string {
@@ -43,12 +99,6 @@ function bettingLabel(tier: MotiveRating["tier"], action: string): string {
     return action === "lean" ? "Lean — Market Signal" : "Higher Probability";
   }
   return "Lower Probability";
-}
-
-function predictionsLabel(tier: MotiveRating["tier"]): string {
-  if (tier === "neutral") return "Mixed Market Odds";
-  if (tier === "strong-bullish" || tier === "bullish") return "Consensus Trend Favors";
-  return "Crowd Divergence";
 }
 
 function resolveTier(dir: "bull" | "bear" | "neutral", confidence: number): MotiveRating["tier"] {
@@ -75,9 +125,12 @@ export function resolveMotiveRating(
   const variant = variantForTier(tier);
 
   let label: string;
-  if (context === "betting") label = bettingLabel(tier, action);
-  else if (context === "predictions") label = predictionsLabel(tier);
-  else label = marketLabel(tier);
+  if (context === "betting") {
+    label = bettingLabel(tier, action);
+  } else {
+    // Markets + predictions: stance phrases (Hold, Sell, I wouldn't buy, …)
+    label = stanceLabel(action);
+  }
 
   return {
     score,
