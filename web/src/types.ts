@@ -166,6 +166,8 @@ export interface HomeOpportunity {
   module: string;
   symbol: string;
   title: string;
+  /** Stance key from desk model (e.g. would_hold, sell). */
+  stance?: string;
   confidence: number;
   expectedMove: string;
   riskLevel: string;
@@ -197,6 +199,8 @@ export interface HomeBriefing {
   audioBriefingScript?: string;
   moduleStories?: Record<string, string>;
   alertUnreadCount?: number;
+  /** True when API returned a warmup/fallback payload. */
+  degraded?: boolean;
 }
 
 export interface IntelAlert {

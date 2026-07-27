@@ -20,6 +20,7 @@ import { MotivFxLogo } from "./MotivFxLogo";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
 import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail, resolveSignalDetail } from "../utils/signalIntel";
+import { resolveMotiveRating, stanceLabel } from "../utils/motiveRating";
 
 const RISK_LABEL: Record<string, string> = {
   low: "Low",
@@ -240,21 +241,30 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         <section className="mf-section">
           <h2 className="mf-section-title">Recent Activity</h2>
           <div className="home-activity-list">
-            {b.opportunities.slice(0, 4).map((o) => (
+            {b.opportunities.slice(0, 4).map((o) => {
+              const rating = resolveMotiveRating(
+                o.stance ?? o.title,
+                o.confidence,
+                o.module === "betting" ? "betting" : o.module === "predictions" ? "predictions" : "markets"
+              );
+              return (
               <div key={o.id} className="home-activity-item">
                 <div>
-                  <div className="home-activity-title">{o.symbol} · {o.title}</div>
+                  <div className="home-activity-title">{o.symbol} · {stanceLabel(o.stance ?? o.title)}</div>
                   <div className="home-activity-meta">
                     {MODULE_BRAND[APP_MODULE_TO_BRAND[o.module] ?? "trades"]?.name ?? o.module}
                     {" · "}
                     {formatSignalStrength(o.confidence)}
+                    {" · "}
+                    <span className={`terminal-tag terminal-tag-${rating.variant}`}>{rating.shortLabel}</span>
                   </div>
                 </div>
                 <span className={`mf-pct-badge ${o.confidence >= 60 ? "up" : "flat"}`}>
                   {o.confidence}%
                 </span>
               </div>
-            ))}
+              );
+            })}
             {b.opportunities.length === 0 && (
               <div className="empty" style={{ padding: "1rem" }}>No recent signals yet.</div>
             )}
@@ -286,7 +296,13 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           <span className="home-section-sub">Ranked by signal strength · informational only</span>
         </div>
         <div className="opportunity-grid">
-          {b.opportunities.map((o) => (
+          {b.opportunities.map((o) => {
+            const rating = resolveMotiveRating(
+              o.stance ?? o.title,
+              o.confidence,
+              o.module === "betting" ? "betting" : o.module === "predictions" ? "predictions" : "markets"
+            );
+            return (
             <article
               key={o.id}
               className="opportunity-card glass-card"
@@ -294,10 +310,11 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
             >
               <div className="opportunity-card-top">
                 <Stars count={o.stars} />
+                <span className={`terminal-tag terminal-tag-${rating.variant}`}>{rating.shortLabel}</span>
                 <RiskBadge
                   level={o.riskLevel}
                   label={`${RISK_LABEL[o.riskLevel] ?? o.riskLevel} risk`}
-                  context={`${o.symbol} · ${o.title} · ${formatSignalStrength(o.confidence)}`}
+                  context={`${o.symbol} · ${rating.label} · ${formatSignalStrength(o.confidence)}`}
                 />
               </div>
               <button
@@ -318,7 +335,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
               >
                 {o.symbol}
               </button>
-              <div className="opportunity-title">{o.title}</div>
+              <div className="opportunity-title">{stanceLabel(o.stance ?? o.title)}</div>
               <div className="opportunity-metrics">
                 <button
                   type="button"
@@ -365,7 +382,8 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                 Why?
               </button>
             </article>
-          ))}
+            );
+          })}
         </div>
         {b.scenarioDisclaimer && (
           <p className="home-scenario-footnote">{b.scenarioDisclaimer}</p>

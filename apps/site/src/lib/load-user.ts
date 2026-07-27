@@ -91,30 +91,48 @@ function cacheKey(where: Prisma.UserWhereUniqueInput): string | null {
 /**
  * Short in-memory cache + single-flight for warm serverless isolates.
  * Collapses the burst of parallel terminal feed calls into one DB hit.
+ * Soft-timeout keeps Home/auth paths from hanging when the pool stalls.
  */
 export async function findUserSafeCached(
-  where: Prisma.UserWhereUniqueInput
+  where: Prisma.UserWhereUniqueInput,
+  opts?: { timeoutMs?: number }
 ): Promise<User | null> {
   const key = cacheKey(where);
-  if (!key) return findUserSafe(where);
+  const timeoutMs = opts?.timeoutMs;
+  const run = async (): Promise<User | null> => {
+    if (!key) return findUserSafe(where);
 
-  const now = Date.now();
-  const hit = userCache.get(key);
-  if (hit && hit.expires > now && !hit.inflight) return hit.user;
-  if (hit?.inflight) return hit.inflight;
+    const now = Date.now();
+    const hit = userCache.get(key);
+    if (hit && hit.expires > now && !hit.inflight) return hit.user;
+    if (hit?.inflight) return hit.inflight;
 
-  const inflight = findUserSafe(where)
-    .then((user) => {
-      userCache.set(key, { user, expires: Date.now() + USER_CACHE_TTL_MS });
-      return user;
-    })
-    .catch((err) => {
-      userCache.delete(key);
-      throw err;
-    });
+    const inflight = findUserSafe(where)
+      .then((user) => {
+        userCache.set(key, { user, expires: Date.now() + USER_CACHE_TTL_MS });
+        return user;
+      })
+      .catch((err) => {
+        userCache.delete(key);
+        throw err;
+      });
 
-  userCache.set(key, { user: hit?.user ?? null, expires: now + USER_CACHE_TTL_MS, inflight });
-  return inflight;
+    userCache.set(key, { user: hit?.user ?? null, expires: now + USER_CACHE_TTL_MS, inflight });
+    return inflight;
+  };
+
+  if (!timeoutMs || timeoutMs <= 0) return run();
+
+  try {
+    return await Promise.race([
+      run(),
+      new Promise<User | null>((resolve) => {
+        setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } catch {
+    return null;
+  }
 }
 
 export function invalidateUserCache(userId: string) {

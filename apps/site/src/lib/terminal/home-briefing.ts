@@ -70,6 +70,37 @@ function stars(confidence: number): number {
   return 1;
 }
 
+/** Stance keys shared with advisor-engine / Motive Signal UI. */
+function resolveStanceFromScore(score: number): string {
+  const s = Math.min(100, Math.max(0, Math.round(score)));
+  if (s >= 82) return "long_term_hold";
+  if (s >= 72) return "would_hold";
+  if (s >= 62) return "short_term_hold";
+  if (s >= 48) return "hold";
+  if (s >= 40) return "wouldnt_buy";
+  if (s >= 32) return "would_avoid";
+  return "sell";
+}
+
+function stancePhrase(action: string): string {
+  switch (action) {
+    case "long_term_hold":
+      return "Long-term hold";
+    case "would_hold":
+      return "I would hold";
+    case "short_term_hold":
+      return "Short-term hold";
+    case "wouldnt_buy":
+      return "I wouldn't buy";
+    case "would_avoid":
+      return "I would avoid";
+    case "sell":
+      return "Sell";
+    default:
+      return "Hold";
+  }
+}
+
 function symbolMatch(tracked: Set<string>, opportunitySymbol: string): boolean {
   const sym = opportunitySymbol.toUpperCase().replace(/^\$/, "");
   if (tracked.has(sym)) return true;
@@ -255,11 +286,14 @@ export async function buildHomeBriefing(opts: {
   for (const o of options.slice(0, 3)) {
     const conf = Math.min(92, 58 + Math.floor((Number(o.volOiRatio) || 3) * 4));
     const sym = o.symbol ?? "?";
+    const stanceScore = o.type === "call" ? conf : Math.max(20, 100 - conf);
+    const stance = resolveStanceFromScore(stanceScore);
     opportunities.push({
       id: `trades-${sym}-${o.type}`,
       module: "trades",
       symbol: sym,
-      title: o.type === "call" ? "Bullish flow signal" : "Defensive flow signal",
+      title: stancePhrase(stance),
+      stance,
       confidence: conf,
       expectedMove: `Modeled +${Math.min(12, 4 + Math.floor(conf / 12))}% scenario*`,
       riskLevel: riskFromConfidence(conf, "trades"),
@@ -268,34 +302,42 @@ export async function buildHomeBriefing(opts: {
       reasons: [
         `Unusual ${o.type} flow detected — Vol/OI ${o.volOiRatio}x average.`,
         `Premium block ~$${Math.floor(Number(o.premium) || 0).toLocaleString()} on $${sym}.`,
-        "Cross-referenced with institutional activity patterns.",
+        `Desk stance: ${stancePhrase(stance)} (informational — not a trade recommendation).`,
       ],
     });
   }
 
   for (const p of penny.slice(0, 2)) {
     const conf = Math.min(88, 52 + Math.floor(Math.abs(Number(p.changePct) || 0) * 2));
+    const stance = resolveStanceFromScore(conf);
     opportunities.push({
       id: `penny-${p.symbol}`,
       module: "penny",
       symbol: p.symbol,
-      title: "Volume breakout signal",
+      title: stancePhrase(stance),
+      stance,
       confidence: conf,
       expectedMove: `Session ${Number(p.changePct).toFixed(1)}% context*`,
       riskLevel: riskFromConfidence(conf, "penny"),
       stars: stars(conf),
       signals: ["Unusual Volume", "Microcap Scanner", "AI Lens"],
-      reasons: [p.note ?? `Volume ${p.volRatio}x average on sub-$5 name.`, "Pink slip scanner flagged catalyst-style activity.", "Higher volatility context — informational only."],
+      reasons: [
+        p.note ?? `Volume ${p.volRatio}x average on sub-$5 name.`,
+        "Pink slip scanner flagged catalyst-style activity.",
+        `Desk stance: ${stancePhrase(stance)} — higher volatility context.`,
+      ],
     });
   }
 
   for (const w of whales.slice(0, 1)) {
     const conf = 78;
+    const stance = resolveStanceFromScore(conf);
     opportunities.push({
       id: `crypto-${w.asset ?? "BTC"}`,
       module: "crypto",
       symbol: w.asset ?? "BTC",
-      title: "Whale transfer signal",
+      title: stancePhrase(stance),
+      stance,
       confidence: conf,
       expectedMove: "On-chain context",
       riskLevel: "medium",
@@ -304,18 +346,20 @@ export async function buildHomeBriefing(opts: {
       reasons: [
         `$${Math.floor(Number(w.amountUsd) / 1_000_000)}M moved — ${(w as { note?: string }).note ?? w.direction ?? "exchange flow"}.`,
         "Large wallet activity often precedes volatility windows.",
-        "Monitor spot reserves and exchange inflows.",
+        `Desk stance: ${stancePhrase(stance)}.`,
       ],
     });
   }
 
   for (const l of lines.slice(0, 2)) {
     const conf = 60;
+    const stance = resolveStanceFromScore(conf);
     opportunities.push({
       id: `betting-${String(l.matchup).slice(0, 20)}`,
       module: "betting",
       symbol: l.matchup,
-      title: "Live odds signal",
+      title: stancePhrase(stance),
+      stance,
       confidence: conf,
       expectedMove: "Line context",
       riskLevel: riskFromConfidence(conf, "betting"),
@@ -324,7 +368,7 @@ export async function buildHomeBriefing(opts: {
       reasons: [
         `${l.sport}${l.book ? ` · ${l.book}` : ""} — ${l.currentLine ?? "live board"}.`,
         "Public vs sharp ticket splits are not available on this feed.",
-        "Informational odds context only — not a wager recommendation.",
+        `Desk stance: ${stancePhrase(stance)} — odds context only.`,
       ],
     });
   }
@@ -332,11 +376,13 @@ export async function buildHomeBriefing(opts: {
   for (const m of markets.slice(0, 2)) {
     const yes = Math.round((Number(m.yes) || 0.5) * 100);
     const conf = Math.max(55, Math.min(85, yes > 50 ? yes : 100 - yes));
+    const stance = resolveStanceFromScore(conf);
     opportunities.push({
       id: `pred-${String(m.market).slice(0, 24)}`,
       module: "predictions",
       symbol: String(m.market).slice(0, 48),
-      title: "Event market signal",
+      title: stancePhrase(stance),
+      stance,
       confidence: conf,
       expectedMove: `${yes}% implied yes*`,
       riskLevel: "medium",
@@ -345,7 +391,7 @@ export async function buildHomeBriefing(opts: {
       reasons: [
         `Market pricing ${yes}% yes on ${m.platform ?? "Polymarket"}.`,
         `Category: ${m.categoryLabel ?? m.category ?? "events"}.`,
-        "AI cross-checks news flow and historical resolution patterns.",
+        `Desk stance: ${stancePhrase(stance)} — not a prediction recommendation.`,
       ],
     });
   }
