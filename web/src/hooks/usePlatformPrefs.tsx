@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -11,6 +12,7 @@ import type { BrandModuleId } from "../brand/moduleBrand";
 import {
   APP_MODULE_TO_PLATFORM,
   brandToPlatformModule,
+  defaultPlatformCatalog,
   platformName,
   type PlatformCatalogResponse,
   type PlatformModuleKey,
@@ -19,6 +21,8 @@ import {
 import { apiGet, apiPost } from "../lib/api";
 import { PlatformSetupModal } from "../components/PlatformSetupModal";
 import { useAuth } from "./useAuth";
+
+const DISMISS_KEY = "motivefx_platform_setup_dismissed";
 
 interface PlatformPrefsState {
   catalog: PlatformCatalogResponse | null;
@@ -41,16 +45,34 @@ interface PlatformPrefsState {
 
 const PlatformPrefsContext = createContext<PlatformPrefsState | null>(null);
 
+function markDismissed() {
+  try {
+    sessionStorage.setItem(DISMISS_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function isDismissed() {
+  try {
+    return Boolean(sessionStorage.getItem(DISMISS_KEY));
+  } catch {
+    return false;
+  }
+}
+
 export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user } = useAuth();
-  const [catalog, setCatalog] = useState<PlatformCatalogResponse | null>(null);
+  const [catalog, setCatalog] = useState<PlatformCatalogResponse | null>(() =>
+    defaultPlatformCatalog()
+  );
   const [prefs, setPrefs] = useState<Record<string, PlatformPref>>({});
   const [loaded, setLoaded] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated || !user?.userId) {
-      setCatalog(null);
+      setCatalog(defaultPlatformCatalog());
       setPrefs({});
       setLoaded(true);
       return;
@@ -59,10 +81,17 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
       const data = await apiGet<PlatformCatalogResponse>(
         `/advisor/platform-prefs/${encodeURIComponent(user.userId)}`
       );
-      setCatalog(data);
-      setPrefs(data.prefs ?? {});
+      const nextPrefs = data.prefs ?? {};
+      setPrefs(nextPrefs);
+      setCatalog({
+        ...defaultPlatformCatalog(nextPrefs),
+        modules: data.modules ?? defaultPlatformCatalog().modules,
+        platforms: data.platforms ?? defaultPlatformCatalog().platforms,
+        prefs: nextPrefs,
+      });
     } catch {
-      setCatalog(null);
+      // Never leave setup without a catalog — API hang/401 must not blank the terminal.
+      setCatalog(defaultPlatformCatalog());
       setPrefs({});
     } finally {
       setLoaded(true);
@@ -71,8 +100,8 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setLoaded(false);
-    refresh();
-    const onAuth = () => refresh();
+    void refresh();
+    const onAuth = () => void refresh();
     window.addEventListener("motivefx:auth-changed", onAuth);
     return () => window.removeEventListener("motivefx:auth-changed", onAuth);
   }, [refresh]);
@@ -86,6 +115,11 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("motivefx:platform-setup", open);
   }, [refresh]);
 
+  const closeSetup = useCallback(() => {
+    markDismissed();
+    setSetupOpen(false);
+  }, []);
+
   const savePrefs = useCallback(
     async (next: Record<string, PlatformPref>) => {
       if (!user?.userId) throw new Error("Sign in to save app preferences.");
@@ -93,7 +127,14 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
         "/advisor/platform-prefs",
         { user_id: user.userId, prefs: next }
       );
-      setPrefs(res.prefs ?? next);
+      const saved = res.prefs ?? next;
+      setPrefs(saved);
+      setCatalog((prev) =>
+        prev
+          ? { ...prev, prefs: saved }
+          : defaultPlatformCatalog(saved)
+      );
+      markDismissed();
       setSetupOpen(false);
     },
     [user?.userId]
@@ -150,9 +191,10 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
   );
 
   const openSetup = useCallback(() => {
+    setCatalog((prev) => prev ?? defaultPlatformCatalog(prefs));
     setSetupOpen(true);
     void refresh();
-  }, [refresh]);
+  }, [prefs, refresh]);
 
   const value = useMemo(
     () => ({
@@ -161,7 +203,7 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
       loaded,
       setupOpen,
       openSetup,
-      closeSetup: () => setSetupOpen(false),
+      closeSetup,
       savePrefs,
       isCompleteFor,
       getPref,
@@ -174,6 +216,7 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
       loaded,
       setupOpen,
       openSetup,
+      closeSetup,
       savePrefs,
       isCompleteFor,
       getPref,
@@ -182,30 +225,19 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
     ]
   );
 
+  const setupCatalog = catalog ?? defaultPlatformCatalog(prefs);
+
   return (
     <PlatformPrefsContext.Provider value={value}>
       {children}
-      {setupOpen &&
-        (catalog ? (
-          <PlatformSetupModal
-            catalog={catalog}
-            prefs={prefs}
-            onSave={savePrefs}
-            onClose={() => setSetupOpen(false)}
-          />
-        ) : (
-          <div className="platform-setup-overlay" onClick={() => setSetupOpen(false)} role="presentation">
-            <div
-              className="platform-setup-modal glass-panel platform-setup-loading"
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal
-              aria-busy
-            >
-              <p className="platform-setup-loading-text">Loading apps &amp; brokers…</p>
-            </div>
-          </div>
-        ))}
+      {setupOpen && (
+        <PlatformSetupModal
+          catalog={setupCatalog}
+          prefs={prefs}
+          onSave={savePrefs}
+          onClose={closeSetup}
+        />
+      )}
     </PlatformPrefsContext.Provider>
   );
 }
@@ -216,15 +248,18 @@ export function usePlatformPrefs() {
   return ctx;
 }
 
-/** Auto-prompt setup when subscriber has modules but no platform prefs */
+/** Auto-prompt setup once when subscriber has modules but no platform prefs */
 export function PlatformSetupGate({ activeModules }: { activeModules: string[] }) {
   const { isAuthenticated } = useAuth();
   const { loaded, isCompleteFor, openSetup } = usePlatformPrefs();
+  const openedRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated || !loaded || activeModules.length === 0) return;
     if (isCompleteFor(activeModules)) return;
-    if (sessionStorage.getItem("motivefx_platform_setup_dismissed")) return;
+    if (isDismissed()) return;
+    if (openedRef.current) return;
+    openedRef.current = true;
     const t = window.setTimeout(() => openSetup(), 800);
     return () => window.clearTimeout(t);
   }, [isAuthenticated, loaded, activeModules, isCompleteFor, openSetup]);
