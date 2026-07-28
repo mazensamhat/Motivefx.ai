@@ -8,7 +8,7 @@ const BOTTOM_MODULES: { id: TabId; label: string }[] = [
   { id: "crypto", label: "Crypto" },
   { id: "betting", label: "Bets" },
   { id: "penny", label: "Pink Slips" },
-  { id: "predictions", label: "Polymarket" },
+  { id: "predictions", label: "Predictions" },
 ];
 
 interface BottomNavProps {

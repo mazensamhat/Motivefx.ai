@@ -54,7 +54,7 @@ export const MODULE_BRAND: Record<BrandModuleId, ModuleBrand> = {
   },
   predictions: {
     id: "predictions",
-    name: "Polymarket",
+    name: "Predictions",
     accent: "#C084FC",
     shadow: "#A855F7",
     glow: "rgba(192, 132, 252, 0.4)",

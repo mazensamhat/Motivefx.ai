@@ -14,7 +14,7 @@ export function ChiefOfFinanceFab({ onClick }: Props) {
       title="Your A.I. Chief of Finance"
     >
       <Sparkles size={20} aria-hidden />
-      <span className="chief-fab-label">Chief</span>
+      <span className="chief-fab-label">Ask AI</span>
     </button>
   );
 }

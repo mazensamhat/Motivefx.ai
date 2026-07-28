@@ -6,9 +6,16 @@ import {
   analyzeBets,
   analyzePredictions,
 } from "@/lib/terminal/advisor-engine";
-import { loadPortfolio } from "@/lib/terminal/portfolio";
+import { loadPortfolio, portfolioSnapshot } from "@/lib/terminal/portfolio";
 import { listBets } from "@/lib/terminal/bets";
 import { listPredictions } from "@/lib/terminal/predictions";
+import { listWatchlist } from "@/lib/terminal/watchlist";
+import {
+  fetchCongressTrades,
+  fetchWhaleAlerts,
+  scanPennyMovers,
+  scanUnusualOptions,
+} from "@/lib/terminal/feeds";
 import type { TerminalPlan } from "@/lib/terminal/plan";
 
 export type AskNavigateTab =
@@ -21,18 +28,23 @@ export type AskNavigateTab =
 
 export type AskAction = { type: "navigate"; tab: AskNavigateTab };
 
+function isEphemeralUserId(userId: string | null | undefined): boolean {
+  if (!userId || userId === "demo") return true;
+  return userId.startsWith("u_");
+}
+
 const NAV_GUIDE: Record<string, string> = {
   home: "Home shows your daily briefing, Today's Signals, radar, and module pulse. Open it from the left sidebar or bottom nav.",
   stocks:
     "Trades desk: add stock holdings, run AI Analyze for Motive Signal stances, and review unusual options / congress flow.",
   penny:
-    "Pink Slips desk: track sub-$5 names, volume spikes, and microcap context. Higher volatility — informational only.",
+    "Pink Slips desk: microcap & OTC-style radar for sub-$5 names, volume spikes, and catalyst context. Higher volatility — informational only.",
   crypto:
     "Crypto desk: ledger units, whale alerts, and on-chain context. Use AI Analyze for stance labels on your holdings.",
   betting:
     "Bets desk: open slips, live odds context, and grader notes. Informational odds context — not a wager recommendation.",
   predictions:
-    "Predictions desk: Polymarket-style event markets and your positions. Stances reflect crowd odds context.",
+    "Predictions desk: event markets (Polymarket-style feeds) and your positions. Stances reflect crowd odds context.",
   holdings:
     "Add holdings on each market desk (Trades / Pink Slips / Crypto) via the portfolio / ledger panel. That unlocks personalized radar hits on Home.",
   watchlist:
@@ -42,6 +54,42 @@ const NAV_GUIDE: Record<string, string> = {
   glossary:
     "Signal Glossary explains Motive Signal terms. Open it from the Home briefing actions or the sidebar glossary control.",
 };
+
+export async function buildUserProfile(userId: string) {
+  if (isEphemeralUserId(userId)) {
+    return {
+      ephemeral: true,
+      holdings: { trades: [] as string[], crypto: [] as string[], penny: [] as string[] },
+      openBets: 0,
+      openPredictions: 0,
+      watchlist: [] as string[],
+      note: "No saved ledger yet — guest/demo session. Sign-in holdings unlock personalized advice.",
+    };
+  }
+
+  const [snap, bets, preds, watch] = await Promise.all([
+    portfolioSnapshot(userId),
+    listBets(userId),
+    listPredictions(userId),
+    listWatchlist(userId),
+  ]);
+
+  return {
+    ephemeral: false,
+    holdings: {
+      trades: snap.symbols.trades.slice(0, 12),
+      crypto: snap.symbols.crypto.slice(0, 12),
+      penny: snap.symbols.penny.slice(0, 12),
+      tradesCount: snap.counts.trades,
+      cryptoCount: snap.counts.crypto,
+      pennyCount: snap.counts.penny,
+    },
+    openBets: bets.filter((b) => !b.outcome || b.outcome === "open").length,
+    openPredictions: preds.filter((p) => !p.outcome || p.outcome === "open").length,
+    watchlist: watch.slice(0, 12).map((w) => w.symbol),
+    note: "Use these holdings when the user says “my portfolio” — prefer scan_all_portfolios for a full book review.",
+  };
+}
 
 export async function toolGetBriefing(opts: {
   displayName?: string | null;
@@ -163,6 +211,61 @@ export async function toolAnalyzePortfolio(opts: {
   };
 }
 
+/** Parallel multi-desk book review — preferred when user says “my whole portfolio”. */
+export async function toolScanAllPortfolios(userId: string) {
+  const modules = ["trades", "crypto", "penny", "betting", "predictions"] as const;
+  const results = await Promise.all(
+    modules.map(async (module) => {
+      try {
+        return await toolAnalyzePortfolio({ userId, module });
+      } catch {
+        return { module, empty: true, message: `${module} scan unavailable right now.` };
+      }
+    })
+  );
+  const withData = results.filter((r) => !("empty" in r && r.empty));
+  return {
+    desksScanned: modules.length,
+    desksWithData: withData.length,
+    results,
+    note:
+      withData.length === 0
+        ? "No holdings or open slips found across desks. Guide the user to add ledger items."
+        : "Summarize across desks using stance language. Call out empty desks briefly.",
+  };
+}
+
+export async function toolExplainSymbol(symbol: string) {
+  const sym = symbol.toUpperCase().replace(/^\$/, "").trim();
+  if (!sym) {
+    return { empty: true, message: "Provide a ticker like NVDA or BTC." };
+  }
+
+  const [whales, congress] = await Promise.all([
+    fetchWhaleAlerts().catch(() => []),
+    fetchCongressTrades(12).catch(() => []),
+  ]);
+
+  const options = scanUnusualOptions().filter(
+    (o) => String(o.symbol ?? "").toUpperCase() === sym
+  );
+  const penny = scanPennyMovers().filter((p) => String(p.symbol ?? "").toUpperCase() === sym);
+  const whaleHits = whales.filter((w) => String(w.asset ?? "").toUpperCase() === sym);
+  const congressHits = congress.filter(
+    (c) => String((c as { symbol?: string }).symbol ?? "").toUpperCase() === sym
+  );
+
+  return {
+    symbol: sym,
+    empty: !(options.length || penny.length || whaleHits.length || congressHits.length),
+    unusualOptions: options.slice(0, 3),
+    pennyMovers: penny.slice(0, 2),
+    whaleAlerts: whaleHits.slice(0, 2),
+    congress: congressHits.slice(0, 2),
+    note: "Desk feed lens only — not a forecast. If empty, say no live flags and suggest opening the relevant desk scanner.",
+  };
+}
+
 export function toolExplainNavigation(topic: string) {
   const key = topic.trim().toLowerCase().replace(/\s+/g, "_");
   const aliases: Record<string, string> = {
@@ -193,7 +296,7 @@ export function toolExplainNavigation(topic: string) {
   return {
     topic: mapped,
     guide: NAV_GUIDE[mapped] ?? NAV_GUIDE.home,
-    tip: "Use the floating Chief of Finance anytime — or the left sidebar / bottom nav to jump desks.",
+    tip: "Use Ask AI (Chief of Finance) anytime — or the left sidebar / bottom nav to jump desks.",
   };
 }
 
@@ -213,4 +316,48 @@ export function resolveNavigateTab(tab: string): AskNavigateTab | null {
     polymarket: "predictions",
   };
   return map[t] ?? null;
+}
+
+export function tabAwareHint(tab?: string): string {
+  switch ((tab ?? "").toLowerCase()) {
+    case "stocks":
+      return "User is on Trades — lean toward options flow, holdings analysis, and stance language for equities.";
+    case "penny":
+      return "User is on Pink Slips — emphasize microcap volatility, volume spikes, and elevated risk framing.";
+    case "crypto":
+      return "User is on Crypto — lean toward whale/on-chain context and crypto ledger stances.";
+    case "betting":
+      return "User is on Bets — explain live odds context; never recommend a wager.";
+    case "predictions":
+      return "User is on Predictions — explain event-market odds; crowd consensus ≠ forecast.";
+    case "home":
+      return "User is on Home — briefing, Today's Signals, and radar are the best starting points.";
+    default:
+      return "Orient the user gently if they seem lost — offer a desk map.";
+  }
+}
+
+export function suggestFollowUps(usedTools: string[], tab?: string, symbol?: string): string[] {
+  const tips: string[] = [];
+  if (usedTools.includes("list_opportunities") || usedTools.includes("get_briefing")) {
+    tips.push("Scan my whole portfolio");
+    tips.push(symbol ? `Explain ${symbol}` : "Explain the top signal");
+  }
+  if (usedTools.includes("analyze_portfolio") || usedTools.includes("scan_all_portfolios")) {
+    tips.push("What are today's top opportunities?");
+    tips.push("Where do I add holdings?");
+  }
+  if (usedTools.includes("explain_symbol")) {
+    tips.push("Analyze my portfolio");
+    tips.push("Go to Home");
+  }
+  if (usedTools.includes("explain_navigation") || usedTools.includes("navigate_desk")) {
+    tips.push("What are today's top opportunities?");
+    tips.push("Analyze my portfolio");
+  }
+  if (!tips.length) {
+    tips.push("What are today's top opportunities?", "Scan my whole portfolio", "Explain this desk");
+  }
+  if (tab === "crypto") tips.push("Any whale alerts today?");
+  return [...new Set(tips)].slice(0, 3);
 }

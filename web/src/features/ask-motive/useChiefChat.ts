@@ -15,6 +15,7 @@ type AskResponse = {
   reply: string;
   actions?: ChiefAction[];
   usedTools?: string[];
+  followUps?: string[];
   degraded?: boolean;
   disclaimer?: string;
   detail?: { message?: string; code?: string };
@@ -33,6 +34,7 @@ export function useChiefChat(opts: {
   const [messages, setMessages] = useState<ChiefChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [followUps, setFollowUps] = useState<string[]>([]);
 
   const send = useCallback(
     async (text: string) => {
@@ -44,6 +46,9 @@ export function useChiefChat(opts: {
       setMessages(nextMessages);
       setSending(true);
       setError(null);
+      setFollowUps([]);
+
+      const tickerGuess = content.match(/\$([A-Za-z]{1,10})\b/)?.[1]?.toUpperCase();
 
       try {
         const res = await fetch("/api/ask-motive", {
@@ -52,7 +57,7 @@ export function useChiefChat(opts: {
           credentials: "same-origin",
           body: JSON.stringify({
             messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
-            context: { tab: activeTab },
+            context: { tab: activeTab, symbol: tickerGuess },
           }),
         });
         const data = (await res.json().catch(() => ({}))) as AskResponse;
@@ -68,6 +73,7 @@ export function useChiefChat(opts: {
           ...prev,
           { id: newId(), role: "assistant", content: data.reply || "…" },
         ]);
+        setFollowUps(data.followUps ?? []);
 
         for (const action of data.actions ?? []) {
           if (action.type === "navigate" && action.tab) {
@@ -86,7 +92,8 @@ export function useChiefChat(opts: {
   const reset = useCallback(() => {
     setMessages([]);
     setError(null);
+    setFollowUps([]);
   }, []);
 
-  return { messages, sending, error, send, reset };
+  return { messages, sending, error, followUps, send, reset };
 }

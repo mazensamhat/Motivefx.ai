@@ -8933,6 +8933,10 @@ html[data-gen="boomer"] .gen-setup-preview {
 }
 
 /* —— A.I. Chief of Finance (floating assistant) —— */
+:root {
+  --bottom-nav-height: 4.75rem;
+}
+
 .chief-fab {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
@@ -8942,14 +8946,18 @@ html[data-gen="boomer"] .gen-setup-preview {
   align-items: center;
   gap: 0.4rem;
   padding: 0.7rem 0.95rem;
-  border: 1px solid rgba(0, 230, 118, 0.35);
+  border: 1px solid color-mix(in srgb, var(--accent, #00e676) 45%, transparent);
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(0, 230, 118, 0.18), rgba(20, 20, 28, 0.92));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent, #00e676) 22%, transparent),
+    rgba(20, 20, 28, 0.92)
+  );
   color: var(--text, #f3f4f6);
-  font-family: var(--mono, ui-monospace, monospace);
-  font-size: 0.75rem;
+  font-family: var(--heading, "Space Grotesk", sans-serif);
+  font-size: 0.8125rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease;
@@ -8957,16 +8965,16 @@ html[data-gen="boomer"] .gen-setup-preview {
 
 .chief-fab:hover {
   transform: translateY(-1px);
-  border-color: rgba(0, 230, 118, 0.65);
+  border-color: color-mix(in srgb, var(--accent, #00e676) 75%, transparent);
 }
 
 .chief-fab-label {
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 @media (max-width: 860px) {
   .chief-fab {
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    bottom: calc(var(--bottom-nav-height) + 0.75rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -8990,6 +8998,22 @@ html[data-gen="boomer"] .gen-setup-preview {
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
   padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  transform: translateX(0);
+}
+
+.chief-panel-enter {
+  animation: chief-slide-in 0.25s ease;
+}
+
+@keyframes chief-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .chief-header {
@@ -9004,23 +9028,24 @@ html[data-gen="boomer"] .gen-setup-preview {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--green, #00e676);
+  color: var(--accent, var(--green, #00e676));
   margin-bottom: 0.25rem;
 }
 
 .chief-header h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-family: var(--heading, "Space Grotesk", sans-serif);
+  font-size: 1.35rem;
   line-height: 1.25;
 }
 
 .chief-sub {
   margin: 0.35rem 0 0;
   font-size: 0.8125rem;
-  color: var(--muted, #9ca3af);
+  color: var(--text-muted, #aab8cc);
 }
 
 .chief-close {
@@ -9035,7 +9060,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   justify-content: center;
   gap: 0.85rem;
   text-align: center;
-  color: var(--muted, #9ca3af);
+  color: var(--text-muted, #aab8cc);
   padding: 1.5rem;
 }
 
@@ -9051,7 +9076,7 @@ html[data-gen="boomer"] .gen-setup-preview {
 
 .chief-welcome {
   padding: 0.35rem 0.15rem 0.75rem;
-  color: var(--muted, #9ca3af);
+  color: var(--text-muted, #aab8cc);
   font-size: 0.875rem;
 }
 
@@ -9060,6 +9085,11 @@ html[data-gen="boomer"] .gen-setup-preview {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.75rem;
+}
+
+.chief-followups {
+  margin-top: 0.15rem;
+  padding-bottom: 0.35rem;
 }
 
 .chief-chip {
@@ -9073,7 +9103,7 @@ html[data-gen="boomer"] .gen-setup-preview {
 }
 
 .chief-chip:hover:not(:disabled) {
-  border-color: rgba(0, 230, 118, 0.45);
+  border-color: color-mix(in srgb, var(--accent, #00e676) 55%, transparent);
 }
 
 .chief-chip:disabled {
@@ -9099,8 +9129,8 @@ html[data-gen="boomer"] .gen-setup-preview {
 
 .chief-bubble-user {
   align-self: flex-end;
-  background: rgba(0, 230, 118, 0.16);
-  border: 1px solid rgba(0, 230, 118, 0.25);
+  background: color-mix(in srgb, var(--accent, #00e676) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #00e676) 30%, transparent);
 }
 
 .chief-bubble-assistant {
@@ -9144,6 +9174,6 @@ html[data-gen="boomer"] .gen-setup-preview {
   gap: 0.75rem;
   margin-top: 0.45rem;
   font-size: 0.6875rem;
-  color: var(--muted, #9ca3af);
+  color: var(--text-muted, #aab8cc);
 }
 

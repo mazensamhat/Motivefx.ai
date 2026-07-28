@@ -36,7 +36,7 @@ const MODULE_TILES: { tab: TabId; brand: keyof typeof MODULE_BRAND; label: strin
   { tab: "penny", brand: "pinkslips", label: "Pink Slip" },
   { tab: "crypto", brand: "crypto", label: "Crypto" },
   { tab: "betting", brand: "betting", label: "Bets" },
-  { tab: "predictions", brand: "predictions", label: "Polymarket" },
+  { tab: "predictions", brand: "predictions", label: "Predictions" },
 ];
 
 interface Props {

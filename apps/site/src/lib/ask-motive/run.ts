@@ -4,11 +4,16 @@ import { z } from "zod";
 import type { TerminalPlan } from "@/lib/terminal/plan";
 import { CHIEF_DISCLAIMER, CHIEF_OF_FINANCE_SYSTEM_PROMPT } from "./system-prompt";
 import {
+  buildUserProfile,
   resolveNavigateTab,
+  suggestFollowUps,
+  tabAwareHint,
   toolAnalyzePortfolio,
   toolExplainNavigation,
+  toolExplainSymbol,
   toolGetBriefing,
   toolListOpportunities,
+  toolScanAllPortfolios,
   type AskAction,
 } from "./tools";
 
@@ -18,6 +23,7 @@ export type AskMotiveResult = {
   reply: string;
   actions: AskAction[];
   usedTools: string[];
+  followUps: string[];
   degraded: boolean;
 };
 
@@ -47,6 +53,27 @@ function withDisclaimer(text: string): string {
   return `${trimmed}\n\n${CHIEF_DISCLAIMER}`;
 }
 
+function extractTicker(q: string): string | null {
+  const m = q.match(/\$([A-Za-z]{1,10})\b/) || q.match(/\bexplain\s+([A-Za-z]{2,10})\b/i);
+  return m?.[1]?.toUpperCase() ?? null;
+}
+
+function finish(
+  reply: string,
+  usedTools: string[],
+  actions: AskAction[],
+  ctx: RunCtx,
+  degraded: boolean
+): AskMotiveResult {
+  return {
+    reply: withDisclaimer(reply),
+    actions,
+    usedTools: [...new Set(usedTools)],
+    followUps: suggestFollowUps(usedTools, ctx.context?.tab, ctx.context?.symbol),
+    degraded,
+  };
+}
+
 /** Keyword / intent fallback when OpenAI is unavailable. */
 export async function runAskMotiveFallback(
   messages: AskMessage[],
@@ -64,13 +91,50 @@ export async function runAskMotiveFallback(
     if (tab) {
       usedTools.push("navigate_desk");
       actions.push({ type: "navigate", tab });
-      return {
-        reply: withDisclaimer(`Opening **${tab}** for you. Ask me anything once you're there.`),
-        actions,
-        usedTools,
-        degraded: true,
-      };
+      return finish(`Opening **${tab}** for you. Ask me anything once you're there.`, usedTools, actions, ctx, true);
     }
+  }
+
+  const ticker = extractTicker(q) || (ctx.context?.symbol ? ctx.context.symbol.toUpperCase() : null);
+  if (ticker && /explain|about|what.?s|signal|look at|check/.test(q)) {
+    usedTools.push("explain_symbol");
+    const data = await toolExplainSymbol(ticker);
+    if (data.empty) {
+      return finish(
+        `No live MotiveFX feed flags for **${ticker}** right now. Try the Trades / Crypto / Pink Slips scanners, or ask for today's top opportunities.`,
+        usedTools,
+        actions,
+        ctx,
+        true
+      );
+    }
+    const bits: string[] = [`Here's the desk lens on **${ticker}**:`];
+    if (data.unusualOptions?.length) {
+      bits.push(
+        `• Options: ${data.unusualOptions
+          .map((o) => `${o.type} flow${o.volOiRatio != null ? ` · Vol/OI ${o.volOiRatio}x` : ""}`)
+          .join("; ")}`
+      );
+    }
+    if (data.pennyMovers?.length) {
+      bits.push(
+        `• Microcap: ${data.pennyMovers
+          .map((p) => `${p.changePct != null ? `${p.changePct}%` : "move"} · vol ${p.volRatio ?? "—"}x`)
+          .join("; ")}`
+      );
+    }
+    if (data.whaleAlerts?.length) {
+      bits.push(
+        `• Whale: ${data.whaleAlerts
+          .map((w) => `$${(Number(w.amountUsd) / 1_000_000).toFixed(1)}M ${w.direction}`)
+          .join("; ")}`
+      );
+    }
+    if (data.congress?.length) {
+      bits.push(`• Disclosure flags: ${data.congress.length} recent filing(s) cross-checked.`);
+    }
+    bits.push("Informational feed context — not a forecast.");
+    return finish(bits.join("\n"), usedTools, actions, ctx, true);
   }
 
   if (/opportunit|today.?s signal|what.?s hot|top signal|radar/.test(q)) {
@@ -86,16 +150,39 @@ export async function runAskMotiveFallback(
         (o) =>
           `• **${o.symbol}** — ${o.title ?? o.stance ?? "signal"} (${o.confidence}% · ${o.module})`
       ) ?? [];
-    return {
-      reply: withDisclaimer(
-        lines.length
-          ? `Here are today's top MotiveFX signals:\n\n${lines.join("\n")}\n\nOpen Home → Today's Signals for the full board.`
-          : "No ranked opportunities right now — desks may still be warming up. Try Home → Retry, or open Trades / Crypto for live scanners."
-      ),
-      actions,
+    return finish(
+      lines.length
+        ? `Here are today's top MotiveFX signals:\n\n${lines.join("\n")}\n\nOpen Home → Today's Signals for the full board.`
+        : "No ranked opportunities right now — desks may still be warming up. Try Home → Retry, or open Trades / Crypto for live scanners.",
       usedTools,
-      degraded: true,
-    };
+      actions,
+      ctx,
+      true
+    );
+  }
+
+  if (/whole portfolio|entire portfolio|all (my )?desk|scan (my )?book|across (all )?desk|everything i (own|hold)/.test(q)) {
+    usedTools.push("scan_all_portfolios");
+    const scan = await toolScanAllPortfolios(ctx.userId);
+    const lines: string[] = [`Scanned **${scan.desksScanned}** desks · **${scan.desksWithData}** with data.`];
+    for (const r of scan.results) {
+      if ("empty" in r && r.empty) {
+        lines.push(`• ${r.module}: empty — ${r.message}`);
+        continue;
+      }
+      const recs =
+        "recommendations" in r && Array.isArray(r.recommendations)
+          ? r.recommendations
+              .slice(0, 2)
+              .map(
+                (x: { symbol: string; action: string; confidence: number }) =>
+                  `${x.symbol} (${String(x.action).replace(/_/g, " ")}, ${x.confidence}%)`
+              )
+              .join("; ")
+          : "";
+      lines.push(`• **${r.module}**: ${"summary" in r ? r.summary : ""}${recs ? ` — ${recs}` : ""}`);
+    }
+    return finish(lines.join("\n"), usedTools, actions, ctx, true);
   }
 
   if (/portfolio|holding|analyze my|my ledger|what do i (own|hold)/.test(q)) {
@@ -111,26 +198,21 @@ export async function runAskMotiveFallback(
     usedTools.push("analyze_portfolio");
     const data = await toolAnalyzePortfolio({ userId: ctx.userId, module: moduleGuess });
     if (data.empty) {
-      return {
-        reply: withDisclaimer(String(data.message)),
-        actions: [
-          {
-            type: "navigate",
-            tab:
-              moduleGuess === "trades"
-                ? "stocks"
-                : moduleGuess === "penny"
-                  ? "penny"
-                  : moduleGuess === "crypto"
-                    ? "crypto"
-                    : moduleGuess === "betting"
-                      ? "betting"
-                      : "predictions",
-          },
-        ],
-        usedTools,
-        degraded: true,
-      };
+      return finish(String(data.message), usedTools, [
+        {
+          type: "navigate",
+          tab:
+            moduleGuess === "trades"
+              ? "stocks"
+              : moduleGuess === "penny"
+                ? "penny"
+                : moduleGuess === "crypto"
+                  ? "crypto"
+                  : moduleGuess === "betting"
+                    ? "betting"
+                    : "predictions",
+        },
+      ], ctx, true);
     }
     const recs =
       ("recommendations" in data && Array.isArray(data.recommendations)
@@ -140,14 +222,13 @@ export async function runAskMotiveFallback(
         (r: { symbol: string; action: string; confidence: number; headline: string }) =>
           `• **${r.symbol}** — ${r.action.replace(/_/g, " ")} (${r.confidence}%) · ${r.headline}`
       ) ?? [];
-    return {
-      reply: withDisclaimer(
-        `${data.summary}\n\n${recs.join("\n") || "No stance rows returned."}\n\nStances are informational Motive Signals — not trade orders.`
-      ),
-      actions,
+    return finish(
+      `${data.summary}\n\n${recs.join("\n") || "No stance rows returned."}\n\nStances are informational Motive Signals — not trade orders.`,
       usedTools,
-      degraded: true,
-    };
+      actions,
+      ctx,
+      true
+    );
   }
 
   if (/where|how do i|navigate|add holding|watchlist|broker|glossary|confused|help/.test(q)) {
@@ -172,12 +253,7 @@ export async function runAskMotiveFallback(
                       ? "stocks"
                       : "home";
     const nav = toolExplainNavigation(topic);
-    return {
-      reply: withDisclaimer(`${nav.guide}\n\n${nav.tip}`),
-      actions,
-      usedTools,
-      degraded: true,
-    };
+    return finish(`${nav.guide}\n\n${nav.tip}`, usedTools, actions, ctx, true);
   }
 
   usedTools.push("get_briefing");
@@ -187,23 +263,22 @@ export async function runAskMotiveFallback(
     plan: ctx.plan,
   });
   const top = briefing.opportunities?.[0];
-  return {
-    reply: withDisclaimer(
-      [
-        `${briefing.greeting}. I'm your A.I. Chief of Finance.`,
-        `Desk score **${briefing.motivfxScore}/100** (${briefing.marketConfidence}). ${briefing.topAiTip ?? ""}`,
-        top
-          ? `Top flag: **${top.symbol}** — ${top.title} (${top.confidence}%).`
-          : "Ask me to analyze your portfolio, list today's opportunities, or navigate to a desk.",
-        "Try: “What are today's top opportunities?” · “Analyze my portfolio” · “Go to Crypto”.",
-      ]
-        .filter(Boolean)
-        .join("\n\n")
-    ),
-    actions,
+  return finish(
+    [
+      `${briefing.greeting}. I'm your A.I. Chief of Finance.`,
+      `Desk score **${briefing.motivfxScore}/100** (${briefing.marketConfidence}). ${briefing.topAiTip ?? ""}`,
+      top
+        ? `Top flag: **${top.symbol}** — ${top.title} (${top.confidence}%).`
+        : "Ask me to scan your whole portfolio, list today's opportunities, or navigate to a desk.",
+      "Try: “Scan my whole portfolio” · “What are today's top opportunities?” · “Go to Crypto”.",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
     usedTools,
-    degraded: true,
-  };
+    actions,
+    ctx,
+    true
+  );
 }
 
 export async function runAskMotive(
@@ -220,9 +295,23 @@ export async function runAskMotive(
   const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY!.trim() });
   const modelId = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
+  let profileBlock = "";
+  try {
+    const profile = await Promise.race([
+      buildUserProfile(ctx.userId),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2_000)),
+    ]);
+    if (profile) {
+      profileBlock = `\n\nUser profile (deterministic):\n${JSON.stringify(profile)}`;
+    }
+  } catch {
+    /* ignore profile hydrate */
+  }
+
   const contextNote = [
-    ctx.context?.tab ? `User is viewing tab: ${ctx.context.tab}.` : null,
+    ctx.context?.tab ? `Active tab: ${ctx.context.tab}.` : null,
     ctx.context?.symbol ? `Focused symbol: ${ctx.context.symbol}.` : null,
+    tabAwareHint(ctx.context?.tab),
   ]
     .filter(Boolean)
     .join(" ");
@@ -231,13 +320,13 @@ export async function runAskMotive(
     const result = await Promise.race([
       generateText({
         model: openai(modelId),
-        system: `${CHIEF_OF_FINANCE_SYSTEM_PROMPT}${contextNote ? `\n\nSession context: ${contextNote}` : ""}`,
+        system: `${CHIEF_OF_FINANCE_SYSTEM_PROMPT}\n\nSession context: ${contextNote}${profileBlock}`,
         messages: messages
           .filter((m) => m.role === "user" || m.role === "assistant")
-          .slice(-12)
+          .slice(-14)
           .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-        stopWhen: stepCountIs(4),
-        maxOutputTokens: 700,
+        stopWhen: stepCountIs(6),
+        maxOutputTokens: 900,
         tools: {
           get_briefing: tool({
             description: "Fetch today's MotiveFX home briefing score and top signals.",
@@ -268,13 +357,33 @@ export async function runAskMotive(
           }),
           analyze_portfolio: tool({
             description:
-              "Analyze the user's ledger for a module and return Motive Signal stances (informational).",
+              "Analyze one desk ledger and return Motive Signal stances (informational).",
             inputSchema: z.object({
               module: z.enum(["trades", "crypto", "penny", "betting", "predictions"]),
             }),
             execute: async ({ module }) => {
               usedTools.push("analyze_portfolio");
               return toolAnalyzePortfolio({ userId: ctx.userId, module });
+            },
+          }),
+          scan_all_portfolios: tool({
+            description:
+              "Scan ALL desks in parallel (trades, crypto, penny, betting, predictions). Use for whole-book / entire portfolio questions.",
+            inputSchema: z.object({}),
+            execute: async () => {
+              usedTools.push("scan_all_portfolios");
+              return toolScanAllPortfolios(ctx.userId);
+            },
+          }),
+          explain_symbol: tool({
+            description:
+              "Lens a ticker across unusual options, penny movers, whale alerts, and congress disclosures.",
+            inputSchema: z.object({
+              symbol: z.string().describe("Ticker e.g. NVDA or BTC"),
+            }),
+            execute: async ({ symbol }) => {
+              usedTools.push("explain_symbol");
+              return toolExplainSymbol(symbol);
             },
           }),
           explain_navigation: tool({
@@ -303,17 +412,12 @@ export async function runAskMotive(
         },
       }),
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("ask_motive_timeout")), 12_000);
+        setTimeout(() => reject(new Error("ask_motive_timeout")), 14_000);
       }),
     ]);
 
     const text = result.text?.trim() || "I'm here — try asking about opportunities or your portfolio.";
-    return {
-      reply: withDisclaimer(text),
-      actions,
-      usedTools: [...new Set(usedTools)],
-      degraded: false,
-    };
+    return finish(text, usedTools, actions, ctx, false);
   } catch {
     return runAskMotiveFallback(messages, ctx);
   }

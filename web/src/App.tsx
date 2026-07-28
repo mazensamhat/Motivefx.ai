@@ -38,7 +38,7 @@ const TABS: { id: TabId; label: string; module: string }[] = [
   { id: "penny", label: "Pink Slips", module: "penny" },
   { id: "crypto", label: "Crypto", module: "crypto" },
   { id: "betting", label: "Bets", module: "betting" },
-  { id: "predictions", label: "Polymarket", module: "predictions" },
+  { id: "predictions", label: "Predictions", module: "predictions" },
 ];
 
 const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));

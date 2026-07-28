@@ -11,7 +11,7 @@ const NAV: { id: TabId; label: string; module: string; icon?: "home" }[] = [
   { id: "penny", label: "Pink Slips", module: "penny" },
   { id: "crypto", label: "Crypto", module: "crypto" },
   { id: "betting", label: "Bets", module: "betting" },
-  { id: "predictions", label: "Polymarket", module: "predictions" },
+  { id: "predictions", label: "Predictions", module: "predictions" },
 ];
 
 interface Props {
@@ -46,7 +46,7 @@ export function ModuleSidebar({
         )}
       </div>
 
-      <div className="sidebar-label">Global Modules</div>
+      <div className="sidebar-label">Market Desks</div>
       <nav className="sidebar-nav">
         {NAV.map((t) => {
           const locked = t.module !== "home" && !hasModule(t.module);
