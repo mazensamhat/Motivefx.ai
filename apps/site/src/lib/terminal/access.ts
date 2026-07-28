@@ -6,6 +6,7 @@ import { FeatureLockedError, ModuleLockedError } from "./auth";
 import { simHasModule } from "./simulation";
 
 const FEATURE_LABELS: Partial<Record<TerminalFeature, string>> = {
+  ask_motive: "A.I. Chief of Finance",
   portfolio_intelligence: "Portfolio Intelligence",
   ai_memory: "AI Memory",
   since_you_were_away: "Since You Were Away",

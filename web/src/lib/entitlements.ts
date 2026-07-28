@@ -62,6 +62,7 @@ const TIER_LABELS: Record<PricingTierId, string> = {
 };
 
 const FEATURE_LABELS: Partial<Record<EntitlementFeature, string>> = {
+  ask_motive: "A.I. Chief of Finance",
   portfolio_intelligence: "Portfolio Intelligence",
   ai_memory: "AI Memory",
   since_you_were_away: "Since You Were Away",

@@ -30,6 +30,7 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { TAB_TO_BRAND } from "./brand/moduleBrand";
 import type { TabId } from "./types";
+import { ChiefOfFinanceAssistant } from "./features/ask-motive/ChiefOfFinanceAssistant";
 
 const TABS: { id: TabId; label: string; module: string }[] = [
   { id: "home", label: "Home", module: "home" },
@@ -205,6 +206,7 @@ export default function App() {
       </div>
 
       <MobileBottomNav activeTab={activeTab} onSelect={setActiveTab} />
+      <ChiefOfFinanceAssistant activeTab={activeTab} onNavigate={setActiveTab} />
     </div>
   );
 }
