@@ -152,7 +152,7 @@ export async function runAskMotiveFallback(
       ) ?? [];
     return finish(
       lines.length
-        ? `Here are today's top MotiveFX signals:\n\n${lines.join("\n")}\n\nOpen Home → Today's Signals for the full board.`
+        ? `Here are today's top MotiveFX signals:\n\n${lines.join("\n")}\n\nOpen Home → Opportunity Radar for the full board.`
         : "No ranked opportunities right now — desks may still be warming up. Try Home → Retry, or open Trades / Crypto for live scanners.",
       usedTools,
       actions,

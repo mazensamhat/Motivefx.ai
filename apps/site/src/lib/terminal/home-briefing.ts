@@ -447,7 +447,7 @@ export async function buildHomeBriefing(opts: {
 
   let briefing: Record<string, unknown> = {
     greeting,
-    tagline: "The AI Command Center for Market Intelligence",
+    tagline: "Daily Brief · Opportunity Radar",
     motivfxScore: score,
     stars: stars(score),
     marketConfidence: score >= 75 ? "HIGH" : score >= 58 ? "MODERATE" : "CAUTIOUS",
@@ -475,11 +475,11 @@ export async function buildHomeBriefing(opts: {
     compareLens,
     moduleStories,
     audioBriefingScript: [
-      `Good ${period}. Here's your Motive FX intel snapshot.`,
-      `Today's desk score is ${score} out of 100, with ${densityWord} signal density across the desks.`,
-      top ? `The top flag right now is ${top.symbol}: ${top.title}. Confidence sits at ${top.confidence} percent.` : "",
+      `Good ${period}. Here's your MotiveFX Daily Brief.`,
+      `Market confidence is ${score >= 75 ? "high" : score >= 58 ? "moderate" : "cautious"} — desk score ${score} out of 100, with ${densityWord} signal density.`,
+      top ? `On Opportunity Radar, the top flag is ${top.symbol}: ${top.title}. Confidence sits at ${top.confidence} percent.` : "",
       personalized.coverageLine ? String(personalized.coverageLine).replace(" today", " on your radar today") : "",
-      "That's your briefing for now. This is informational context only, not financial advice.",
+      "That's your Daily Brief. This is informational context only, not financial advice.",
     ].filter(Boolean).join(" "),
     sentiment: {
       reddit: score >= 70 ? "bullish" : "neutral",

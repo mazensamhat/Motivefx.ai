@@ -106,11 +106,13 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
       : `${delta >= 0 ? "+" : ""}${delta.toFixed(2)}% today`;
 
   const snapshotRows = [
-    { name: "MotiveFX Score", value: String(b.motivfxScore), pct: b.marketConfidence },
-    { name: "Active signals", value: String(b.opportunityCount), pct: `${b.highRiskAlerts} high risk` },
-    { name: "Radar hits", value: String(p?.radarSignalCount ?? 0), pct: p?.watchlistCount ? `${p.watchlistCount} watched` : "Watchlist" },
+    { name: "Market confidence", value: String(b.marketConfidence), pct: `Score ${b.motivfxScore}` },
+    { name: "Opportunity Radar", value: String(b.opportunityCount), pct: `${b.highRiskAlerts} high risk` },
+    { name: "Watchlist hits", value: String(p?.radarSignalCount ?? 0), pct: p?.watchlistCount ? `${p.watchlistCount} watched` : "Watchlist" },
     { name: "Breaking news", value: String(b.breakingNewsCount), pct: "Feed pulse" },
   ];
+
+  const topRadar = b.opportunities.slice(0, 3);
 
   return (
     <>
@@ -121,17 +123,17 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
 
       {sinceNewCount > 0 && hasFeature("since_you_were_away") && (
         <div className="home-since-banner">
-          <strong>{sinceNewCount} new signal{sinceNewCount === 1 ? "" : "s"}</strong> since your last visit
+          <strong>{sinceNewCount} new opportunit{sinceNewCount === 1 ? "y" : "ies"}</strong> on Opportunity Radar since your last visit
         </div>
       )}
 
       {showWarmup && (
         <div className="home-since-banner" role="status">
           {refreshing
-            ? "Refreshing signal review…"
+            ? "Refreshing Daily Brief…"
             : error
-              ? "Live feeds are catching up — showing the last briefing."
-              : "Partial briefing while desks warm up."}{" "}
+              ? "Live feeds are catching up — showing the last Daily Brief."
+              : "Partial Daily Brief while desks warm up."}{" "}
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => void refresh()}>
             Retry
           </button>
@@ -142,17 +144,22 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         <section className="home-overview-card">
           <div className="home-overview-top">
             <div>
-              <div className="home-overview-label">Portfolio Overview</div>
+              <div className="home-overview-label">Daily Brief</div>
               <div className="home-overview-value">{b.motivfxScore}</div>
               <div className={`mf-summary-delta ${deltaCls}`}>{deltaText}</div>
               <p className="mf-summary-sub">
                 {b.greeting} · {b.tagline}
               </p>
+              <p className="mf-summary-sub">
+                Confidence <strong>{b.marketConfidence}</strong>
+                {b.biggestOpportunity ? ` · Top opportunity: ${b.biggestOpportunity}` : ""}
+                {b.biggestRisk ? ` · Watch: ${b.biggestRisk}` : ""}
+              </p>
               {user && p?.coverageLine && hasFeature("portfolio_intelligence") && (
                 <p className="mf-summary-sub">{p.coverageLine}</p>
               )}
               {!user && (
-                <p className="mf-summary-sub">Sign in to personalize your radar and ledger intel.</p>
+                <p className="mf-summary-sub">Sign in to personalize Opportunity Radar and ledger intel.</p>
               )}
             </div>
             <button
@@ -163,7 +170,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
             >
               <Stars count={b.stars} />
               <div className="home-score-meta">
-                <span>Density <strong>{b.marketConfidence}</strong></span>
+                <span>Confidence <strong>{b.marketConfidence}</strong></span>
               </div>
             </button>
           </div>
@@ -184,8 +191,21 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           </div>
         </section>
 
+        <section className="home-insight-card">
+          <div className="home-insight-orb" aria-hidden>
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <div className="home-insight-label">What changed · Why it matters · What to watch</div>
+            <p className="home-insight-body">
+              {b.topAiTip || b.biggestOpportunity}
+              {b.biggestRisk ? ` Risk lens: ${b.biggestRisk}.` : ""}
+            </p>
+          </div>
+        </section>
+
         <section className="home-snapshot-card">
-          <h2 className="mf-section-title">Market Snapshot</h2>
+          <h2 className="mf-section-title">Morning snapshot</h2>
           {snapshotRows.map((row) => (
             <div key={row.name} className="home-snapshot-row">
               <span className="home-snapshot-name">{row.name}</span>
@@ -197,51 +217,13 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           ))}
         </section>
 
-        <section className="home-insight-card">
-          <div className="home-insight-orb" aria-hidden>
-            <Sparkles size={18} />
-          </div>
-          <div>
-            <div className="home-insight-label">AI Market Insight</div>
-            <p className="home-insight-body">
-              {b.topAiTip || b.biggestOpportunity}
-              {b.biggestRisk ? ` Risk lens: ${b.biggestRisk}.` : ""}
-            </p>
-          </div>
-        </section>
-
         <section className="mf-section">
-          <h2 className="mf-section-title">My Modules</h2>
-          <div className="home-module-grid">
-            {MODULE_TILES.map((tile) => {
-              const summary = b.moduleSummaries.find((m) => m.tab === tile.tab || APP_MODULE_TO_BRAND[m.module] === tile.brand);
-              const accent = MODULE_BRAND[tile.brand].accent;
-              return (
-                <button
-                  key={tile.tab}
-                  type="button"
-                  className="home-module-tile"
-                  style={{ ["--tile-accent" as string]: accent }}
-                  data-brand={tile.brand}
-                  onClick={() => onNavigate(tile.tab)}
-                >
-                  <MotivFxLogo module={tile.brand} size={28} />
-                  <span className="home-module-tile-label">{tile.label}</span>
-                  <span className="home-module-tile-sub">
-                    {summary
-                      ? `${summary.count} tracked${summary.newSignals ? ` · ${summary.newSignals} new` : ""}`
-                      : "Open desk"}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mf-section">
-          <h2 className="mf-section-title">Recent Activity</h2>
+          <h2 className="mf-section-title">Opportunity Radar</h2>
+          <p className="mf-summary-sub" style={{ marginBottom: "0.75rem" }}>
+            Top developing situations · ranked by signal strength · informational only
+          </p>
           <div className="home-activity-list">
-            {b.opportunities.slice(0, 4).map((o) => {
+            {topRadar.map((o) => {
               const rating = resolveMotiveRating(
                 o.stance ?? o.title,
                 o.confidence,
@@ -265,14 +247,42 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
               </div>
               );
             })}
-            {b.opportunities.length === 0 && (
-              <div className="empty" style={{ padding: "1rem" }}>No recent signals yet.</div>
+            {topRadar.length === 0 && (
+              <div className="empty" style={{ padding: "1rem" }}>No radar hits yet.</div>
             )}
           </div>
         </section>
       </div>
 
       <div className="home-desk-secondary">
+      <section className="mf-section">
+        <h2 className="mf-section-title">My Modules</h2>
+        <div className="home-module-grid">
+          {MODULE_TILES.map((tile) => {
+            const summary = b.moduleSummaries.find((m) => m.tab === tile.tab || APP_MODULE_TO_BRAND[m.module] === tile.brand);
+            const accent = MODULE_BRAND[tile.brand].accent;
+            return (
+              <button
+                key={tile.tab}
+                type="button"
+                className="home-module-tile"
+                style={{ ["--tile-accent" as string]: accent }}
+                data-brand={tile.brand}
+                onClick={() => onNavigate(tile.tab)}
+              >
+                <MotivFxLogo module={tile.brand} size={28} />
+                <span className="home-module-tile-label">{tile.label}</span>
+                <span className="home-module-tile-sub">
+                  {summary
+                    ? `${summary.count} tracked${summary.newSignals ? ` · ${summary.newSignals} new` : ""}`
+                    : "Open desk"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <WatchlistRadar
         personalized={p}
         onNavigateModule={(tab) => onNavigate(tab as TabId)}
@@ -292,8 +302,8 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
 
       <section className="home-section">
         <div className="home-section-header">
-          <h2><TrendingUp size={18} /> Today&apos;s Signals</h2>
-          <span className="home-section-sub">Ranked by signal strength · informational only</span>
+          <h2><TrendingUp size={18} /> Opportunity Radar</h2>
+          <span className="home-section-sub">All ranked opportunities · informational only</span>
         </div>
         <div className="opportunity-grid">
           {b.opportunities.map((o) => {

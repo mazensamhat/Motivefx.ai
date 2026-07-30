@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Motive Signal Methodology",
   description:
-    "How Motive Signal™ works — multi-factor confidence scoring, limitations, and an honest preliminary hit-rate framework. Informational only.",
+    "How Motive Signal™ works — multi-factor confidence scoring for Daily Brief and Opportunity Radar, limitations, and an honest preliminary hit-rate framework. Informational only.",
   path: "/motive-signal",
 });
 
@@ -17,8 +17,8 @@ export default function MotiveSignalPage() {
         { name: "Motive Signal", href: "/motive-signal" },
       ]}
       title="Motive Signal™ methodology"
-      kicker="Transparency"
-      description="How we score confluence, what Motive Signal is not, and how we will publish track record as samples mature."
+      kicker="Signal Engine · Opportunity Radar"
+      description="How we score confluence for the Daily Brief and Opportunity Radar, what Motive Signal is not, and how we will publish track record as samples mature."
       relatedLinks={[
         { label: "Data sources", href: "/data-sources" },
         { label: "Product preview", href: "/demo" },
@@ -30,8 +30,9 @@ export default function MotiveSignalPage() {
         <ContentProse>
           <p>
             Motive Signal is a proprietary <strong>0–100 confidence score</strong> that ranks how strongly
-            multiple factors agree <em>right now</em>. It answers: “Given the feeds we have, how strong is
-            the confluence?” — so you research high-alignment ideas first.
+            multiple factors agree <em>right now</em>. It powers Opportunity Radar and the Daily Brief by
+            answering: “Given the feeds we have, how strong is the confluence?” — so you research
+            high-alignment ideas first.
           </p>
           <p>
             It is <strong>not</strong> a buy/sell rating, price target, probability of profit, or personalized
@@ -56,8 +57,8 @@ export default function MotiveSignalPage() {
               a plain-English Why It Matters summary (LLM layer when OpenAI is configured).
             </li>
             <li>
-              <strong>Prioritize</strong> — Surfaces in the terminal radar and briefs so operators triage research —
-              not execute trades or place bets inside MotiveFX.
+              <strong>Prioritize</strong> — Surfaces in Opportunity Radar and the Daily Brief so operators
+              triage research — not execute trades or place bets inside MotiveFX.
             </li>
           </ol>
           <p>

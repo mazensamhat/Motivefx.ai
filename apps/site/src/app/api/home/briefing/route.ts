@@ -15,7 +15,7 @@ function fallbackBriefing(displayName: string | null) {
   const period = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   return {
     greeting: `Good ${period}, ${name}`,
-    tagline: "The AI Command Center for Market Intelligence",
+    tagline: "Daily Brief · Opportunity Radar",
     motivfxScore: 62,
     stars: 3,
     marketConfidence: "MODERATE",

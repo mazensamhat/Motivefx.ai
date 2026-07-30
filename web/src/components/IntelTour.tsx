@@ -29,7 +29,7 @@ export function IntelTour({ onComplete }: Props) {
     {
       icon: Radar,
       title: "We surface signals — you decide",
-      body: "MotiveFX is an intelligence command center. We flag flow, volume, lines, and events. What you do with that intel is always your call.",
+      body: "MotiveFX is an AI Market Intelligence Platform. We flag flow, volume, lines, and events. What you do with that intel is always your call.",
     },
     {
       icon: Sparkles,
@@ -79,7 +79,7 @@ export function IntelTour({ onComplete }: Props) {
             className="btn btn-primary"
             onClick={() => (isLast ? finish() : setStep((s) => s + 1))}
           >
-            {isLast ? "Enter command center" : "Next"}
+            {isLast ? "Enter Daily Brief" : "Next"}
           </button>
         </div>
       </div>

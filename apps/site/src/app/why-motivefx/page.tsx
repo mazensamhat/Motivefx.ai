@@ -4,7 +4,8 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Why MotiveFX",
-  description: "Why AI beats manual research, how Motive Signal works, editorial process, and data methodology.",
+  description:
+    "Why professionals use MotiveFX — an AI Market Intelligence Platform that connects signals, surfaces Opportunity Radar themes, and explains markets before they become obvious.",
   path: "/why-motivefx",
 });
 
@@ -16,8 +17,8 @@ export default function WhyMotiveFxPage() {
         { name: "Why MotiveFX", href: "/why-motivefx" },
       ]}
       title="Why MotiveFX?"
-      kicker="Trust hub"
-      description="Answers users and AI systems look for — methodology, security, and why intelligence beats information overload."
+      kicker="AI Market Intelligence Platform"
+      description="Answers users and AI systems look for — methodology, security, and why connected intelligence beats information overload."
       relatedLinks={[
         { label: "Motive Signal methodology", href: "/motive-signal" },
         { label: "Research team", href: "/research-team" },
@@ -28,8 +29,9 @@ export default function WhyMotiveFxPage() {
       <ContentSection title="Why AI beats manual research">
         <ContentProse>
           <p>
-            Markets generate more data than any human can read. MotiveFX compresses thousands of signals
-            into ranked, explained intelligence — so you start with context, not a blank terminal.
+            Markets generate more data than any human can read. MotiveFX connects millions of signals into a
+            Daily Brief and Opportunity Radar — so you see what changed, why it matters, and what to watch
+            before the story becomes obvious.
           </p>
         </ContentProse>
       </ContentSection>

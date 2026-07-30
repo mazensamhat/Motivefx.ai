@@ -63,14 +63,28 @@ export const SIGNAL_GLOSSARY: GlossaryEntry[] = [
     term: "MotiveFX Score",
     category: "Home",
     definition:
-      "Aggregate signal density across desks — how much actionable intel the engine sees right now. Higher = more cross-market activity flagged.",
+      "Aggregate signal density across desks — how much actionable intel the engine sees right now. Higher = more cross-market activity flagged. Shown on your Daily Brief.",
+  },
+  {
+    id: "daily-brief",
+    term: "Daily Brief",
+    category: "Home",
+    definition:
+      "Your morning intelligence view: what changed, why it matters, and what to watch — with market confidence, top opportunity, and top risk. Informational only.",
+  },
+  {
+    id: "opportunity-radar",
+    term: "Opportunity Radar",
+    category: "Home",
+    definition:
+      "Ranked developing situations across your desks. Same opportunity feed as before — framed so you research high-alignment themes before they become obvious headlines.",
   },
   {
     id: "radar-hit",
     term: "Radar Hit",
     category: "Home",
     definition:
-      "A live signal that matches a symbol on your Intel Radar or in your holdings ledger.",
+      "A live signal that matches a symbol on your Intel Radar or in your holdings ledger — also surfaced on Opportunity Radar when relevant.",
   },
   {
     id: "scenario",

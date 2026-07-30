@@ -22,15 +22,16 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
-  title: "MotiveFX.AI — Research smarter. Move faster.",
+  title: "MotiveFX.AI — AI Market Intelligence Platform",
   description:
-    "AI market intelligence for stocks, crypto, pink slips, sports betting, and prediction markets. Tiered plans from Lite to Elite.",
+    "Discover opportunities before they become obvious. MotiveFX connects market signals across stocks, crypto, pink slips, sports, and prediction markets.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "MotiveFX.AI — Research smarter. Move faster.",
-    description: "Five intelligence markets. One terminal. Pick your tier.",
+    title: "MotiveFX.AI — Stop Following The Market. Start Seeing What's Next.",
+    description:
+      "AI Market Intelligence Platform: Daily Brief, Opportunity Radar, and signal-driven research — not another news feed.",
     url: SITE.url,
     siteName: "MotiveFX.AI",
   },

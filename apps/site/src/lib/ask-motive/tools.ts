@@ -34,7 +34,7 @@ function isEphemeralUserId(userId: string | null | undefined): boolean {
 }
 
 const NAV_GUIDE: Record<string, string> = {
-  home: "Home shows your daily briefing, Today's Signals, radar, and module pulse. Open it from the left sidebar or bottom nav.",
+  home: "Home shows your Daily Brief, Opportunity Radar, watchlist radar, and module pulse. Open it from the left sidebar or bottom nav.",
   stocks:
     "Trades desk: add stock holdings, run AI Analyze for Motive Signal stances, and review unusual options / congress flow.",
   penny:
@@ -331,7 +331,7 @@ export function tabAwareHint(tab?: string): string {
     case "predictions":
       return "User is on Predictions — explain event-market odds; crowd consensus ≠ forecast.";
     case "home":
-      return "User is on Home — briefing, Today's Signals, and radar are the best starting points.";
+      return "User is on Home — Daily Brief and Opportunity Radar are the best starting points.";
     default:
       return "Orient the user gently if they seem lost — offer a desk map.";
   }

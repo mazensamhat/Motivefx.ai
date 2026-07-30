@@ -39,7 +39,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "lite",
     name: "Lite",
-    tagline: "Pick exactly one intelligence market",
+    tagline: "Daily Brief + one intelligence market",
     monthlyUsd: 29.99,
     annualUsd: null,
     intelligenceMarketsIncluded: 1,
@@ -47,7 +47,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "pro",
     name: "Pro",
-    tagline: "Two markets + portfolio intelligence",
+    tagline: "Opportunity Radar across two markets",
     monthlyUsd: 59.99,
     annualUsd: null,
     featured: true,
@@ -57,7 +57,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "ultra",
     name: "Ultra",
-    tagline: "All 5 markets · voice & Decision History",
+    tagline: "Full-market intelligence · voice Daily Brief",
     monthlyUsd: 99.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
@@ -65,7 +65,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "ultra_plus",
     name: "Ultra+",
-    tagline: "Ultra + API, teams & multi-portfolio",
+    tagline: "Teams, API & multi-portfolio intelligence",
     monthlyUsd: 149.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
@@ -73,7 +73,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "elite",
     name: "Elite",
-    tagline: "VIP access · influence the roadmap",
+    tagline: "VIP intelligence access · roadmap influence",
     monthlyUsd: null,
     annualUsd: 999,
     intelligenceMarketsIncluded: "all",
@@ -106,7 +106,8 @@ export const PRICING_FEATURE_MATRIX: PricingFeatureRow[] = [
   { feature: "Pink Slips", lite: "Available", pro: "Available", ultra: true, ultraPlus: true, elite: true },
   { feature: "Sports betting", lite: "Available", pro: "Available", ultra: true, ultraPlus: true, elite: true },
   { feature: "Prediction markets", lite: "Available", pro: "Available", ultra: true, ultraPlus: true, elite: true },
-  { feature: "AI Brief", lite: true, pro: true, ultra: true, ultraPlus: true, elite: true },
+  { feature: "Daily Brief", lite: true, pro: true, ultra: true, ultraPlus: true, elite: true },
+  { feature: "Opportunity Radar", lite: true, pro: true, ultra: true, ultraPlus: true, elite: true },
   { feature: "Ask Motive AI", lite: true, pro: true, ultra: true, ultraPlus: true, elite: true },
   { feature: "Research Briefs", lite: "Limited", pro: "Unlimited", ultra: "Unlimited", ultraPlus: "Unlimited", elite: "Unlimited" },
   { feature: "Following", lite: true, pro: true, ultra: true, ultraPlus: true, elite: true },

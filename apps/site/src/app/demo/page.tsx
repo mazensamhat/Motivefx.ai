@@ -7,26 +7,26 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Product Preview",
   description:
-    "Explore MotiveFX without signing in — module walkthrough and read-only terminal demo. Informational market intelligence only.",
+    "Explore MotiveFX without signing in — Daily Brief, Opportunity Radar, and read-only terminal demo. Informational market intelligence only.",
   path: "/demo",
 });
 
 const MODULES = [
   {
-    title: "Home command center",
-    body: "Daily briefing, Motive Signal highlights, and watchlist radar in one dark terminal shell.",
+    title: "Daily Brief",
+    body: "What changed overnight, why it matters, and what to watch — with market confidence and top risks.",
+  },
+  {
+    title: "Opportunity Radar",
+    body: "Developing themes ranked by signal strength across stocks, crypto, pink slips, sports, and predictions.",
   },
   {
     title: "Stocks & pink sheets",
     body: "Activity scoops, unusual options (demo-labeled), and microcap movers for research triage.",
   },
   {
-    title: "Crypto",
-    body: "Whale-style volume proxies and 24/7 narrative context from CoinStats / CoinGecko when configured.",
-  },
-  {
-    title: "Sports & predictions",
-    body: "Line moves via The Odds API and Polymarket Gamma events — analytics only, no wagering.",
+    title: "Crypto, sports & predictions",
+    body: "Whale-style volume proxies, line moves, and event markets — analytics only, no wagering.",
   },
 ];
 
@@ -37,9 +37,9 @@ export default function DemoPage() {
         { name: "Home", href: "/" },
         { name: "Product preview", href: "/demo" },
       ]}
-      title="Product preview"
-      kicker="No login required"
-      description="Walk the modules, then open a read-only sandboxed terminal. Your private portfolios and billing stay behind sign-in."
+      title="See today's signals"
+      kicker="AI Market Intelligence Platform"
+      description="Walk the Daily Brief and Opportunity Radar, then open a read-only sandboxed terminal. Your private portfolios and billing stay behind sign-in."
       relatedLinks={[
         { label: "Pricing", href: "/pricing" },
         { label: "Motive Signal", href: "/motive-signal" },

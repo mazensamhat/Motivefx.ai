@@ -9,7 +9,7 @@ function localFallbackBriefing(): HomeBriefing {
   const period = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   return {
     greeting: `Good ${period}`,
-    tagline: "The AI Command Center for Market Intelligence",
+    tagline: "Daily Brief · Opportunity Radar",
     motivfxScore: 62,
     stars: 3,
     marketConfidence: "MODERATE",

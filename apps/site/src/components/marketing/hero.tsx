@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, Brain, CheckCircle2, Play, Sparkles, Target, Zap } from "lucide-react";
+import { ArrowRight, Brain, CheckCircle2, Network, Play, Radio, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  HERO_EYEBROW,
   HERO_HEADLINE,
   HERO_HEADLINE_ACCENT,
   HERO_PROPS,
@@ -12,8 +13,8 @@ import { HeroDashboard } from "./hero-dashboard";
 
 const PROP_ICONS = {
   ai: Brain,
-  personal: Target,
-  multi: Sparkles,
+  signal: Radio,
+  multi: Network,
   action: Zap,
 } as const;
 
@@ -30,8 +31,10 @@ export function Hero() {
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             {TAGLINE}
           </p>
+          <p className="hero-eyebrow-soft">{HERO_EYEBROW}</p>
           <h1 className="hero-title">
-            {HERO_HEADLINE}{" "}
+            {HERO_HEADLINE}
+            <br />
             <span className="text-brand-green">{HERO_HEADLINE_ACCENT}</span>
           </h1>
           <p className="hero-sub">{HERO_SUBHEAD}</p>
@@ -52,15 +55,21 @@ export function Hero() {
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button href="/pricing" size="lg" variant="green">
-              Start free trial
+            <Button href="/demo" size="lg" variant="green">
+              See Today&apos;s Signals
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
             <Button href="/demo" variant="secondary" size="lg">
               <Play className="h-4 w-4" aria-hidden />
-              Try the preview
+              Watch 2-Minute Demo
             </Button>
           </div>
+          <p className="hero-secondary-link">
+            Ready to subscribe?{" "}
+            <Link href="/pricing" className="text-brand-green underline-offset-2 hover:underline">
+              View plans
+            </Link>
+          </p>
 
           <ul className="hero-trust-list">
             {["7-day free trial", "No credit card required", "Cancel anytime"].map((item) => (

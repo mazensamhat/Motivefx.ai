@@ -24,7 +24,10 @@ export function FeaturesSection() {
       <div className="mx-auto max-w-6xl px-4">
         <div className="section-header text-center mx-auto max-w-2xl">
           <p className="section-kicker">Platform</p>
-          <h2 className="section-title">AI Intelligence That Works For You</h2>
+          <h2 className="section-title">Intelligence Layers That Work Together</h2>
+          <p className="section-sub">
+            From overnight brief to Opportunity Radar — designed to reduce noise, not add another feed.
+          </p>
         </div>
 
         <div className="features-grid-landing">
@@ -37,7 +40,7 @@ export function FeaturesSection() {
                 </span>
                 <h3>{f.title}</h3>
                 <p>{f.description}</p>
-                {f.title === "Motive Signal™" && (
+                {f.title === "Signal Engine™" && (
                   <Link href="/motive-signal" className="feature-link">
                     Learn about Motive Signal →
                   </Link>

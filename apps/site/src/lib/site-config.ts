@@ -5,7 +5,7 @@ export const SITE = {
   tagline: "AI Market Intelligence Platform",
   url: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://www.motivefxai.com",
   description:
-    "Your AI Chief of Staff for market intelligence — stocks, crypto, sports betting, prediction markets, and pink sheets.",
+    "AI Market Intelligence Platform that connects market signals, surfaces emerging opportunities, and explains where markets may be headed — stocks, crypto, sports, prediction markets, and pink sheets.",
   email: DEFAULT_CONTACT_EMAIL,
 } as const;
 
