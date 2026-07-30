@@ -23,6 +23,16 @@ export function CtaSection() {
               Start Exploring MotiveFX
             </Button>
           </div>
+          <p className="mt-5 text-sm text-slate-400">
+            Building for a desk or API?{" "}
+            <a href="/pricing#ultra-plus" className="text-brand-green underline-offset-2 hover:underline">
+              Choose Ultra+
+            </a>
+            {" · "}
+            <a href="/pricing#elite" className="text-brand-green underline-offset-2 hover:underline">
+              Elite VIP onboarding
+            </a>
+          </p>
         </div>
       </div>
     </section>

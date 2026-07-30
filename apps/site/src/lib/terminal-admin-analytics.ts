@@ -169,7 +169,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
       estimatedMrrUsd,
       usageEvents24h: usage24h,
       churnEvents30d,
-      annualPriceUsd: 999,
+      annualPriceUsd: 1299,
     },
     subscriptionsByModule: MODULES.map((module) => ({
       module,

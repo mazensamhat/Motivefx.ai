@@ -21,8 +21,8 @@ In **Product catalog → Add product**, create **five subscription products**:
 | MotiveFX Lite | Monthly recurring | **$29.99** | `STRIPE_PRICE_LITE` |
 | MotiveFX Pro | Monthly recurring | **$59.99** | `STRIPE_PRICE_PRO` |
 | MotiveFX Ultra | Monthly recurring | **$99.99** | `STRIPE_PRICE_ULTRA` |
-| MotiveFX Ultra+ | Monthly recurring | **$149.99** | `STRIPE_PRICE_ULTRA_PLUS` |
-| MotiveFX Elite | **Yearly** recurring | **$999.00** | `STRIPE_PRICE_ELITE` |
+| MotiveFX Ultra+ | Monthly recurring | **$249.99** | `STRIPE_PRICE_ULTRA_PLUS` |
+| MotiveFX Elite | **Yearly** recurring | **$1299.00** | `STRIPE_PRICE_ELITE` |
 
 For each product:
 

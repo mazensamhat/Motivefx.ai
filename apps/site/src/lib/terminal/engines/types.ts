@@ -123,9 +123,32 @@ export interface ThemeWatchItem {
   addedAt: string;
 }
 
+export interface PortfolioBook {
+  id: string;
+  name: string;
+  holdings: Array<{
+    symbol: string;
+    shares?: number;
+    amount?: number;
+    avg_cost?: number;
+  }>;
+  updatedAt: string;
+}
+
+export interface ModulePortfolioBooks {
+  activeId: string;
+  books: PortfolioBook[];
+}
+
+export type PortfolioBooksState = Partial<
+  Record<"trades" | "crypto" | "penny", ModulePortfolioBooks>
+>;
+
 export interface IntelPrefs {
   themeWatchlist: ThemeWatchItem[];
   alertRules: SignalAlertRule[];
+  /** Ultra+ named ledgers per market module (synced with active UserPortfolio). */
+  portfolioBooks?: PortfolioBooksState;
 }
 
 export interface ThemeSuggestion {

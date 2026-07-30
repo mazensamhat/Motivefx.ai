@@ -11,8 +11,8 @@ Checklist for shipping StoreKit subscriptions via RevenueCat — same architectu
 | Lite | `Lite` | monthly | $29.99 |
 | Pro | `Pro` | monthly | $59.99 |
 | Ultra | `Ultra` | monthly | $99.99 |
-| Ultra+ | `Ultra.Plus` | monthly | $149.99 |
-| Elite | `Elite` | yearly | $999 |
+| Ultra+ | `Ultra.Plus` | monthly | $249.99 |
+| Elite | `Elite` | yearly | $1299 |
 
 > **ASC subscription levels:** Order highest service first so upgrades/downgrades work correctly — **Elite = level 1**, Ultra.Plus = 2, Ultra = 3, Pro = 4, **Lite = level 5**. If Lite is currently level 1 and Elite level 5, that ordering is inverted; fix it in App Store Connect → Subscriptions → group → Subscription Levels.
 

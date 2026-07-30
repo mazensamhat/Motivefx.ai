@@ -31,7 +31,8 @@ export function PricingPreview() {
           {PRICING_TIERS.map((tier) => (
             <article
               key={tier.id}
-              className={`pricing-preview-card ${tier.featured ? "featured" : ""} ${tier.id === "elite" ? "elite-card" : ""}`}
+              id={tier.id === "ultra_plus" ? "ultra-plus" : tier.id}
+              className={`pricing-preview-card ${tier.featured ? "featured" : ""} ${tier.id === "elite" ? "elite-card" : ""} ${tier.id === "ultra_plus" ? "ultra-plus-card" : ""}`}
             >
               {tier.featured && (
                 <span className="pricing-preview-badge">
@@ -42,7 +43,12 @@ export function PricingPreview() {
               {tier.id === "elite" && (
                 <span className="pricing-preview-badge elite">
                   <Sparkles className="h-3 w-3" aria-hidden />
-                  Best value
+                  VIP annual
+                </span>
+              )}
+              {tier.id === "ultra_plus" && (
+                <span className="pricing-preview-badge elite">
+                  Teams &amp; API
                 </span>
               )}
               <h3>{tier.name}</h3>
@@ -62,16 +68,32 @@ export function PricingPreview() {
                 {MODULE_DOTS.slice(0, tier.intelligenceMarketsIncluded === "all" ? 5 : Number(tier.intelligenceMarketsIncluded)).join(" ")}
               </span>
               <Link
-                href="/pricing"
-                className={`pricing-card-cta ${tier.id === "elite" ? "elite-cta" : ""}`}
+                href={
+                  tier.id === "ultra_plus"
+                    ? "/pricing#ultra-plus"
+                    : tier.id === "elite"
+                      ? "/pricing#elite"
+                      : "/pricing"
+                }
+                className={`pricing-card-cta ${tier.id === "elite" || tier.id === "ultra_plus" ? "elite-cta" : ""}`}
               >
-                {tier.id === "elite" ? "Join Elite" : "Get started"}
+                {tier.id === "elite"
+                  ? "Join Elite"
+                  : tier.id === "ultra_plus"
+                    ? "Get Ultra+ for teams"
+                    : "Get started"}
               </Link>
             </article>
           ))}
         </div>
 
-        <div className="mt-10 text-center">
+        <p className="mt-8 text-center text-sm text-slate-400 max-w-2xl mx-auto">
+          Individuals start on <strong className="text-white">Pro</strong>. Firms, API workflows, and
+          multi-portfolio desks choose <strong className="text-white">Ultra+</strong>. VIP annual
+          onboarding is <strong className="text-white">Elite</strong>.
+        </p>
+
+        <div className="mt-6 text-center">
           <Button href="/pricing" variant="green" size="lg">
             Compare all plans
             <ArrowRight className="h-4 w-4" aria-hidden />

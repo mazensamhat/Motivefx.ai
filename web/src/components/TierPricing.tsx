@@ -126,7 +126,7 @@ export function TierPricing() {
         <button type="button" className="btn btn-accent-terminal" onClick={() => openExternalSubscribe()}>
           Manage subscription on website
         </button>
-        <BillingFinePrint annualPrice={999} className="tier-pricing-fine-print" compact />
+        <BillingFinePrint annualPrice={1299} className="tier-pricing-fine-print" compact />
       </div>
     );
   }
@@ -150,7 +150,7 @@ export function TierPricing() {
             Restore App Store purchases
           </button>
         )}
-        <BillingFinePrint annualPrice={999} className="tier-pricing-fine-print" compact />
+        <BillingFinePrint annualPrice={1299} className="tier-pricing-fine-print" compact />
       </div>
     );
   }
@@ -292,7 +292,7 @@ export function TierPricing() {
         </details>
       )}
 
-      <BillingFinePrint annualPrice={999} className="tier-pricing-fine-print" compact />
+      <BillingFinePrint annualPrice={1299} className="tier-pricing-fine-print" compact />
 
       {picker && (
         <MarketPickerModal

@@ -93,6 +93,9 @@ export function accessErrorResponse(err: unknown) {
   if (err instanceof AccessDeniedError) {
     return forbidden(err.message);
   }
+  if (err instanceof Error) {
+    return Response.json({ error: err.message, detail: err.message }, { status: 400 });
+  }
   throw err;
 }
 

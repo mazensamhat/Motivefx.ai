@@ -36,6 +36,8 @@ export function normalizePrefs(raw: unknown): IntelPrefs {
     alertRules: Array.isArray(o.alertRules) && o.alertRules.length
       ? o.alertRules
       : [...DEFAULT_INTEL_PREFS.alertRules],
+    portfolioBooks:
+      o.portfolioBooks && typeof o.portfolioBooks === "object" ? o.portfolioBooks : undefined,
   };
 }
 

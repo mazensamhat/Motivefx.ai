@@ -77,7 +77,7 @@ export const PRICING_TIERS: PricingTier[] = [
     id: "ultra_plus",
     name: "Ultra+",
     tagline: "Teams, API & multi-portfolio intelligence",
-    monthlyUsd: 149.99,
+    monthlyUsd: 249.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
     highlights: [
@@ -91,16 +91,16 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "elite",
     name: "Elite",
-    tagline: "VIP intelligence access · roadmap influence",
+    tagline: "VIP annual · white-glove onboarding & roadmap influence",
     monthlyUsd: null,
-    annualUsd: 999,
+    annualUsd: 1299,
     intelligenceMarketsIncluded: "all",
     highlights: [
       "Everything in Ultra+",
-      "White-glove onboarding",
-      "Direct product feedback channel",
+      "Dedicated white-glove onboarding session",
+      "Priority concierge + direct product channel",
       "Early access to new AI models",
-      "Annual billing only",
+      "Annual VIP billing only · ~$108/mo",
     ],
   },
 ];

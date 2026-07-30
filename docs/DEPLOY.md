@@ -96,8 +96,8 @@ git push -u origin main
 | `STRIPE_PRICE_LITE` | Live price `price_...` — Lite $29.99/mo |
 | `STRIPE_PRICE_PRO` | Live price — Pro $59.99/mo |
 | `STRIPE_PRICE_ULTRA` | Live price — Ultra $99.99/mo |
-| `STRIPE_PRICE_ULTRA_PLUS` | Live price — Ultra+ $149.99/mo |
-| `STRIPE_PRICE_ELITE` | Live price — Elite $999/yr (annual price in Stripe) |
+| `STRIPE_PRICE_ULTRA_PLUS` | Live price — Ultra+ $249.99/mo |
+| `STRIPE_PRICE_ELITE` | Live price — Elite $1299/yr (annual price in Stripe) |
 | `AUTH_SECRET` | Random 32+ char string for session cookies |
 | `ADMIN_EMAILS` | Comma-separated ops console admins |
 | `RESEND_API_KEY` | Same `re_...` as Motive Life (shared account) |
@@ -121,8 +121,8 @@ After first deploy, set `NEXT_PUBLIC_APP_URL` to the final URL and redeploy if y
    | Lite | $29.99/mo |
    | Pro | $59.99/mo |
    | Ultra | $99.99/mo |
-   | Ultra+ | $149.99/mo |
-   | Elite | $999/yr |
+   | Ultra+ | $249.99/mo |
+   | Elite | $1299/yr |
 
 3. Copy each **live** `price_...` into the matching Vercel env var above.
 4. **Developers → API keys** → copy **live** secret → `STRIPE_SECRET_KEY`

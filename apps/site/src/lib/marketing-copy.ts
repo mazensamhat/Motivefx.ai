@@ -151,6 +151,7 @@ export const FOOTER_RESOURCES = [
   { label: "Learning center", href: "/learn" },
   { label: "Glossary", href: "/glossary" },
   { label: "Motive Signal", href: "/motive-signal" },
+  { label: "Methods & limitations", href: "/limitations" },
   { label: "Product preview", href: "/demo" },
   { label: "Daily intelligence", href: "/daily/biggest-movers" },
   { label: "Compare", href: "/compare" },

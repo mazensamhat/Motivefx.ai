@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Brain, CheckCircle2, Network, Play, Radio, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Brain, CheckCircle2, Network, Radio, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   HERO_EYEBROW,
@@ -59,15 +59,18 @@ export function Hero() {
               See Today&apos;s Signals
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
-            <Button href="/demo" variant="secondary" size="lg">
-              <Play className="h-4 w-4" aria-hidden />
-              Watch 2-Minute Demo
+            <Button href="/pricing#ultra-plus" variant="secondary" size="lg">
+              Teams &amp; API — Ultra+
             </Button>
           </div>
           <p className="hero-secondary-link">
             Ready to subscribe?{" "}
             <Link href="/pricing" className="text-brand-green underline-offset-2 hover:underline">
               View plans
+            </Link>
+            {" · "}
+            <Link href="/demo" className="text-brand-green underline-offset-2 hover:underline">
+              Watch demo
             </Link>
           </p>
 

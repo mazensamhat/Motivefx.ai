@@ -2,6 +2,7 @@ import { badRequest, json } from "@/lib/api";
 import { requireTerminalSession, accessErrorResponse } from "@/lib/terminal/auth";
 import { planForUser } from "@/lib/terminal/plan";
 import { requireFeature } from "@/lib/terminal/access";
+import { sendTeamInviteEmail } from "@/lib/email";
 import {
   buildInstitutionalDashboard,
   claimPendingInvites,
@@ -70,13 +71,22 @@ export async function POST(request: Request) {
         email: body.email,
         role: body.role ?? "analyst",
       });
+      const inviteEmail = (member.invitedEmail ?? body.email).trim().toLowerCase();
+      const emailResult = await sendTeamInviteEmail({
+        to: inviteEmail,
+        teamName: team.name,
+        inviterEmail: auth.session.user.email,
+        role: member.role,
+      });
       return json({
         member: {
           id: member.id,
           status: member.status,
-          email: member.invitedEmail ?? body.email,
+          email: inviteEmail,
           role: member.role,
         },
+        emailSent: emailResult.ok,
+        emailError: emailResult.ok ? undefined : emailResult.error,
       });
     }
 

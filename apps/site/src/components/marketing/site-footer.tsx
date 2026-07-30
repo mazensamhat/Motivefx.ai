@@ -38,6 +38,9 @@ export function SiteFooter() {
                 <Link href="/motive-signal">Motive Signal</Link>
               </li>
               <li>
+                <Link href="/limitations">Methods &amp; limitations</Link>
+              </li>
+              <li>
                 <Link href="/demo">Product preview</Link>
               </li>
               <li>

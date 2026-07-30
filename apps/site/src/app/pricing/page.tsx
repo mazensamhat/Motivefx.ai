@@ -24,7 +24,10 @@ function TierCard({
   onSelect: (id: PricingTierId) => void;
 }) {
   return (
-    <article className={`pricing-tier-card ${tier.featured ? "featured" : ""}`}>
+    <article
+      id={tier.id === "ultra_plus" ? "ultra-plus" : tier.id}
+      className={`pricing-tier-card ${tier.featured ? "featured" : ""}`}
+    >
       {tier.featured && (
         <span className="pricing-preview-badge">
           <Star className="h-3 w-3" aria-hidden />
@@ -34,8 +37,11 @@ function TierCard({
       {tier.id === "elite" && (
         <span className="pricing-preview-badge elite">
           <Sparkles className="h-3 w-3" aria-hidden />
-          VIP
+          VIP annual
         </span>
+      )}
+      {tier.id === "ultra_plus" && (
+        <span className="pricing-preview-badge elite">Teams &amp; API</span>
       )}
       <h2>{tier.name}</h2>
       <p className="pricing-preview-tagline">{tier.tagline}</p>
@@ -56,7 +62,13 @@ function TierCard({
         disabled={loading !== null}
         onClick={() => onSelect(tier.id)}
       >
-        {loading === tier.id ? "Redirecting…" : "Subscribe"}
+        {loading === tier.id
+          ? "Redirecting…"
+          : tier.id === "ultra_plus"
+            ? "Get Ultra+"
+            : tier.id === "elite"
+              ? "Join Elite"
+              : "Subscribe"}
       </button>
     </article>
   );
@@ -174,7 +186,7 @@ export default function PricingPage() {
             ? "You’re on Elite — the highest tier. Manage billing from account settings."
             : hasSubscription
               ? "Only higher tiers are shown. Lower plans are hidden while you’re subscribed."
-              : "Capabilities unlock by tier — Lite picks one market, Pro picks two, Ultra and above get all five. Ultra+ adds API, teams, and multi-portfolio."}
+              : "Capabilities unlock by tier — Lite picks one market, Pro picks two, Ultra and above get all five. Ultra+ is for teams, API, and multi-portfolio. Elite is VIP annual with white-glove onboarding."}
         </p>
         {hasSubscription && currentTier && (
           <p className="mt-2 text-center text-sm text-slate-400">

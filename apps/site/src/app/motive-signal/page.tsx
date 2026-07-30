@@ -20,6 +20,7 @@ export default function MotiveSignalPage() {
       kicker="Signal Engine · Opportunity Radar"
       description="How we score confluence for the Daily Brief and Opportunity Radar, what Motive Signal is not, and how we will publish track record as samples mature."
       relatedLinks={[
+        { label: "Methods & limitations", href: "/limitations" },
         { label: "Data sources", href: "/data-sources" },
         { label: "Product preview", href: "/demo" },
         { label: "Topic overview", href: "/topics/motive-signal" },

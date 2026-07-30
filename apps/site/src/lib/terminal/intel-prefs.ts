@@ -27,7 +27,12 @@ export async function getIntelPrefs(userId: string | null | undefined): Promise<
 }
 
 export async function saveIntelPrefs(userId: string, prefs: IntelPrefs): Promise<IntelPrefs> {
-  const normalized = normalizePrefs(prefs);
+  const existing = await getIntelPrefs(userId);
+  const merged: IntelPrefs = {
+    ...prefs,
+    portfolioBooks: prefs.portfolioBooks ?? existing.portfolioBooks,
+  };
+  const normalized = normalizePrefs(merged);
   if (!userId || userId === "demo" || userId.startsWith("u_")) {
     return normalized;
   }

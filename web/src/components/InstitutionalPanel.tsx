@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Building2, Copy, KeyRound, Plus, Users } from "lucide-react";
+import { Building2, Copy, Headphones, KeyRound, Plus, Sparkles, Users } from "lucide-react";
 import { apiGet, apiPost, apiDelete } from "../lib/api";
 import { useModules } from "../hooks/useModules";
 
@@ -43,8 +43,10 @@ export function InstitutionalPanel() {
   const { hasFeature } = useModules();
   const canTeam = hasFeature("team_workspace");
   const canApi = hasFeature("api_access");
+  const canConcierge = hasFeature("concierge_support");
+  const canOnboarding = hasFeature("white_glove_onboarding");
 
-  if (!canTeam && !canApi) {
+  if (!canTeam && !canApi && !canConcierge) {
     return (
       <section className="home-section phase2-card institutional-locked">
         <div className="home-section-header">
@@ -54,8 +56,8 @@ export function InstitutionalPanel() {
           <span className="home-section-sub">Ultra+ / Elite</span>
         </div>
         <p className="phase2-muted">
-          Team workspaces, shared research notes, API keys, and custom scenario templates unlock on
-          Ultra+ (no plan rename — same Lite→Elite ladder).
+          Team workspaces, shared research notes, API keys, concierge support, and custom scenario
+          templates unlock on Ultra+. Elite adds white-glove onboarding.
         </p>
       </section>
     );
@@ -65,7 +67,92 @@ export function InstitutionalPanel() {
     <div className="institutional-panel">
       {canTeam && <TeamWorkspaceSection />}
       {canApi && <ApiKeysSection />}
+      {canConcierge && <ConciergeSection canOnboarding={canOnboarding} />}
     </div>
+  );
+}
+
+function ConciergeSection({ canOnboarding }: { canOnboarding: boolean }) {
+  const [kind, setKind] = useState<"concierge" | "onboarding">(
+    canOnboarding ? "onboarding" : "concierge"
+  );
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (message.trim().length < 12) {
+      setStatus("Please describe what you need in a bit more detail.");
+      return;
+    }
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await apiPost<{ message?: string }>("/concierge", {
+        kind,
+        message: message.trim(),
+        pagePath: "/terminal",
+      });
+      setStatus(res.message ?? "Request received.");
+      setMessage("");
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="home-section phase2-card">
+      <div className="home-section-header">
+        <h2>
+          {canOnboarding ? <Sparkles size={18} /> : <Headphones size={18} />}{" "}
+          {canOnboarding ? "VIP concierge & onboarding" : "Concierge support"}
+        </h2>
+        <span className="home-section-sub">
+          {canOnboarding ? "Elite · 1 business day" : "Ultra+ · 1 business day"}
+        </span>
+      </div>
+      <p className="phase2-muted">
+        {canOnboarding
+          ? "Book white-glove onboarding or reach priority concierge — we reply within one business day."
+          : "Ask for workflow help, desk setup, or API guidance. Priority inbox for Ultra+."}
+      </p>
+      {canOnboarding && (
+        <div className="phase2-sim-row" style={{ marginBottom: "0.65rem" }}>
+          <label className="phase2-field">
+            <span>Request type</span>
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as "concierge" | "onboarding")}
+            >
+              <option value="onboarding">White-glove onboarding</option>
+              <option value="concierge">Concierge support</option>
+            </select>
+          </label>
+        </div>
+      )}
+      <label className="phase2-field">
+        <span>How can we help?</span>
+        <input
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={
+            kind === "onboarding"
+              ? "Preferred times, markets you care about, team size…"
+              : "Describe your desk workflow or API use case…"
+          }
+        />
+      </label>
+      <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void submit()}>
+        Submit request
+      </button>
+      {status && (
+        <p className="phase2-muted" style={{ marginTop: "0.5rem" }}>
+          {status}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -109,12 +196,24 @@ function TeamWorkspaceSection() {
     if (!inviteEmail.trim()) return;
     setBusy(true);
     try {
-      await apiPost("/institutional/workspace", {
-        action: "invite",
-        email: inviteEmail.trim(),
-        role: "analyst",
-      });
+      const res = await apiPost<{ emailSent?: boolean; emailError?: string }>(
+        "/institutional/workspace",
+        {
+          action: "invite",
+          email: inviteEmail.trim(),
+          role: "analyst",
+        }
+      );
       setInviteEmail("");
+      if (res.emailSent === false) {
+        setError(
+          res.emailError
+            ? `Invite saved, but email failed: ${res.emailError}`
+            : "Invite saved, but email could not be sent."
+        );
+      } else {
+        setError(null);
+      }
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invite failed");
@@ -196,6 +295,7 @@ function TeamWorkspaceSection() {
               <Plus size={14} /> Invite
             </button>
           </div>
+          <p className="phase2-muted">Invites email a join link — they sign in with that address to activate.</p>
           <ul className="phase2-watch-list">
             {dash.members.map((m) => (
               <li key={m.id}>
@@ -323,12 +423,12 @@ function ApiKeysSection() {
         <h2>
           <KeyRound size={18} /> API access
         </h2>
-        <span className="home-section-sub">Bearer mfx_… · /api/v1/intel/*</span>
+        <span className="home-section-sub">Bearer mfx_… · rate-limited · /api/v1/intel/*</span>
       </div>
       {error && <p className="phase2-muted">{error}</p>}
       <p className="phase2-muted">
         Example: <code>GET /api/v1/intel/briefing</code> with header{" "}
-        <code>Authorization: Bearer mfx_…</code>
+        <code>Authorization: Bearer mfx_…</code>. Ultra+ ≈ 600 req/hr · Elite ≈ 2000 req/hr.
       </p>
       <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void createKey()}>
         <Plus size={14} /> Create API key

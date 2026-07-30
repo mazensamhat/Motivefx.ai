@@ -170,6 +170,43 @@ export async function sendTestEmail(to: string) {
   return sendViaResend(to, subject, html);
 }
 
+export async function sendTeamInviteEmail(opts: {
+  to: string;
+  teamName: string;
+  inviterEmail: string;
+  role: string;
+}) {
+  const joinUrl = `${getAppUrl()}/terminal?teamInvite=1`;
+  const subject = `You're invited to ${opts.teamName} on MotiveFX`;
+  const html = `
+    <p><strong>${opts.inviterEmail}</strong> invited you to the <strong>${opts.teamName}</strong> workspace on MotiveFX as <strong>${opts.role}</strong>.</p>
+    <p><a href="${joinUrl}">Sign in or create an account</a> with this email (${opts.to}) to join automatically.</p>
+    <p>Ultra+ team workspaces share research notes, scenario templates, and institutional tools.</p>
+    <p>— MotiveFX · <a href="${SITE.url}">${SITE.url}</a></p>
+  `.trim();
+  return sendViaResend(opts.to, subject, html);
+}
+
+export async function sendConciergeRequestEmail(opts: {
+  to: string;
+  replyTo: string;
+  kind: "concierge" | "onboarding";
+  message: string;
+  tier: string;
+  userEmail: string;
+}) {
+  const label = opts.kind === "onboarding" ? "Elite white-glove onboarding" : "Ultra+ concierge";
+  const subject = `[MotiveFX ${label}] ${opts.userEmail}`;
+  const html = `
+    <p><strong>${label}</strong> request from <a href="mailto:${opts.userEmail}">${opts.userEmail}</a> (plan: ${opts.tier}).</p>
+    <p>Reply-to: ${opts.replyTo}</p>
+    <hr />
+    <p style="white-space:pre-wrap">${opts.message.replace(/</g, "&lt;")}</p>
+    <p>— MotiveFX ops</p>
+  `.trim();
+  return sendViaResend(opts.to, subject, html);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${getAppUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const subject = "Reset your MotiveFX password";

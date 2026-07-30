@@ -31,6 +31,14 @@ export function AccountSettings({
   const [feedbackKind, setFeedbackKind] = useState<"bug" | "feature" | "billing" | "other">("feature");
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
+  const [conciergeKind, setConciergeKind] = useState<"concierge" | "onboarding">(
+    tier === "elite" ? "onboarding" : "concierge"
+  );
+  const [conciergeMsg, setConciergeMsg] = useState("");
+  const [conciergeStatus, setConciergeStatus] = useState("");
+
+  const showConcierge = tier === "ultra_plus" || tier === "elite";
+  const showOnboarding = tier === "elite";
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -103,6 +111,31 @@ export function AccountSettings({
     }
   }
 
+  async function submitConcierge(e: React.FormEvent) {
+    e.preventDefault();
+    setConciergeStatus("");
+    try {
+      const res = await fetch("/api/concierge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: showOnboarding ? conciergeKind : "concierge",
+          message: conciergeMsg,
+          pagePath: "/app/settings",
+        }),
+      });
+      const data = (await res.json()) as { error?: string; message?: string };
+      if (!res.ok) {
+        setConciergeStatus(data.error ?? "Could not submit request.");
+        return;
+      }
+      setConciergeStatus(data.message ?? "Thanks — we received your request.");
+      setConciergeMsg("");
+    } catch {
+      setConciergeStatus("Could not reach the server.");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -151,6 +184,64 @@ export function AccountSettings({
         </div>
         {billingErr && <p className="text-sm text-red-400">{billingErr}</p>}
       </section>
+
+      {showConcierge ? (
+        <section className="app-panel">
+          <h2 className="font-semibold text-white">
+            {showOnboarding ? "VIP concierge & onboarding" : "Concierge support"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            {showOnboarding
+              ? "Elite white-glove onboarding or priority concierge — we reply within 1 business day."
+              : "Ultra+ priority support for desk setup, teams, and API workflows."}
+          </p>
+          <form onSubmit={submitConcierge} className="mt-4 space-y-4 max-w-md">
+            {showOnboarding ? (
+              <div>
+                <label className="auth-label" htmlFor="concierge-kind">
+                  Request type
+                </label>
+                <select
+                  id="concierge-kind"
+                  className="auth-input"
+                  value={conciergeKind}
+                  onChange={(e) => setConciergeKind(e.target.value as typeof conciergeKind)}
+                >
+                  <option value="onboarding">White-glove onboarding</option>
+                  <option value="concierge">Concierge support</option>
+                </select>
+              </div>
+            ) : null}
+            <div>
+              <label className="auth-label" htmlFor="concierge-msg">
+                Message
+              </label>
+              <textarea
+                id="concierge-msg"
+                className="auth-input min-h-[100px]"
+                value={conciergeMsg}
+                onChange={(e) => setConciergeMsg(e.target.value)}
+                minLength={12}
+                required
+              />
+            </div>
+            {conciergeStatus && (
+              <p
+                className={`text-sm ${
+                  conciergeStatus.includes("received") || conciergeStatus.startsWith("Thanks")
+                    ? "text-[#00e676]"
+                    : "text-red-400"
+                }`}
+              >
+                {conciergeStatus}
+              </p>
+            )}
+            <button type="submit" className="auth-submit max-w-xs">
+              Submit request
+            </button>
+          </form>
+        </section>
+      ) : null}
 
       <section className="app-panel">
         <h2 className="font-semibold text-white">Change password</h2>

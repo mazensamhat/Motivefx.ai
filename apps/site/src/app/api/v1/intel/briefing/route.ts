@@ -3,6 +3,7 @@ import { resolveApiKeyBearer } from "@/lib/terminal/institutional";
 import { planForUser } from "@/lib/terminal/plan";
 import { hasFeature } from "@/lib/terminal/plan";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
+import { enforceApiRateLimit, withRateLimitHeaders } from "@/lib/terminal/api-metering";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
@@ -20,23 +21,35 @@ export async function GET(request: Request) {
     return unauthorized("API access requires Ultra+ or Elite");
   }
 
+  const meter = await enforceApiRateLimit({
+    userId: row.user.id,
+    apiKeyId: row.id,
+    tier: plan.tier,
+    endpoint: "/api/v1/intel/briefing",
+  });
+  if (!meter.ok) return meter.response;
+
   const briefing = await buildHomeBriefing({
     displayName: row.user.displayName ?? row.user.email.split("@")[0],
     userId: row.user.id,
     plan,
   });
 
-  return json({
-    ok: true,
-    generatedAt: briefing.generatedAt,
-    marketConfidence: briefing.marketConfidence,
-    motivfxScore: briefing.motivfxScore,
-    biggestOpportunity: briefing.biggestOpportunity,
-    biggestRisk: briefing.biggestRisk,
-    opportunityCount: briefing.opportunityCount,
-    opportunities: ((briefing.opportunities as unknown[]) ?? []).slice(0, 8),
-    probabilityViews: briefing.probabilityViews ?? [],
-    consensusBreaks: briefing.consensusBreaks ?? [],
-    disclaimer: "Informational market intelligence only — not financial advice.",
-  });
+  return withRateLimitHeaders(
+    json({
+      ok: true,
+      generatedAt: briefing.generatedAt,
+      marketConfidence: briefing.marketConfidence,
+      motivfxScore: briefing.motivfxScore,
+      biggestOpportunity: briefing.biggestOpportunity,
+      biggestRisk: briefing.biggestRisk,
+      opportunityCount: briefing.opportunityCount,
+      opportunities: ((briefing.opportunities as unknown[]) ?? []).slice(0, 8),
+      probabilityViews: briefing.probabilityViews ?? [],
+      consensusBreaks: briefing.consensusBreaks ?? [],
+      rateLimit: { limit: meter.limit, remaining: meter.remaining },
+      disclaimer: "Informational market intelligence only — not financial advice.",
+    }),
+    { remaining: meter.remaining, limit: meter.limit }
+  );
 }

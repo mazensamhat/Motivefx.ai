@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Briefcase, Pencil, Star, Trash2, Wand2, X } from "lucide-react";
+import { Briefcase, Pencil, Plus, Star, Trash2, Wand2, X } from "lucide-react";
 import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
+import { useModules } from "../hooks/useModules";
 import type { BrandModuleId } from "../brand/moduleBrand";
 import type { AdvisorResult } from "../types";
 import type { AssetDeepDivePayload } from "../utils/assetDeepDive";
@@ -17,6 +18,11 @@ interface Holding {
   amount?: number;
   avg_cost?: number;
 }
+
+type PortfolioBookMeta = {
+  activeId: string;
+  books: Array<{ id: string; name: string }>;
+};
 
 const MODULE_TO_BRAND: Record<"trades" | "crypto" | "penny", BrandModuleId> = {
   trades: "trades",
@@ -34,10 +40,14 @@ interface Props {
 
 export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, onHoldingsChange }: Props) {
   const { isAuthenticated, user } = useAuth();
+  const { hasFeature } = useModules();
+  const canMulti = hasFeature("multiple_portfolios");
   const [symbol, setSymbol] = useState("");
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
   const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [books, setBooks] = useState<PortfolioBookMeta | null>(null);
+  const [bookBusy, setBookBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [deepDive, setDeepDive] = useState<AssetDeepDivePayload | null>(null);
@@ -127,6 +137,75 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
       window.removeEventListener("motivefx:auth-changed", onAuth);
     };
   }, [module, isAuthenticated, user?.userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !canMulti) {
+      setBooks(null);
+      return;
+    }
+    let cancelled = false;
+    apiGet<{ books: PortfolioBookMeta }>(`/terminal/portfolio/books?module=${module}`)
+      .then((d) => {
+        if (!cancelled) setBooks(d.books);
+      })
+      .catch(() => {
+        if (!cancelled) setBooks(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [module, isAuthenticated, canMulti]);
+
+  async function reloadHoldings() {
+    const userId = user?.userId ?? getUserId();
+    const paths: Record<string, string> = {
+      trades: `/advisor/trades/portfolio/${userId}`,
+      crypto: `/advisor/crypto/portfolio/${userId}`,
+      penny: `/advisor/penny/portfolio/${userId}`,
+    };
+    const d = await apiGet<{ holdings: Holding[] }>(paths[module]);
+    setHoldings(d.holdings ?? []);
+    onHoldingsChangeRef.current?.((d.holdings ?? []).length);
+  }
+
+  async function switchBook(bookId: string) {
+    if (!bookId || bookId === books?.activeId) return;
+    setBookBusy(true);
+    setFormError(null);
+    try {
+      const res = await apiPost<{ books: PortfolioBookMeta }>("/terminal/portfolio/books", {
+        action: "switch",
+        module,
+        bookId,
+      });
+      setBooks(res.books);
+      await reloadHoldings();
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Could not switch portfolio");
+    } finally {
+      setBookBusy(false);
+    }
+  }
+
+  async function createBook() {
+    setBookBusy(true);
+    setFormError(null);
+    try {
+      const res = await apiPost<{ books: PortfolioBookMeta }>("/terminal/portfolio/books", {
+        action: "create",
+        module,
+        name: `Portfolio ${(books?.books.length ?? 0) + 1}`,
+      });
+      setBooks(res.books);
+      await reloadHoldings();
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Could not create portfolio");
+    } finally {
+      setBookBusy(false);
+    }
+  }
 
   function resetForm() {
     setSymbol("");
@@ -283,6 +362,34 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
             {analyzing ? "Analyzing…" : "AI Analyze"}
           </button>
         </div>
+
+        {canMulti && books && (
+          <div className="phase2-sim-row" style={{ padding: "0.65rem 0.85rem 0" }}>
+            <label className="phase2-field" style={{ flex: 1 }}>
+              <span>Active portfolio</span>
+              <select
+                value={books.activeId}
+                disabled={bookBusy}
+                onChange={(e) => void switchBook(e.target.value)}
+              >
+                {books.books.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              disabled={bookBusy || books.books.length >= 5}
+              onClick={() => void createBook()}
+              title="Create another named ledger (Ultra+)"
+            >
+              <Plus size={14} /> New
+            </button>
+          </div>
+        )}
 
         <div className="portfolio-form portfolio-form-terminal portfolio-form-ledger">
           <input

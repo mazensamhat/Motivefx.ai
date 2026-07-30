@@ -9,23 +9,31 @@ import {
   neighborsOf,
 } from "@/lib/terminal/engines";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
+import { enforceApiRateLimit, withRateLimitHeaders } from "@/lib/terminal/api-metering";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
 
-async function requireApiUser(request: Request) {
+async function requireApiUser(request: Request, endpoint: string) {
   const row = await resolveApiKeyBearer(request.headers.get("authorization"));
   if (!row?.user) return { error: unauthorized("Invalid or revoked API key") as Response };
   const plan = planForUser(row.user);
   if (!hasFeature(plan, "api_access")) {
     return { error: unauthorized("API access requires Ultra+ or Elite") as Response };
   }
-  return { user: row.user, plan };
+  const meter = await enforceApiRateLimit({
+    userId: row.user.id,
+    apiKeyId: row.id,
+    tier: plan.tier,
+    endpoint,
+  });
+  if (!meter.ok) return { error: meter.response };
+  return { user: row.user, plan, rate: { remaining: meter.remaining, limit: meter.limit } };
 }
 
-/** GET /api/v1/intel/probability */
+/** GET /api/v1/intel?resource=… */
 export async function GET(request: Request) {
-  const auth = await requireApiUser(request);
+  const auth = await requireApiUser(request, "/api/v1/intel");
   if ("error" in auth && auth.error) return auth.error;
 
   const url = new URL(request.url);
@@ -39,31 +47,29 @@ export async function GET(request: Request) {
   const opps = (briefing.opportunities as Array<Record<string, unknown>>) ?? [];
   const sentiment = (briefing.sentiment as { reddit?: string; x?: string; news?: string }) ?? {};
 
+  let payload: Response;
   if (resource === "consensus") {
     const breaks = detectConsensusBreaks(
       opps as never[],
       sentiment,
       String(briefing.marketConfidence ?? "MODERATE")
     );
-    return json({ consensusBreaks: breaks });
-  }
-
-  if (resource === "graph") {
+    payload = json({ consensusBreaks: breaks });
+  } else if (resource === "graph") {
     const graph = buildSignalGraph({
       boostSymbols: opps.map((o) => String(o.symbol ?? "")).filter(Boolean),
     });
-    return json({ graph, neighbors: neighborsOf(graph, graph.activeNodeId) });
+    payload = json({ graph, neighbors: neighborsOf(graph, graph.activeNodeId) });
+  } else {
+    const views = buildProbabilityViews(opps as never[], sentiment);
+    payload = json({ views: views.filter((v) => v.id.startsWith("theme-")) });
   }
 
-  const views = buildProbabilityViews(opps as never[], sentiment);
-  return json({ views: views.filter((v) => v.id.startsWith("theme-")) });
+  return withRateLimitHeaders(payload, auth.rate!);
 }
 
-/** POST /api/v1/intel/simulate — same path file uses GET for reads; separate simulate route preferred.
- *  Kept here as POST on this catch-all for simplicity when resource=simulate via query is awkward.
- */
 export async function POST(request: Request) {
-  const auth = await requireApiUser(request);
+  const auth = await requireApiUser(request, "/api/v1/intel");
   if ("error" in auth && auth.error) return auth.error;
 
   let body: {
@@ -92,8 +98,11 @@ export async function POST(request: Request) {
     baseProbability: body.baseProbability,
   });
 
-  return json({
-    simulation,
-    disclaimer: "Educational scenario branches only — not forecasts or financial advice.",
-  });
+  return withRateLimitHeaders(
+    json({
+      simulation,
+      disclaimer: "Educational scenario branches only — not forecasts or financial advice.",
+    }),
+    auth.rate!
+  );
 }
