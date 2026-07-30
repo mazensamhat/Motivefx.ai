@@ -7878,7 +7878,8 @@ html[data-gen="boomer"] .gen-setup-preview {
 }
 
 .alert-center-overlay {
-  z-index: 1100;
+  /* Above sticky header (800), ticker, and bottom nav — match other modals */
+  z-index: 10050;
 }
 
 .alert-center-panel {

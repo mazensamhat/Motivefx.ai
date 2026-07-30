@@ -1,5 +1,6 @@
 import { Bell, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useIntelAlerts } from "../hooks/useIntelAlerts";
 import { useSignalDetail } from "../hooks/useSignalDetail";
@@ -18,6 +19,15 @@ export function AlertCenterBell() {
     return () => window.removeEventListener("motivefx:open-alerts", openPanel);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   function openAlert(a: (typeof alerts)[0]) {
     void markSeen(a.id);
     inspectDetail(
@@ -33,6 +43,63 @@ export function AlertCenterBell() {
     setOpen(false);
   }
 
+  const panel =
+    open && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="modal-overlay alert-center-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setOpen(false)}
+          >
+            <div className="alert-center-panel glass-card" onClick={(e) => e.stopPropagation()}>
+              <header className="alert-center-header">
+                <div>
+                  <h3>Intel alerts</h3>
+                  <p className="alert-center-sub">Radar hits, predictive rules & top signals</p>
+                </div>
+                <button type="button" className="btn-icon" onClick={() => setOpen(false)} aria-label="Close">
+                  <X size={18} />
+                </button>
+              </header>
+
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost alert-center-mark-all"
+                  onClick={() => void markAllSeen()}
+                >
+                  Mark all read
+                </button>
+              )}
+
+              <ul className="alert-center-list">
+                {alerts.length === 0 ? (
+                  <li className="alert-center-empty">No alerts yet — star symbols on your radar to get hits.</li>
+                ) : (
+                  alerts.map((a) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        className={`alert-center-item ${a.seen ? "seen" : "unread"}`}
+                        onClick={() => openAlert(a)}
+                      >
+                        <span className="alert-center-item-title">{a.title}</span>
+                        {a.body && <span className="alert-center-item-body">{a.body}</span>}
+                        {a.confidence != null && (
+                          <span className="alert-center-item-meta">{formatSignalStrength(a.confidence)}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <>
       <button
@@ -45,50 +112,7 @@ export function AlertCenterBell() {
         <Bell size={18} />
         {unreadCount > 0 && <span className="alert-center-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>}
       </button>
-
-      {open && (
-        <div className="modal-overlay alert-center-overlay" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
-          <div className="alert-center-panel glass-card" onClick={(e) => e.stopPropagation()}>
-            <header className="alert-center-header">
-              <div>
-                <h3>Intel alerts</h3>
-                <p className="alert-center-sub">Radar hits and top signals · in-app for now</p>
-              </div>
-              <button type="button" className="btn-icon" onClick={() => setOpen(false)} aria-label="Close">
-                <X size={18} />
-              </button>
-            </header>
-
-            {unreadCount > 0 && (
-              <button type="button" className="btn btn-sm btn-ghost alert-center-mark-all" onClick={() => void markAllSeen()}>
-                Mark all read
-              </button>
-            )}
-
-            <ul className="alert-center-list">
-              {alerts.length === 0 ? (
-                <li className="alert-center-empty">No alerts yet — star symbols on your radar to get hits.</li>
-              ) : (
-                alerts.map((a) => (
-                  <li key={a.id}>
-                    <button
-                      type="button"
-                      className={`alert-center-item ${a.seen ? "seen" : "unread"}`}
-                      onClick={() => openAlert(a)}
-                    >
-                      <span className="alert-center-item-title">{a.title}</span>
-                      {a.body && <span className="alert-center-item-body">{a.body}</span>}
-                      {a.confidence != null && (
-                        <span className="alert-center-item-meta">{formatSignalStrength(a.confidence)}</span>
-                      )}
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-        </div>
-      )}
+      {panel}
     </>
   );
 }
