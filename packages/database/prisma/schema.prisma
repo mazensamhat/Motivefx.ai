@@ -105,7 +105,7 @@ model User {
 
   channelTouchpoints  ChannelTouchpoint[]
 
-
+  intelPref           UserIntelPref?
 
   @@index([subscriptionStatus])
 
@@ -290,6 +290,21 @@ model IntelAlert {
   @@unique([userId, alertKey])
 
   @@index([userId])
+
+}
+
+
+
+/** Phase 3 predictive prefs — theme watchlists + signal alert rules (JSON blob). */
+model UserIntelPref {
+
+  userId    String   @id
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  prefsJson String   @default("{}")
+
+  updatedAt DateTime @updatedAt
 
 }
 

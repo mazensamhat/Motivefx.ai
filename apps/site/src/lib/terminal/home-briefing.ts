@@ -15,6 +15,7 @@ import {
   enrichOpportunitiesWithProbability,
   runPhase2Engines,
 } from "./engines";
+import { getIntelPrefs } from "./intel-prefs";
 
 /** Browser-local anonymous ids (u_…) are not persisted users — skip DB lookups. */
 function isEphemeralUserId(userId: string | null | undefined): boolean {
@@ -460,6 +461,8 @@ export async function buildHomeBriefing(opts: {
     news: congressBuy ? "bullish" : "neutral",
   };
 
+  const intelPrefs = await withFeedTimeout(getIntelPrefs(opts.userId ?? null), null, 1500);
+
   const phase2 = runPhase2Engines({
     opportunities: top8 as Array<{
       id?: string;
@@ -475,6 +478,7 @@ export async function buildHomeBriefing(opts: {
     }>,
     marketConfidenceLabel: marketConfidence,
     sentiment,
+    prefs: intelPrefs,
   });
   const enrichedOpps = enrichOpportunitiesWithProbability(
     top8 as Array<{
@@ -493,9 +497,22 @@ export async function buildHomeBriefing(opts: {
   const topBreak = phase2.consensusBreaks[0];
   const topTheme = phase2.probabilityViews.find((v) => v.id.startsWith("theme-"));
 
+  // Enrich theme watchlist rows with live probability
+  const themeWatchlist = (intelPrefs?.themeWatchlist ?? []).map((t) => {
+    const live = phase2.probabilityViews.find(
+      (v) => v.theme.toLowerCase() === t.theme.toLowerCase() || v.id === t.id
+    );
+    return {
+      ...t,
+      probability: live?.probability ?? t.probability,
+      confidence: live?.confidence,
+      deltaVsPrior: live?.deltaVsPrior,
+    };
+  });
+
   let briefing: Record<string, unknown> = {
     greeting,
-    tagline: "Daily Brief · Opportunity Radar",
+    tagline: "Daily Brief · Opportunity Radar · Predictive",
     motivfxScore: score,
     stars: stars(score),
     marketConfidence,
@@ -531,12 +548,17 @@ export async function buildHomeBriefing(opts: {
     signalGraph: phase2.signalGraph,
     probabilityViews: phase2.probabilityViews.filter((v) => v.id.startsWith("theme-")),
     consensusBreaks: phase2.consensusBreaks,
+    consensusHistory: phase2.consensusHistory,
     futureScenarios: phase2.futureScenarios,
     marketGenomes: phase2.marketGenomes.slice(0, 4),
+    themeSuggestions: phase2.themeSuggestions,
+    themeWatchlist,
+    alertRules: intelPrefs?.alertRules ?? [],
     audioBriefingScript: [
       `Good ${period}. Here's your MotiveFX Daily Brief.`,
       `Market confidence is ${densityWord} — desk score ${score} out of 100.`,
       top ? `On Opportunity Radar, the top flag is ${top.symbol}: ${top.title}. Confidence sits at ${top.confidence} percent.` : "",
+      topTheme ? `Probability Engine theme lead: ${topTheme.theme} at ${topTheme.probability} percent.` : "",
       topBreak ? `Consensus Break watch: ${topBreak.breakReason.slice(0, 160)}` : "",
       personalized.coverageLine ? String(personalized.coverageLine).replace(" today", " on your radar today") : "",
       "That's your Daily Brief. This is informational context only, not financial advice.",

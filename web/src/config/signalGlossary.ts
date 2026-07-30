@@ -115,6 +115,20 @@ export const SIGNAL_GLOSSARY: GlossaryEntry[] = [
       "Compact trait map for a radar hit — stance, risk, factors, and related Relationship Engine nodes.",
   },
   {
+    id: "theme-watchlist",
+    term: "Theme Watchlist",
+    category: "Home",
+    definition:
+      "Personalized list of predictive themes (not just tickers). Suggestions come from the Probability Engine; live probability updates on each Daily Brief.",
+  },
+  {
+    id: "predictive-alerts",
+    term: "Predictive Alerts",
+    category: "Home",
+    definition:
+      "Custom rules on evolving signals — e.g. theme probability above a threshold, Consensus Break divergence, or Genome high risk. Informational inbox alerts; push on Pro+.",
+  },
+  {
     id: "radar-hit",
     term: "Radar Hit",
     category: "Home",

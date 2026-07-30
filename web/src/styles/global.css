@@ -8896,6 +8896,55 @@ html[data-gen="boomer"] .gen-setup-preview {
   margin-top: 0.65rem;
 }
 
+.phase2-watch-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.phase2-watch-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.phase2-watch-list strong {
+  display: block;
+  font-size: 0.8125rem;
+}
+
+.phase2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.5rem 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #aab8cc);
+}
+
+.phase2-field input,
+.phase2-field select {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text, #f3f4f6);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
+.phase2-sim-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
 /* ── Activity mobile: filter sheet, skeletons, friendly empty ── */
 .activity-skeleton {
   display: flex;

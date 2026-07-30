@@ -4,6 +4,14 @@ import { getSession } from "@/lib/session";
 import { findUserSafeCached } from "@/lib/load-user";
 import { planForUser } from "@/lib/terminal/plan";
 import { upsertAlerts } from "@/lib/terminal/alerts";
+import { evaluateSignalAlertRules } from "@/lib/terminal/engines";
+import type {
+  ConsensusBreak,
+  MarketGenome,
+  ProbabilityView,
+  SignalAlertRule,
+} from "@/lib/terminal/engines";
+import { getIntelPrefs } from "@/lib/terminal/intel-prefs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
@@ -132,6 +140,25 @@ export async function GET(request: Request) {
             alertKey: `signal-${o.id}`,
           });
         }
+
+        // Phase 3: evaluate custom predictive alert rules
+        const prefs = await getIntelPrefs(userIdForAlerts);
+        const predictive = evaluateSignalAlertRules(prefs.alertRules as SignalAlertRule[], {
+          probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
+          consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
+          marketGenomes: (briefing.marketGenomes as MarketGenome[]) ?? [],
+        });
+        for (const a of predictive) {
+          alerts.push({
+            module: String(a.module ?? ""),
+            symbol: String(a.symbol ?? ""),
+            title: a.title,
+            body: a.body ?? "",
+            confidence: Number(a.confidence ?? 0),
+            alertKey: a.alertKey,
+          });
+        }
+
         if (alerts.length) await upsertAlerts(userIdForAlerts, alerts);
       } catch {
         /* ignore */

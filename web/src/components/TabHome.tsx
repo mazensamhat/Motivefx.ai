@@ -255,7 +255,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         </section>
       </div>
 
-      <Phase2IntelPanels briefing={b} />
+      <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
 
       <div className="home-desk-secondary">
       <section className="mf-section">

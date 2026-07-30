@@ -215,6 +215,8 @@ export interface ProbabilityView {
   analogues?: string[];
   relatedSymbols: string[];
   module?: string;
+  deltaVsPrior?: number;
+  calibrationNote?: string;
 }
 
 export interface ConsensusBreak {
@@ -224,6 +226,9 @@ export interface ConsensusBreak {
   divergenceScore: number;
   relatedSymbols: string[];
   module?: string;
+  priorScore?: number;
+  deltaVsPrior?: number;
+  resolvedHint?: string;
 }
 
 export interface FutureScenarioBranch {
@@ -240,6 +245,8 @@ export interface FutureScenarios {
   branches: FutureScenarioBranch[];
   disclaimer: string;
   generatedAt: string;
+  pathCount?: number;
+  ensembleNote?: string;
 }
 
 export interface MarketGenome {
@@ -282,6 +289,33 @@ export interface HomeBriefing {
   consensusBreaks?: ConsensusBreak[];
   futureScenarios?: FutureScenarios;
   marketGenomes?: MarketGenome[];
+  /** Phase 3 predictive */
+  consensusHistory?: Array<{ at: string; avgDivergence: number; topId: string; topScore: number }>;
+  themeSuggestions?: Array<{
+    id: string;
+    theme: string;
+    probability: number;
+    confidence: number;
+    reason: string;
+    beneficiaries: string[];
+  }>;
+  themeWatchlist?: Array<{
+    id: string;
+    theme: string;
+    source: "user" | "suggested";
+    probability?: number;
+    confidence?: number;
+    deltaVsPrior?: number;
+    addedAt: string;
+  }>;
+  alertRules?: Array<{
+    id: string;
+    kind: "probability_above" | "divergence_above" | "genome_risk";
+    threshold: number;
+    themeId?: string;
+    enabled: boolean;
+    label?: string;
+  }>;
 }
 
 export interface IntelAlert {

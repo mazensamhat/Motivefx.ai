@@ -1,4 +1,4 @@
-/** Shared Phase 2 intelligence engine types — monitor-only, not advice. */
+/** Shared Phase 2/3 intelligence engine types — monitor-only, not advice. */
 
 export type GraphNodeKind = "macro" | "sector" | "asset" | "theme";
 
@@ -25,6 +25,13 @@ export interface SignalGraph {
 
 export type Direction = "up" | "down" | "neutral";
 
+export interface ProbabilityFactor {
+  key: string;
+  label: string;
+  score: number;
+  weight: number;
+}
+
 export interface ProbabilityView {
   id: string;
   theme: string;
@@ -38,6 +45,11 @@ export interface ProbabilityView {
   analogues?: string[];
   relatedSymbols: string[];
   module?: string;
+  /** Phase 3 multi-factor breakdown */
+  factors?: ProbabilityFactor[];
+  calibrationNote?: string;
+  priorProbability?: number;
+  deltaVsPrior?: number;
 }
 
 export interface ConsensusBreak {
@@ -47,6 +59,16 @@ export interface ConsensusBreak {
   divergenceScore: number;
   relatedSymbols: string[];
   module?: string;
+  priorScore?: number;
+  deltaVsPrior?: number;
+  resolvedHint?: string;
+}
+
+export interface ConsensusHistoryPoint {
+  at: string;
+  avgDivergence: number;
+  topId: string;
+  topScore: number;
 }
 
 export interface ScenarioBranch {
@@ -63,6 +85,8 @@ export interface FutureSimResult {
   branches: ScenarioBranch[];
   disclaimer: string;
   generatedAt: string;
+  pathCount?: number;
+  ensembleNote?: string;
 }
 
 export interface GenomeTrait {
@@ -80,10 +104,45 @@ export interface MarketGenome {
   updatedAt: string;
 }
 
+export type AlertRuleKind = "probability_above" | "divergence_above" | "genome_risk";
+
+export interface SignalAlertRule {
+  id: string;
+  kind: AlertRuleKind;
+  threshold: number;
+  themeId?: string;
+  enabled: boolean;
+  label?: string;
+}
+
+export interface ThemeWatchItem {
+  id: string;
+  theme: string;
+  source: "user" | "suggested";
+  probability?: number;
+  addedAt: string;
+}
+
+export interface IntelPrefs {
+  themeWatchlist: ThemeWatchItem[];
+  alertRules: SignalAlertRule[];
+}
+
+export interface ThemeSuggestion {
+  id: string;
+  theme: string;
+  probability: number;
+  confidence: number;
+  reason: string;
+  beneficiaries: string[];
+}
+
 export interface Phase2IntelBundle {
   signalGraph: SignalGraph;
   probabilityViews: ProbabilityView[];
   consensusBreaks: ConsensusBreak[];
+  consensusHistory?: ConsensusHistoryPoint[];
   futureScenarios: FutureSimResult;
   marketGenomes: MarketGenome[];
+  themeSuggestions?: ThemeSuggestion[];
 }

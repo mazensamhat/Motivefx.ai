@@ -34,7 +34,7 @@ function isEphemeralUserId(userId: string | null | undefined): boolean {
 }
 
 const NAV_GUIDE: Record<string, string> = {
-  home: "Home shows your Daily Brief, Opportunity Radar, Relationship Engine, Consensus Break, Future Simulator, watchlist radar, and module pulse. Open it from the left sidebar or bottom nav.",
+  home: "Home shows your Daily Brief, Opportunity Radar, Probability Engine, Consensus Break, Future Simulator, Theme Watchlist, predictive alerts, Relationship Engine, and module pulse.",
   stocks:
     "Trades desk: add stock holdings, run AI Analyze for Motive Signal stances, and review unusual options / congress flow.",
   penny:
@@ -128,6 +128,11 @@ export async function toolGetBriefing(opts: {
         beneficiaries: v.beneficiaries,
       })),
     futureSeed: (briefing.futureScenarios as { seedEvent?: string } | undefined)?.seedEvent,
+    themeWatchlist: ((briefing.themeWatchlist as Array<Record<string, unknown>>) ?? [])
+      .slice(0, 5)
+      .map((t) => ({ theme: t.theme, probability: t.probability })),
+    alertRulesOn: ((briefing.alertRules as Array<{ enabled?: boolean }>) ?? []).filter((r) => r.enabled)
+      .length,
     opportunities: opps.map((o) => ({
       symbol: o.symbol,
       title: o.title,

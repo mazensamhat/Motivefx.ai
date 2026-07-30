@@ -167,6 +167,18 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const url = siteEmbedApiPath(path);
+  const res = await fetchWithAuth(url, {
+    method: "PUT",
+    headers: usesSiteCookieAuth(path) ? { "Content-Type": "application/json" } : buildHeaders(),
+    body: JSON.stringify(body),
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw new Error(await parseApiError(res));
+  return res.json() as Promise<T>;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const sep = path.includes("?") ? "&" : "?";
   const withUser = path.includes("user_id=") ? path : `${path}${sep}user_id=${encodeURIComponent(getUserId())}`;

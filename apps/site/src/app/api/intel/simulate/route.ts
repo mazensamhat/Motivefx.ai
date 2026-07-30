@@ -10,6 +10,8 @@ export async function POST(request: Request) {
     nodeId?: string;
     symbols?: string[];
     baseProbability?: number;
+    pathCount?: number;
+    aggressiveness?: "conservative" | "base" | "aggressive";
   } = {};
   try {
     body = (await request.json()) as typeof body;
@@ -32,6 +34,8 @@ export async function POST(request: Request) {
     connectedEffects: connected,
     topSymbols: body.symbols,
     baseProbability: body.baseProbability,
+    pathCount: body.pathCount,
+    aggressiveness: body.aggressiveness,
   });
 
   return json({ simulation: result, graphNode: graph.activeNodeId, connected });
