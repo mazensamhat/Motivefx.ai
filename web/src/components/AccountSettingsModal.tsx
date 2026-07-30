@@ -19,6 +19,13 @@ interface Props {
   onUserUpdated: () => Promise<void>;
 }
 
+const CHANGE_PASSWORD_HREF = SITE_EMBED
+  ? "/terminal/?page=forgot-password"
+  : "/?page=forgot-password";
+const DATA_DELETION_HREF = SITE_EMBED
+  ? "/terminal/?page=data-deletion"
+  : "/?page=data-deletion";
+
 export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }: Props) {
   const [tab, setTab] = useState<"account" | "security">("account");
   const [password, setPassword] = useState("");
@@ -108,12 +115,21 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
   }
 
   return (
-    <div className="auth-overlay" onClick={onClose}>
+    <div
+      className="auth-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-settings-title"
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+    >
       <div className="auth-modal glass-panel account-settings-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="auth-close" onClick={onClose} aria-label="Close">
           <X size={18} />
         </button>
-        <h2>Account</h2>
+        <h2 id="account-settings-title">Account</h2>
         <p className="auth-sub">{user.email}</p>
 
         <div className="account-settings-actions">
@@ -144,7 +160,7 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
               Restore App Store purchases
             </button>
           )}
-          <a className="btn admin-btn" href="/?page=forgot-password">
+          <a className="btn admin-btn" href={CHANGE_PASSWORD_HREF}>
             Change password
           </a>
         </div>
@@ -157,7 +173,7 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
           <h3>Delete account</h3>
           <p className="auth-sub">
             This permanently removes your data. See our{" "}
-            <a href="/?page=data-deletion" target="_blank" rel="noreferrer">Data Deletion policy</a>.
+            <a href={DATA_DELETION_HREF} target="_blank" rel="noreferrer">Data Deletion policy</a>.
             Type DELETE to confirm.
           </p>
           <label>

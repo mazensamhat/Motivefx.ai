@@ -24,7 +24,6 @@ import {
   syncSiteEntitlementsFromServer,
   SITE_EMBED,
 } from "../lib/siteSession";
-import { AccountSettingsModal } from "../components/AccountSettingsModal";
 import { AuthModal } from "../components/AuthModal";
 
 interface AuthState {
@@ -34,6 +33,8 @@ interface AuthState {
   isAdmin: boolean;
   openAuth: (mode?: "login" | "register") => void;
   openAccount: () => void;
+  closeAccount: () => void;
+  accountOpen: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openAccount = useCallback(() => setAccountOpen(true), []);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
 
   const logout = useCallback(async () => {
     try {
@@ -143,10 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       openAuth,
       openAccount,
+      closeAccount,
+      accountOpen,
       logout,
       refreshUser,
     }),
-    [user, loading, isAdmin, openAuth, openAccount, logout, refreshUser]
+    [user, loading, isAdmin, openAuth, openAccount, closeAccount, accountOpen, logout, refreshUser]
   );
 
   return (
@@ -160,14 +164,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           onAuthed={onAuthed}
           anonymousUserId={getAnonymousUserId()}
           acquisitionChannel={resolveAcquisitionChannel()}
-        />
-      )}
-      {accountOpen && user && (
-        <AccountSettingsModal
-          user={user}
-          onClose={() => setAccountOpen(false)}
-          onLogout={logout}
-          onUserUpdated={refreshUser}
         />
       )}
     </AuthContext.Provider>

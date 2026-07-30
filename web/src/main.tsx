@@ -9,6 +9,7 @@ import { GenerationalProvider } from "./hooks/useGenerationalProfile";
 import { PlatformPrefsProvider } from "./hooks/usePlatformPrefs";
 import { SignalDetailProvider } from "./hooks/useSignalDetail";
 import { IntelToastProvider } from "./hooks/useIntelToast";
+import { AccountSettingsHost } from "./components/AccountSettingsHost";
 import "./styles/global.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -22,6 +23,7 @@ createRoot(document.getElementById("root")!).render(
               <IntelToastProvider>
                 <SignalDetailProvider>
                   <App />
+                  <AccountSettingsHost />
                 </SignalDetailProvider>
               </IntelToastProvider>
             </PlatformPrefsProvider>
