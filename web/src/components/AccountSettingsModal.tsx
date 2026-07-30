@@ -9,6 +9,7 @@ import {
   requestNativeIapRestore,
 } from "../lib/nativeShell";
 import { SecuritySettingsModal } from "./SecuritySettingsModal";
+import { InstitutionalPanel } from "./InstitutionalPanel";
 import type { AuthUser } from "../lib/api";
 
 interface Props {
@@ -146,6 +147,10 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
           <a className="btn admin-btn" href="/?page=forgot-password">
             Change password
           </a>
+        </div>
+
+        <div className="account-institutional-block">
+          <InstitutionalPanel />
         </div>
 
         <form className="account-delete-form auth-form" onSubmit={deleteAccount}>

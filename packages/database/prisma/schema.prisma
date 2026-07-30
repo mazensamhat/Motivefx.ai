@@ -107,6 +107,14 @@ model User {
 
   intelPref           UserIntelPref?
 
+  ownedTeams          Team[]              @relation("TeamOwner")
+
+  teamMemberships     TeamMember[]
+
+  teamNotes           TeamNote[]
+
+  apiKeys             ApiKey[]
+
   @@index([subscriptionStatus])
 
 }
@@ -305,6 +313,132 @@ model UserIntelPref {
   prefsJson String   @default("{}")
 
   updatedAt DateTime @updatedAt
+
+}
+
+
+
+/** Phase 4 — Ultra+ team workspace */
+model Team {
+
+  id        String   @id @default(cuid())
+
+  name      String
+
+  ownerId   String
+
+  owner     User     @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  prefsJson String   @default("{}")
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  members   TeamMember[]
+
+  notes     TeamNote[]
+
+  apiKeys   ApiKey[]
+
+  @@index([ownerId])
+
+}
+
+
+
+model TeamMember {
+
+  id           String   @id @default(cuid())
+
+  teamId       String
+
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  userId       String?
+
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  invitedEmail String?
+
+  role         String   @default("analyst")
+
+  status       String   @default("active")
+
+  createdAt    DateTime @default(now())
+
+  @@index([teamId, userId])
+
+  @@index([teamId])
+
+  @@index([invitedEmail])
+
+}
+
+
+
+model TeamNote {
+
+  id        String   @id @default(cuid())
+
+  teamId    String
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  authorId  String
+
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  title     String
+
+  body      String
+
+  themeId   String?
+
+  symbol    String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+
+  @@index([authorId])
+
+}
+
+
+
+/** Phase 4 — Ultra+ customer API keys (hashed) */
+model ApiKey {
+
+  id         String    @id @default(cuid())
+
+  userId     String
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  teamId     String?
+
+  team       Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  name       String
+
+  keyPrefix  String
+
+  keyHash    String
+
+  lastUsedAt DateTime?
+
+  revokedAt  DateTime?
+
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+
+  @@index([keyPrefix])
+
+  @@index([teamId])
 
 }
 

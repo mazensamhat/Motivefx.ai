@@ -17,6 +17,7 @@ import { SignalGlossaryModal } from "./SignalGlossaryModal";
 import { WatchlistRadar } from "./WatchlistRadar";
 import { APP_MODULE_TO_BRAND, MODULE_BRAND } from "../brand/moduleBrand";
 import { Phase2IntelPanels } from "./Phase2IntelPanels";
+import { InstitutionalPanel } from "./InstitutionalPanel";
 import { MotivFxLogo } from "./MotivFxLogo";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
@@ -256,6 +257,8 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
       </div>
 
       <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
+
+      <InstitutionalPanel />
 
       <div className="home-desk-secondary">
       <section className="mf-section">

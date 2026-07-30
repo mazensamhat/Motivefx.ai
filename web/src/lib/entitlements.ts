@@ -70,7 +70,9 @@ const FEATURE_LABELS: Partial<Record<EntitlementFeature, string>> = {
   voice_briefing: "Voice briefing",
   decision_history: "Decision History",
   advanced_analytics: "Advanced analytics",
+  team_workspace: "Team workspace",
   api_access: "API access",
+  multiple_portfolios: "Multiple portfolios",
 };
 
 function tierRank(tier: PricingTierId): number {

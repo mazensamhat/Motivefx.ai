@@ -15,6 +15,8 @@ const FEATURE_LABELS: Partial<Record<TerminalFeature, string>> = {
   decision_history: "Decision History",
   advanced_analytics: "Advanced analytics",
   api_access: "API access",
+  team_workspace: "Team workspace",
+  multiple_portfolios: "Multiple portfolios",
 };
 
 export function requireModule(plan: TerminalPlan, module: string) {
