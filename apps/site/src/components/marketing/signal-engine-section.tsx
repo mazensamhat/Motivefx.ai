@@ -5,15 +5,15 @@ export function SignalEngineSection() {
     <section className="section-pad blueprint-section blueprint-section-alt">
       <div className="mx-auto max-w-6xl px-4 grid gap-10 lg:grid-cols-2 lg:items-center">
         <div>
-          <p className="section-kicker">Signal Engine™</p>
+          <p className="section-kicker">Motive Signal™</p>
           <h2 className="section-title">
-            The AI Doesn&apos;t Read Headlines.
+            Stop Asking For Another Chart.
             <br />
-            It Connects Signals.
+            Ask For The Motive Signal.
           </h2>
           <p className="section-sub text-left">
-            Instead of dozens of articles, you get the signals that matter — with likely effects and
-            confidence attached.
+            Motive Signal is the brand language of MotiveFX — confluence scored with effects and
+            confidence, the way desks talk about VIX or Fear &amp; Greed. Not a buried widget.
           </p>
         </div>
 

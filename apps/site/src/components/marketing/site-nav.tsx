@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { MARKET_ROUTES, SITE } from "@/lib/site-config";
 
 const PRODUCT_LINKS = [
-  { href: "#features", label: "Features" },
+  { href: "#relationship-graph", label: "Relationship Graph" },
   { href: "/motive-signal", label: "Motive Signal" },
+  { href: "/opportunity-radar", label: "Opportunity Radar" },
   { href: "/demo", label: "Product preview" },
-  { href: "/ai/how-motive-signal-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
 ];
 

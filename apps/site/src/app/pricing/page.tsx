@@ -186,7 +186,7 @@ export default function PricingPage() {
             ? "You’re on Elite — the highest tier. Manage billing from account settings."
             : hasSubscription
               ? "Only higher tiers are shown. Lower plans are hidden while you’re subscribed."
-              : "Capabilities unlock by tier — Lite picks one market, Pro picks two, Ultra and above get all five. Ultra+ is for teams, API, and multi-portfolio. Elite is VIP annual with white-glove onboarding."}
+              : "Unlock intelligence depth — Lite and Pro focus desks; Ultra and above open the full graph. Ultra+ is institutional (teams & API). Elite is VIP annual onboarding."}
         </p>
         {hasSubscription && currentTier && (
           <p className="mt-2 text-center text-sm text-slate-400">

@@ -15,8 +15,12 @@ export function PricingPreview() {
     <section id="pricing" className="section-pad pricing-section">
       <div className="mx-auto max-w-6xl px-4">
         <div className="section-header text-center mx-auto max-w-2xl">
-          <p className="section-kicker">Pricing</p>
-          <h2 className="section-title">Flexible Plans. One Powerful Platform.</h2>
+          <p className="section-kicker">Intelligence depth</p>
+          <h2 className="section-title">Unlock Deeper Analysis.</h2>
+          <p className="section-sub mx-auto">
+            Same Lite → Elite ladder — framed by how deep the intelligence goes, not by locking asset
+            classes away. Explorer · Professional · Institutional · Enterprise VIP.
+          </p>
           <div className="pricing-toggle">
             <button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>
               Monthly
@@ -56,8 +60,8 @@ export function PricingPreview() {
               <p className="pricing-preview-price">{formatTierPrice(tier)}</p>
               <p className="pricing-preview-markets">
                 {tier.intelligenceMarketsIncluded === "all"
-                  ? "All 5 modules"
-                  : `Choose ${tier.intelligenceMarketsIncluded} module${tier.intelligenceMarketsIncluded === 1 ? "" : "s"}`}
+                  ? "Full intelligence depth · all desks"
+                  : `Depth unlock · ${tier.intelligenceMarketsIncluded} desk${tier.intelligenceMarketsIncluded === 1 ? "" : "s"}`}
               </p>
               <ul className="pricing-preview-highlights">
                 {tier.highlights.slice(0, 3).map((h) => (
@@ -88,9 +92,10 @@ export function PricingPreview() {
         </div>
 
         <p className="mt-8 text-center text-sm text-slate-400 max-w-2xl mx-auto">
-          Individuals start on <strong className="text-white">Pro</strong>. Firms, API workflows, and
-          multi-portfolio desks choose <strong className="text-white">Ultra+</strong>. VIP annual
-          onboarding is <strong className="text-white">Elite</strong>.
+          You&apos;re unlocking deeper Motive Signal analysis — not renting tickers. Individuals start
+          on <strong className="text-white">Pro</strong>. Institutional desks choose{" "}
+          <strong className="text-white">Ultra+</strong>. VIP annual is{" "}
+          <strong className="text-white">Elite</strong>.
         </p>
 
         <div className="mt-6 text-center">

@@ -13,7 +13,7 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="mx-auto max-w-6xl px-4 py-12">
         <div className="footer-newsletter">
-          <h2>Stay Ahead of the Market</h2>
+          <h2>Stay Ahead Of The Signals</h2>
           <p>Daily intelligence highlights — no spam.</p>
           <form
             className="newsletter-form"

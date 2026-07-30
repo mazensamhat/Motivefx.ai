@@ -7,7 +7,7 @@ export function CtaSection() {
     <section className="cta-section section-pad">
       <div className="mx-auto max-w-4xl px-4 text-center">
         <div className="cta-panel">
-          <p className="section-kicker">Start Exploring</p>
+          <p className="section-kicker">See them first</p>
           <h2 className="text-3xl sm:text-4xl font-semibold text-white mt-2 mb-3">
             {FINAL_CTA_HEADLINE}
             <br />
@@ -20,7 +20,7 @@ export function CtaSection() {
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
             <Button href="/pricing" size="lg" variant="secondary">
-              Start Exploring MotiveFX
+              Unlock MotiveFX
             </Button>
           </div>
           <p className="mt-5 text-sm text-slate-400">

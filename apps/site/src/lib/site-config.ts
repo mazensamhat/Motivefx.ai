@@ -2,10 +2,10 @@ import { DEFAULT_CONTACT_EMAIL } from "@/lib/email-config";
 
 export const SITE = {
   name: "MotiveFX.AI",
-  tagline: "AI Market Intelligence Platform",
+  tagline: "Predictive Market Intelligence",
   url: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://www.motivefxai.com",
   description:
-    "AI Market Intelligence Platform that connects market signals, surfaces emerging opportunities, and explains where markets may be headed — stocks, crypto, sports, prediction markets, and pink sheets.",
+    "MotiveFX is the predictive market intelligence platform that connects signals across markets — Motive Signal™, Opportunity Radar™, and Relationship Graph™ — so you see what's next before it becomes a headline.",
   email: DEFAULT_CONTACT_EMAIL,
 } as const;
 

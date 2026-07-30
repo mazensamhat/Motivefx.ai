@@ -39,7 +39,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "lite",
     name: "Lite",
-    tagline: "Daily Brief + one intelligence market",
+    tagline: "Explorer depth · Daily Brief + one market",
     monthlyUsd: 29.99,
     annualUsd: null,
     intelligenceMarketsIncluded: 1,
@@ -47,7 +47,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "pro",
     name: "Pro",
-    tagline: "Opportunity Radar across two markets",
+    tagline: "Professional depth · Opportunity Radar",
     monthlyUsd: 59.99,
     annualUsd: null,
     featured: true,
@@ -57,7 +57,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "ultra",
     name: "Ultra",
-    tagline: "Full-market intelligence · voice Daily Brief",
+    tagline: "Full-desk intelligence · voice brief",
     monthlyUsd: 99.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
@@ -65,7 +65,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "ultra_plus",
     name: "Ultra+",
-    tagline: "Teams, API & multi-portfolio intelligence",
+    tagline: "Institutional depth · teams & API",
     monthlyUsd: 249.99,
     annualUsd: null,
     intelligenceMarketsIncluded: "all",
@@ -73,7 +73,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "elite",
     name: "Elite",
-    tagline: "VIP annual · white-glove onboarding & roadmap influence",
+    tagline: "Enterprise VIP · white-glove onboarding",
     monthlyUsd: null,
     annualUsd: 1299,
     intelligenceMarketsIncluded: "all",
