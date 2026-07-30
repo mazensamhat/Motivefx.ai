@@ -80,6 +80,41 @@ export const SIGNAL_GLOSSARY: GlossaryEntry[] = [
       "Ranked developing situations across your desks. Same opportunity feed as before — framed so you research high-alignment themes before they become obvious headlines.",
   },
   {
+    id: "signal-graph",
+    term: "Relationship Engine / Signal Graph",
+    category: "Home",
+    definition:
+      "Maps how macro and sector nodes cascade (e.g. rates → housing → banks). Click a node to see second- and third-order links. Educational context — not a trading graph.",
+  },
+  {
+    id: "probability-engine",
+    term: "Probability Engine",
+    category: "Home",
+    definition:
+      "Estimates theme likelihood (probability) and how strongly the model trusts the evidence (confidence). Informational only — not a forecast of profit.",
+  },
+  {
+    id: "consensus-break",
+    term: "Consensus Break",
+    category: "Home",
+    definition:
+      "Flags where desk signals diverge from a simple crowd narrative — a watchlist for “the story may be wrong,” not a prediction.",
+  },
+  {
+    id: "future-simulator",
+    term: "Future Simulator",
+    category: "Home",
+    definition:
+      "Educational scenario branches (base / accelerate / fade) from a seed event. Not forecasts, price targets, or advice.",
+  },
+  {
+    id: "market-genome",
+    term: "Market Genome",
+    category: "Home",
+    definition:
+      "Compact trait map for a radar hit — stance, risk, factors, and related Relationship Engine nodes.",
+  },
+  {
     id: "radar-hit",
     term: "Radar Hit",
     category: "Home",

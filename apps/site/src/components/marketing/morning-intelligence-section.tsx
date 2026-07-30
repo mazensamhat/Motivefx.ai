@@ -6,7 +6,8 @@ export function MorningIntelligenceSection() {
           <p className="section-kicker">Daily Brief</p>
           <h2 className="section-title">Your Morning Intelligence</h2>
           <p className="section-sub">
-            Open MotiveFX and immediately understand what happened overnight — without endless scrolling.
+            Open MotiveFX and immediately understand what happened overnight — Daily Brief, Opportunity
+            Radar, Consensus Break, and Probability Engine in one desk.
           </p>
         </div>
 

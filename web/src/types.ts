@@ -174,6 +174,81 @@ export interface HomeOpportunity {
   stars: number;
   signals: string[];
   reasons: string[];
+  /** Phase 2 Probability Engine */
+  probability?: number;
+  modelConfidence?: number;
+  direction?: "up" | "down" | "neutral";
+  beneficiaries?: string[];
+  genomeThemes?: string[];
+}
+
+export interface SignalGraphNode {
+  id: string;
+  label: string;
+  kind: string;
+}
+
+export interface SignalGraphEdge {
+  from: string;
+  to: string;
+  relation: string;
+  weight: number;
+}
+
+export interface SignalGraphPayload {
+  nodes: SignalGraphNode[];
+  edges: SignalGraphEdge[];
+  activeNodeId: string;
+  generatedAt: string;
+}
+
+export interface ProbabilityView {
+  id: string;
+  theme: string;
+  direction: "up" | "down" | "neutral";
+  probability: number;
+  confidence: number;
+  timing?: string;
+  beneficiaries: string[];
+  supportingFactors: string[];
+  alternatives: string[];
+  analogues?: string[];
+  relatedSymbols: string[];
+  module?: string;
+}
+
+export interface ConsensusBreak {
+  id: string;
+  claim: string;
+  breakReason: string;
+  divergenceScore: number;
+  relatedSymbols: string[];
+  module?: string;
+}
+
+export interface FutureScenarioBranch {
+  id: string;
+  label: string;
+  probability: number;
+  effects: string[];
+  invalidators?: string[];
+}
+
+export interface FutureScenarios {
+  seedEvent: string;
+  horizon: string;
+  branches: FutureScenarioBranch[];
+  disclaimer: string;
+  generatedAt: string;
+}
+
+export interface MarketGenome {
+  symbol: string;
+  module: string;
+  traits: Array<{ key: string; value: string | number; source?: string }>;
+  relatedThemes: string[];
+  relatedNodes: string[];
+  updatedAt: string;
 }
 
 export interface HomeBriefing {
@@ -201,6 +276,12 @@ export interface HomeBriefing {
   alertUnreadCount?: number;
   /** True when API returned a warmup/fallback payload. */
   degraded?: boolean;
+  /** Phase 2 engines */
+  signalGraph?: SignalGraphPayload;
+  probabilityViews?: ProbabilityView[];
+  consensusBreaks?: ConsensusBreak[];
+  futureScenarios?: FutureScenarios;
+  marketGenomes?: MarketGenome[];
 }
 
 export interface IntelAlert {

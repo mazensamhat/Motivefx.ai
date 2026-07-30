@@ -34,7 +34,7 @@ function isEphemeralUserId(userId: string | null | undefined): boolean {
 }
 
 const NAV_GUIDE: Record<string, string> = {
-  home: "Home shows your Daily Brief, Opportunity Radar, watchlist radar, and module pulse. Open it from the left sidebar or bottom nav.",
+  home: "Home shows your Daily Brief, Opportunity Radar, Relationship Engine, Consensus Break, Future Simulator, watchlist radar, and module pulse. Open it from the left sidebar or bottom nav.",
   stocks:
     "Trades desk: add stock holdings, run AI Analyze for Motive Signal stances, and review unusual options / congress flow.",
   penny:
@@ -108,13 +108,32 @@ export async function toolGetBriefing(opts: {
     marketConfidence: briefing.marketConfidence,
     opportunityCount: briefing.opportunityCount,
     biggestOpportunity: briefing.biggestOpportunity,
+    biggestRisk: briefing.biggestRisk,
     topAiTip: briefing.topAiTip,
     coverageLine: (briefing.personalized as { coverageLine?: string } | undefined)?.coverageLine,
+    consensusBreaks: ((briefing.consensusBreaks as Array<Record<string, unknown>>) ?? [])
+      .slice(0, 2)
+      .map((b) => ({
+        claim: b.claim,
+        breakReason: b.breakReason,
+        divergenceScore: b.divergenceScore,
+        symbols: b.relatedSymbols,
+      })),
+    probabilityThemes: ((briefing.probabilityViews as Array<Record<string, unknown>>) ?? [])
+      .slice(0, 3)
+      .map((v) => ({
+        theme: v.theme,
+        probability: v.probability,
+        confidence: v.confidence,
+        beneficiaries: v.beneficiaries,
+      })),
+    futureSeed: (briefing.futureScenarios as { seedEvent?: string } | undefined)?.seedEvent,
     opportunities: opps.map((o) => ({
       symbol: o.symbol,
       title: o.title,
       stance: o.stance,
       confidence: o.confidence,
+      probability: o.probability,
       module: o.module,
     })),
   };

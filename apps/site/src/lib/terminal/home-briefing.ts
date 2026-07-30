@@ -11,6 +11,10 @@ import {
   scanPennyMovers,
   scanUnusualOptions,
 } from "./feeds";
+import {
+  enrichOpportunitiesWithProbability,
+  runPhase2Engines,
+} from "./engines";
 
 /** Browser-local anonymous ids (u_…) are not persisted users — skip DB lookups. */
 function isEphemeralUserId(userId: string | null | undefined): boolean {
@@ -242,6 +246,9 @@ export function filterBriefingForPlan(briefing: Record<string, unknown>, plan: T
   const compareLens = ((briefing.compareLens as Array<{ module?: string }>) ?? []).filter((c) =>
     allowedSet.has(c.module ?? "")
   );
+  const marketGenomes = ((briefing.marketGenomes as Array<{ module?: string }>) ?? []).filter((g) =>
+    allowedSet.has(g.module ?? "")
+  );
   const moduleStories = Object.fromEntries(
     Object.entries((briefing.moduleStories as Record<string, string>) ?? {}).filter(([key]) => allowedSet.has(key))
   );
@@ -249,6 +256,7 @@ export function filterBriefingForPlan(briefing: Record<string, unknown>, plan: T
   return {
     ...briefing,
     opportunities,
+    marketGenomes,
     opportunityCount: opportunities.length,
     biggestOpportunity: opportunities[0]?.symbol ?? briefing.biggestOpportunity ?? "Scanning…",
     highRiskAlerts: opportunities.filter((o) => {
@@ -445,18 +453,64 @@ export async function buildHomeBriefing(opts: {
     predictions: `Event markets: ${moduleCounts.predictions} contract${moduleCounts.predictions !== 1 ? "s" : ""} flagged${markets[0] ? ` — top yes ${Math.round((Number(markets[0].yes) || 0.5) * 100)}%.` : "."}`,
   };
 
+  const marketConfidence = score >= 75 ? "HIGH" : score >= 58 ? "MODERATE" : "CAUTIOUS";
+  const sentiment = {
+    reddit: score >= 70 ? "bullish" : "neutral",
+    x: "neutral",
+    news: congressBuy ? "bullish" : "neutral",
+  };
+
+  const phase2 = runPhase2Engines({
+    opportunities: top8 as Array<{
+      id?: string;
+      module?: string;
+      symbol?: string;
+      title?: string;
+      confidence?: number;
+      signals?: string[];
+      reasons?: string[];
+      riskLevel?: string;
+      expectedMove?: string;
+      stance?: string;
+    }>,
+    marketConfidenceLabel: marketConfidence,
+    sentiment,
+  });
+  const enrichedOpps = enrichOpportunitiesWithProbability(
+    top8 as Array<{
+      id?: string;
+      module?: string;
+      symbol?: string;
+      title?: string;
+      confidence?: number;
+      signals?: string[];
+      reasons?: string[];
+      riskLevel?: string;
+    }>,
+    phase2.probabilityViews
+  );
+
+  const topBreak = phase2.consensusBreaks[0];
+  const topTheme = phase2.probabilityViews.find((v) => v.id.startsWith("theme-"));
+
   let briefing: Record<string, unknown> = {
     greeting,
     tagline: "Daily Brief · Opportunity Radar",
     motivfxScore: score,
     stars: stars(score),
-    marketConfidence: score >= 75 ? "HIGH" : score >= 58 ? "MODERATE" : "CAUTIOUS",
+    marketConfidence,
     opportunityCount: top8.length,
     highRiskAlerts: highRisk,
     portfolioDelta: null,
-    biggestRisk: options.length ? "Tesla earnings week" : "Macro headline risk",
-    biggestOpportunity: top?.symbol ?? "Scanning…",
-    topAiTip: top ? `Intel lens: $${top.symbol} — ${(top.signals as string[])?.[0]}.` : personalized.intelNote,
+    biggestRisk: topBreak
+      ? `Consensus Break: ${topBreak.claim.slice(0, 72)}`
+      : options.length
+        ? "Tesla earnings week"
+        : "Macro headline risk",
+    biggestOpportunity: topTheme?.theme ?? top?.symbol ?? "Scanning…",
+    topAiTip: top
+      ? `Intel lens: $${top.symbol} — ${(top.signals as string[])?.[0]}. Probability Engine ${phase2.probabilityViews.find((v) => v.id === `opp-${top.id}`)?.probability ?? top.confidence}%.`
+      : personalized.intelNote,
     moduleSummaries: [
       { module: "trades", label: "Trades", count: ledger.trades, tab: "stocks", newSignals: ledger.matched.trades },
       { module: "penny", label: "Pink Slips", count: ledger.penny, tab: "penny", newSignals: ledger.matched.penny },
@@ -470,25 +524,28 @@ export async function buildHomeBriefing(opts: {
         newSignals: ledger.matched.predictions,
       },
     ],
-    opportunities: top8,
+    opportunities: enrichedOpps,
     personalized,
     compareLens,
     moduleStories,
+    signalGraph: phase2.signalGraph,
+    probabilityViews: phase2.probabilityViews.filter((v) => v.id.startsWith("theme-")),
+    consensusBreaks: phase2.consensusBreaks,
+    futureScenarios: phase2.futureScenarios,
+    marketGenomes: phase2.marketGenomes.slice(0, 4),
     audioBriefingScript: [
       `Good ${period}. Here's your MotiveFX Daily Brief.`,
-      `Market confidence is ${score >= 75 ? "high" : score >= 58 ? "moderate" : "cautious"} — desk score ${score} out of 100, with ${densityWord} signal density.`,
+      `Market confidence is ${densityWord} — desk score ${score} out of 100.`,
       top ? `On Opportunity Radar, the top flag is ${top.symbol}: ${top.title}. Confidence sits at ${top.confidence} percent.` : "",
+      topBreak ? `Consensus Break watch: ${topBreak.breakReason.slice(0, 160)}` : "",
       personalized.coverageLine ? String(personalized.coverageLine).replace(" today", " on your radar today") : "",
       "That's your Daily Brief. This is informational context only, not financial advice.",
     ].filter(Boolean).join(" "),
-    sentiment: {
-      reddit: score >= 70 ? "bullish" : "neutral",
-      x: "neutral",
-      news: congressBuy ? "bullish" : "neutral",
-    },
+    sentiment,
     breakingNewsCount: Math.min(12, 4 + top8.length),
     generatedAt: now.toISOString(),
-    scenarioDisclaimer: "Scenarios marked * are educational context — not forecasts.",
+    scenarioDisclaimer:
+      "Scenarios marked * are educational context — Future Simulator branches are not forecasts or financial advice.",
     alertUnreadCount: 0,
   };
 

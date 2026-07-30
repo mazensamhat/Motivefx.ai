@@ -16,6 +16,7 @@ import { SignalChip } from "./SignalChip";
 import { SignalGlossaryModal } from "./SignalGlossaryModal";
 import { WatchlistRadar } from "./WatchlistRadar";
 import { APP_MODULE_TO_BRAND, MODULE_BRAND } from "../brand/moduleBrand";
+import { Phase2IntelPanels } from "./Phase2IntelPanels";
 import { MotivFxLogo } from "./MotivFxLogo";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
@@ -254,6 +255,8 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         </section>
       </div>
 
+      <Phase2IntelPanels briefing={b} />
+
       <div className="home-desk-secondary">
       <section className="mf-section">
         <h2 className="mf-section-title">My Modules</h2>
@@ -356,6 +359,25 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                   <span className="metric-label">Signal strength</span>
                   <span className="metric-value">{o.confidence}%</span>
                 </button>
+                {o.probability != null && (
+                  <button
+                    type="button"
+                    className="opportunity-metric-btn"
+                    onClick={() =>
+                      inspectDetail({
+                        title: `Probability · ${o.symbol}`,
+                        category: "Probability Engine",
+                        definition: `Probability Engine estimates ${o.probability}% likelihood under current signals (model confidence ${o.modelConfidence ?? o.confidence}%). Educational context only — not a forecast.`,
+                        symbol: o.symbol,
+                        confidence: o.probability,
+                      })
+                    }
+                    title="Probability Engine"
+                  >
+                    <span className="metric-label">Probability</span>
+                    <span className="metric-value">{o.probability}%</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="opportunity-metric-btn"

@@ -8757,6 +8757,145 @@ html[data-gen="boomer"] .gen-setup-preview {
   letter-spacing: 0.03em;
 }
 
+/* Phase 2 intelligence panels */
+.phase2-intel {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.phase2-card {
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1rem 1.1rem;
+}
+
+.phase2-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.75rem 0;
+}
+
+.phase2-node {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text, #f3f4f6);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.phase2-node.active {
+  border-color: rgba(0, 230, 118, 0.55);
+  background: rgba(0, 230, 118, 0.12);
+  color: var(--green, #00e676);
+}
+
+.phase2-muted {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted, #aab8cc);
+}
+
+.phase2-chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.phase2-chip-list li,
+.phase2-chip-list.compact span {
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  font-size: 0.75rem;
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.phase2-chip-list li span {
+  color: var(--green, #00e676);
+  font-weight: 700;
+}
+
+.phase2-theme-grid,
+.phase2-genome-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 0.75rem;
+}
+
+.phase2-theme,
+.phase2-genome,
+.phase2-branch,
+.phase2-break {
+  border-radius: 12px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.85rem;
+}
+
+.phase2-theme h3 {
+  margin: 0.35rem 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.phase2-theme-top,
+.phase2-branch-top,
+.phase2-break-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #aab8cc);
+}
+
+.phase2-dir {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cyan, #00e5ff);
+}
+
+.phase2-theme ul,
+.phase2-branch ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #aab8cc);
+}
+
+.phase2-seed {
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0.75rem;
+  line-height: 1.4;
+}
+
+.phase2-branches {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.phase2-claim {
+  margin: 0.35rem 0;
+  font-size: 0.875rem;
+}
+
+.phase2-break + .phase2-break {
+  margin-top: 0.65rem;
+}
+
 /* ── Activity mobile: filter sheet, skeletons, friendly empty ── */
 .activity-skeleton {
   display: flex;
