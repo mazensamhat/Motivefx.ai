@@ -313,6 +313,48 @@ export function homeScoreDetail(score: number, marketConfidence: string, stars: 
   });
 }
 
+export function themeSignalDetail(input: {
+  theme: string;
+  status?: string;
+  direction?: string;
+  probability?: number;
+  confidence?: number;
+  timing?: string;
+  beneficiaries?: string[];
+  supportingFactors?: string[];
+  relatedSymbols?: string[];
+  deltaVsPrior?: number;
+}): SignalDetailPayload {
+  const lines: string[] = [];
+  if (input.status) lines.push(`Status: ${input.status}`);
+  if (input.direction) lines.push(`Direction: ${input.direction}`);
+  if (input.probability != null) lines.push(`Modeled probability: ${input.probability}%`);
+  if (input.confidence != null) lines.push(`Confidence: ${input.confidence}%`);
+  if (input.timing) lines.push(`Timing: ${input.timing}`);
+  if (input.deltaVsPrior != null) {
+    lines.push(`Δ vs prior: ${input.deltaVsPrior > 0 ? "+" : ""}${input.deltaVsPrior}`);
+  }
+  if (input.beneficiaries?.length) {
+    lines.push(`Who benefits: ${input.beneficiaries.slice(0, 4).join(", ")}`);
+  }
+  if (input.supportingFactors?.length) {
+    lines.push(`Why: ${input.supportingFactors.slice(0, 3).join("; ")}`);
+  }
+  if (input.relatedSymbols?.length) {
+    lines.push(`Related: ${input.relatedSymbols.slice(0, 5).join(", ")}`);
+  }
+  return {
+    title: input.theme,
+    category: "Today's Signals",
+    definition:
+      "Theme momentum from the Daily Brief — how a macro or sector story is shifting and where pressure transmits next. Informational context only.",
+    confidence: input.confidence ?? input.probability,
+    contextLines: lines.length ? lines : ["Open Probability Engine below for full cascade detail."],
+    journalNote: `Theme: ${input.theme}${input.status ? ` (${input.status})` : ""}`,
+    journalMeta: { signalTitle: input.theme },
+  };
+}
+
 export function confidenceDetail(symbol: string, confidence: number, title: string): SignalDetailPayload {
   return {
     title: "Signal strength",

@@ -12,7 +12,7 @@ export function HomeAlertsSection() {
 
   if (!isAuthenticated) {
     return (
-      <section className="home-section home-alerts-section glass-card">
+      <section className="home-section home-alerts-section glass-card" id="home-alerts">
         <Bell size={20} />
         <div>
           <strong>Intel alerts</strong>
@@ -51,7 +51,7 @@ export function HomeAlertsSection() {
   }
 
   return (
-    <section className="home-section">
+    <section className="home-section" id="home-alerts">
       <div className="home-section-header">
         <h2>
           <BellRing size={18} /> Intel alerts

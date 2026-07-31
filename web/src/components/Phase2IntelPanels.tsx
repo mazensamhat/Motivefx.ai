@@ -102,7 +102,7 @@ export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
   }
 
   return (
-    <div className="phase2-intel">
+    <div className="phase2-intel" id="phase2-intel">
       {graph && (
         <SignalGraphRadial
           graph={graph}

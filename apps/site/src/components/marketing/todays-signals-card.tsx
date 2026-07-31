@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ChevronRight,
   Cpu,
   Crosshair,
   Globe2,
@@ -18,6 +19,8 @@ const ICONS = {
   globe: Globe2,
 } as const;
 
+type DemoRow = (typeof TODAYS_SIGNALS_DEMO)[number];
+
 /**
  * Today's Signals glass card — Market Confidence gauge + theme rows + footer counts.
  */
@@ -32,13 +35,7 @@ export function TodaysSignalsCard({
   newSignals?: number;
   growingRisks?: number;
   emerging?: number;
-  rows?: readonly {
-    id: string;
-    label: string;
-    status: string;
-    tone: "up" | "cool" | "down";
-    icon: keyof typeof ICONS;
-  }[];
+  rows?: readonly DemoRow[];
 }) {
   const pct = Math.max(0, Math.min(100, Math.round(confidencePct)));
   const circumference = 2 * Math.PI * 54;
@@ -54,19 +51,37 @@ export function TodaysSignalsCard({
         <ul className="todays-signals-list">
           {rows.map((row) => {
             const Icon = ICONS[row.icon] ?? Home;
+            const href = "href" in row ? row.href : "#relationship-graph";
+            const hint = "hint" in row ? row.hint : "Explore cascade";
+            const blurb = "blurb" in row ? row.blurb : undefined;
             return (
               <li key={row.id}>
-                <span className="ts-icon">
-                  <Icon size={16} aria-hidden />
-                </span>
-                <span className="ts-label">{row.label}</span>
-                <span className={`ts-badge tone-${row.tone}`}>{row.status}</span>
+                <a
+                  className="ts-row is-interactive"
+                  href={href}
+                  aria-label={`${row.label}, ${row.status}. ${hint}`}
+                >
+                  <span className="ts-icon">
+                    <Icon size={16} aria-hidden />
+                  </span>
+                  <span className="ts-copy">
+                    <span className="ts-label">{row.label}</span>
+                    {blurb ? <span className="ts-blurb">{blurb}</span> : null}
+                    <span className="ts-hint">{hint}</span>
+                  </span>
+                  <span className={`ts-badge tone-${row.tone}`}>{row.status}</span>
+                  <ChevronRight className="ts-chevron" size={16} aria-hidden />
+                </a>
               </li>
             );
           })}
         </ul>
 
-        <div className="todays-signals-gauge">
+        <a
+          className="todays-signals-gauge is-interactive"
+          href="#relationship-graph"
+          aria-label={`Market Confidence ${pct}%. Open Signal Graph`}
+        >
           <p className="ts-gauge-label">Market Confidence</p>
           <div className="ts-gauge-ring">
             <svg viewBox="0 0 140 140" aria-hidden>
@@ -82,25 +97,26 @@ export function TodaysSignalsCard({
             </svg>
             <strong>{pct}%</strong>
           </div>
-        </div>
+          <span className="ts-gauge-hint">Open Signal Graph</span>
+        </a>
       </div>
 
       <div className="todays-signals-foot">
-        <div>
+        <a className="is-interactive" href="#todays-signals">
           <Crosshair size={16} aria-hidden />
           <strong>{newSignals}</strong>
           <span>New Signals</span>
-        </div>
-        <div>
+        </a>
+        <a className="is-interactive" href="#opportunity-radar">
           <ShieldCheck size={16} aria-hidden />
           <strong>{growingRisks}</strong>
           <span>Growing Risks</span>
-        </div>
-        <div>
+        </a>
+        <a className="is-interactive" href="#opportunity-radar">
           <Star size={16} aria-hidden />
           <strong>{emerging}</strong>
           <span>Emerging Opportunity</span>
-        </div>
+        </a>
       </div>
     </div>
   );

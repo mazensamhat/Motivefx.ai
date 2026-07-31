@@ -137,12 +137,223 @@ export const CONNECTED_NODES = [
   },
 ] as const;
 
+/**
+ * Hub → satellite link copy used by Signal Graph™ (weight drives hot spoke).
+ * Keys: `${hubLabel}|${satelliteLabel}` (case-sensitive labels from CONNECTED_NODES).
+ */
+export const SIGNAL_LINK_META: Record<
+  string,
+  { relation: string; blurb: string; weight: number }
+> = {
+  "Oil|Shipping": {
+    relation: "freight costs",
+    blurb: "Bunker fuel lifts ocean route rates",
+    weight: 0.8,
+  },
+  "Oil|Construction": {
+    relation: "input costs",
+    blurb: "Diesel & asphalt squeeze project margins",
+    weight: 0.72,
+  },
+  "Oil|Housing": {
+    relation: "materials & commute",
+    blurb: "Energy costs feed builder and buyer pressure",
+    weight: 0.68,
+  },
+  "Oil|Retail": {
+    relation: "margin squeeze",
+    blurb: "Transport and packaging lift shelf prices",
+    weight: 0.7,
+  },
+  "Oil|Currencies": {
+    relation: "petrodollar flow",
+    blurb: "Crude shocks reprice USD & commodity FX",
+    weight: 0.76,
+  },
+  "Oil|Energy": {
+    relation: "direct pass-through",
+    blurb: "Crude sets power and refined product prices",
+    weight: 0.86,
+  },
+  "Oil|Automotive": {
+    relation: "fuel demand",
+    blurb: "Pump prices reshape driving and EV timing",
+    weight: 0.74,
+  },
+  "Oil|Inflation": {
+    relation: "cost pressure",
+    blurb: "Energy feeds headline CPI first",
+    weight: 0.92,
+  },
+  "Interest Rates|Housing": {
+    relation: "mortgage affordability",
+    blurb: "Higher rates cool purchase demand",
+    weight: 0.9,
+  },
+  "Interest Rates|Banks": {
+    relation: "net interest margin",
+    blurb: "Policy path rewrites lending profitability",
+    weight: 0.84,
+  },
+  "Interest Rates|Consumer Spending": {
+    relation: "credit conditions",
+    blurb: "Cost of capital slows discretionary spend",
+    weight: 0.78,
+  },
+  "Interest Rates|Retail": {
+    relation: "financing demand",
+    blurb: "Big-ticket purchases pull back first",
+    weight: 0.74,
+  },
+  "Interest Rates|Currencies": {
+    relation: "rate differential",
+    blurb: "Yield gaps drive FX flows",
+    weight: 0.82,
+  },
+  "Interest Rates|Equities": {
+    relation: "discount rates",
+    blurb: "Valuations reprice on the risk-free path",
+    weight: 0.8,
+  },
+  "Housing|Banks": {
+    relation: "credit demand",
+    blurb: "Mortgage books track housing activity",
+    weight: 0.82,
+  },
+  "Housing|Construction": {
+    relation: "starts & permits",
+    blurb: "Builders follow housing demand cycles",
+    weight: 0.88,
+  },
+  "Housing|Lumber": {
+    relation: "materials demand",
+    blurb: "Starts pull timber and building supply",
+    weight: 0.8,
+  },
+  "Housing|Insurance": {
+    relation: "property exposure",
+    blurb: "Home values reshape underwriting risk",
+    weight: 0.7,
+  },
+  "Housing|Retail": {
+    relation: "home-related spend",
+    blurb: "Furnishings and durables ride housing",
+    weight: 0.72,
+  },
+  "Housing|Employment": {
+    relation: "labor demand",
+    blurb: "Construction and services jobs follow starts",
+    weight: 0.68,
+  },
+  "AI CapEx|Semiconductors": {
+    relation: "capacity constraint",
+    blurb: "GPU and foundry supply set the ceiling",
+    weight: 0.94,
+  },
+  "AI CapEx|Energy": {
+    relation: "power demand",
+    blurb: "Data centers pull grid and generation spend",
+    weight: 0.86,
+  },
+  "AI CapEx|Cloud": {
+    relation: "infra buildout",
+    blurb: "Hyperscalers convert CapEx into capacity",
+    weight: 0.9,
+  },
+  "AI CapEx|Labor": {
+    relation: "skills scarcity",
+    blurb: "AI roles reprice technical talent",
+    weight: 0.7,
+  },
+  "AI CapEx|Productivity": {
+    relation: "output lift",
+    blurb: "Automation shifts margin and headcount mix",
+    weight: 0.74,
+  },
+  "AI CapEx|Markets": {
+    relation: "earnings narrative",
+    blurb: "AI spend becomes the equity story",
+    weight: 0.78,
+  },
+  "Shipping|Retail": {
+    relation: "inventory lag",
+    blurb: "Freight delays hit shelves and margins",
+    weight: 0.8,
+  },
+  "Shipping|Inflation": {
+    relation: "goods prices",
+    blurb: "Container rates feed goods CPI",
+    weight: 0.76,
+  },
+  "Shipping|Commodities": {
+    relation: "bulk transport",
+    blurb: "Dry bulk and tanker rates move with trade",
+    weight: 0.78,
+  },
+  "Shipping|Manufacturing": {
+    relation: "supply chain",
+    blurb: "Parts availability tracks ocean schedules",
+    weight: 0.74,
+  },
+  "Shipping|Freight": {
+    relation: "rate cascade",
+    blurb: "Ocean pricing spills into inland logistics",
+    weight: 0.88,
+  },
+};
+
+export function signalLinkMeta(hubLabel: string, satelliteLabel: string) {
+  return (
+    SIGNAL_LINK_META[`${hubLabel}|${satelliteLabel}`] ?? {
+      relation: "cascades to",
+      blurb: `${satelliteLabel} moves when ${hubLabel} shifts`,
+      weight: 0.75,
+    }
+  );
+}
+
 /** Default Today's Signals rows (marketing + terminal fallback). */
 export const TODAYS_SIGNALS_DEMO = [
-  { id: "housing", label: "Housing Momentum", status: "↑ Rising", tone: "up" as const, icon: "home" as const },
-  { id: "ai", label: "AI Infrastructure", status: "↑ Accelerating", tone: "up" as const, icon: "cpu" as const },
-  { id: "inflation", label: "Inflation", status: "↓ Cooling", tone: "cool" as const, icon: "chart" as const },
-  { id: "china", label: "Chinese Demand", status: "↑ Improving", tone: "up" as const, icon: "globe" as const },
+  {
+    id: "housing",
+    label: "Housing Momentum",
+    status: "↑ Rising",
+    tone: "up" as const,
+    icon: "home" as const,
+    href: "#relationship-graph",
+    hint: "Open Signal Graph",
+    blurb: "Rates and starts feed the next housing cascade.",
+  },
+  {
+    id: "ai",
+    label: "AI Infrastructure",
+    status: "↑ Accelerating",
+    tone: "up" as const,
+    icon: "cpu" as const,
+    href: "#relationship-graph",
+    hint: "Open Signal Graph",
+    blurb: "CapEx, power, and semis light up together.",
+  },
+  {
+    id: "inflation",
+    label: "Inflation",
+    status: "↓ Cooling",
+    tone: "cool" as const,
+    icon: "chart" as const,
+    href: "#relationship-graph",
+    hint: "Open Signal Graph",
+    blurb: "Cooling CPI changes who inherits the next move.",
+  },
+  {
+    id: "china",
+    label: "Chinese Demand",
+    status: "↑ Improving",
+    tone: "up" as const,
+    icon: "globe" as const,
+    href: "#opportunity-radar",
+    hint: "See Opportunity Radar",
+    blurb: "Demand recovery shows up first in commodities and freight.",
+  },
 ] as const;
 
 export const SIGNAL_FEED_DEMO = {

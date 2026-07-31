@@ -1,15 +1,12 @@
-import { CONNECTED_NODES } from "@/lib/marketing-copy";
+import { CONNECTED_NODES, signalLinkMeta } from "@/lib/marketing-copy";
 import type { GraphEdge, GraphNode, SignalGraph } from "./types";
 
 /** Static macro relationship seed expanded into a weighted graph. */
 const EXTRA_LINKS: Array<{ from: string; to: string; relation: string; weight: number }> = [
-  { from: "Housing", to: "Banks", relation: "credit demand", weight: 0.82 },
   { from: "Banks", to: "Consumer Spending", relation: "lending conditions", weight: 0.74 },
-  { from: "Oil", to: "Inflation", relation: "cost pressure", weight: 0.88 },
   { from: "Inflation", to: "Interest Rates", relation: "policy response", weight: 0.9 },
   { from: "Semiconductors", to: "AI / Tech", relation: "capacity constraint", weight: 0.86 },
   { from: "Energy", to: "AI / Tech", relation: "power demand", weight: 0.72 },
-  { from: "Shipping", to: "Retail", relation: "inventory lag", weight: 0.7 },
 ];
 
 function slug(label: string): string {
@@ -43,14 +40,15 @@ export function buildSignalGraph(opts?: {
     const fromId = addNode(seed.label, "macro", seed.id);
     for (const child of seed.connected) {
       const toId = addNode(child, "sector");
+      const meta = signalLinkMeta(seed.label, child);
       const key = `${fromId}->${toId}`;
       if (!edgeKey.has(key)) {
         edgeKey.add(key);
         edges.push({
           from: fromId,
           to: toId,
-          relation: "cascades to",
-          weight: 0.75,
+          relation: meta.relation,
+          weight: meta.weight,
           evidenceIds: [`seed:${seed.id}`],
         });
       }

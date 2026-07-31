@@ -22,7 +22,7 @@ import { MotivFxLogo } from "./MotivFxLogo";
 import { TodaysSignalsCard, type TodaysSignalRow } from "./TodaysSignalsCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
-import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail, resolveSignalDetail } from "../utils/signalIntel";
+import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail, resolveSignalDetail, themeSignalDetail } from "../utils/signalIntel";
 import { resolveMotiveRating, stanceLabel } from "../utils/motiveRating";
 
 const RISK_LABEL: Record<string, string> = {
@@ -97,6 +97,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         status: rising ? "↑ Rising" : cooling ? "↓ Cooling" : "→ Stable",
         tone: (rising ? "up" : cooling ? "cool" : "down") as TodaysSignalRow["tone"],
         icon: icons[i % icons.length],
+        hint: "Open theme detail",
       };
     });
   }, [b?.probabilityViews]);
@@ -157,6 +158,37 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           growingRisks={b.highRiskAlerts || 2}
           emerging={emergingCount}
           rows={todaysRows}
+          onRowClick={(row) => {
+            const theme = b.probabilityViews?.find((t) => t.id === row.id);
+            inspectDetail(
+              theme
+                ? themeSignalDetail({
+                    theme: theme.theme,
+                    status: row.status,
+                    direction: theme.direction,
+                    probability: theme.probability,
+                    confidence: theme.confidence,
+                    timing: theme.timing,
+                    beneficiaries: theme.beneficiaries,
+                    supportingFactors: theme.supportingFactors,
+                    relatedSymbols: theme.relatedSymbols,
+                    deltaVsPrior: theme.deltaVsPrior,
+                  })
+                : themeSignalDetail({ theme: row.label, status: row.status })
+            );
+            document.getElementById("phase2-intel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          onConfidenceClick={() =>
+            inspectDetail(homeScoreDetail(b.motivfxScore, b.marketConfidence, b.stars))
+          }
+          onFootClick={(key) => {
+            if (key === "risks") {
+              document.getElementById("home-alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              window.dispatchEvent(new Event("motivefx:alerts-refresh"));
+              return;
+            }
+            document.getElementById("opportunity-radar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         />
 
         <section className="home-overview-card home-overview-compact">
@@ -222,7 +254,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           </div>
         </section>
 
-        <section className="mf-section">
+        <section className="mf-section" id="opportunity-radar">
           <h2 className="mf-section-title">Opportunity Radar</h2>
           <p className="mf-summary-sub" style={{ marginBottom: "0.75rem" }}>
             Top developing situations · ranked by signal strength · informational only
@@ -309,7 +341,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         <CompareLensSection items={b.compareLens} />
       )}
 
-      <section className="home-section">
+      <section className="home-section" id="opportunity-radar-all">
         <div className="home-section-header">
           <h2><TrendingUp size={18} /> Opportunity Radar</h2>
           <span className="home-section-sub">All ranked opportunities · informational only</span>
