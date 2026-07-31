@@ -4,6 +4,24 @@
 
 ---
 
+## Play rejection notes (Broken Functionality)
+
+### Sign-in "Fetch request has been canceled" (2026-07)
+
+Play reviewers saw Sign in fail with a red **fetch failed / canceled** error, which reads as an unresponsive button.
+
+**Cause:** `AbortController.abort()` on fetch timeout surfaces in React Native/Expo as *"Fetch request has been canceled"* instead of a clear timeout.
+
+**Fix (app 1.0.3 / versionCode 16):**
+- Soft timeouts via `Promise.race` (no abort signal on auth/API fetch)
+- Map cancel/network failures to actionable copy
+- One automatic retry on transient auth network errors
+- Larger Sign in hit target + disabled styling while loading
+
+Rebuild AAB: `cd mobile && eas build --platform android --profile production`
+
+---
+
 ## Architecture decision
 
 | Approach | Status | Notes |

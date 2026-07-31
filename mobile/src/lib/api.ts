@@ -2,24 +2,89 @@ import { API_BASE } from "../config";
 import { clearSession, getAccessToken, getRefreshToken, setSession, type AuthUser } from "./auth";
 
 /** Default network timeout — a hung fetch must never freeze the UI (Play ANR policy). */
-const FETCH_TIMEOUT_MS = 12_000;
+const FETCH_TIMEOUT_MS = 15_000;
+/** Auth needs more headroom on slow review-device networks. */
+const AUTH_TIMEOUT_MS = 25_000;
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Map RN/Expo abort + network failures into actionable copy (never "canceled"). */
+export function mapNetworkError(e: unknown): Error {
+  if (e instanceof ApiError) return e;
+  const msg = e instanceof Error ? e.message : String(e ?? "Unknown error");
+  const name = e instanceof Error ? e.name : "";
+  const lower = msg.toLowerCase();
+
+  if (
+    name === "AbortError" ||
+    lower.includes("aborted") ||
+    lower.includes("canceled") ||
+    lower.includes("cancelled") ||
+    msg === "TIMEOUT"
+  ) {
+    return new Error("Sign-in timed out or was interrupted. Check your connection and try again.");
+  }
+  if (
+    lower.includes("network request failed") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("fetch failed") ||
+    lower.includes("network error")
+  ) {
+    return new Error("Could not reach MotiveFX servers. Check your connection and try again.");
+  }
+  return e instanceof Error ? e : new Error(msg);
+}
+
+function isRetryableNetworkError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  const name = e instanceof Error ? e.name : "";
+  const lower = msg.toLowerCase();
+  return (
+    name === "AbortError" ||
+    msg === "TIMEOUT" ||
+    lower.includes("aborted") ||
+    lower.includes("canceled") ||
+    lower.includes("cancelled") ||
+    lower.includes("network request failed") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("fetch failed") ||
+    lower.includes("network error") ||
+    lower.includes("timeout")
+  );
+}
+
+/**
+ * Fetch with a soft timeout via Promise.race — do NOT AbortController.abort().
+ * On React Native/Expo, abort surfaces as "Fetch request has been canceled",
+ * which Play reviewers read as a broken Sign in button.
+ */
 export async function fetchWithTimeout(
   url: string,
   init?: RequestInit,
   timeoutMs = FETCH_TIMEOUT_MS
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const response = await Promise.race([
+      fetch(url, init),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          reject(new Error("TIMEOUT"));
+        }, timeoutMs);
+      }),
+    ]);
+    return response;
   } catch (e) {
-    if (e instanceof Error && e.name === "AbortError") {
+    if (timedOut || (e instanceof Error && e.message === "TIMEOUT")) {
       throw new Error("Network timeout — check your connection and try again.");
     }
-    throw e;
+    throw mapNetworkError(e);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -62,19 +127,47 @@ function normalizeUser(raw: Record<string, unknown> | undefined): AuthUser | nul
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetchWithTimeout(`${API_BASE}${path}`, { headers: await authHeaders() });
-  if (!res.ok) throw new ApiError(await readError(res), res.status);
-  return res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}${path}`, { headers: await authHeaders() });
+    if (!res.ok) throw new ApiError(await readError(res), res.status);
+    return res.json();
+  } catch (e) {
+    throw mapNetworkError(e);
+  }
 }
 
 export async function authPublicPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetchWithTimeout(`${API_BASE}/auth${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(await readError(res));
-  return res.json();
+  const url = `${API_BASE}/auth${path}`;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetchWithTimeout(
+        url,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(body),
+        },
+        AUTH_TIMEOUT_MS
+      );
+      if (!res.ok) throw new Error(await readError(res));
+      return res.json();
+    } catch (e) {
+      lastError = e;
+      // Don't retry definitive auth/validation failures from the server.
+      if (e instanceof Error && !isRetryableNetworkError(e) && !/timeout/i.test(e.message)) {
+        throw mapNetworkError(e);
+      }
+      if (attempt === 0 && isRetryableNetworkError(e)) {
+        await delay(500);
+        continue;
+      }
+      throw mapNetworkError(e);
+    }
+  }
+
+  throw mapNetworkError(lastError);
 }
 
 interface SessionResult {
@@ -86,7 +179,7 @@ interface SessionResult {
 }
 
 export async function login(email: string, password: string): Promise<SessionResult> {
-  return authPublicPost("/login", { email, password });
+  return authPublicPost("/login", { email: email.trim().toLowerCase(), password });
 }
 
 export async function register(
@@ -96,7 +189,7 @@ export async function register(
   acceptTerms: boolean
 ): Promise<SessionResult> {
   return authPublicPost("/register", {
-    email,
+    email: email.trim().toLowerCase(),
     password,
     accept_privacy: acceptPrivacy,
     accept_terms: acceptTerms,
@@ -133,7 +226,7 @@ export async function logout(): Promise<void> {
         headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ refresh_token: refresh }),
       },
-      5_000
+      8_000
     );
   } catch {
     /* ok */
