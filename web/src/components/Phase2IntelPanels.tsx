@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Bell, GitBranch, Network, Plus, Radar, Sparkles, Zap } from "lucide-react";
+import { useState } from "react";
+import { Bell, GitBranch, Plus, Radar, Sparkles, Zap } from "lucide-react";
 import type {
   ConsensusBreak,
   FutureScenarios,
@@ -7,6 +7,7 @@ import type {
   ProbabilityView,
 } from "../types";
 import { apiPost, apiPut } from "../lib/api";
+import { SignalGraphRadial } from "./SignalGraphRadial";
 
 interface Props {
   briefing: HomeBriefing;
@@ -20,25 +21,13 @@ export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
   const themes = briefing.probabilityViews ?? [];
   const breaks = briefing.consensusBreaks ?? [];
   const scenarios = briefing.futureScenarios;
-  const [activeNode, setActiveNode] = useState(graph?.activeNodeId ?? "rates");
+  const [activeNode, setActiveNode] = useState(graph?.activeNodeId ?? "oil");
   const [sim, setSim] = useState<FutureScenarios | null>(scenarios ?? null);
   const [simBusy, setSimBusy] = useState(false);
   const [seed, setSeed] = useState(scenarios?.seedEvent ?? "");
   const [horizon, setHorizon] = useState(scenarios?.horizon ?? "30–90 days");
   const [aggressiveness, setAggressiveness] = useState<"conservative" | "base" | "aggressive">("base");
   const [prefsBusy, setPrefsBusy] = useState(false);
-
-  const neighbors = useMemo(() => {
-    if (!graph) return [];
-    return graph.edges
-      .filter((e) => e.from === activeNode)
-      .map((e) => ({
-        ...e,
-        label: graph.nodes.find((n) => n.id === e.to)?.label ?? e.to,
-      }))
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, 6);
-  }, [graph, activeNode]);
 
   async function runSimulator() {
     if (!graph) return;
@@ -115,38 +104,11 @@ export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
   return (
     <div className="phase2-intel">
       {graph && (
-        <section className="home-section phase2-card">
-          <div className="home-section-header">
-            <h2>
-              <Network size={18} /> Relationship Engine
-            </h2>
-            <span className="home-section-sub">Signal Graph · second-order links</span>
-          </div>
-          <div className="phase2-nodes">
-            {graph.nodes
-              .filter((n) => n.kind === "macro")
-              .map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  className={`phase2-node ${n.id === activeNode ? "active" : ""}`}
-                  onClick={() => setActiveNode(n.id)}
-                >
-                  {n.label}
-                </button>
-              ))}
-          </div>
-          <p className="phase2-muted">When this node moves, watch:</p>
-          <ul className="phase2-chip-list">
-            {neighbors.map((n) => (
-              <li key={`${n.from}-${n.to}`}>
-                {n.label}
-                <span>{Math.round(n.weight * 100)}%</span>
-              </li>
-            ))}
-            {neighbors.length === 0 && <li>No linked industries for this node.</li>}
-          </ul>
-        </section>
+        <SignalGraphRadial
+          graph={graph}
+          activeNodeId={activeNode}
+          onSelectNode={setActiveNode}
+        />
       )}
 
       {themes.length > 0 && (

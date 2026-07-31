@@ -1,41 +1,20 @@
+import { TodaysSignalsCard } from "./todays-signals-card";
+
 export function MorningIntelligenceSection() {
   return (
-    <section className="section-pad blueprint-section blueprint-section-alt">
+    <section className="section-pad blueprint-section blueprint-section-alt" id="todays-signals">
       <div className="mx-auto max-w-6xl px-4">
         <div className="section-header text-center mx-auto max-w-2xl">
           <p className="section-kicker">Daily Brief</p>
-          <h2 className="section-title">Your Morning Intelligence</h2>
+          <h2 className="section-title">Today&apos;s Signals</h2>
           <p className="section-sub">
-            Open MotiveFX and know what you should know — overnight Motive Signal, Opportunity Radar,
-            Consensus Break, and Probability in one desk.
+            Theme momentum, Market Confidence, and what formed overnight — the morning intelligence
+            stack, not a ticker tape.
           </p>
         </div>
 
-        <div className="morning-grid">
-          <div className="morning-card morning-card-wide">
-            <span>Today&apos;s Market Confidence</span>
-            <strong>78%</strong>
-          </div>
-          <div className="morning-card">
-            <span>Macro Momentum</span>
-            <strong>Neutral</strong>
-          </div>
-          <div className="morning-card">
-            <span>Top Opportunities</span>
-            <strong>3</strong>
-          </div>
-          <div className="morning-card">
-            <span>Top Risks</span>
-            <strong>2</strong>
-          </div>
-          <div className="morning-card">
-            <span>Most Important Event</span>
-            <strong>AI explained</strong>
-          </div>
-          <div className="morning-card">
-            <span>Consensus Break</span>
-            <strong>Where belief may be wrong</strong>
-          </div>
+        <div className="todays-signals-shell">
+          <TodaysSignalsCard confidencePct={82} newSignals={3} growingRisks={2} emerging={1} />
         </div>
       </div>
     </section>

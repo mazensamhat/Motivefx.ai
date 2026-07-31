@@ -93,7 +93,7 @@ export function buildSignalGraph(opts?: {
   const activeNodeId =
     opts?.activeNodeId && nodeMap.has(opts.activeNodeId)
       ? opts.activeNodeId
-      : CONNECTED_NODES[0]?.id ?? "rates";
+      : "oil";
 
   return {
     nodes: Array.from(nodeMap.values()),

@@ -104,12 +104,21 @@ export const CONNECTED_NODES = [
   {
     id: "oil",
     label: "Oil",
-    connected: ["Shipping", "Inflation", "Freight", "Construction", "Airlines", "Retail", "Currencies"],
+    connected: [
+      "Shipping",
+      "Construction",
+      "Housing",
+      "Retail",
+      "Currencies",
+      "Energy",
+      "Automotive",
+      "Inflation",
+    ],
   },
   {
     id: "rates",
     label: "Interest Rates",
-    connected: ["Housing", "Banks", "Consumer Spending", "Retail", "Currency", "Equities"],
+    connected: ["Housing", "Banks", "Consumer Spending", "Retail", "Currencies", "Equities"],
   },
   {
     id: "housing",
@@ -126,6 +135,14 @@ export const CONNECTED_NODES = [
     label: "Shipping",
     connected: ["Retail", "Inflation", "Commodities", "Manufacturing", "Freight"],
   },
+] as const;
+
+/** Default Today's Signals rows (marketing + terminal fallback). */
+export const TODAYS_SIGNALS_DEMO = [
+  { id: "housing", label: "Housing Momentum", status: "↑ Rising", tone: "up" as const, icon: "home" as const },
+  { id: "ai", label: "AI Infrastructure", status: "↑ Accelerating", tone: "up" as const, icon: "cpu" as const },
+  { id: "inflation", label: "Inflation", status: "↓ Cooling", tone: "cool" as const, icon: "chart" as const },
+  { id: "china", label: "Chinese Demand", status: "↑ Improving", tone: "up" as const, icon: "globe" as const },
 ] as const;
 
 export const SIGNAL_FEED_DEMO = {

@@ -1,5 +1,5 @@
 :root {
-  /* MotiveFX mockup theme — dark premium + neon accents */
+  /* MotiveFX mockup theme � dark premium + neon accents */
   --bg-deep: #0a0e14;
   --bg-panel: #0d1219;
   --bg-card: #121820;
@@ -38,7 +38,7 @@
   --module-shadow: #00c853;
   --module-glow: rgba(0, 229, 255, 0.12);
   --module-glow-secondary: rgba(123, 47, 247, 0.08);
-  /* Mobile readability floors (overridden below at ≤900px / native shell) */
+  /* Mobile readability floors (overridden below at ?900px / native shell) */
   --font-caption: 0.75rem;
   --font-body-sm: 0.8125rem;
   --font-nav: 0.6875rem;
@@ -152,7 +152,7 @@ body {
   }
 }
 
-/* Premium dark scrollbars — no thick grey bars */
+/* Premium dark scrollbars � no thick grey bars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -186,7 +186,7 @@ body {
   transition: background 0.45s ease;
 }
 
-/* Per-module live theme — switches when you change tabs */
+/* Per-module live theme � switches when you change tabs */
 .app[data-theme="trades"] {
   --module-accent: #00e676;
   --module-shadow: #00c853;
@@ -246,13 +246,13 @@ body {
   --accent-dim: #7b2ff7;
 }
 
-/* ── Terminal shell & glass ── */
+/* ?? Terminal shell & glass ?? */
 .app-terminal {
   min-height: 100vh;
   min-height: 100dvh;
 }
 
-/* Native Android/iOS shell (Expo WebView) — hide web chrome duplicates.
+/* Native Android/iOS shell (Expo WebView) � hide web chrome duplicates.
    Critical for Play "cannot scroll": lock the document and put overflow-y
    on .app-content so touch scrolling works inside Android WebView. */
 html.motivefx-native-shell {
@@ -735,7 +735,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
     max-width: none;
   }
 
-  /* Desktop chrome (email / Ops / Apps / Account / Sign out) → mobile toolbar */
+  /* Desktop chrome (email / Ops / Apps / Account / Sign out) ? mobile toolbar */
   .workspace-header-desktop-chrome {
     display: none !important;
   }
@@ -924,7 +924,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
     text-underline-offset: 2px;
   }
 
-  /* Pricing card already points to web — don't repeat a wall of billing text */
+  /* Pricing card already points to web � don't repeat a wall of billing text */
   .tier-pricing-fine-print {
     display: none;
   }
@@ -934,7 +934,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
     line-height: 1.45;
   }
 
-  /* Header already shows monitor-only — strip was a third duplicate */
+  /* Header already shows monitor-only � strip was a third duplicate */
   .monitor-only-strip {
     display: none !important;
   }
@@ -1016,7 +1016,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
     justify-content: space-between;
   }
 
-  /* Filters open in a bottom sheet — never stacked as primary UI */
+  /* Filters open in a bottom sheet � never stacked as primary UI */
   .activity-filters:not(.activity-filters-sheet) {
     display: none !important;
   }
@@ -1041,7 +1041,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   }
 }
 
-/* ── Mobile bottom navigation ── */
+/* ?? Mobile bottom navigation ?? */
 .mobile-bottom-nav {
   display: none;
 }
@@ -1109,7 +1109,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
     font-size: clamp(2.5rem, 12vw, 3.5rem);
   }
 
-  /* ── Mobile readability: cards, labels, briefing, feed ── */
+  /* ?? Mobile readability: cards, labels, briefing, feed ?? */
   .home-overview-label,
   .home-insight-label,
   .mf-summary-label,
@@ -1509,7 +1509,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   gap: 0.4rem;
 }
 
-/* legacy logo classes — kept for any stragglers */
+/* legacy logo classes � kept for any stragglers */
 .logo-mark {
   width: 36px;
   height: 36px;
@@ -1786,7 +1786,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   padding: 0.75rem 1.25rem 0.35rem;
 }
 
-/* ── Hero portfolio metric panel ── */
+/* ?? Hero portfolio metric panel ?? */
 .hero-metric-panel {
   position: relative;
   display: flex;
@@ -1963,7 +1963,7 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   color: var(--text);
 }
 
-/* ── AI advisor diagnostic strip ── */
+/* ?? AI advisor diagnostic strip ?? */
 .advisor-card {
   display: flex;
   flex-direction: column;
@@ -2319,7 +2319,7 @@ button.data-row,
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* ── Terminal portfolio entry forms ── */
+/* ?? Terminal portfolio entry forms ?? */
 .portfolio-form-terminal {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -3562,7 +3562,7 @@ button.data-row,
   flex-direction: column;
   align-items: stretch !important;
   gap: 0.55rem;
-  /* padding-bottom doubles as inter-card gap — virtualizer measures box height, not margin */
+  /* padding-bottom doubles as inter-card gap � virtualizer measures box height, not margin */
   padding: 0.95rem 1rem 1.2rem;
   margin: 0;
   border: 1px solid var(--border-soft);
@@ -4426,7 +4426,7 @@ button.data-row,
   font-weight: 500;
 }
 
-/* ── AI radial gauge ── */
+/* ?? AI radial gauge ?? */
 .advisor-gauge-wrap {
   display: flex;
   justify-content: center;
@@ -4758,7 +4758,7 @@ button.data-row,
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* ── Activity ledger subtitle ── */
+/* ?? Activity ledger subtitle ?? */
 .activity-panel-sub {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -4767,7 +4767,7 @@ button.data-row,
   line-height: 1.45;
 }
 
-/* ── Asset deep-dive modal ── */
+/* ?? Asset deep-dive modal ?? */
 .asset-dive-overlay {
   position: fixed;
   inset: 0;
@@ -5105,7 +5105,7 @@ button.data-row,
   filter: brightness(1.08);
 }
 
-/* ── Slide to confirm ── */
+/* ?? Slide to confirm ?? */
 .slide-confirm-track {
   position: relative;
   height: 2.5rem;
@@ -5171,7 +5171,7 @@ button.data-row,
   background: var(--green);
 }
 
-/* ── Action toast ── */
+/* ?? Action toast ?? */
 .action-toast {
   position: fixed;
   bottom: 1.5rem;
@@ -5207,7 +5207,7 @@ button.data-row,
   margin-top: 0.25rem;
 }
 
-/* ── Platform setup modal ── */
+/* ?? Platform setup modal ?? */
 .platform-setup-overlay {
   position: fixed;
   inset: 0;
@@ -5354,7 +5354,7 @@ button.data-row,
   margin-bottom: 0.65rem;
 }
 
-/* ── Generational adaptability themes ── */
+/* ?? Generational adaptability themes ?? */
 html[data-gen="genz"] {
   --gen-accent: #d500f9;
   --gen-glow: rgba(213, 0, 249, 0.2);
@@ -6283,7 +6283,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   font-size: 0.8125rem;
 }
 
-/* ── Auth & legal (launch readiness) ── */
+/* ?? Auth & legal (launch readiness) ?? */
 .auth-overlay {
   position: fixed;
   inset: 0;
@@ -6659,7 +6659,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   color: var(--accent);
 }
 
-/* ── MotiveFX Home command center ── */
+/* ?? MotiveFX Home command center ?? */
 .home-loading { padding: 4rem; text-align: center; }
 
 .home-hero {
@@ -7683,7 +7683,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   padding: 0.2rem 0.35rem;
 }
 
-/* Shared centered modal shell — use with *-overlay modifiers for z-index tweaks */
+/* Shared centered modal shell � use with *-overlay modifiers for z-index tweaks */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -7878,7 +7878,7 @@ html[data-gen="boomer"] .gen-setup-preview {
 }
 
 .alert-center-overlay {
-  /* Above sticky header (800), ticker, and bottom nav — match other modals */
+  /* Above sticky header (800), ticker, and bottom nav � match other modals */
   z-index: 10050;
 }
 
@@ -8176,7 +8176,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   margin-bottom: 0.25rem;
 }
 
-/* ── MotiveFX mockup card system (mobile-first) ── */
+/* ?? MotiveFX mockup card system (mobile-first) ?? */
 .monitor-only-strip {
   display: none;
 }
@@ -8979,7 +8979,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   overflow-y: auto;
 }
 
-/* ── Activity mobile: filter sheet, skeletons, friendly empty ── */
+/* ?? Activity mobile: filter sheet, skeletons, friendly empty ?? */
 .activity-skeleton {
   display: flex;
   flex-direction: column;
@@ -9154,7 +9154,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   font-weight: 700;
 }
 
-/* —— A.I. Chief of Finance (floating assistant) —— */
+/* �� A.I. Chief of Finance (floating assistant) �� */
 :root {
   --bottom-nav-height: 4.75rem;
 }
@@ -9399,3 +9399,218 @@ html[data-gen="boomer"] .gen-setup-preview {
   color: var(--text-muted, #aab8cc);
 }
 
+
+/* -- Signal Graph� + Today�s Signals (terminal) -- */
+.signal-graph-panel .signal-graph-hub-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.signal-graph-hub-switch button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted, #94a3b8);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.signal-graph-hub-switch button.active {
+  border-color: rgba(255, 159, 67, 0.55);
+  color: #fff;
+  background: rgba(255, 159, 67, 0.12);
+}
+
+.signal-graph-stage {
+  position: relative;
+  width: min(100%, 420px);
+  margin: 0 auto;
+  aspect-ratio: 1;
+  transform: perspective(900px) rotateX(8deg) rotateZ(-2deg);
+  transform-style: preserve-3d;
+}
+
+.signal-graph-svg { width: 100%; height: 100%; }
+
+.sg-spoke { stroke: #38bdf8; stroke-width: 1.75; opacity: 0.85; }
+.sg-spoke.hot { stroke: #c084fc; stroke-width: 2.4; opacity: 1; }
+.sg-hub-label {
+  fill: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.sg-sat {
+  fill: rgba(14, 20, 32, 0.95);
+  stroke: #38bdf8;
+  stroke-width: 2;
+}
+.sg-sat.hot {
+  stroke: #c084fc;
+  fill: rgba(40, 16, 60, 0.95);
+}
+
+.signal-graph-sat-labels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.signal-graph-sat-labels li {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 5.5rem;
+  pointer-events: auto;
+}
+.sg-sat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+.sg-sat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(8, 14, 24, 0.9);
+  border: 1.5px solid #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+}
+.signal-graph-sat-labels li.hot .sg-sat-icon {
+  border-color: #c084fc;
+  box-shadow: 0 0 16px rgba(192, 132, 252, 0.65);
+}
+.sg-sat-name {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(226, 232, 240, 0.92);
+  text-align: center;
+}
+
+.todays-signals-card {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: linear-gradient(160deg, rgba(18, 12, 28, 0.78), rgba(8, 10, 14, 0.9));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.12),
+    0 0 48px rgba(124, 58, 237, 0.28),
+    0 24px 80px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.todays-signals-head {
+  padding: 1rem 1.25rem 0.35rem;
+}
+.todays-signals-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: #fff;
+}
+.todays-signals-body {
+  display: grid;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem 1rem;
+}
+@media (min-width: 720px) {
+  .todays-signals-body {
+    grid-template-columns: 1.15fr 0.85fr;
+    align-items: center;
+  }
+}
+.todays-signals-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.todays-signals-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+.ts-icon { color: #c084fc; display: grid; place-items: center; }
+.ts-label { color: #fff; font-size: 0.9rem; font-weight: 550; }
+.ts-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.ts-badge.tone-up { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+.ts-badge.tone-cool { color: #7dd3fc; background: rgba(125, 211, 252, 0.1); }
+.ts-badge.tone-down { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+.todays-signals-gauge { text-align: center; }
+.ts-gauge-label { margin: 0 0 0.5rem; font-size: 0.8rem; color: rgba(226, 232, 240, 0.8); }
+.ts-gauge-ring { position: relative; width: 9.5rem; height: 9.5rem; margin: 0 auto; }
+.ts-gauge-ring svg { width: 100%; height: 100%; }
+.ts-gauge-track {
+  fill: none;
+  stroke: rgba(124, 58, 237, 0.2);
+  stroke-width: 8;
+  stroke-dasharray: 4 6;
+}
+.ts-gauge-value {
+  fill: none;
+  stroke: #a855f7;
+  stroke-width: 8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.75));
+}
+.ts-gauge-ring strong {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.85rem;
+  color: #fff;
+}
+.todays-signals-foot {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
+  padding: 0.85rem 0.75rem 1rem;
+}
+.todays-signals-foot > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  color: #c084fc;
+}
+.todays-signals-foot strong { color: #fff; font-size: 1.35rem; line-height: 1; }
+.todays-signals-foot span {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+}

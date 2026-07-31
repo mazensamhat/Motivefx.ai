@@ -1,5 +1,5 @@
 import { ArrowRight, BookOpen, Sparkles, TrendingUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import { useAuth } from "../hooks/useAuth";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
@@ -19,6 +19,7 @@ import { APP_MODULE_TO_BRAND, MODULE_BRAND } from "../brand/moduleBrand";
 import { Phase2IntelPanels } from "./Phase2IntelPanels";
 import { InstitutionalPanel } from "./InstitutionalPanel";
 import { MotivFxLogo } from "./MotivFxLogo";
+import { TodaysSignalsCard, type TodaysSignalRow } from "./TodaysSignalsCard";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
 import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail, resolveSignalDetail } from "../utils/signalIntel";
@@ -100,21 +101,27 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const showWarmup = Boolean(refreshing || error || (b as { degraded?: boolean }).degraded);
 
   const p = b.personalized;
-  const delta = b.portfolioDelta;
-  const deltaCls = delta == null ? "flat" : delta >= 0 ? "up" : "down";
-  const deltaText =
-    delta == null
-      ? "Monitor-only overview"
-      : `${delta >= 0 ? "+" : ""}${delta.toFixed(2)}% today`;
-
-  const snapshotRows = [
-    { name: "Market confidence", value: String(b.marketConfidence), pct: `Score ${b.motivfxScore}` },
-    { name: "Opportunity Radar", value: String(b.opportunityCount), pct: `${b.highRiskAlerts} high risk` },
-    { name: "Watchlist hits", value: String(p?.radarSignalCount ?? 0), pct: p?.watchlistCount ? `${p.watchlistCount} watched` : "Watchlist" },
-    { name: "Breaking news", value: String(b.breakingNewsCount), pct: "Feed pulse" },
-  ];
 
   const topRadar = b.opportunities.slice(0, 3);
+
+  const todaysRows = useMemo((): TodaysSignalRow[] | undefined => {
+    const themes = b.probabilityViews?.filter((t) => t.id.startsWith("theme-")).slice(0, 4) ?? [];
+    if (themes.length === 0) return undefined;
+    const icons: TodaysSignalRow["icon"][] = ["home", "cpu", "chart", "globe"];
+    return themes.map((t, i) => {
+      const rising = t.direction === "up" || (t.deltaVsPrior ?? 0) > 0;
+      const cooling = t.direction === "down" || (t.deltaVsPrior ?? 0) < 0;
+      return {
+        id: t.id,
+        label: t.theme,
+        status: rising ? "↑ Rising" : cooling ? "↓ Cooling" : "→ Stable",
+        tone: (rising ? "up" : cooling ? "cool" : "down") as TodaysSignalRow["tone"],
+        icon: icons[i % icons.length],
+      };
+    });
+  }, [b.probabilityViews]);
+
+  const emergingCount = Math.max(1, Math.min(9, Math.round(b.opportunityCount / 3) || 1));
 
   return (
     <>
@@ -143,12 +150,18 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
       )}
 
       <div className="home-mockup">
-        <section className="home-overview-card">
+        <TodaysSignalsCard
+          confidencePct={b.motivfxScore}
+          newSignals={b.opportunityCount || 3}
+          growingRisks={b.highRiskAlerts || 2}
+          emerging={emergingCount}
+          rows={todaysRows}
+        />
+
+        <section className="home-overview-card home-overview-compact">
           <div className="home-overview-top">
             <div>
               <div className="home-overview-label">Daily Brief</div>
-              <div className="home-overview-value">{b.motivfxScore}</div>
-              <div className={`mf-summary-delta ${deltaCls}`}>{deltaText}</div>
               <p className="mf-summary-sub">
                 {b.greeting} · {b.tagline}
               </p>
@@ -172,7 +185,9 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
             >
               <Stars count={b.stars} />
               <div className="home-score-meta">
-                <span>Confidence <strong>{b.marketConfidence}</strong></span>
+                <span>
+                  Score <strong>{b.motivfxScore}</strong>
+                </span>
               </div>
             </button>
           </div>
@@ -204,19 +219,6 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
               {b.biggestRisk ? ` Risk lens: ${b.biggestRisk}.` : ""}
             </p>
           </div>
-        </section>
-
-        <section className="home-snapshot-card">
-          <h2 className="mf-section-title">Morning snapshot</h2>
-          {snapshotRows.map((row) => (
-            <div key={row.name} className="home-snapshot-row">
-              <span className="home-snapshot-name">{row.name}</span>
-              <span className="home-snapshot-meta">
-                <strong style={{ color: "var(--text)", marginRight: "0.5rem" }}>{row.value}</strong>
-                {row.pct}
-              </span>
-            </div>
-          ))}
         </section>
 
         <section className="mf-section">
