@@ -83,6 +83,24 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
     }
   }, [b?.opportunities, b?.generatedAt]);
 
+  // Must run before any early return — Rules of Hooks.
+  const todaysRows = useMemo((): TodaysSignalRow[] | undefined => {
+    const themes = b?.probabilityViews?.filter((t) => t.id.startsWith("theme-")).slice(0, 4) ?? [];
+    if (themes.length === 0) return undefined;
+    const icons: TodaysSignalRow["icon"][] = ["home", "cpu", "chart", "globe"];
+    return themes.map((t, i) => {
+      const rising = t.direction === "up" || (t.deltaVsPrior ?? 0) > 0;
+      const cooling = t.direction === "down" || (t.deltaVsPrior ?? 0) < 0;
+      return {
+        id: t.id,
+        label: t.theme,
+        status: rising ? "↑ Rising" : cooling ? "↓ Cooling" : "→ Stable",
+        tone: (rising ? "up" : cooling ? "cool" : "down") as TodaysSignalRow["tone"],
+        icon: icons[i % icons.length],
+      };
+    });
+  }, [b?.probabilityViews]);
+
   if (loading && !b) {
     return <div className="loading home-loading">{profile.intelLoadingMessage}</div>;
   }
@@ -103,23 +121,6 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const p = b.personalized;
 
   const topRadar = b.opportunities.slice(0, 3);
-
-  const todaysRows = useMemo((): TodaysSignalRow[] | undefined => {
-    const themes = b.probabilityViews?.filter((t) => t.id.startsWith("theme-")).slice(0, 4) ?? [];
-    if (themes.length === 0) return undefined;
-    const icons: TodaysSignalRow["icon"][] = ["home", "cpu", "chart", "globe"];
-    return themes.map((t, i) => {
-      const rising = t.direction === "up" || (t.deltaVsPrior ?? 0) > 0;
-      const cooling = t.direction === "down" || (t.deltaVsPrior ?? 0) < 0;
-      return {
-        id: t.id,
-        label: t.theme,
-        status: rising ? "↑ Rising" : cooling ? "↓ Cooling" : "→ Stable",
-        tone: (rising ? "up" : cooling ? "cool" : "down") as TodaysSignalRow["tone"],
-        icon: icons[i % icons.length],
-      };
-    });
-  }, [b.probabilityViews]);
 
   const emergingCount = Math.max(1, Math.min(9, Math.round(b.opportunityCount / 3) || 1));
 
