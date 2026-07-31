@@ -9441,17 +9441,63 @@ html[data-gen="boomer"] .gen-setup-preview {
   width: min(100%, 420px);
   margin: 0 auto;
   aspect-ratio: 1;
+  animation: sg-enter 0.7s ease-out both;
 }
 
 .signal-graph-stage--xl {
   width: min(100%, 640px);
 }
 
-.signal-graph-svg { width: 100%; height: 100%; }
+.signal-graph-svg { width: 100%; height: 100%; overflow: visible; }
 
-.sg-spoke { stroke: #38bdf8; stroke-width: 2; opacity: 0.85; }
-.sg-spoke.hot { stroke: #c084fc; stroke-width: 3; opacity: 1; }
-.sg-spoke.focused:not(.hot) { stroke: #7dd3fc; stroke-width: 2.5; opacity: 1; }
+.sg-orbit { transform-box: fill-box; transform-origin: center; }
+.sg-orbit--inner { animation: sg-spin 42s linear infinite; }
+.sg-orbit--outer { animation: sg-spin-rev 28s linear infinite; }
+
+.sg-spoke {
+  stroke: #38bdf8;
+  stroke-width: 2;
+  opacity: 0;
+  animation: sg-spoke-in 0.55s ease-out forwards;
+  animation-delay: calc(0.08s * var(--sg-i, 0) + 0.15s);
+}
+.sg-spoke.hot { stroke: #c084fc; stroke-width: 3; }
+.sg-spoke.focused:not(.hot) { stroke: #7dd3fc; stroke-width: 2.5; }
+
+.sg-spoke-flow {
+  fill: none;
+  stroke: #7dd3fc;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-dasharray: 10 140;
+  opacity: 0.55;
+  animation: sg-flow 2.6s linear infinite;
+  animation-delay: calc(0.18s * var(--sg-i, 0));
+  pointer-events: none;
+}
+.sg-spoke-flow.hot {
+  stroke: #e9d5ff;
+  opacity: 0.85;
+  stroke-width: 2.75;
+  animation-duration: 1.8s;
+}
+
+.sg-hub-aura {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sg-hub-aura 3.4s ease-in-out infinite;
+}
+.sg-hub-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sg-hub-pulse 3.4s ease-in-out infinite;
+}
+.sg-hub-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sg-hub-ring 3.4s ease-in-out infinite;
+}
+
 .sg-hub-label {
   fill: #fff;
   font-size: 14px;
@@ -9459,14 +9505,23 @@ html[data-gen="boomer"] .gen-setup-preview {
   letter-spacing: 0.08em;
 }
 .sg-hub-label--xl { font-size: 20px; letter-spacing: 0.12em; }
+
+.sg-sat-group {
+  opacity: 0;
+  animation: sg-sat-in 0.5s ease-out forwards;
+  animation-delay: calc(0.08s * var(--sg-i, 0) + 0.28s);
+}
 .sg-sat {
   fill: rgba(14, 20, 32, 0.95);
   stroke: #38bdf8;
   stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .sg-sat.hot {
   stroke: #c084fc;
   fill: rgba(40, 16, 60, 0.95);
+  animation: sg-sat-hot 2.4s ease-in-out infinite;
 }
 .sg-sat.focused:not(.hot) { stroke: #7dd3fc; }
 
@@ -9483,6 +9538,9 @@ html[data-gen="boomer"] .gen-setup-preview {
   transform: translate(-50%, -50%);
   width: 7.25rem;
   pointer-events: auto;
+  opacity: 0;
+  animation: sg-label-in 0.45s ease-out forwards;
+  animation-delay: calc(0.08s * var(--sg-i, 0) + 0.35s);
 }
 .sg-sat-btn {
   display: flex;
@@ -9506,6 +9564,7 @@ html[data-gen="boomer"] .gen-setup-preview {
   background: rgba(8, 14, 24, 0.9);
   border: 1.5px solid #38bdf8;
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .sg-sat-icon--xl {
   width: 3.15rem;
@@ -9516,8 +9575,14 @@ html[data-gen="boomer"] .gen-setup-preview {
 .signal-graph-sat-labels li.hot .sg-sat-icon {
   border-color: #c084fc;
   box-shadow: 0 0 18px rgba(192, 132, 252, 0.7);
+  animation: sg-icon-glow 2.4s ease-in-out infinite;
 }
-.signal-graph-sat-labels li.focused .sg-sat-icon { transform: scale(1.06); }
+.signal-graph-sat-labels li.focused .sg-sat-icon { transform: scale(1.08); }
+.sg-sat-btn:hover .sg-sat-icon,
+.sg-sat-btn:focus-visible .sg-sat-icon {
+  transform: scale(1.1);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.7);
+}
 .sg-sat-name {
   font-size: 0.68rem;
   font-weight: 700;
@@ -9535,6 +9600,68 @@ html[data-gen="boomer"] .gen-setup-preview {
   max-width: 7rem;
 }
 .signal-graph-sat-labels li.hot .sg-sat-meta { color: #e9d5ff; }
+
+.sg-info-meter span { transition: width 0.55s ease; }
+
+@keyframes sg-enter {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes sg-spin { to { transform: rotate(360deg); } }
+@keyframes sg-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes sg-spoke-in {
+  from { opacity: 0; stroke-dasharray: 1 400; stroke-dashoffset: 200; }
+  to { opacity: 0.85; stroke-dasharray: none; stroke-dashoffset: 0; }
+}
+@keyframes sg-flow { to { stroke-dashoffset: -150; } }
+@keyframes sg-hub-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+@keyframes sg-hub-aura {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.12); }
+}
+@keyframes sg-hub-ring {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+@keyframes sg-sat-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sg-label-in {
+  from { opacity: 0; transform: translate(-50%, -42%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+@keyframes sg-sat-hot {
+  0%, 100% { stroke-opacity: 0.85; }
+  50% { stroke-opacity: 1; }
+}
+@keyframes sg-icon-glow {
+  0%, 100% { box-shadow: 0 0 14px rgba(192, 132, 252, 0.45); }
+  50% { box-shadow: 0 0 26px rgba(192, 132, 252, 0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-graph-stage,
+  .sg-orbit,
+  .sg-spoke,
+  .sg-spoke-flow,
+  .sg-hub-aura,
+  .sg-hub-core,
+  .sg-hub-ring,
+  .sg-sat-group,
+  .signal-graph-sat-labels li,
+  .signal-graph-sat-labels li.hot .sg-sat-icon,
+  .sg-sat.hot {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .sg-spoke { opacity: 0.85 !important; }
+  .signal-graph-sat-labels li { transform: translate(-50%, -50%) !important; }
+}
 
 .signal-graph-info {
   border-radius: 1rem;

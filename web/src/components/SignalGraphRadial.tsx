@@ -116,7 +116,7 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
       </div>
 
       <div className="signal-graph-layout">
-        <div className="signal-graph-stage signal-graph-stage--xl">
+        <div className="signal-graph-stage signal-graph-stage--xl" key={activeNodeId}>
           <svg
             className="signal-graph-svg"
             viewBox="0 0 520 520"
@@ -138,8 +138,17 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
               </filter>
             </defs>
 
-            <circle cx="260" cy="260" r="72" fill="none" stroke="rgba(255,159,67,0.28)" strokeWidth="1.5" />
             <circle
+              className="sg-orbit sg-orbit--inner"
+              cx="260"
+              cy="260"
+              r="72"
+              fill="none"
+              stroke="rgba(255,159,67,0.28)"
+              strokeWidth="1.5"
+            />
+            <circle
+              className="sg-orbit sg-orbit--outer"
               cx="260"
               cy="260"
               r="88"
@@ -149,26 +158,59 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
               strokeDasharray="4 6"
             />
 
-            {layout.map((node) => (
-              <line
-                key={`line-${node.to}`}
-                x1="260"
-                y1="260"
-                x2={node.x}
-                y2={node.y}
-                className={`sg-spoke${node.label === hot ? " hot" : ""}${node.to === focus?.to ? " focused" : ""}`}
-                filter="url(#termSoftGlow)"
-              />
+            {layout.map((node, i) => (
+              <g key={`spoke-${node.to}`}>
+                <line
+                  x1="260"
+                  y1="260"
+                  x2={node.x}
+                  y2={node.y}
+                  className={`sg-spoke${node.label === hot ? " hot" : ""}${node.to === focus?.to ? " focused" : ""}`}
+                  filter="url(#termSoftGlow)"
+                  style={{ ["--sg-i" as string]: i }}
+                />
+                <line
+                  x1="260"
+                  y1="260"
+                  x2={node.x}
+                  y2={node.y}
+                  className={`sg-spoke-flow${node.label === hot ? " hot" : ""}`}
+                  style={{ ["--sg-i" as string]: i }}
+                />
+              </g>
             ))}
 
-            <circle cx="260" cy="260" r="54" fill="url(#termHubGlow)" filter="url(#termSoftGlow)" />
-            <circle cx="260" cy="260" r="54" fill="none" stroke="rgba(255,200,120,0.75)" strokeWidth="2.5" />
-            <text x="260" y="268" textAnchor="middle" className="sg-hub-label sg-hub-label--xl">
-              {(hub?.label ?? "HUB").toUpperCase()}
-            </text>
+            <g className="sg-hub">
+              <circle className="sg-hub-aura" cx="260" cy="260" r="62" fill="rgba(230,126,34,0.18)" />
+              <circle
+                cx="260"
+                cy="260"
+                r="54"
+                fill="url(#termHubGlow)"
+                filter="url(#termSoftGlow)"
+                className="sg-hub-core"
+              />
+              <circle
+                cx="260"
+                cy="260"
+                r="54"
+                fill="none"
+                stroke="rgba(255,200,120,0.75)"
+                strokeWidth="2.5"
+                className="sg-hub-ring"
+              />
+              <text x="260" y="268" textAnchor="middle" className="sg-hub-label sg-hub-label--xl">
+                {(hub?.label ?? "HUB").toUpperCase()}
+              </text>
+            </g>
 
-            {layout.map((node) => (
-              <g key={node.to} transform={`translate(${node.x}, ${node.y})`}>
+            {layout.map((node, i) => (
+              <g
+                key={node.to}
+                className="sg-sat-group"
+                transform={`translate(${node.x}, ${node.y})`}
+                style={{ ["--sg-i" as string]: i }}
+              >
                 <circle
                   r="30"
                   className={`sg-sat${node.label === hot ? " hot" : ""}${node.to === focus?.to ? " focused" : ""}`}
@@ -179,7 +221,7 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
           </svg>
 
           <ul className="signal-graph-sat-labels">
-            {layout.map((node) => {
+            {layout.map((node, i) => {
               const Icon = ICON_BY_LABEL[node.label] ?? Zap;
               const pct = Math.round(node.weight * 100);
               const focused = node.to === focus?.to;
@@ -187,7 +229,11 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
                 <li
                   key={node.to}
                   className={`${node.label === hot ? "hot" : ""} ${focused ? "focused" : ""}`.trim()}
-                  style={{ left: `${(node.lx / 520) * 100}%`, top: `${(node.ly / 520) * 100}%` }}
+                  style={{
+                    left: `${(node.lx / 520) * 100}%`,
+                    top: `${(node.ly / 520) * 100}%`,
+                    ["--sg-i" as string]: i,
+                  }}
                 >
                   <button
                     type="button"
