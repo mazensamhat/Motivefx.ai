@@ -92,7 +92,7 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
   }, [neighbors]);
 
   return (
-    <section className="home-section phase2-card signal-graph-panel signal-graph-panel--xl">
+    <section className="home-section phase2-card signal-graph-panel signal-graph-panel--xl" id="signal-graph">
       <div className="home-section-header">
         <h2>
           <Network size={18} /> Signal Graph™

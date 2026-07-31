@@ -366,33 +366,120 @@ export const SIGNAL_FEED_DEMO = {
   confidence: 86,
 };
 
-export const OPPORTUNITY_RADAR_DEMO = [
+export type OpportunityRadarBand = "strong" | "moderate" | "weakening" | "high_risk";
+export type OpportunityRadarStatusTone = "growing" | "stable" | "weakening" | "risk";
+export type OpportunityRadarCategory =
+  | "technology"
+  | "energy"
+  | "defense"
+  | "consumer"
+  | "macro"
+  | "industrial";
+
+export type OpportunityRadarDemoCard = {
+  theme: string;
+  probability: number;
+  confidence: number;
+  horizon: string;
+  evidence: readonly string[];
+  analogue: string;
+  beneficiaries: readonly string[];
+  category: OpportunityRadarCategory;
+  status: string;
+  statusTone: OpportunityRadarStatusTone;
+  delta: number;
+  description: string;
+  sparkline: readonly number[];
+  affectedAssets: readonly string[];
+  band: OpportunityRadarBand;
+};
+
+/** Premium Opportunity Radar™ demo themes — used by marketing + Probability Engine priors. */
+export const OPPORTUNITY_RADAR_DEMO: readonly OpportunityRadarDemoCard[] = [
   {
-    theme: "Industrial automation demand strengthening",
-    probability: 79,
-    confidence: 82,
-    horizon: "30–90 days",
-    evidence: ["CapEx filings rising", "Order backlog proxies", "Semiconductor lead times"],
-    analogue: "2017–18 industrial robotics cycle",
-    beneficiaries: ["Manufacturing", "Semiconductors", "Industrial software", "Automation suppliers"],
+    theme: "AI Infrastructure Boom",
+    probability: 94,
+    confidence: 91,
+    horizon: "3–9 months",
+    evidence: ["Hyperscaler CapEx", "Power & grid bids", "GPU lead times"],
+    analogue: "2017–18 cloud CapEx cycle",
+    beneficiaries: ["Semiconductors", "Data center REITs", "Power utilities"],
+    category: "technology",
+    status: "GROWING FAST",
+    statusTone: "growing",
+    delta: 6,
+    description: "CapEx, power, and semis are reinforcing — second-order winners are lighting up first.",
+    sparkline: [72, 75, 78, 82, 88, 91, 94],
+    affectedAssets: ["NVDA", "SMCI", "VST"],
+    band: "strong",
   },
   {
-    theme: "Natural gas exports accelerating",
+    theme: "Energy Transition",
+    probability: 87,
+    confidence: 84,
+    horizon: "6–18 months",
+    evidence: ["Grid interconnection queue", "IRA project FIDs", "Copper & silver demand"],
+    analogue: "Early wind/solar build-out windows",
+    beneficiaries: ["Utilities", "Copper", "Grid equipment"],
+    category: "energy",
+    status: "STRENGTHENING",
+    statusTone: "growing",
+    delta: 4,
+    description: "Policy spend and physical bottlenecks keep the transition trade in a multi-quarter regime.",
+    sparkline: [70, 73, 76, 79, 83, 85, 87],
+    affectedAssets: ["NEE", "FCX", "ETN"],
+    band: "strong",
+  },
+  {
+    theme: "Defense Spending",
+    probability: 82,
+    confidence: 79,
+    horizon: "6–24 months",
+    evidence: ["Budget authorizations", "Munitions restock", "Allied CapEx"],
+    analogue: "Post-2014 NATO replenishment cycle",
+    beneficiaries: ["Aerospace primes", "Electronics", "Specialty materials"],
+    category: "defense",
+    status: "STRENGTHENING",
+    statusTone: "growing",
+    delta: 3,
+    description: "Multi-year procurement and restocking create durable demand across the defense stack.",
+    sparkline: [68, 71, 74, 76, 78, 80, 82],
+    affectedAssets: ["LMT", "RTX", "LHX"],
+    band: "strong",
+  },
+  {
+    theme: "Consumer Weakness",
     probability: 74,
-    confidence: 77,
-    horizon: "60–180 days",
-    evidence: ["Export capacity adds", "Spread vs EU benchmarks", "Infrastructure spend"],
-    analogue: "2021 LNG export ramp",
-    beneficiaries: ["Energy infrastructure", "Pipeline operators", "Engineering services"],
+    confidence: 71,
+    horizon: "1–6 months",
+    evidence: ["Discretionary sales soft", "Credit delinquencies", "Wage real growth fade"],
+    analogue: "Late-cycle consumer cooling episodes",
+    beneficiaries: ["Value staples", "Discount retail", "Defensive cash"],
+    category: "consumer",
+    status: "WEAKENING",
+    statusTone: "weakening",
+    delta: -5,
+    description: "Spend is rotating down the quality curve — watch who inherits share vs who loses it.",
+    sparkline: [82, 80, 78, 77, 76, 75, 74],
+    affectedAssets: ["AMZN", "HD", "SBUX"],
+    band: "weakening",
   },
   {
-    theme: "North American construction demand may accelerate",
-    probability: 71,
-    confidence: 69,
-    horizon: "90–180 days",
-    evidence: ["Permit momentum", "Materials pricing", "Regional bank exposure"],
-    analogue: "Post-rate-pause housing recoveries",
-    beneficiaries: ["Materials", "Regional banks", "Housing suppliers", "Employment"],
+    theme: "China Exports Slowdown",
+    probability: 65,
+    confidence: 62,
+    horizon: "2–8 months",
+    evidence: ["Export PMI soft", "Freight blank sailings", "Commodity import mix"],
+    analogue: "2015–16 export deceleration window",
+    beneficiaries: ["Select ASEAN exporters", "Domestic China stim names"],
+    category: "macro",
+    status: "HIGH RISK",
+    statusTone: "risk",
+    delta: -3,
+    description: "External demand softens first in freight and commodities — cascades into global industrials.",
+    sparkline: [78, 74, 71, 69, 67, 66, 65],
+    affectedAssets: ["BABA", "FXI", "CAT"],
+    band: "high_risk",
   },
 ] as const;
 

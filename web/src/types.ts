@@ -180,6 +180,7 @@ export interface HomeOpportunity {
   direction?: "up" | "down" | "neutral";
   beneficiaries?: string[];
   genomeThemes?: string[];
+  deltaVsPrior?: number;
 }
 
 export interface SignalGraphNode {

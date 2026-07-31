@@ -11,6 +11,11 @@ import { CompareLensSection } from "./CompareLensSection";
 import { FeatureGate } from "./FeatureGate";
 import { HomeAlertsSection } from "./HomeAlertsSection";
 import { IntelJournalPanel } from "./IntelJournalPanel";
+import {
+  mapOpportunitiesToRadarCards,
+  mapThemesToRadarCards,
+  OpportunityRadarBoard,
+} from "./OpportunityRadarBoard";
 import { RiskBadge } from "./RiskBadge";
 import { SignalChip } from "./SignalChip";
 import { SignalGlossaryModal } from "./SignalGlossaryModal";
@@ -102,6 +107,17 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
     });
   }, [b?.probabilityViews]);
 
+  const themeRadarCards = useMemo(() => {
+    const themes = mapThemesToRadarCards(b?.probabilityViews ?? []);
+    if (themes.length) return themes;
+    return mapOpportunitiesToRadarCards(b?.opportunities ?? []);
+  }, [b?.probabilityViews, b?.opportunities]);
+
+  const deskRadarCards = useMemo(
+    () => mapOpportunitiesToRadarCards(b?.opportunities ?? []),
+    [b?.opportunities]
+  );
+
   if (loading && !b) {
     return <div className="loading home-loading">{profile.intelLoadingMessage}</div>;
   }
@@ -121,9 +137,11 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
 
   const p = b.personalized;
 
-  const topRadar = b.opportunities.slice(0, 3);
-
   const emergingCount = Math.max(1, Math.min(9, Math.round(b.opportunityCount / 3) || 1));
+
+  function exploreSignalGraph() {
+    document.getElementById("signal-graph")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <>
@@ -254,41 +272,12 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           </div>
         </section>
 
-        <section className="mf-section" id="opportunity-radar">
-          <h2 className="mf-section-title">Opportunity Radar</h2>
-          <p className="mf-summary-sub" style={{ marginBottom: "0.75rem" }}>
-            Top developing situations · ranked by signal strength · informational only
-          </p>
-          <div className="home-activity-list">
-            {topRadar.map((o) => {
-              const rating = resolveMotiveRating(
-                o.stance ?? o.title,
-                o.confidence,
-                o.module === "betting" ? "betting" : o.module === "predictions" ? "predictions" : "markets"
-              );
-              return (
-              <div key={o.id} className="home-activity-item">
-                <div>
-                  <div className="home-activity-title">{o.symbol} · {stanceLabel(o.stance ?? o.title)}</div>
-                  <div className="home-activity-meta">
-                    {MODULE_BRAND[APP_MODULE_TO_BRAND[o.module] ?? "trades"]?.name ?? o.module}
-                    {" · "}
-                    {formatSignalStrength(o.confidence)}
-                    {" · "}
-                    <span className={`terminal-tag terminal-tag-${rating.variant}`}>{rating.shortLabel}</span>
-                  </div>
-                </div>
-                <span className={`mf-pct-badge ${o.confidence >= 60 ? "up" : "flat"}`}>
-                  {o.confidence}%
-                </span>
-              </div>
-              );
-            })}
-            {topRadar.length === 0 && (
-              <div className="empty" style={{ padding: "1rem" }}>No radar hits yet.</div>
-            )}
-          </div>
-        </section>
+        <OpportunityRadarBoard
+          cards={themeRadarCards}
+          updatedAt={b.generatedAt}
+          onExploreGraph={exploreSignalGraph}
+          subtitle="Top developing situations · ranked by signal strength · informational only"
+        />
       </div>
 
       <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
@@ -341,10 +330,19 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         <CompareLensSection items={b.compareLens} />
       )}
 
+      <OpportunityRadarBoard
+        cards={deskRadarCards}
+        updatedAt={b.generatedAt}
+        compact
+        sectionId="opportunity-radar-desk"
+        title="Opportunity Radar · Desk"
+        subtitle="All ranked desk opportunities · informational only"
+        onExploreGraph={exploreSignalGraph}
+      />
       <section className="home-section" id="opportunity-radar-all">
         <div className="home-section-header">
-          <h2><TrendingUp size={18} /> Opportunity Radar</h2>
-          <span className="home-section-sub">All ranked opportunities · informational only</span>
+          <h2><TrendingUp size={18} /> Desk detail</h2>
+          <span className="home-section-sub">Symbols · signal chips · Why?</span>
         </div>
         <div className="opportunity-grid">
           {b.opportunities.map((o) => {

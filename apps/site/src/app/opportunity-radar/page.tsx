@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ContentLayout, ContentProse, ContentSection } from "@/components/content/content-layout";
-import { OPPORTUNITY_RADAR_DEMO } from "@/lib/marketing-copy";
+import { OpportunityRadarBoard } from "@/components/marketing/opportunity-radar-board";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Opportunity Radar™",
   description:
-    "Opportunity Radar™ surfaces developing market situations with probability, evidence, analogues, beneficiaries, and confidence — predictive market intelligence from MotiveFX.",
+    "Opportunity Radar™ surfaces developing market situations with signal score, drivers, beneficiaries, horizon, and confidence — predictive market intelligence from MotiveFX.",
   path: "/opportunity-radar",
 });
 
@@ -19,7 +19,7 @@ export default function OpportunityRadarPage() {
       ]}
       title="Opportunity Radar™"
       kicker="Institutional intelligence surface"
-      description="Find developing situations before they become headlines — ranked by probability, evidence, and who stands to benefit."
+      description="Find developing situations before they become headlines — ranked by signal strength, evidence, and who stands to benefit."
       relatedLinks={[
         { label: "Motive Signal methodology", href: "/motive-signal" },
         { label: "Product preview", href: "/demo" },
@@ -27,6 +27,10 @@ export default function OpportunityRadarPage() {
         { label: "Limitations", href: "/limitations" },
       ]}
     >
+      <ContentSection title="Live preview">
+        <OpportunityRadarBoard ctaHref="/demo" ctaLabel="Explore Signal Graph™" />
+      </ContentSection>
+
       <ContentSection title="What it is">
         <ContentProse>
           <p>
@@ -40,33 +44,11 @@ export default function OpportunityRadarPage() {
       <ContentSection title="What each opportunity shows">
         <ContentProse>
           <ul className="content-list">
-            <li>Signal detected — plain-English theme</li>
-            <li>Probability and confidence</li>
-            <li>Supporting evidence stack</li>
-            <li>Historical analogue</li>
-            <li>Potential beneficiaries</li>
-            <li>Time horizon</li>
+            <li>Signal score with status and delta</li>
+            <li>Short situation description + sparkline</li>
+            <li>Key drivers and top beneficiaries / affected assets</li>
+            <li>Time horizon and confidence</li>
           </ul>
-        </ContentProse>
-      </ContentSection>
-
-      <ContentSection title="Example themes">
-        <ContentProse>
-          {OPPORTUNITY_RADAR_DEMO.map((card) => (
-            <div key={card.theme} className="mb-8">
-              <h3 className="text-lg font-semibold text-white">{card.theme}</h3>
-              <p>
-                Probability {card.probability}% · Confidence {card.confidence}% · {card.horizon}
-              </p>
-              <p className="text-slate-400">Analogue: {card.analogue}</p>
-              <p>Beneficiaries: {card.beneficiaries.join(", ")}</p>
-            </div>
-          ))}
-          <p>
-            See it live in the{" "}
-            <Link href="/demo">product preview</Link> or start on{" "}
-            <Link href="/pricing">pricing</Link>.
-          </p>
         </ContentProse>
       </ContentSection>
 

@@ -124,7 +124,16 @@ export function buildProbabilityViews(
       direction: directionFromConfidence(probability),
       probability,
       confidence,
-      timing: i === 0 ? "3–9 months" : i === 1 ? "1–6 months" : "2–8 months",
+      timing:
+        i === 0
+          ? "3–9 months"
+          : i === 1
+            ? "6–18 months"
+            : i === 2
+              ? "6–24 months"
+              : i === 3
+                ? "1–6 months"
+                : "2–8 months",
       beneficiaries: [...theme.beneficiaries],
       supportingFactors: factors
         .sort((a, b) => b.score * b.weight - a.score * a.weight)
