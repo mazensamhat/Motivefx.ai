@@ -31,3 +31,5 @@
 -p:*apps/site/node_modules/@types/leaflet
 -p:*apps/site/node_modules/leaflet
 -p:apps/site/node_modules/react-leaflet
+-p:apps/site/node_modules/@ai-sdk/openai
+-p:*apps/site/node_modules/ai
