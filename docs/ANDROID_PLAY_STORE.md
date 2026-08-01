@@ -42,6 +42,10 @@ Play reviewers saw Sign in fail with a red **fetch failed / canceled** error, wh
 
 The superseded production remediation build **1.0.4** / versionCode **20** finished on EAS at commit `8bc91a8`. The appeal target is **1.0.5** / versionCode **21** so it includes the later main-branch fixes for theme related watches, related-watch scorecard handoff, daily brief greeting/audio alignment, and the ops-console loading path.
 
+Production appeal build **1.0.5** / versionCode **21** finished on EAS:
+- Build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`
+- AAB artifact: `https://expo.dev/artifacts/eas/IzZhQ3oAmUX9AxjeWDeVb5Vbop_a0ew5_fjzqTVOE3Y.aab`
+
 Rebuild AAB: `cd mobile && eas build --platform android --profile production`
 
 ---

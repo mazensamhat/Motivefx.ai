@@ -4,8 +4,9 @@
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.5**, versionCode **21** (EAS production AAB — pending completion)
-**EAS build URL/status:** Pending at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`
+**Remediation binary (target):** version **1.0.5**, versionCode **21** (EAS production AAB — finished)
+**EAS build URL/status:** Finished at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`
+**AAB artifact:** `https://expo.dev/artifacts/eas/IzZhQ3oAmUX9AxjeWDeVb5Vbop_a0ew5_fjzqTVOE3Y.aab`
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 **Superseded remediation build:** version **1.0.4**, versionCode **20** (EAS `008d58f3-1c09-4cad-a121-e7ab01bfa8a6`, commit `8bc91a8`)
 
@@ -91,7 +92,7 @@ See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (upd
 
 - [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
 - [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
-- [ ] EAS production AAB **1.0.5** / versionCode **21** built and uploaded; device smoke still required before appeal
+- [x] EAS production AAB **1.0.5** / versionCode **21** built (`8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`); upload + device smoke still required before appeal
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
