@@ -51,6 +51,9 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
           <span className="monitor-only-pill" title="Monitor only — no execution">
             No Trading. No Buying. No Selling. Monitor Only.
           </span>
+          <span className="mobile-header-monitor monitor-only-pill-compact" role="note">
+            Monitor only — no trading
+          </span>
           <AlertCenterBell />
           <div className="workspace-header-desktop-chrome">
             <AccountMenu />
@@ -113,10 +116,6 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
             </button>
           ))}
       </nav>
-
-      <p className="mobile-header-monitor monitor-only-pill-compact" role="note">
-        Monitor only — no trading
-      </p>
     </header>
   );
 }

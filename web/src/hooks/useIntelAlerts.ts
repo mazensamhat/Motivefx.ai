@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiGet, apiPost, getUserId, hasAuthSession } from "../lib/api";
+import { apiDelete, apiGet, apiPost, getUserId, hasAuthSession } from "../lib/api";
 import type { IntelAlert } from "../types";
 import { dispatchIntelToast } from "./useIntelToast";
 import { useModules } from "./useModules";
@@ -85,7 +85,7 @@ export function useIntelAlerts() {
     };
   }, [refresh]);
 
-  const markSeen = useCallback(async (alertId: number) => {
+  const markSeen = useCallback(async (alertId: string) => {
     if (!hasAuthSession() || !alertsEnabled) return;
     const data = await apiPost<{ alerts: IntelAlert[]; unreadCount: number }>(
       `/home/alerts/${getUserId()}/${alertId}/seen`,
@@ -107,5 +107,15 @@ export function useIntelAlerts() {
     prevUnread.current = 0;
   }, [alertsEnabled]);
 
-  return { alerts, unreadCount, loading, refresh, markSeen, markAllSeen };
+  const clearAll = useCallback(async () => {
+    if (!hasAuthSession() || !alertsEnabled) return;
+    const data = await apiDelete<{ alerts: IntelAlert[]; unreadCount: number }>(
+      `/home/alerts/${getUserId()}`
+    );
+    setAlerts(data.alerts ?? []);
+    setUnreadCount(0);
+    prevUnread.current = 0;
+  }, [alertsEnabled]);
+
+  return { alerts, unreadCount, loading, refresh, markSeen, markAllSeen, clearAll };
 }

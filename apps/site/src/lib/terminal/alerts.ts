@@ -88,6 +88,10 @@ export async function markAllAlertsSeen(userId: string) {
   await prisma.intelAlert.updateMany({ where: { userId }, data: { seen: true } });
 }
 
+export async function clearAlerts(userId: string) {
+  await prisma.intelAlert.deleteMany({ where: { userId } });
+}
+
 export function unreadCount(alerts: IntelAlert[]) {
   return alerts.filter((a) => !a.seen).length;
 }

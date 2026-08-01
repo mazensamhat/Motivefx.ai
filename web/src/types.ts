@@ -323,7 +323,7 @@ export interface HomeBriefing {
 }
 
 export interface IntelAlert {
-  id: number;
+  id: string;
   module?: string | null;
   symbol?: string | null;
   title: string;

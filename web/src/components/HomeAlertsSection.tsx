@@ -7,7 +7,7 @@ import { resolveSignalDetail } from "../utils/signalIntel";
 
 export function HomeAlertsSection() {
   const { isAuthenticated, openAuth } = useAuth();
-  const { alerts, unreadCount, markSeen, markAllSeen } = useIntelAlerts();
+  const { alerts, unreadCount, markSeen, markAllSeen, clearAll } = useIntelAlerts();
   const { inspectDetail } = useSignalDetail();
 
   if (!isAuthenticated) {
@@ -61,6 +61,11 @@ export function HomeAlertsSection() {
           {unreadCount > 0 && (
             <button type="button" className="btn btn-sm btn-ghost" onClick={() => void markAllSeen()}>
               Mark all read
+            </button>
+          )}
+          {alerts.length > 0 && (
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => void clearAll()}>
+              Clear all
             </button>
           )}
           {"Notification" in window && Notification.permission !== "granted" && (

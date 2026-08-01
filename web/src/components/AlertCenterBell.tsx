@@ -9,7 +9,7 @@ import { resolveSignalDetail } from "../utils/signalIntel";
 
 export function AlertCenterBell() {
   const { isAuthenticated, openAuth } = useAuth();
-  const { alerts, unreadCount, markSeen, markAllSeen } = useIntelAlerts();
+  const { alerts, unreadCount, markSeen, markAllSeen, clearAll } = useIntelAlerts();
   const { inspectDetail } = useSignalDetail();
   const [open, setOpen] = useState(false);
 
@@ -21,12 +21,13 @@ export function AlertCenterBell() {
 
   useEffect(() => {
     if (!open) return;
+    if (unreadCount > 0) void markAllSeen();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [markAllSeen, open, unreadCount]);
 
   function openAlert(a: (typeof alerts)[0]) {
     void markSeen(a.id);
@@ -63,14 +64,17 @@ export function AlertCenterBell() {
                 </button>
               </header>
 
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost alert-center-mark-all"
-                  onClick={() => void markAllSeen()}
-                >
-                  Mark all read
-                </button>
+              {alerts.length > 0 && (
+                <div className="alert-center-actions">
+                  {unreadCount > 0 && (
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => void markAllSeen()}>
+                      Mark all read
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => void clearAll()}>
+                    Clear all
+                  </button>
+                </div>
               )}
 
               <ul className="alert-center-list">
