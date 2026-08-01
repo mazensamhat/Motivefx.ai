@@ -4,13 +4,34 @@ export function isNativeShell(): boolean {
   return /MotiveFXNative/i.test(navigator.userAgent);
 }
 
-/** True when the native shell injected RevenueCat / StoreKit availability. */
+/** True when the native shell injected RevenueCat / store billing availability. */
 export function isNativeIapAvailable(): boolean {
   if (typeof window === "undefined") return false;
   return Boolean(window.__MOTIVEFX_NATIVE_IAP__);
 }
 
 const PRICING_URL = "https://www.motivefxai.com/pricing";
+
+function isBillingOrCheckoutUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host.includes("stripe.com") || host.includes("checkout.stripe.com")) return true;
+    const path = `${u.pathname}${u.search}`.toLowerCase();
+    return (
+      path.includes("/pricing") ||
+      path.includes("/checkout") ||
+      path.includes("/billing") ||
+      path.includes("/api/subscription/checkout") ||
+      path.includes("/api/billing") ||
+      path.includes("module-checkout") ||
+      path.includes("tier-checkout") ||
+      path.includes("annual-checkout")
+    );
+  } catch {
+    return false;
+  }
+}
 
 function postNative(msg: Record<string, unknown>): boolean {
   if (!isNativeShell() || typeof window === "undefined" || !window.ReactNativeWebView?.postMessage) {
@@ -21,25 +42,59 @@ function postNative(msg: Record<string, unknown>): boolean {
 }
 
 /**
- * Ask the native shell to open a URL in Safari/Chrome (outside the WebView).
- * Falls back to window.open when not embedded.
+ * Ask the native shell to open a URL outside the WebView.
+ * Billing / pricing URLs are blocked in the native shell (store payments policy).
  */
 export function openExternalUrl(url: string): void {
   const target = url || PRICING_URL;
+  if (isNativeShell() && isBillingOrCheckoutUrl(target)) {
+    window.dispatchEvent(
+      new CustomEvent("motivefx-iap", {
+        detail: {
+          type: "iap_result",
+          ok: false,
+          error:
+            "Web checkout is not available inside the app. Digital subscriptions use store billing when configured.",
+        },
+      })
+    );
+    return;
+  }
   if (postNative({ type: "motivefx:open-external", url: target })) return;
   if (typeof window !== "undefined") {
     window.open(target, "_blank", "noopener,noreferrer");
   }
 }
 
-/** External subscribe / manage billing — never start Stripe Checkout inside the native WebView. */
+/**
+ * Subscribe / manage billing from the native shell.
+ * Never steers to web pricing when embedded in the app (Play / App Store payments).
+ */
 export function openExternalSubscribe(): void {
+  if (isNativeShell()) {
+    if (isNativeIapAvailable()) {
+      // Prefer native purchase for Lite as a default entry; UI passes the real tier.
+      requestNativeIapPurchase("lite");
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent("motivefx-iap", {
+        detail: {
+          type: "iap_result",
+          ok: false,
+          error:
+            "Store billing is not configured in this app build. Existing plan access still works when you sign in.",
+        },
+      })
+    );
+    return;
+  }
   openExternalUrl(PRICING_URL);
 }
 
 /**
- * Start App Store purchase via native RevenueCat bridge.
- * Returns false if native IAP is unavailable (caller should fall back to Safari).
+ * Start store purchase via native RevenueCat bridge.
+ * Returns false if native IAP is unavailable (caller must NOT fall back to web checkout in-app).
  */
 export function requestNativeIapPurchase(tier: string, userId?: string | null): boolean {
   if (!isNativeIapAvailable()) return false;
@@ -50,7 +105,7 @@ export function requestNativeIapPurchase(tier: string, userId?: string | null): 
   });
 }
 
-/** Restore App Store purchases via native bridge. */
+/** Restore store purchases via native bridge. */
 export function requestNativeIapRestore(userId?: string | null): boolean {
   if (!isNativeIapAvailable()) return false;
   return postNative({

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import { isAgeVerified, setAgeVerified } from "../lib/ageGate";
 import { AgeGateScreen } from "../screens/AgeGateScreen";
 import { AuthScreen } from "../screens/AuthScreen";
+import { DeleteAccountScreen } from "../screens/DeleteAccountScreen";
 import { TerminalScreen } from "../screens/TerminalScreen";
 import { colors } from "../theme";
 
@@ -15,6 +16,7 @@ function Root() {
   const { loading, isAuthenticated } = useAuth();
   const [ageChecked, setAgeChecked] = useState(false);
   const [ageOk, setAgeOk] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +49,20 @@ function Root() {
     return <AgeGateScreen onAccepted={() => void acceptAge()} />;
   }
 
-  return isAuthenticated ? <TerminalScreen /> : <AuthScreen />;
+  if (showDeleteAccount) {
+    return (
+      <DeleteAccountScreen
+        onCancel={() => setShowDeleteAccount(false)}
+        onDeleted={() => setShowDeleteAccount(false)}
+      />
+    );
+  }
+
+  if (isAuthenticated) {
+    return <TerminalScreen onRequestDeleteAccount={() => setShowDeleteAccount(true)} />;
+  }
+
+  return <AuthScreen onRequestDeleteAccount={() => setShowDeleteAccount(true)} />;
 }
 
 export function RootNavigator() {

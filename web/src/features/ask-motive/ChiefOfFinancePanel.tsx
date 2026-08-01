@@ -4,6 +4,7 @@ import { Lock, Send, Sparkles, X } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useModules } from "../../hooks/useModules";
 import { requiredTierLabel } from "../../lib/entitlements";
+import { isNativeShell } from "../../lib/nativeShell";
 import { TAB_TO_BRAND, MODULE_BRAND } from "../../brand/moduleBrand";
 import type { TabId } from "../../types";
 import { useChiefChat } from "./useChiefChat";
@@ -147,9 +148,16 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate }: Pr
               Unlock <strong>A.I. Chief of Finance</strong> on {requiredTierLabel("ask_motive")} or higher
               with an active plan.
             </p>
-            <a className="btn btn-accent-terminal btn-sm" href="/pricing">
-              View plans
-            </a>
+            {isNativeShell() ? (
+              <p className="chief-locked-hint">
+                Open Account → plans in the terminal when store billing is available, or sign in with an
+                account that already includes this feature.
+              </p>
+            ) : (
+              <a className="btn btn-accent-terminal btn-sm" href="/pricing">
+                View plans
+              </a>
+            )}
           </div>
         ) : (
           <>

@@ -139,9 +139,11 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
           <button type="button" className="btn admin-btn" onClick={exportData} disabled={loading}>
             <Download size={14} /> Export my data
           </button>
-          <button type="button" className="btn admin-btn" onClick={openBillingPortal} disabled={loading}>
-            Manage billing
-          </button>
+          {!isNativeShell() && (
+            <button type="button" className="btn admin-btn" onClick={openBillingPortal} disabled={loading}>
+              Manage billing
+            </button>
+          )}
           {nativeIap && (
             <button
               type="button"
@@ -157,7 +159,7 @@ export function AccountSettingsModal({ user, onClose, onLogout, onUserUpdated }:
                 }
               }}
             >
-              Restore App Store purchases
+              Restore purchases
             </button>
           )}
           <a className="btn admin-btn" href={CHANGE_PASSWORD_HREF}>

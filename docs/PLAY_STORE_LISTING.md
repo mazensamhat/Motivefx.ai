@@ -11,19 +11,21 @@ Copy these into Play Console → **Grow users** → **Store presence** → **Mai
 | **Terms of Service** | `https://www.motivefxai.com/terms` |
 | **Marketing / website** | `https://www.motivefxai.com` |
 | **Support** | `https://www.motivefxai.com` (or `mailto:support@motivefx.ai`) |
-| **Pricing (web billing)** | `https://www.motivefxai.com/pricing` |
+| **Pricing (public web)** | `https://www.motivefxai.com/pricing` |
 | **Product preview (no login)** | `https://www.motivefxai.com/demo` |
 
 ## Billing (critical for store review)
 
-**Subscriptions are purchased on the web only** at `https://www.motivefxai.com/pricing`.  
-The Android app does **not** sell digital subscriptions in-app (no Play Billing / IAP in v1).
+**Do not** tell Play users inside the Android app to buy digital subscriptions on the website. That is Payments steering and is a common repeated-rejection cause.
 
-Store listing and in-app copy must say clearly:
+**Current Android policy (1.0.4+):**
+- No in-app CTAs that open `motivefxai.com/pricing` or Stripe checkout for digital goods
+- When Google Play Billing is configured (RevenueCat Android key + Play products), sell subscriptions through Play Billing only
+- Until Play Billing is live, the app must not offer purchase buttons that open the web
 
-> Subscriptions are managed at motivefxai.com. Sign in with the same account on mobile to access your markets. Billing is not available inside the Play Store app.
+**Store listing** should describe the product as informational market intelligence. Avoid “billing only on the website” language that implies the app unlocks paid digital content purchased outside Play.
 
-After Play review approval, keep this model unless/until RevenueCat (or native Play Billing) is intentionally adopted — see `docs/ANDROID_PLAY_STORE.md` and `docs/MOBILE_STRATEGY.md`.
+After Play Billing is verified on device, update this section and re-enable in-app subscribe CTAs that call native IAP only.
 
 ## Social profiles (site footer + Play Console)
 
@@ -59,7 +61,7 @@ Track stocks, crypto, options flow, pink slips, sports betting analytics, and pr
 What MotiveFX is:
 • Research and analytics software
 • Educational market intelligence
-• Web subscriptions only (billing on motivefxai.com — not in this app)
+• Informational only — not personalized financial advice
 
 What MotiveFX is NOT:
 • A broker or exchange
@@ -83,9 +85,10 @@ Product tracks live at `https://www.motivefxai.com/learn` — stocks, crypto, op
 - [ ] Privacy policy URL set in Play Console App content
 - [ ] Data deletion URL set (Account deletion / Data safety)
 - [ ] Website = `https://www.motivefxai.com`
-- [ ] Short + full description pasted (includes **web billing only**)
+- [ ] Short + full description pasted (**no** “buy on website only” steering)
 - [ ] Social / contact fields use MotiveFX Instagram, Facebook, LinkedIn URLs above
 - [ ] In-app auth links open Privacy, Terms, and Data deletion
-- [ ] Post-review: confirm Stripe checkout still opens in external browser (not WebView)
+- [ ] In-app Delete account works (native Account / Delete account)
+- [ ] Reviewer demo credentials in review notes
 
-See also: `docs/ANDROID_PLAY_STORE.md`
+See also: `docs/ANDROID_PLAY_STORE.md` · Appeal draft: `docs/PLAY_SUSPENSION_APPEAL.md`

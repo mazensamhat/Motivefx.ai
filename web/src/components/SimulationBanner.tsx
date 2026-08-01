@@ -5,7 +5,6 @@ import { getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
   isNativeShell,
-  openExternalSubscribe,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
 
@@ -68,16 +67,17 @@ export function SimulationBanner({ module }: Props) {
               return;
             }
             if (native) {
-              openExternalSubscribe();
+              // No web steering from the native shell.
               return;
             }
             subscribeModule(module);
           }}
+          disabled={native && !nativeIap}
         >
           {native && nativeIap
-            ? "Subscribe with Apple"
+            ? "Subscribe in app"
             : native
-              ? "Manage on website"
+              ? "Store billing unavailable"
               : "Upgrade to live module"}
         </button>
       </div>

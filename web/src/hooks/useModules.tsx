@@ -6,7 +6,6 @@ import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
   isNativeShell,
-  openExternalSubscribe,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
 import { SITE_EMBED } from "../lib/siteSession";
@@ -182,13 +181,12 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   }, [hasAnnual]);
 
   const subscribeModule = useCallback(async (module: string) => {
-    // App Store 3.1.1: never start Stripe Checkout inside the native WebView.
+    // Store payments: never start Stripe Checkout inside the native WebView.
     if (isNativeShell()) {
       if (isNativeIapAvailable()) {
         requestNativeIapPurchase("lite", getUserId());
         return;
       }
-      openExternalSubscribe();
       return;
     }
     if (!getAccessToken()) {
@@ -222,7 +220,6 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
           requestNativeIapPurchase(tier, getUserId());
           return;
         }
-        openExternalSubscribe();
         return;
       }
       if (!getAccessToken()) {
@@ -260,7 +257,6 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
         requestNativeIapPurchase("elite", getUserId());
         return;
       }
-      openExternalSubscribe();
       return;
     }
     if (!getAccessToken()) {

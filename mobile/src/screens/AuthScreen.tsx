@@ -16,7 +16,11 @@ import { API_BASE, LEGAL } from "../config";
 import { login, mapNetworkError, persistSession, register, verify2fa } from "../lib/api";
 import { colors } from "../theme";
 
-export function AuthScreen() {
+interface Props {
+  onRequestDeleteAccount?: () => void;
+}
+
+export function AuthScreen({ onRequestDeleteAccount }: Props) {
   const { setUser } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -240,12 +244,25 @@ export function AuthScreen() {
           </Pressable>
         )}
 
+        {onRequestDeleteAccount ? (
+          <Pressable
+            onPress={onRequestDeleteAccount}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            style={styles.deleteWrap}
+          >
+            <Text style={styles.deleteLink}>Delete account</Text>
+          </Pressable>
+        ) : null}
+
         <Text style={styles.disclaimer}>
-          Informational only. Not financial advice. This app is an account companion — subscriptions are
-          managed on the web at motivefxai.com/pricing (opens in Safari). Digital content is not sold
-          inside this app.
+          Informational only. Not financial advice. MotiveFX.AI provides market research and analytics —
+          not brokerage, sportsbook, or investment advice. Digital subscriptions, when offered in this
+          app, are sold through the platform store (Google Play Billing / App Store). This app does not
+          direct you to buy subscriptions on the website.
         </Text>
-        <Text style={styles.buildTag}>Build 1.0.3</Text>
+        <Text style={styles.buildTag}>Build 1.0.4</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -295,7 +312,9 @@ const styles = StyleSheet.create({
   legalCheck: { color: colors.text, fontSize: 18 },
   legalText: { flex: 1, color: colors.muted, fontSize: 14, lineHeight: 20 },
   link: { color: colors.accent },
-  disclaimer: { marginTop: 24, fontSize: 13, color: colors.muted, textAlign: "center", lineHeight: 19 },
+  deleteWrap: { marginTop: 20, paddingVertical: 10 },
+  deleteLink: { color: colors.muted, textAlign: "center", fontSize: 14, textDecorationLine: "underline" },
+  disclaimer: { marginTop: 16, fontSize: 13, color: colors.muted, textAlign: "center", lineHeight: 19 },
   buildTag: {
     marginTop: 10,
     fontSize: 12,

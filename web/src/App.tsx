@@ -21,6 +21,7 @@ import { useModules } from "./hooks/useModules";
 import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
+import { isNativeShell } from "./lib/nativeShell";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { DataDeletionPage } from "./pages/DataDeletionPage";
@@ -132,9 +133,15 @@ export default function App() {
             Read-only public demo — sample &amp; live feeds for exploration. Sign up to save portfolios and
             subscribe.
           </span>
-          <a className="btn btn-annual-cta" href="/pricing">
-            Start free trial
-          </a>
+          {isNativeShell() ? (
+            <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>
+              Create account
+            </button>
+          ) : (
+            <a className="btn btn-annual-cta" href="/pricing">
+              Start free trial
+            </a>
+          )}
         </div>
       )}
       <PlatformSetupGate activeModules={activeModules} />

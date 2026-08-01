@@ -22,6 +22,7 @@ export const LEGAL = {
   privacy: `${WEB_BASE}/privacy`,
   terms: `${WEB_BASE}/terms`,
   dataDeletion: `${WEB_BASE}/data-deletion`,
+  /** Informational only — do not deep-link Android users here to buy digital goods. */
   subscribe: `${WEB_BASE}/pricing`,
 } as const;
 

@@ -88,11 +88,14 @@ export function DataDeletionPage() {
 
       <ol>
 
-        <li>Sign in and open <strong>Account</strong> from the workspace header.</li>
+        <li>
+          In the MotiveFX.AI mobile app: open <strong>Account</strong> (or <strong>Delete account</strong> on
+          sign-in), enter your password, and type <code>DELETE</code>.
+        </li>
 
-        <li>Scroll to <strong>Delete account</strong>.</li>
+        <li>Or sign in on the web terminal and open <strong>Account</strong> from the workspace header.</li>
 
-        <li>Enter your password and type <code>DELETE</code> to confirm.</li>
+        <li>Scroll to <strong>Delete account</strong>, enter your password, and type <code>DELETE</code>.</li>
 
       </ol>
 

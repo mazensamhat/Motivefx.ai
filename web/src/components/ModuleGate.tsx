@@ -7,7 +7,6 @@ import { getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
   isNativeShell,
-  openExternalSubscribe,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
 
@@ -58,7 +57,7 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
       return;
     }
     if (native) {
-      openExternalSubscribe();
+      // Play / App Store: never steer to web checkout for digital unlocks.
       return;
     }
     if (!isAuthenticated && simEligible) {
@@ -75,18 +74,18 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
         <Lock size={32} />
         <h3>
           {native && !nativeIap
-            ? `${moduleLabel} — companion preview`
+            ? `${moduleLabel} — preview`
             : `Unlock ${moduleLabel}`}
         </h3>
         {native && nativeIap ? (
           <p>
-            Subscribe with Apple In-App Purchase to unlock this market. Plans start at Lite ($29.99/mo).
+            Subscribe with in-app store billing to unlock this market. Plans start at Lite ($29.99/mo).
           </p>
         ) : native ? (
           <p>
-            This iOS app is an account companion while in-app purchase finishes setup. Subscriptions
-            are purchased on the website (Safari). Sign in with a subscribed account to access paid
-            markets, or continue with free / demo content here.
+            New purchases are not offered in this app build. Sign in with an account that already includes
+            this market, or use free / demo content available here. Store billing will be used for in-app
+            purchases when configured.
           </p>
         ) : (
           <p>
@@ -103,21 +102,21 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
           <p className="module-gate-sim-hint">
             Your simulation period has ended.{" "}
             {native && !nativeIap
-              ? "Manage your subscription on the website in Safari."
+              ? "In-app store billing is not configured in this build yet."
               : native && nativeIap
-                ? "Subscribe with Apple to keep live signals."
+                ? "Subscribe in the app to keep live signals."
                 : "Subscribe to keep tracking live signals and AI research."}
           </p>
         )}
-        <button className="btn btn-primary" onClick={onUnlock}>
-          {native && nativeIap
-            ? "Subscribe with Apple"
-            : native
-              ? "Manage subscription on website"
+        {!(native && !nativeIap) && (
+          <button className="btn btn-primary" onClick={onUnlock}>
+            {native && nativeIap
+              ? "Subscribe in app"
               : !isAuthenticated && simEligible
                 ? "Create free account"
                 : "Start free trial"}
-        </button>
+          </button>
+        )}
       </div>
     </div>
   );

@@ -138,7 +138,11 @@ function isBillingOrCheckoutUrl(url: string): boolean {
   }
 }
 
-export function TerminalScreen() {
+export function TerminalScreen({
+  onRequestDeleteAccount,
+}: {
+  onRequestDeleteAccount?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const [WebView, setWebView] = useState<WebViewComponent | null>(null);
@@ -317,8 +321,15 @@ export function TerminalScreen() {
     async (tierRaw?: string, userId?: string) => {
       if (iapBusy) return;
       if (!isIapConfigured()) {
-        setIapBanner("In-app purchase is not configured. Opening website…");
-        void Linking.openURL("https://www.motivefxai.com/pricing");
+        // Play Payments: never steer users to web checkout for digital subscriptions.
+        setIapBanner(
+          "In-app subscriptions are not available in this build yet. Existing plan access still works when you sign in."
+        );
+        notifyWeb({
+          type: "iap_result",
+          ok: false,
+          error: "Store billing is not configured in this build.",
+        });
         return;
       }
       const tier: IntelligenceTierId = isValidTier(tierRaw) ? tierRaw : "pro";
@@ -402,6 +413,12 @@ export function TerminalScreen() {
         if (typeof raw === "string" && raw.startsWith("{")) {
           const parsed = JSON.parse(raw) as NativeMsg;
           if (parsed?.type === "motivefx:open-external" && parsed.url) {
+            if (isBillingOrCheckoutUrl(parsed.url)) {
+              setIapBanner(
+                "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
+              );
+              return;
+            }
             void Linking.openURL(parsed.url).catch((e) => console.warn("openURL failed", e));
             return;
           }
@@ -430,9 +447,11 @@ export function TerminalScreen() {
       const url = req.url ?? "";
       if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
       if (Platform.OS === "android" && req.isTopFrame === false) return true;
-      // Never load Stripe / pricing / checkout inside the WebView.
+      // Play / App Store payments: never open Stripe or web pricing/checkout from the app.
       if (isBillingOrCheckoutUrl(url)) {
-        void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
+        setIapBanner(
+          "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
+        );
         return false;
       }
       if (isAllowedOrigin(url)) return true;
@@ -546,6 +565,11 @@ export function TerminalScreen() {
         <Pressable onPress={() => void Linking.openURL(TERMINAL_URL)}>
           <Text style={styles.link}>Open www.motivefxai.com</Text>
         </Pressable>
+        {onRequestDeleteAccount ? (
+          <Pressable onPress={onRequestDeleteAccount}>
+            <Text style={styles.link}>Delete account</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={() => void logout()}>
           <Text style={styles.linkMuted}>Sign out</Text>
         </Pressable>
@@ -555,6 +579,32 @@ export function TerminalScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.chrome}>
+        <Text style={styles.chromeTitle}>MotiveFX.AI</Text>
+        <View style={styles.chromeActions}>
+          {onRequestDeleteAccount ? (
+            <Pressable
+              onPress={onRequestDeleteAccount}
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              hitSlop={8}
+              style={styles.chromeBtn}
+            >
+              <Text style={styles.chromeBtnText}>Account</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={() => void logout()}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            hitSlop={8}
+            style={styles.chromeBtn}
+          >
+            <Text style={styles.chromeBtnText}>Sign out</Text>
+          </Pressable>
+        </View>
+      </View>
+
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -578,7 +628,9 @@ export function TerminalScreen() {
       {iapBusy && (
         <View style={styles.iapOverlay}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.iapText}>Opening App Store…</Text>
+          <Text style={styles.iapText}>
+            {Platform.OS === "android" ? "Opening Google Play…" : "Opening App Store…"}
+          </Text>
         </View>
       )}
       {iapBanner && !iapBusy && (
@@ -593,6 +645,21 @@ export function TerminalScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   centered: { justifyContent: "center", paddingHorizontal: 24, gap: 12 },
+  chrome: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.bg,
+    minHeight: 44,
+  },
+  chromeTitle: { color: colors.text, fontWeight: "700", fontSize: 14 },
+  chromeActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  chromeBtn: { paddingHorizontal: 10, paddingVertical: 8, minHeight: 40, justifyContent: "center" },
+  chromeBtnText: { color: colors.accent, fontSize: 13, fontWeight: "600" },
   webview: { flex: 1, backgroundColor: colors.bg },
   loader: {
     ...StyleSheet.absoluteFill,

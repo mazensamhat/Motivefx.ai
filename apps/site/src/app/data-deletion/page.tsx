@@ -83,12 +83,15 @@ export default function DataDeletionPage() {
           <p>To permanently delete your account and associated personal data:</p>
           <ol className="content-list">
             <li>
-              Sign in at{" "}
-              <a href="https://www.motivefxai.com/terminal/">motivefxai.com/terminal</a> and open{" "}
-              <strong>Account</strong> from the workspace header.
+              In the MotiveFX.AI Android or iOS app: open <strong>Account</strong> (or{" "}
+              <strong>Delete account</strong> on the sign-in screen), enter your password, and type{" "}
+              <code>DELETE</code> to confirm.
             </li>
             <li>
-              Scroll to <strong>Delete account</strong>.
+              Or sign in at{" "}
+              <a href="https://www.motivefxai.com/terminal/">motivefxai.com/terminal</a> and open{" "}
+              <strong>Account</strong> from the workspace header, then scroll to{" "}
+              <strong>Delete account</strong>.
             </li>
             <li>
               Enter your password and type <code>DELETE</code> to confirm.

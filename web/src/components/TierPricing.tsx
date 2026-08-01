@@ -14,7 +14,6 @@ import { getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
   isNativeShell,
-  openExternalSubscribe,
   requestNativeIapPurchase,
   requestNativeIapRestore,
 } from "../lib/nativeShell";
@@ -71,12 +70,14 @@ export function TierPricing() {
       const ok = requestNativeIapPurchase(tierId, getUserId());
       if (!ok) {
         setCheckoutBusy(false);
-        openExternalSubscribe();
+        setIapError("Store billing is not available in this build.");
       }
       return;
     }
     if (native) {
-      openExternalSubscribe();
+      setIapError(
+        "Store billing is not configured in this app build. Sign in with an account that already has a plan to access markets."
+      );
       return;
     }
     if (!isAuthenticated) {
@@ -93,7 +94,9 @@ export function TierPricing() {
 
   function onSelectTier(tierId: PricingTierId) {
     if (native && !nativeIap) {
-      openExternalSubscribe();
+      setIapError(
+        "Store billing is not configured in this app build. Sign in with an account that already has a plan to access markets."
+      );
       return;
     }
     // Native IAP: skip market picker — server defaults markets by tier.
@@ -112,20 +115,19 @@ export function TierPricing() {
 
   if (loading) return null;
 
-  // Companion / Safari fallback when native IAP keys are not configured.
+  // Native shell without store billing: no web purchase CTAs (Play Payments / App Store 3.1.1).
   if (native && !nativeIap) {
     return (
       <div className="tier-pricing glass-panel pricing-terminal native-companion-billing" id="pricing">
         <div className="module-pricing-header">
-          <h3 className="pricing-terminal-title">Subscriptions on the web</h3>
+          <h3 className="pricing-terminal-title">Subscriptions</h3>
           <p className="pricing-terminal-sub">
-            In-app purchase is being set up. Manage or purchase plans at motivefxai.com in Safari.
-            Sign in here with the same account to view markets you already own.
+            New purchases are not offered in this app build. If your account already includes a MotiveFX
+            plan, signed-in markets remain available. Store billing (Google Play / App Store) will be used
+            for in-app purchases when configured.
           </p>
         </div>
-        <button type="button" className="btn btn-accent-terminal" onClick={() => openExternalSubscribe()}>
-          Manage subscription on website
-        </button>
+        {iapError && <p className="auth-error">{iapError}</p>}
         <BillingFinePrint annualPrice={1299} className="tier-pricing-fine-print" compact />
       </div>
     );
@@ -147,7 +149,7 @@ export function TierPricing() {
             className="btn admin-btn"
             onClick={() => requestNativeIapRestore(getUserId())}
           >
-            Restore App Store purchases
+            Restore purchases
           </button>
         )}
         <BillingFinePrint annualPrice={1299} className="tier-pricing-fine-print" compact />
@@ -163,7 +165,7 @@ export function TierPricing() {
         </h3>
         <p className="pricing-terminal-sub">
           {native && nativeIap
-            ? "Purchase with Apple In-App Purchase. Stripe checkout is not available inside the app."
+            ? "Purchase with in-app store billing. Web checkout is not available inside the app."
             : subscribed
               ? "Only higher tiers are shown — no downgrades here."
               : "Capabilities unlock by tier — Lite picks exactly one market, Pro picks two, Ultra and above get all five."}
@@ -236,12 +238,10 @@ export function TierPricing() {
                 >
                   {checkoutBusy
                     ? nativeIap
-                      ? "Opening App Store…"
+                      ? "Opening store…"
                       : "Loading…"
                     : native && nativeIap
-                      ? t.id === "elite"
-                        ? "Subscribe with Apple"
-                        : "Subscribe with Apple"
+                      ? "Subscribe in app"
                       : t.id === "elite"
                         ? "Get Elite"
                         : "Start free trial"}

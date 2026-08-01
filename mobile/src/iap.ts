@@ -159,7 +159,7 @@ export async function purchaseTier(tier: IntelligenceTierId): Promise<{
     if (!current?.availablePackages?.length) {
       return {
         ok: false,
-        error: "No App Store subscription products are available yet. Try again later.",
+        error: "No store subscription products are available yet. Try again later.",
       };
     }
 
@@ -167,7 +167,7 @@ export async function purchaseTier(tier: IntelligenceTierId): Promise<{
     if (!pkg) {
       return {
         ok: false,
-        error: `No App Store package found for ${tier}. Check RevenueCat offerings.`,
+        error: `No store package found for ${tier}. Check RevenueCat offerings.`,
       };
     }
 
