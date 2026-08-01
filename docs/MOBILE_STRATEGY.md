@@ -11,38 +11,40 @@
 | Framework | Expo SDK 56 + React Native 0.85 |
 | Bundle ID | `ai.motivefx.app` |
 | Android scaffold | `expo prebuild` + `eas.json` (see `docs/ANDROID_PLAY_STORE.md`) |
-| Primary UI | **Terminal WebView** — loads `/terminal/` for full mobile design parity |
+| Primary UI | **Terminal WebView** — loads `/terminal` (no trailing slash) for mobile design parity |
 | Legacy screens | Feed, Stocks, Crypto, Betting (native stubs, not in main nav) |
-| Auth | Login/register + secure token storage → injected into WebView |
-| Billing | **Companion mode** — no in-app Stripe; Safari for manage/subscribe; StoreKit deferred |
-| Age assurance | **18+ gate** on first iOS launch + module gates for betting/predictions |
+| Auth | Login/register + secure token storage → native-handoff cookie + localStorage injection |
+| Billing (Android / Play) | **No web checkout steering.** Purchase CTAs stay off until Play Billing (RevenueCat Android key + products) is verified. Website `/pricing` remains for browser users only. |
+| Billing (iOS) | Same rule: StoreKit/RevenueCat when configured; never Safari/web pricing from the app shell |
+| Age assurance | **18+ gate** on first launch + module gates for betting/predictions |
+| API | `EXPO_PUBLIC_API_URL` env (defaults to production www host) |
 
+See **`docs/PLAY_SUSPENSION_APPEAL.md`** for Play Enforcement appeal text and operator checklist.  
 See **`docs/APP_STORE_REVIEW_RESPONSE.md`** for App Review reply text and Connect checklist.
-| API | `EXPO_PUBLIC_API_URL` env (defaults to production) |
 
 ---
 
-## Recommended approach: **Phased native + web billing**
+## Recommended approach: **Store billing in-app; web Stripe outside the app**
 
-### Phase 1 — Launch (now → store v1.0)
+### Phase 1 — Play / store remediation (current)
 
-**Strategy:** Native shell for consumption; **subscriptions only on web**.
+**Strategy:** Native shell for consumption; **digital subscriptions must not be sold via website links from the app.**
 
 | Why | Detail |
 |-----|--------|
-| Apple/Google IAP rules | Digital subscriptions sold *inside* the app must use StoreKit / Play Billing (15–30% fee) |
-| Avoid rejection | Stripe Checkout inside a WebView for new subscriptions often fails App Review |
-| Industry pattern | Bloomberg, many SaaS apps: "Manage subscription at motivefx.ai" |
+| Google Play Payments | Digital goods sold or steered from the Android app must use Play Billing |
+| Apple 3.1.1 | Same for iOS — StoreKit inside the app; Stripe only on the website for browser users |
+| Current interim | Keep purchase CTAs off in MotiveFXNative when RevenueCat keys are unset; signed-in entitlements still work |
 
-**App v1.0 features:**
-- Login / register (same auth API as web)
-- **Full terminal in WebView** — bottom nav, Home command center, virtualized feeds (matches web mobile)
-- Auth session injected into terminal localStorage
-- Link out to web for subscribe: `https://motivefx.ai/pricing`
-- In-app disclaimers + link to Privacy/Terms
+**App features now:**
+- Login / register (same auth API as web) + native **Delete account**
+- Full terminal in WebView after `GET /api/auth/native-handoff`
+- Auth session via httpOnly cookie handoff + localStorage injection
+- **Do not** deep-link to `/pricing` for digital subscriptions from the Android/iOS shell
+- In-app disclaimers + Privacy / Terms / data-deletion URLs
 
-**Store listing copy:**
-> Subscriptions are purchased at motivefx.ai. Sign in with the same account to access modules on mobile.
+**Store listing copy (Play):**
+> Digital subscriptions, when offered in the app, are sold through Google Play Billing. The website may sell plans to browser users; the Android app does not steer purchases to the website.
 
 ### Phase 2 — Parity (post-revenue)
 
@@ -51,14 +53,14 @@ See **`docs/APP_STORE_REVIEW_RESPONSE.md`** for App Review reply text and Connec
 - Biometric unlock (Face ID / fingerprint)
 - Offline cache for watchlists
 
-### Phase 3 — Native billing (optional)
+### Phase 3 — Native billing live
 
-If mobile conversion justifies 15–30% platform fee:
+When mobile conversion justifies platform fees:
 
-- Integrate **RevenueCat** → StoreKit + Play Billing
-- Map App Store / Play product IDs to module tiers
-- Server webhook syncs entitlements to `module_subscriptions`
-- Keep web Stripe for users who prefer it (account-level entitlement either way)
+- RevenueCat → StoreKit + Play Billing configured in EAS
+- Map product IDs to intelligence tiers
+- Server webhook syncs entitlements
+- Keep web Stripe for **browser** customers only (never opened from MotiveFXNative)
 
 ---
 
@@ -70,12 +72,12 @@ If mobile conversion justifies 15–30% platform fee:
 | Privacy Policy URL | `https://www.motivefxai.com/privacy` |
 | App Privacy Details | Declare: email, user ID, usage data, financial info (user-entered portfolios) |
 | Sign in with Apple | Required if Google/social login added on iOS |
-| Guideline 3.1.1 (IAP) | **Billing on web only for v1** — do not sell digital subscriptions in-app; link to `https://www.motivefxai.com/pricing` |
+| Guideline 3.1.1 (IAP) | Digital subscriptions inside the app use StoreKit when configured; **do not** link out to web pricing from the iOS shell |
 | Guideline 3.1.3(f) | Reader apps exception does **not** apply — this is SaaS tools |
 | Financial content | Prominent disclaimer; no guaranteed returns |
 | Betting content | Geo-restrict modules; 17+ or 18+ rating; regional compliance |
 
-**Post-review launch checklist (iOS):** App Store listing live → smoke-test auth + WebView terminal → confirm subscribe opens Safari to web pricing → only then consider StoreKit / RevenueCat if needed.
+**Post-review launch checklist (iOS):** App Store listing live → smoke-test auth + WebView terminal → confirm no Safari/web pricing CTAs in the shell → only enable StoreKit / RevenueCat when products + keys are verified.
 
 ### Build & submit
 
@@ -101,7 +103,7 @@ Configure `app.json` / `eas.json`:
 | Target API level | Meet current Play policy (API 34+) — Expo 56 handles this |
 | Data safety form | Match iOS privacy declarations |
 | Financial features declaration | Required in Play Console |
-| Play Billing | Same as iOS — web subscribe for v1 |
+| Play Billing | Required before re-enabling in-app purchase CTAs — see `docs/ANDROID_PLAY_STORE.md` and `docs/PLAY_SUSPENSION_APPEAL.md` |
 | Content rating | IARC questionnaire — gambling references may affect rating |
 
 ```bash
@@ -120,10 +122,11 @@ EXPO_PUBLIC_API_URL=http://127.0.0.1:8001/api
 
 ### Production
 ```env
-EXPO_PUBLIC_API_URL=https://api.motivefx.ai/api
+EXPO_PUBLIC_API_URL=https://www.motivefxai.com/api
 ```
 
-Use `mobile/src/config.ts` — never hardcode production URLs in source.
+Use `mobile/src/config.ts` — never hardcode production URLs in source.  
+(Do **not** use `api.motivefx.ai` — production APIs live on the www site host.)
 
 ---
 
@@ -164,10 +167,11 @@ Flow matches web:
 - [ ] Disclaimer on first launch
 - [ ] No localhost references in release build
 - [ ] TestFlight / internal testing with real auth + subscribed account
+- [ ] Confirm Android shell does **not** open `/pricing` or Stripe for digital goods
 - [ ] Support URL and marketing URL in store listing
 - [ ] Social contact fields: Instagram / Facebook / LinkedIn from `docs/PLAY_STORE_LISTING.md` (also `mobile/src/config.ts` `STORE_SOCIAL_URLS`)
 - [ ] Screenshots for 6.7" and 6.1" iPhone + phone/tablet Android
 
 ---
 
-*Last updated: June 26, 2026*
+*Last updated: August 1, 2026*

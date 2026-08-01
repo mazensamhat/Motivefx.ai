@@ -13,6 +13,9 @@ backend/**/__pycache__/
 # Build
 web/dist/
 apps/site/public/terminal/
+# Accidental nested Vite copy — never ship under /terminal/terminal/
+web/public/terminal/terminal/
+*.tsbuildinfo
 mobile/.expo/
 mobile/dist/
 mobile/android/

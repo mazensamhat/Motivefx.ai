@@ -10,11 +10,11 @@ export function isNativeIapAvailable(): boolean {
   return Boolean(window.__MOTIVEFX_NATIVE_IAP__);
 }
 
-const PRICING_URL = "https://www.motivefxai.com/pricing";
+const WEB_PRICING_URL = "https://www.motivefxai.com/pricing";
 
 function isBillingOrCheckoutUrl(url: string): boolean {
   try {
-    const u = new URL(url);
+    const u = new URL(url, "https://www.motivefxai.com");
     const host = u.hostname.toLowerCase();
     if (host.includes("stripe.com") || host.includes("checkout.stripe.com")) return true;
     const path = `${u.pathname}${u.search}`.toLowerCase();
@@ -44,9 +44,11 @@ function postNative(msg: Record<string, unknown>): boolean {
 /**
  * Ask the native shell to open a URL outside the WebView.
  * Billing / pricing URLs are blocked in the native shell (store payments policy).
+ * Empty/missing URLs are a no-op — never default to web pricing.
  */
 export function openExternalUrl(url: string): void {
-  const target = url || PRICING_URL;
+  const target = (url || "").trim();
+  if (!target) return;
   if (isNativeShell() && isBillingOrCheckoutUrl(target)) {
     window.dispatchEvent(
       new CustomEvent("motivefx-iap", {
@@ -89,7 +91,8 @@ export function openExternalSubscribe(): void {
     );
     return;
   }
-  openExternalUrl(PRICING_URL);
+  // Browser-only: marketing pricing page. Never used from MotiveFXNative.
+  openExternalUrl(WEB_PRICING_URL);
 }
 
 /**

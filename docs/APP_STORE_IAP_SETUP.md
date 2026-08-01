@@ -89,7 +89,7 @@ eas secret:create --name EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY --value goog_…
 ```
 
 `eas.json` production/preview already set `EXPO_PUBLIC_IAP_ENABLED=true`.  
-Native IAP only activates when a RevenueCat API key is present **and** (if set) the flag is true. Without keys, the WebView keeps the Safari companion fallback.
+Native IAP only activates when a RevenueCat API key is present **and** (if set) the flag is true. Without keys, the WebView **must not** fall back to Safari/web pricing — purchase CTAs stay off / show a non-steering message (`isIapConfigured()` → false → `__MOTIVEFX_NATIVE_IAP__` false).
 
 ## 6. Build & submit
 

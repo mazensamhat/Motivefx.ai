@@ -4,7 +4,7 @@
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.4**, versionCode **18+** (confirm the AAB’s actual `versionCode` after EAS — production profile uses `autoIncrement`)  
+**Remediation binary (target):** version **1.0.4**, versionCode **confirm from AAB** (repo `app.json` seeds `versionCode` **18**; EAS production uses `autoIncrement`, so the uploaded AAB may be **19+** — paste the exact number from Play Console / `aapt dump badging`)  
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 
 ---
@@ -29,7 +29,7 @@ We are appealing the suspension of MotiveFX.AI (`ai.motivefx.app`) under the Enf
 
 3. **Payments / external purchase steering (self-identified before this appeal)**  
    - **Risk:** Auth and terminal copy / CTAs directed users to purchase or manage digital subscriptions on the website (`motivefxai.com/pricing`), including iOS-oriented “opens in Safari” language on Android. Native shell fallbacks opened the pricing URL when store billing was not configured. That pattern conflicts with Google Play Payments for digital subscriptions.  
-   - **Remediation in 1.0.4 / versionCode 18+:**  
+   - **Remediation in 1.0.4** (repo seeds versionCode **18**; uploaded AAB may be higher via EAS `autoIncrement` — confirm exact code):  
      - Removed Android-facing CTAs and copy that steer users to web checkout for digital subscriptions (native auth disclaimer; terminal subscribe / module unlock / simulation CTAs in the MotiveFXNative WebView shell).  
      - Blocked Stripe / `/pricing` / checkout URLs from opening inside or from the Android app shell (`shouldOverrideUrlLoading` / open-external bridge).  
      - Native and WebView subscribe paths no longer fall back to the website; they show a non-steering message when store billing is not configured.  
@@ -80,9 +80,10 @@ MotiveFX.AI / MotiveFX team
 See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (updated). Minimum:
 
 - [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
-- [ ] Confirm production terminal bundle still contains native-shell billing gating (no “Manage on the web” / Safari / pricing CTAs in MotiveFXNative)  
-- [ ] EAS production AAB **1.0.4** uploaded; record actual versionCode from the AAB  
+- [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
+- [ ] EAS production AAB **1.0.4** uploaded; record **exact** versionCode from the AAB (autoIncrement may exceed 18)  
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
-- [ ] Decide: either finish Play Billing before re-enabling purchase CTAs, or keep purchase CTAs off in the Android shell (`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` unset → CTAs stay off)
+- [ ] Decide: either finish Play Billing before re-enabling purchase CTAs, or keep purchase CTAs off in the Android shell (`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` unset → CTAs stay off)  
+- [ ] Paste exact versionName / versionCode into the appeal body before submit — do not leave “18+”

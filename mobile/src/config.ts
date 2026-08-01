@@ -25,9 +25,6 @@ export const LEGAL = {
   privacy: `${WEB_BASE}/privacy`,
   terms: `${WEB_BASE}/terms`,
   dataDeletion: `${WEB_BASE}/data-deletion`,
-  /** Informational only — never deep-link Android users here to buy digital goods. */
-  // Intentionally unused in the Android shell (Play Payments). Kept for docs/store copy.
-  subscribe: `${WEB_BASE}/pricing`,
 } as const;
 
 /** Play Console / store listing disclosure URLs (canonical www host). */
