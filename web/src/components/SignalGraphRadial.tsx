@@ -46,10 +46,16 @@ interface Props {
   graph: SignalGraphPayload;
   activeNodeId: string;
   onSelectNode: (id: string) => void;
+  onInspectLink?: (link: {
+    hubLabel: string;
+    satLabel: string;
+    relation: string;
+    weight: number;
+  }) => void;
 }
 
 /** Terminal Signal Graph™ — large radial hub with link explanation. */
-export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) {
+export function SignalGraphRadial({ graph, activeNodeId, onSelectNode, onInspectLink }: Props) {
   const hub = graph.nodes.find((n) => n.id === activeNodeId) ?? graph.nodes[0];
   const macros = graph.nodes.filter((n) => n.kind === "macro");
 
@@ -238,9 +244,17 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
                   <button
                     type="button"
                     className="sg-sat-btn"
-                    onClick={() => setFocusTo(node.to)}
+                    onClick={() => {
+                      setFocusTo(node.to);
+                      onInspectLink?.({
+                        hubLabel: hub?.label ?? "Hub",
+                        satLabel: node.label,
+                        relation: node.relation,
+                        weight: node.weight,
+                      });
+                    }}
                     aria-pressed={focused}
-                    aria-label={`${node.label}: ${node.relation}, ${pct}% link`}
+                    aria-label={`${node.label}: ${node.relation}, ${pct}% link — open intel`}
                   >
                     <span className="sg-sat-icon sg-sat-icon--xl">
                       <Icon size={18} aria-hidden />
@@ -277,8 +291,24 @@ export function SignalGraphRadial({ graph, activeNodeId, onSelectNode }: Props) 
               {focus.label === hot ? " · strongest spoke" : ""}
             </p>
             <p className="sg-info-hint">
-              Switch hubs above to recenter. Click a satellite to inspect the transmission path.
+              Switch hubs above to recenter. Tap a satellite for related watches across desks.
             </p>
+            {onInspectLink && focus && (
+              <button
+                type="button"
+                className="sg-info-open-btn"
+                onClick={() =>
+                  onInspectLink({
+                    hubLabel: hub?.label ?? "Hub",
+                    satLabel: focus.label,
+                    relation: focus.relation,
+                    weight: focus.weight,
+                  })
+                }
+              >
+                Open link intel + related watches →
+              </button>
+            )}
           </aside>
         )}
       </div>

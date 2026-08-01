@@ -12,11 +12,23 @@ import { SignalGraphRadial } from "./SignalGraphRadial";
 interface Props {
   briefing: HomeBriefing;
   onPrefsChanged?: () => void;
+  onInspectTheme?: (theme: ProbabilityView) => void;
+  onInspectGraphLink?: (link: {
+    hubLabel: string;
+    satLabel: string;
+    relation: string;
+    weight: number;
+  }) => void;
 }
 
 const HORIZONS = ["7 days", "30 days", "30–90 days", "6–12 months"] as const;
 
-export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
+export function Phase2IntelPanels({
+  briefing,
+  onPrefsChanged,
+  onInspectTheme,
+  onInspectGraphLink,
+}: Props) {
   const graph = briefing.signalGraph;
   const themes = briefing.probabilityViews ?? [];
   const breaks = briefing.consensusBreaks ?? [];
@@ -108,6 +120,7 @@ export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
           graph={graph}
           activeNodeId={activeNode}
           onSelectNode={setActiveNode}
+          onInspectLink={onInspectGraphLink}
         />
       )}
 
@@ -117,11 +130,17 @@ export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
             <h2>
               <Radar size={18} /> Probability Engine
             </h2>
-            <span className="home-section-sub">Multi-factor · calibration deltas</span>
+            <span className="home-section-sub">Tap a theme for related watches · calibration deltas</span>
           </div>
           <div className="phase2-theme-grid">
             {themes.slice(0, 3).map((t) => (
-              <ThemeCard key={t.id} view={t} onWatch={() => void addTheme(t)} busy={prefsBusy} />
+              <ThemeCard
+                key={t.id}
+                view={t}
+                onWatch={() => void addTheme(t)}
+                onOpen={() => onInspectTheme?.(t)}
+                busy={prefsBusy}
+              />
             ))}
           </div>
         </section>
@@ -332,31 +351,36 @@ export function Phase2IntelPanels({ briefing, onPrefsChanged }: Props) {
 function ThemeCard({
   view,
   onWatch,
+  onOpen,
   busy,
 }: {
   view: ProbabilityView;
   onWatch: () => void;
+  onOpen?: () => void;
   busy: boolean;
 }) {
   return (
-    <article className="phase2-theme">
-      <div className="phase2-theme-top">
-        <span className="phase2-dir">{view.direction}</span>
-        <span>{view.probability}%</span>
-      </div>
-      <h3>{view.theme}</h3>
-      <p className="phase2-muted">
-        Confidence {view.confidence}%
-        {view.timing ? ` · ${view.timing}` : ""}
-        {view.deltaVsPrior != null
-          ? ` · Δ ${view.deltaVsPrior > 0 ? "+" : ""}${view.deltaVsPrior}`
-          : ""}
-      </p>
-      <ul>
-        {view.beneficiaries.slice(0, 3).map((b) => (
-          <li key={b}>{b}</li>
-        ))}
-      </ul>
+    <article className={`phase2-theme${onOpen ? " is-clickable" : ""}`}>
+      <button type="button" className="phase2-theme-hit" onClick={() => onOpen?.()} disabled={!onOpen}>
+        <div className="phase2-theme-top">
+          <span className="phase2-dir">{view.direction}</span>
+          <span>{view.probability}%</span>
+        </div>
+        <h3>{view.theme}</h3>
+        <p className="phase2-muted">
+          Confidence {view.confidence}%
+          {view.timing ? ` · ${view.timing}` : ""}
+          {view.deltaVsPrior != null
+            ? ` · Δ ${view.deltaVsPrior > 0 ? "+" : ""}${view.deltaVsPrior}`
+            : ""}
+        </p>
+        <ul>
+          {view.beneficiaries.slice(0, 3).map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+        {onOpen && <p className="phase2-theme-tap">Tap for related watches →</p>}
+      </button>
       <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={onWatch}>
         + Watch theme
       </button>

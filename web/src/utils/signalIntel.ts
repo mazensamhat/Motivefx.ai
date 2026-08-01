@@ -1,6 +1,16 @@
 import { SIGNAL_GLOSSARY, type GlossaryEntry } from "../config/signalGlossary";
 import { beginnerNextSteps } from "./signalClarity";
 
+export interface RelatedWatchItem {
+  symbol: string;
+  desk: string;
+  stanceLabel: string;
+  attention: number;
+  blurb: string;
+  deepDiveModule: "trades" | "pinkslips" | "crypto" | "betting" | "predictions";
+  deepDiveRow: Record<string, unknown>;
+}
+
 export interface SignalDetailPayload {
   title: string;
   category: string;
@@ -9,10 +19,15 @@ export interface SignalDetailPayload {
   contextLines?: string[];
   /** Plain-language research checklist for beginners — not trade instructions */
   nextSteps?: string[];
+  /** Related tickers/markets to watch — open full scorecard from Signal Intel */
+  relatedWatches?: RelatedWatchItem[];
   symbol?: string;
   confidence?: number;
   journalNote?: string;
   journalMeta?: { module?: string; symbol?: string; signalTitle?: string };
+  /** When set, Signal Intel shows “Open full scorecard” → Asset Deep Dive */
+  deepDiveModule?: "trades" | "pinkslips" | "crypto" | "betting" | "predictions";
+  deepDiveRow?: Record<string, unknown>;
 }
 
 const ALIAS_TO_GLOSSARY: Record<string, string> = {
@@ -180,6 +195,16 @@ export function moverToSignalDetail(m: {
       m.volRatio != null ? `Volume ${m.volRatio}x recent average.` : "",
       m.note ?? "",
     ].filter(Boolean),
+    deepDiveModule: "pinkslips",
+    deepDiveRow: {
+      symbol: m.symbol,
+      price: m.price,
+      changePct: m.changePct,
+      volRatio: m.volRatio,
+      note: m.note,
+      side: (m.changePct ?? 0) >= 0 ? "buy" : "sell",
+      timestamp: new Date().toISOString(),
+    },
   });
 }
 
@@ -209,6 +234,7 @@ export function optionFlowDetail(o: {
   volume?: number;
   premium?: number;
   note?: string;
+  volOiRatio?: number;
 }): SignalDetailPayload {
   return resolveSignalDetail("Unusual Options Flow", {
     symbol: o.symbol,
@@ -219,6 +245,17 @@ export function optionFlowDetail(o: {
       o.premium != null ? `Premium ~$${o.premium.toLocaleString()}` : "",
       o.note ?? "",
     ].filter(Boolean),
+    deepDiveModule: "trades",
+    deepDiveRow: {
+      symbol: o.symbol,
+      type: o.type,
+      side: o.type === "put" ? "sell" : "buy",
+      premium: o.premium,
+      note: o.note ?? `Vol/OI ${(o.volOiRatio ?? 0) || "—"}x · strike $${o.strike ?? "—"}`,
+      volOiRatio: o.volOiRatio,
+      timestamp: new Date().toISOString(),
+      id: `opt-${o.symbol}-${o.type}-${o.strike ?? ""}`,
+    },
   });
 }
 
@@ -229,6 +266,7 @@ export function congressFlowDetail(t: {
   amount: string;
   filedAt?: string;
 }): SignalDetailPayload {
+  const isSale = String(t.transaction).toLowerCase().includes("sale");
   return resolveSignalDetail("Congress / Insider Flow", {
     symbol: t.symbol,
     category: "Trades",
@@ -237,6 +275,16 @@ export function congressFlowDetail(t: {
       `Disclosed amount: ${t.amount}`,
       t.filedAt ? `Filed ${t.filedAt}` : "",
     ].filter(Boolean),
+    deepDiveModule: "trades",
+    deepDiveRow: {
+      symbol: t.symbol,
+      side: isSale ? "sell" : "buy",
+      actorType: "institutional",
+      note: `${t.politician} · ${t.transaction} · ${t.amount}`,
+      briefingNote: `Congress disclosure on $${t.symbol}: ${t.transaction} ${t.amount}.`,
+      timestamp: t.filedAt ?? new Date().toISOString(),
+      id: `congress-${t.symbol}-${t.politician}`,
+    },
   });
 }
 
@@ -257,6 +305,17 @@ export function whaleAlertDetail(w: {
     symbol: w.asset,
     category: "Crypto",
     contextLines: [`${amt} ${w.direction}`, w.note ?? ""].filter(Boolean),
+    deepDiveModule: "crypto",
+    deepDiveRow: {
+      symbol: w.asset,
+      asset: w.asset,
+      amountUsd: w.amountUsd,
+      direction: w.direction,
+      side: w.direction,
+      note: w.note,
+      timestamp: new Date().toISOString(),
+      id: `whale-${w.asset}-${w.amountUsd}`,
+    },
   });
 }
 
@@ -268,12 +327,26 @@ export function lineMoveDetail(l: {
   currentLine?: string;
 }): SignalDetailPayload {
   return resolveSignalDetail("Line Movement", {
+    symbol: l.matchup.slice(0, 32),
     category: "Betting",
     contextLines: [
       l.matchup,
       `${l.sport}${l.book ? ` · ${l.book}` : ""}`,
       `Line: ${l.openingLine ?? "—"} → ${l.currentLine ?? "—"}`,
     ],
+    deepDiveModule: "betting",
+    deepDiveRow: {
+      matchup: l.matchup,
+      market: l.matchup,
+      symbol: l.matchup,
+      sport: l.sport,
+      book: l.book,
+      line: l.currentLine ?? l.openingLine,
+      odds: l.currentLine ?? l.openingLine,
+      note: `${l.sport} · ${l.openingLine ?? "—"} → ${l.currentLine ?? "—"}`,
+      timestamp: new Date().toISOString(),
+      id: `line-${l.matchup}`,
+    },
   });
 }
 
@@ -285,6 +358,7 @@ export function sharpMoneyDetail(s: {
   moneyPct?: number;
 }): SignalDetailPayload {
   return resolveSignalDetail("Derived Sharp Lean", {
+    symbol: s.matchup.slice(0, 32),
     category: "Betting",
     contextLines: [
       s.matchup,
@@ -293,6 +367,17 @@ export function sharpMoneyDetail(s: {
       s.publicPct != null ? `Consensus favorite share ~${s.publicPct}%` : "",
       "Derived from moneyline consensus — not true public/sharp ticket splits.",
     ].filter(Boolean),
+    deepDiveModule: "betting",
+    deepDiveRow: {
+      matchup: s.matchup,
+      market: s.matchup,
+      symbol: s.matchup,
+      pick: s.sharpSide,
+      side: s.sharpSide,
+      note: `Lean ${s.sharpSide} · ${s.signal.replace(/_/g, " ")}`,
+      timestamp: new Date().toISOString(),
+      id: `sharp-${s.matchup}`,
+    },
   });
 }
 
@@ -300,14 +385,30 @@ export function eventMarketDetail(m: {
   market: string;
   yes: number;
   volume24h?: string | number;
+  platform?: string;
+  categoryLabel?: string;
+  category?: string;
 }): SignalDetailPayload {
   return resolveSignalDetail("Event Market", {
+    symbol: m.market.slice(0, 32),
     category: "Predictions",
     contextLines: [
       m.market,
       `Implied yes: ${(m.yes * 100).toFixed(0)}%`,
       m.volume24h != null ? `24h volume: ${m.volume24h}` : "",
     ].filter(Boolean),
+    deepDiveModule: "predictions",
+    deepDiveRow: {
+      market: m.market,
+      symbol: m.market,
+      yes: m.yes,
+      yesPrice: m.yes,
+      platform: m.platform,
+      categoryLabel: m.categoryLabel ?? m.category,
+      note: `Implied yes ${(m.yes * 100).toFixed(0)}%`,
+      timestamp: new Date().toISOString(),
+      id: `pred-${m.market.slice(0, 24)}`,
+    },
   });
 }
 
@@ -349,34 +450,54 @@ export function themeSignalDetail(input: {
   supportingFactors?: string[];
   relatedSymbols?: string[];
   deltaVsPrior?: number;
+  /** Optional desk opportunities for related watches */
+  opportunities?: import("../types").HomeOpportunity[];
 }): SignalDetailPayload {
+  // Lazy import avoided — themeIntel imports this module; keep a thin local builder here
+  // and prefer buildThemeIntelDetail from callers when opportunities are available.
   const lines: string[] = [];
   if (input.status) lines.push(`Status: ${input.status}`);
   if (input.direction) lines.push(`Direction: ${input.direction}`);
-  if (input.probability != null) lines.push(`Modeled probability: ${input.probability}%`);
-  if (input.confidence != null) lines.push(`Confidence: ${input.confidence}%`);
+  if (input.probability != null) lines.push(`Theme attention score: ${input.probability}%`);
+  if (input.confidence != null) lines.push(`Model confidence: ${input.confidence}%`);
   if (input.timing) lines.push(`Timing: ${input.timing}`);
   if (input.deltaVsPrior != null) {
     lines.push(`Δ vs prior: ${input.deltaVsPrior > 0 ? "+" : ""}${input.deltaVsPrior}`);
   }
   if (input.beneficiaries?.length) {
-    lines.push(`Who benefits: ${input.beneficiaries.slice(0, 4).join(", ")}`);
+    lines.push(`Who may benefit (context): ${input.beneficiaries.slice(0, 4).join(", ")}`);
   }
   if (input.supportingFactors?.length) {
-    lines.push(`Why: ${input.supportingFactors.slice(0, 3).join("; ")}`);
+    lines.push(`Why it matters: ${input.supportingFactors.slice(0, 3).join("; ")}`);
   }
   if (input.relatedSymbols?.length) {
-    lines.push(`Related: ${input.relatedSymbols.slice(0, 5).join(", ")}`);
+    lines.push(`Related symbols: ${input.relatedSymbols.slice(0, 5).join(", ")}`);
   }
+  const cooling =
+    String(input.status ?? "").toLowerCase().includes("cool") ||
+    String(input.status ?? "").toLowerCase().includes("weak") ||
+    input.direction === "down";
   return {
     title: input.theme,
     category: "Today's Signals",
-    definition:
-      "Theme momentum from the Daily Brief — how a macro or sector story is shifting and where pressure transmits next. Informational context only.",
+    definition: cooling
+      ? `“${input.theme}” looks softer in the Daily Brief — research related desks carefully. Not a sell instruction.`
+      : `“${input.theme}” is a developing Daily Brief story. Tap related watches or open a scorecard to go deeper — monitor only.`,
     confidence: input.confidence ?? input.probability,
-    contextLines: lines.length ? lines : ["Open Probability Engine below for full cascade detail."],
+    contextLines: lines.length ? lines : ["Open Opportunity Radar or Probability Engine for cascade detail."],
+    nextSteps: beginnerNextSteps(input.relatedSymbols?.[0], "Trades"),
     journalNote: `Theme: ${input.theme}${input.status ? ` (${input.status})` : ""}`,
-    journalMeta: { signalTitle: input.theme },
+    journalMeta: { signalTitle: input.theme, symbol: input.relatedSymbols?.[0] },
+    symbol: input.relatedSymbols?.[0],
+    deepDiveModule: input.relatedSymbols?.[0] ? "trades" : undefined,
+    deepDiveRow: input.relatedSymbols?.[0]
+      ? {
+          symbol: input.relatedSymbols[0],
+          note: input.theme,
+          timestamp: new Date().toISOString(),
+          id: `theme-sym-${input.relatedSymbols[0]}`,
+        }
+      : undefined,
   };
 }
 
@@ -395,6 +516,15 @@ export function confidenceDetail(symbol: string, confidence: number, title: stri
     nextSteps: beginnerNextSteps(symbol, "Trades"),
     journalNote: `${symbol}: ${title} (${confidence}% desk attention)`,
     journalMeta: { symbol, signalTitle: title },
+    deepDiveModule: "trades",
+    deepDiveRow: {
+      symbol,
+      note: title,
+      briefingNote: `${title} · ${confidence}% desk attention`,
+      side: "buy",
+      timestamp: new Date().toISOString(),
+      id: `attn-${symbol}`,
+    },
   };
 }
 

@@ -15,11 +15,10 @@ import { PredictionTracker } from "./PredictionTracker";
 import { SimulationBanner } from "./SimulationBanner";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
-import { useSignalDetail } from "../hooks/useSignalDetail";
-import { eventMarketDetail } from "../utils/signalIntel";
+import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 
 export function TabPredictions() {
-  const { inspectDetail } = useSignalDetail();
+  const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("predictions");
   const simMode = isSimulationOnly("predictions");
@@ -96,10 +95,25 @@ export function TabPredictions() {
               maxHeight="min(24rem, 52vh)"
               renderItem={(m) => (
                 <ModuleItemCard
-                  onClick={() => inspectDetail(eventMarketDetail(m))}
+                  onClick={() =>
+                    openDeepDive(
+                      {
+                        market: m.market,
+                        symbol: m.market,
+                        yes: m.yes,
+                        yesPrice: m.yes,
+                        platform: m.platform,
+                        categoryLabel: m.categoryLabel ?? m.category,
+                        note: `Implied yes ${(m.yes * 100).toFixed(0)}%`,
+                        timestamp: new Date().toISOString(),
+                        id: `pred-${m.market.slice(0, 24)}`,
+                      },
+                      "predictions"
+                    )
+                  }
                   title={`Event market: ${m.market}`}
                   symbol={m.market}
-                  name={`${m.categoryLabel ?? m.platform} · 24h ${m.volume24h}`}
+                  name={`${m.categoryLabel ?? m.platform} · 24h ${m.volume24h} · Tap for scorecard`}
                   price={`${(m.yes * 100).toFixed(0)}¢ YES`}
                   change={(m.yes - 0.5) * 100}
                   changeLabel={`Vol ${m.volume24h}`}

@@ -1,3 +1,4 @@
+import { APP_MODULE_TO_BRAND } from "../brand/moduleBrand";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import type { SignalDetailPayload } from "../utils/signalIntel";
 
@@ -16,7 +17,31 @@ export function SignalChip({ label, className = "", detail }: Props) {
       className={`signal-chip signal-chip-clickable ${className}`.trim()}
       onClick={(e) => {
         e.stopPropagation();
-        inspectSignal(label, detail);
+        const sym = detail?.symbol;
+        const modKey = detail?.journalMeta?.module;
+        const brand = modKey ? APP_MODULE_TO_BRAND[modKey] : undefined;
+        const deepDiveModule =
+          detail?.deepDiveModule ??
+          (brand && brand !== "home"
+            ? (brand as SignalDetailPayload["deepDiveModule"])
+            : sym
+              ? "trades"
+              : undefined);
+        const deepDiveRow =
+          detail?.deepDiveRow ??
+          (sym
+            ? {
+                symbol: sym,
+                note: detail?.contextLines?.[0] ?? label,
+                timestamp: new Date().toISOString(),
+                id: `chip-${sym}-${label}`,
+              }
+            : undefined);
+        inspectSignal(label, {
+          ...detail,
+          deepDiveModule,
+          deepDiveRow,
+        });
       }}
       title={`Learn about ${label}`}
     >

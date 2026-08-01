@@ -211,6 +211,8 @@ interface Props {
   cards: RadarCardModel[];
   updatedAt?: string;
   onExploreGraph?: () => void;
+  /** Open theme intel / scorecard for a radar card */
+  onCardClick?: (card: RadarCardModel) => void;
   compact?: boolean;
   title?: string;
   subtitle?: string;
@@ -221,6 +223,7 @@ export function OpportunityRadarBoard({
   cards,
   updatedAt,
   onExploreGraph,
+  onCardClick,
   compact = false,
   title = "Opportunity Radar™",
   subtitle = "Developing situations · ranked by signal strength · informational only",
@@ -392,62 +395,75 @@ export function OpportunityRadarBoard({
           <div className="or-carousel" ref={trackRef} tabIndex={0} aria-label="Opportunity cards">
             {cards.map((card, index) => {
               const Icon = CATEGORY_ICONS[card.category] ?? Zap;
+              const interactive = Boolean(onCardClick);
               return (
-                <article key={card.id} className={`or-card band-${card.band}`}>
-                  <div className="or-card-top">
-                    <div className="or-card-identity">
-                      <span className="or-index">{String(index + 1).padStart(2, "0")}</span>
-                      <span className="or-cat-icon" aria-hidden>
-                        <Icon size={18} />
-                      </span>
-                      <h3>{card.title}</h3>
+                <article
+                  key={card.id}
+                  className={`or-card band-${card.band}${interactive ? " is-clickable" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="or-card-hit"
+                    onClick={() => onCardClick?.(card)}
+                    disabled={!interactive}
+                    aria-label={`Open ${card.title} intel`}
+                  >
+                    <div className="or-card-top">
+                      <div className="or-card-identity">
+                        <span className="or-index">{String(index + 1).padStart(2, "0")}</span>
+                        <span className="or-cat-icon" aria-hidden>
+                          <Icon size={18} />
+                        </span>
+                        <h3>{card.title}</h3>
+                      </div>
+                      <SignalGauge score={card.signalScore} band={card.band} />
                     </div>
-                    <SignalGauge score={card.signalScore} band={card.band} />
-                  </div>
-                  <div className={`or-status tone-${card.statusTone}`}>
-                    <span>{card.status}</span>
-                    <em>
-                      {card.delta > 0 ? "+" : ""}
-                      {card.delta} pts
-                    </em>
-                  </div>
-                  <p className="or-desc">{card.description}</p>
-                  <Sparkline values={card.sparkline} tone={card.statusTone} />
-                  <div className="or-meta-grid">
-                    <div>
-                      <p className="or-meta-label">Key Drivers</p>
-                      <ul>
-                        {card.drivers.slice(0, 3).map((d) => (
-                          <li key={d}>{d}</li>
-                        ))}
-                      </ul>
+                    <div className={`or-status tone-${card.statusTone}`}>
+                      <span>{card.status}</span>
+                      <em>
+                        {card.delta > 0 ? "+" : ""}
+                        {card.delta} pts
+                      </em>
                     </div>
-                    <div>
-                      <p className="or-meta-label">
-                        {card.statusTone === "risk" || card.statusTone === "weakening"
-                          ? "Top Affected"
-                          : "Top Beneficiaries"}
-                      </p>
-                      <ul>
-                        {(card.statusTone === "risk" || card.statusTone === "weakening"
-                          ? card.affectedAssets
-                          : card.beneficiaries
-                        )
-                          .slice(0, 3)
-                          .map((b) => (
-                            <li key={b}>{b}</li>
+                    <p className="or-desc">{card.description}</p>
+                    <Sparkline values={card.sparkline} tone={card.statusTone} />
+                    <div className="or-meta-grid">
+                      <div>
+                        <p className="or-meta-label">Key Drivers</p>
+                        <ul>
+                          {card.drivers.slice(0, 3).map((d) => (
+                            <li key={d}>{d}</li>
                           ))}
-                      </ul>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="or-meta-label">
+                          {card.statusTone === "risk" || card.statusTone === "weakening"
+                            ? "Top Affected"
+                            : "Top Beneficiaries"}
+                        </p>
+                        <ul>
+                          {(card.statusTone === "risk" || card.statusTone === "weakening"
+                            ? card.affectedAssets
+                            : card.beneficiaries
+                          )
+                            .slice(0, 3)
+                            .map((b) => (
+                              <li key={b}>{b}</li>
+                            ))}
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                  <footer className="or-card-foot">
-                    <span>
-                      Time Horizon <strong>{card.horizon}</strong>
-                    </span>
-                    <span>
-                      Confidence <strong>{card.confidence}%</strong>
-                    </span>
-                  </footer>
+                    <footer className="or-card-foot">
+                      <span>
+                        Time Horizon <strong>{card.horizon}</strong>
+                      </span>
+                      <span>
+                        Confidence <strong>{card.confidence}%</strong>
+                      </span>
+                      {interactive && <span className="or-card-tap">Tap for related watches →</span>}
+                    </footer>
+                  </button>
                 </article>
               );
             })}
@@ -465,14 +481,22 @@ export function OpportunityRadarBoard({
       ) : (
         <ul className="or-list">
           {cards.map((card, index) => (
-            <li key={card.id} className={`band-${card.band}`}>
-              <span className="or-index">{String(index + 1).padStart(2, "0")}</span>
-              <div>
-                <strong>{card.title}</strong>
-                <p>{card.description}</p>
-              </div>
-              <span className="or-list-score">{card.signalScore}</span>
-              <span className={`or-status tone-${card.statusTone}`}>{card.status}</span>
+            <li key={card.id} className={`band-${card.band}${onCardClick ? " is-clickable" : ""}`}>
+              <button
+                type="button"
+                className="or-list-hit"
+                onClick={() => onCardClick?.(card)}
+                disabled={!onCardClick}
+                aria-label={`Open ${card.title} intel`}
+              >
+                <span className="or-index">{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <strong>{card.title}</strong>
+                  <p>{card.description}</p>
+                </div>
+                <span className="or-list-score">{card.signalScore}</span>
+                <span className={`or-status tone-${card.statusTone}`}>{card.status}</span>
+              </button>
             </li>
           ))}
         </ul>

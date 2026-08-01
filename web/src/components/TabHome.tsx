@@ -25,10 +25,18 @@ import { Phase2IntelPanels } from "./Phase2IntelPanels";
 import { InstitutionalPanel } from "./InstitutionalPanel";
 import { MotivFxLogo } from "./MotivFxLogo";
 import { TodaysSignalsCard, type TodaysSignalRow } from "./TodaysSignalsCard";
+import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { formatSignalStrength } from "../config/productCopy";
-import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail, resolveSignalDetail, themeSignalDetail } from "../utils/signalIntel";
+import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail } from "../utils/signalIntel";
+import {
+  brandModuleFromOpp,
+  buildGraphLinkDetail,
+  buildRadarCardDetail,
+  buildThemeFromProbabilityView,
+} from "../utils/themeIntel";
 import { resolveMotiveRating, stanceLabel } from "../utils/motiveRating";
+import type { BrandModuleId } from "../brand/moduleBrand";
 
 const RISK_LABEL: Record<string, string> = {
   low: "Low",
@@ -57,6 +65,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const { hasFeature } = useModules();
   const { profile } = useGenerationalProfile();
   const { inspectDetail } = useSignalDetail();
+  const { openDeepDive } = useAssetDeepDive();
   const { data, loading, error, refreshing, refresh } = useHomeBriefing(60_000);
   const [sinceNewCount, setSinceNewCount] = useState(0);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
@@ -180,21 +189,28 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
             const theme = b.probabilityViews?.find((t) => t.id === row.id);
             inspectDetail(
               theme
-                ? themeSignalDetail({
-                    theme: theme.theme,
-                    status: row.status,
-                    direction: theme.direction,
-                    probability: theme.probability,
-                    confidence: theme.confidence,
-                    timing: theme.timing,
-                    beneficiaries: theme.beneficiaries,
-                    supportingFactors: theme.supportingFactors,
-                    relatedSymbols: theme.relatedSymbols,
-                    deltaVsPrior: theme.deltaVsPrior,
-                  })
-                : themeSignalDetail({ theme: row.label, status: row.status })
+                ? buildThemeFromProbabilityView(theme, b.opportunities, row.status)
+                : buildRadarCardDetail(
+                    {
+                      id: row.id,
+                      title: row.label,
+                      signalScore: b.motivfxScore,
+                      confidence: b.motivfxScore,
+                      horizon: "Near term",
+                      description: `${row.label} · ${row.status}`,
+                      drivers: [],
+                      beneficiaries: [],
+                      affectedAssets: [],
+                      status: row.status,
+                      statusTone: row.tone === "cool" || row.tone === "down" ? "weakening" : "stable",
+                      delta: 0,
+                      sparkline: [40, 45, 50, 55, 52, 58, 60],
+                      category: "macro",
+                      band: row.tone === "cool" || row.tone === "down" ? "weakening" : "moderate",
+                    },
+                    b.opportunities
+                  )
             );
-            document.getElementById("phase2-intel")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
           onConfidenceClick={() =>
             inspectDetail(homeScoreDetail(b.motivfxScore, b.marketConfidence, b.stars))
@@ -276,11 +292,26 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           cards={themeRadarCards}
           updatedAt={b.generatedAt}
           onExploreGraph={exploreSignalGraph}
-          subtitle="Top developing situations · ranked by desk attention · informational only"
+          onCardClick={(card) => inspectDetail(buildRadarCardDetail(card, b.opportunities))}
+          subtitle="Tap a card for plain English + related watches · informational only"
         />
       </div>
 
-      <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
+      <Phase2IntelPanels
+        briefing={b}
+        onPrefsChanged={() => void refresh()}
+        onInspectTheme={(theme) =>
+          inspectDetail(buildThemeFromProbabilityView(theme, b.opportunities))
+        }
+        onInspectGraphLink={(link) =>
+          inspectDetail(
+            buildGraphLinkDetail({
+              ...link,
+              opportunities: b.opportunities,
+            })
+          )
+        }
+      />
 
       <InstitutionalPanel />
 
@@ -336,8 +367,9 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         compact
         sectionId="opportunity-radar-desk"
         title="Opportunity Radar · Desk"
-        subtitle="All ranked desk opportunities · informational only"
+        subtitle="Tap a card for related watches · informational only"
         onExploreGraph={exploreSignalGraph}
+        onCardClick={(card) => inspectDetail(buildRadarCardDetail(card, b.opportunities))}
       />
       <section className="home-section" id="opportunity-radar-all">
         <div className="home-section-header">
@@ -369,18 +401,26 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
               <button
                 type="button"
                 className="opportunity-symbol opportunity-metric-clickable"
-                onClick={() =>
-                  inspectDetail(
-                    resolveSignalDetail(o.title, {
+                onClick={() => {
+                  const mod = brandModuleFromOpp(o.module) as BrandModuleId;
+                  openDeepDive(
+                    {
                       symbol: o.symbol,
-                      confidence: o.confidence,
-                      contextLines: o.reasons.slice(0, 2),
-                      journalNote: `${o.symbol}: ${o.title}`,
-                      journalMeta: { module: o.module, symbol: o.symbol, signalTitle: o.title },
-                    })
-                  )
-                }
-                title="Signal overview"
+                      note: o.reasons?.[0] ?? o.title,
+                      briefingNote: o.reasons?.slice(0, 2).join(" "),
+                      side: /avoid|defensive|sell|caution/i.test(o.stance ?? o.title)
+                        ? "sell"
+                        : "buy",
+                      matchup: o.module === "betting" ? o.symbol : undefined,
+                      market: o.module === "predictions" ? o.symbol : undefined,
+                      asset: o.module === "crypto" ? o.symbol : undefined,
+                      timestamp: new Date().toISOString(),
+                      id: o.id,
+                    },
+                    mod === "home" ? "trades" : mod
+                  );
+                }}
+                title="Open full scorecard"
               >
                 {o.symbol}
               </button>
@@ -433,6 +473,22 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                       symbol: o.symbol,
                       confidence: o.confidence,
                       contextLines: o.reasons?.slice(0, 3),
+                      journalMeta: { module: o.module, symbol: o.symbol, signalTitle: o.title },
+                      deepDiveModule:
+                        brandModuleFromOpp(o.module) === "home"
+                          ? "trades"
+                          : (brandModuleFromOpp(o.module) as
+                              | "trades"
+                              | "pinkslips"
+                              | "crypto"
+                              | "betting"
+                              | "predictions"),
+                      deepDiveRow: {
+                        symbol: o.symbol,
+                        note: o.reasons?.[0] ?? o.title,
+                        timestamp: new Date().toISOString(),
+                        id: o.id,
+                      },
                     }}
                   />
                 ))}
@@ -478,19 +534,22 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                 className="module-pulse-main"
                 onClick={() => {
                   if (topOpp) {
-                    inspectDetail(
-                      resolveSignalDetail(topOpp.title, {
+                    const mod = brandModuleFromOpp(topOpp.module);
+                    openDeepDive(
+                      {
                         symbol: topOpp.symbol,
-                        confidence: topOpp.confidence,
-                        contextLines: topOpp.reasons.slice(0, 3),
-                        journalMeta: { module: topOpp.module, symbol: topOpp.symbol, signalTitle: topOpp.title },
-                      })
+                        note: topOpp.reasons?.[0] ?? topOpp.title,
+                        briefingNote: topOpp.reasons?.slice(0, 2).join(" "),
+                        timestamp: new Date().toISOString(),
+                        id: topOpp.id,
+                      },
+                      mod === "home" ? "trades" : mod
                     );
                   } else {
                     onNavigate(m.tab as TabId);
                   }
                 }}
-                title={topOpp ? `Top signal: ${topOpp.symbol}` : `Open ${m.label} desk`}
+                title={topOpp ? `Open $${topOpp.symbol} scorecard` : `Open ${m.label} desk`}
               >
                 <span className="module-pulse-label">{m.label}</span>
                 <span className="module-pulse-count">{m.count}</span>

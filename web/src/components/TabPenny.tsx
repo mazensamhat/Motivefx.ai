@@ -15,11 +15,10 @@ import { PennyActivityPanel } from "./PennyActivityPanel";
 import { NewsPanel } from "./NewsPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard, ModuleSummaryCard } from "./ModuleItemCard";
-import { useSignalDetail } from "../hooks/useSignalDetail";
-import { moverToSignalDetail } from "../utils/signalIntel";
+import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 
 export function TabPenny() {
-  const { inspectDetail } = useSignalDetail();
+  const { openDeepDive } = useAssetDeepDive();
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("penny");
   const movers = useApi<{ items: PennyMover[] }>(enabled ? "/penny/movers" : "", 30_000);
@@ -116,10 +115,24 @@ export function TabPenny() {
                 measureDynamic
                 renderItem={(m) => (
                   <ModuleItemCard
-                    onClick={() => inspectDetail(moverToSignalDetail(m))}
+                    onClick={() =>
+                      openDeepDive(
+                        {
+                          symbol: m.symbol,
+                          price: m.price,
+                          changePct: m.changePct,
+                          volRatio: m.volRatio,
+                          note: m.note,
+                          side: (m.changePct ?? 0) >= 0 ? "buy" : "sell",
+                          timestamp: new Date().toISOString(),
+                          id: `penny-${m.symbol}`,
+                        },
+                        "pinkslips"
+                      )
+                    }
                     title={`Volume intel: $${m.symbol}`}
                     symbol={`$${m.symbol}`}
-                    name={`$${m.price?.toFixed(2)} · Vol ${m.volRatio}x avg${m.note ? ` · ${m.note}` : ""}`}
+                    name={`$${m.price?.toFixed(2)} · Vol ${m.volRatio}x avg${m.note ? ` · ${m.note}` : ""} · Tap for scorecard`}
                     price={m.volume?.toLocaleString()}
                     change={m.changePct}
                   />
@@ -144,10 +157,24 @@ export function TabPenny() {
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(m) => (
                   <ModuleItemCard
-                    onClick={() => inspectDetail(moverToSignalDetail(m))}
+                    onClick={() =>
+                      openDeepDive(
+                        {
+                          symbol: m.symbol,
+                          price: m.price,
+                          changePct: m.changePct,
+                          volRatio: m.volRatio,
+                          note: m.note,
+                          side: (m.changePct ?? 0) >= 0 ? "buy" : "sell",
+                          timestamp: new Date().toISOString(),
+                          id: `spike-${m.symbol}`,
+                        },
+                        "pinkslips"
+                      )
+                    }
                     title={`Volume spike: $${m.symbol}`}
                     symbol={`$${m.symbol}`}
-                    name={m.note}
+                    name={`${m.note ?? "Volume spike"} · Tap for scorecard`}
                     price={`${m.volRatio}x`}
                     change={m.changePct}
                   />

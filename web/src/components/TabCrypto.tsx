@@ -15,8 +15,7 @@ import { NewsPanel } from "./NewsPanel";
 import { CryptoActivityPanel } from "./CryptoActivityPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
-import { useSignalDetail } from "../hooks/useSignalDetail";
-import { whaleAlertDetail } from "../utils/signalIntel";
+import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 
 function formatUsd(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -25,7 +24,7 @@ function formatUsd(n: number) {
 }
 
 export function TabCrypto() {
-  const { inspectDetail } = useSignalDetail();
+  const { openDeepDive } = useAssetDeepDive();
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("crypto");
   const whales = useApi<{ items: WhaleAlert[] }>("/crypto/whale-alerts");
@@ -101,10 +100,24 @@ export function TabCrypto() {
               measureDynamic
               renderItem={(w) => (
                 <ModuleItemCard
-                  onClick={() => inspectDetail(whaleAlertDetail(w))}
+                  onClick={() =>
+                    openDeepDive(
+                      {
+                        symbol: w.asset,
+                        asset: w.asset,
+                        amountUsd: w.amountUsd,
+                        direction: w.direction,
+                        side: w.direction,
+                        note: w.note,
+                        timestamp: new Date().toISOString(),
+                        id: `whale-${w.asset}-${w.amountUsd}`,
+                      },
+                      "crypto"
+                    )
+                  }
                   title={`Whale alert: ${w.asset}`}
                   symbol={w.asset}
-                  name={w.note || `${w.direction} flow`}
+                  name={`${w.note || `${w.direction} flow`} · Tap for scorecard`}
                   price={formatUsd(w.amountUsd)}
                   changeLabel={w.direction}
                   change={w.direction === "deposit" ? -1 : 1}

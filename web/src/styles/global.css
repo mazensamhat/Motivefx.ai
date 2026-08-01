@@ -5100,7 +5100,7 @@ button.data-row,
   color: var(--text-dim);
 }
 
-/* óó Motive Scorecard (multi-desk research panel) óó */
+/* ùù Motive Scorecard (multi-desk research panel) ùù */
 .motive-scorecard {
   margin-top: 1rem;
   padding: 0.9rem;
@@ -8278,6 +8278,179 @@ html[data-gen="boomer"] .gen-setup-preview {
   font-size: 0.6875rem;
   color: var(--text-dim);
   margin: 0;
+}
+
+.signal-detail-howto {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.signal-detail-scorecard-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.signal-detail-scorecard-btn span {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.signal-detail-scorecard-btn.is-secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.signal-detail-watches-lead {
+  margin: 0 0 0.45rem;
+  font-size: 0.6875rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.signal-detail-watches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.signal-detail-watch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.28);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.signal-detail-watch-btn:hover,
+.signal-detail-watch-btn:focus-visible {
+  border-color: rgba(0, 229, 255, 0.35);
+  outline: none;
+}
+
+.signal-detail-watch-top {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.signal-detail-watch-top em {
+  font-style: normal;
+  font-size: 0.6875rem;
+  color: var(--text-dim);
+}
+
+.signal-detail-watch-stance {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #81c784;
+}
+
+.signal-detail-watch-blurb {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.signal-detail-watch-cta {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--cyan, #00e5ff);
+}
+
+.desk-tap-hint {
+  margin: 0;
+  padding: 0.45rem 1rem 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.or-card-hit,
+.or-list-hit,
+.phase2-theme-hit {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.or-card.is-clickable .or-card-hit {
+  padding: 0.15rem;
+}
+
+.or-card-tap,
+.phase2-theme-tap {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--cyan, #00e5ff);
+}
+
+.or-list-hit {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.65rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.25rem;
+}
+
+.phase2-theme.is-clickable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sg-info-open-btn {
+  margin-top: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
 }
 
 .intel-action-bar {

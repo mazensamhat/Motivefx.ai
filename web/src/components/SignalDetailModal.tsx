@@ -1,7 +1,8 @@
-import { BookOpen, ListChecks, X } from "lucide-react";
+import { BookOpen, ListChecks, LayoutPanelTop, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import type { SignalDetailPayload } from "../utils/signalIntel";
+import type { RelatedWatchItem, SignalDetailPayload } from "../utils/signalIntel";
 import { formatSignalShareText } from "../utils/shareSignal";
+import { useAssetDeepDiveOptional } from "../hooks/useAssetDeepDive";
 import { IntelActionBar } from "./IntelActionBar";
 
 interface Props extends SignalDetailPayload {
@@ -15,12 +16,16 @@ export function SignalDetailModal({
   example,
   contextLines,
   nextSteps,
+  relatedWatches,
   symbol,
   confidence,
   journalNote,
   journalMeta,
+  deepDiveModule,
+  deepDiveRow,
   onClose,
 }: Props) {
+  const deepDive = useAssetDeepDiveOptional();
   const shareText = formatSignalShareText({
     title,
     category,
@@ -29,6 +34,30 @@ export function SignalDetailModal({
     symbol,
     confidence,
   });
+
+  const canOpenScorecard =
+    Boolean(deepDive) &&
+    Boolean(deepDiveModule) &&
+    Boolean(deepDiveRow || symbol);
+
+  function openFullScorecard() {
+    if (!deepDive || !deepDiveModule) return;
+    const row =
+      deepDiveRow ??
+      ({
+        symbol,
+        timestamp: new Date().toISOString(),
+        note: title,
+      } as Record<string, unknown>);
+    onClose();
+    deepDive.openDeepDive(row, deepDiveModule);
+  }
+
+  function openWatch(w: RelatedWatchItem) {
+    if (!deepDive) return;
+    onClose();
+    deepDive.openDeepDive(w.deepDiveRow, w.deepDiveModule);
+  }
 
   return createPortal(
     <div className="modal-overlay signal-detail-overlay" role="dialog" aria-modal="true" onClick={onClose}>
@@ -49,14 +78,26 @@ export function SignalDetailModal({
           </button>
         </header>
 
+        <p className="signal-detail-howto">
+          Plain-English explainer. Scroll for related watches — tap any to open the same full scorecard you get on holdings.
+        </p>
+
         {confidence != null && (
           <p className="signal-detail-confidence">
             Desk attention: <strong>{confidence}%</strong> — how loud the feeds are, not a prediction.
           </p>
         )}
 
+        {canOpenScorecard && (
+          <button type="button" className="signal-detail-scorecard-btn" onClick={openFullScorecard}>
+            <LayoutPanelTop size={16} />
+            Open full {symbol ? `$${symbol} ` : ""}scorecard
+            <span>Plain English · health · tips · estimates</span>
+          </button>
+        )}
+
         <section className="signal-detail-section">
-          <h4 className="signal-detail-section-title">What it is</h4>
+          <h4 className="signal-detail-section-title">What it means</h4>
           <p className="signal-detail-def">{definition}</p>
           {example && <p className="signal-detail-example">Example: {example}</p>}
         </section>
@@ -74,6 +115,39 @@ export function SignalDetailModal({
           </section>
         )}
 
+        {relatedWatches && relatedWatches.length > 0 && (
+          <section className="signal-detail-section">
+            <h4 className="signal-detail-section-title">Related watches</h4>
+            <p className="signal-detail-watches-lead">
+              Cross-desk names tied to this story. Stance labels are attention lean — not trade orders.
+            </p>
+            <ul className="signal-detail-watches">
+              {relatedWatches.map((w) => (
+                <li key={`${w.desk}-${w.symbol}`}>
+                  <button
+                    type="button"
+                    className="signal-detail-watch-btn"
+                    onClick={() => openWatch(w)}
+                    disabled={!deepDive}
+                  >
+                    <span className="signal-detail-watch-top">
+                      <strong>
+                        {w.symbol.length <= 14 ? `$${w.symbol}` : w.symbol}
+                      </strong>
+                      <em>{w.desk}</em>
+                    </span>
+                    <span className="signal-detail-watch-stance">
+                      {w.stanceLabel} · {w.attention}% attention
+                    </span>
+                    <span className="signal-detail-watch-blurb">{w.blurb}</span>
+                    <span className="signal-detail-watch-cta">Open scorecard →</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {nextSteps && nextSteps.length > 0 && (
           <section className="signal-detail-section">
             <h4 className="signal-detail-section-title">
@@ -85,6 +159,13 @@ export function SignalDetailModal({
               ))}
             </ol>
           </section>
+        )}
+
+        {canOpenScorecard && (
+          <button type="button" className="signal-detail-scorecard-btn is-secondary" onClick={openFullScorecard}>
+            <LayoutPanelTop size={16} />
+            Continue to full scorecard
+          </button>
         )}
 
         <IntelActionBar

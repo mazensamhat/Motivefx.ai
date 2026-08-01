@@ -16,11 +16,10 @@ import { PortfolioOverview } from "./PortfolioOverview";
 import { SimulationBanner } from "./SimulationBanner";
 import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
-import { useSignalDetail } from "../hooks/useSignalDetail";
-import { lineMoveDetail, sharpMoneyDetail } from "../utils/signalIntel";
+import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 
 export function TabBetting() {
-  const { inspectDetail } = useSignalDetail();
+  const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("betting");
   const simMode = isSimulationOnly("betting");
@@ -151,10 +150,26 @@ export function TabBetting() {
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(l) => (
                   <ModuleItemCard
-                    onClick={() => inspectDetail(lineMoveDetail(l))}
+                    onClick={() =>
+                      openDeepDive(
+                        {
+                          matchup: l.matchup,
+                          market: l.matchup,
+                          symbol: l.matchup,
+                          sport: l.sport,
+                          book: l.book,
+                          line: l.currentLine ?? l.openingLine,
+                          odds: l.currentLine ?? l.openingLine,
+                          note: `${l.sport} · ${l.openingLine ?? "—"} → ${l.currentLine ?? "—"}`,
+                          timestamp: new Date().toISOString(),
+                          id: `line-${l.matchup}`,
+                        },
+                        "betting"
+                      )
+                    }
                     title={`Line move: ${l.matchup}`}
                     symbol={l.matchup}
-                    name={`${l.sport} · ${l.book}`}
+                    name={`${l.sport} · ${l.book} · Tap for scorecard`}
                     price={
                       l.openingLine && l.currentLine && l.openingLine !== l.currentLine
                         ? `${l.openingLine} → ${l.currentLine}`
@@ -212,10 +227,24 @@ export function TabBetting() {
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(s) => (
                   <ModuleItemCard
-                    onClick={() => inspectDetail(sharpMoneyDetail(s))}
+                    onClick={() =>
+                      openDeepDive(
+                        {
+                          matchup: s.matchup,
+                          market: s.matchup,
+                          symbol: s.matchup,
+                          pick: s.sharpSide,
+                          side: s.sharpSide,
+                          note: `Lean ${s.sharpSide} · ${s.signal.replace(/_/g, " ")}`,
+                          timestamp: new Date().toISOString(),
+                          id: `sharp-${s.matchup}`,
+                        },
+                        "betting"
+                      )
+                    }
                     title={`Derived lean: ${s.matchup}`}
                     symbol={s.matchup}
-                    name={`Lean: ${s.sharpSide} · public ~${s.publicPct}%`}
+                    name={`Lean: ${s.sharpSide} · public ~${s.publicPct}% · Tap for scorecard`}
                     price={s.signal.replace(/_/g, " ")}
                     changeLabel={s.confidence}
                     change={s.confidence === "high" || s.confidence === "medium" ? 1 : 0}

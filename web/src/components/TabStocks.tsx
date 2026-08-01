@@ -15,11 +15,10 @@ import { NewsPanel } from "./NewsPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { StockActivityPanel } from "./StockActivityPanel";
 import { ModuleItemCard } from "./ModuleItemCard";
-import { useSignalDetail } from "../hooks/useSignalDetail";
-import { congressFlowDetail, optionFlowDetail } from "../utils/signalIntel";
+import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 
 export function TabStocks() {
-  const { inspectDetail } = useSignalDetail();
+  const { openDeepDive } = useAssetDeepDive();
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("trades");
   const options = useApi<{ items: UnusualOption[] }>(
@@ -90,6 +89,7 @@ export function TabStocks() {
               <Activity size={18} /> Unusual Options Flow
             </h2>
           </div>
+          <p className="desk-tap-hint">Tap a ticker for the full scorecard — plain English, health, and what to watch.</p>
           <div className="card-body flush">
             {options.loading ? (
               <div className="loading">Scanning options flow…</div>
@@ -102,7 +102,28 @@ export function TabStocks() {
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(o) => (
                   <ModuleItemCard
-                    onClick={() => inspectDetail(optionFlowDetail(o))}
+                    onClick={() =>
+                      openDeepDive(
+                        {
+                          symbol: o.symbol,
+                          type: o.type,
+                          side: o.type === "put" ? "sell" : "buy",
+                          premium: o.premium,
+                          note:
+                            o.note ??
+                            `Strike $${o.strike} · Vol ${o.volume?.toLocaleString() ?? "—"}${
+                              o.openInterest ? ` · OI ${o.openInterest.toLocaleString()}` : ""
+                            }`,
+                          volOiRatio:
+                            o.volume && o.openInterest
+                              ? Number((o.volume / Math.max(1, o.openInterest)).toFixed(1))
+                              : undefined,
+                          timestamp: new Date().toISOString(),
+                          id: `opt-${o.symbol}-${o.type}-${o.strike ?? ""}`,
+                        },
+                        "trades"
+                      )
+                    }
                     title={`Options flow: $${o.symbol}`}
                     symbol={
                       <>
@@ -110,7 +131,7 @@ export function TabStocks() {
                         <span className={`badge badge-${o.sentiment}`}>{o.type.toUpperCase()}</span>
                       </>
                     }
-                    name={`Strike $${o.strike} · Vol ${o.volume?.toLocaleString()}${o.note ? ` · ${o.note}` : ""}`}
+                    name={`Strike $${o.strike} · Vol ${o.volume?.toLocaleString()}${o.note ? ` · ${o.note}` : ""} · Tap for scorecard`}
                     price={`$${(o.premium ?? 0).toLocaleString()}`}
                     changeLabel={o.sentiment}
                     change={o.sentiment === "bullish" ? 1 : o.sentiment === "bearish" ? -1 : 0}
@@ -126,6 +147,7 @@ export function TabStocks() {
               <Landmark size={18} /> Congress Disclosures
             </h2>
           </div>
+          <p className="desk-tap-hint">Tap a disclosure to open the ticker scorecard and research checklist.</p>
           <div className="card-body flush">
             {congress.loading ? (
               <div className="loading">Loading disclosures…</div>
@@ -138,10 +160,23 @@ export function TabStocks() {
                 maxHeight="min(22rem, 50vh)"
                 renderItem={(t) => (
                   <ModuleItemCard
-                    onClick={() => inspectDetail(congressFlowDetail(t))}
+                    onClick={() =>
+                      openDeepDive(
+                        {
+                          symbol: t.symbol,
+                          side: String(t.transaction).toLowerCase().includes("sale") ? "sell" : "buy",
+                          actorType: "institutional",
+                          note: `${t.politician} · ${t.transaction} · ${t.amount}`,
+                          briefingNote: `Congress disclosure on $${t.symbol}: ${t.transaction} ${t.amount}.`,
+                          timestamp: t.filedAt ?? new Date().toISOString(),
+                          id: `congress-${t.symbol}-${t.politician}`,
+                        },
+                        "trades"
+                      )
+                    }
                     title={`Congress flow: ${t.symbol}`}
                     symbol={t.politician}
-                    name={`${t.transaction} $${t.symbol} · ${t.amount}`}
+                    name={`${t.transaction} $${t.symbol} · ${t.amount} · Tap for scorecard`}
                     price={t.filedAt}
                     changeLabel={t.transaction}
                     change={String(t.transaction).toLowerCase().includes("sale") ? -1 : 1}
