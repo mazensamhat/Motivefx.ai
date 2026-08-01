@@ -8,7 +8,7 @@
 
 Play suspended the app under **Enforcement Process** (repeated non-compliance). Do **not** appeal until:
 
-1. Binary **1.0.5** / versionCode **21** is built and uploaded
+1. Binary **1.0.6** / versionCode **22** is built and uploaded
 2. Site deploy includes `POST /api/auth/delete-account`  
 3. Terminal web bundle is rebuilt so native-shell subscribe CTAs no longer open web pricing  
 4. Appeal draft in `docs/PLAY_SUSPENSION_APPEAL.md` is reviewed and only claims shipped fixes  
@@ -33,20 +33,25 @@ Play reviewers saw Sign in fail with a red **fetch failed / canceled** error, wh
 
 ### Payments steering removal (2026-08)
 
-**Fix included in app 1.0.5 / versionCode 21:**
+**Fix included in app 1.0.6 / versionCode 22:**
 - Auth disclaimer no longer points to web `/pricing` or “Safari”
 - Terminal shell blocks Stripe/pricing/checkout URLs (does not open external checkout)
 - Native IAP fallback no longer opens the website
 - Web terminal native-shell paths remove “Manage subscription on website” CTAs
 - Native Delete account entry points + `POST /api/auth/delete-account`
 
-The superseded production remediation build **1.0.4** / versionCode **20** finished on EAS at commit `8bc91a8`. The appeal target is **1.0.5** / versionCode **21** so it includes the later main-branch fixes for theme related watches, related-watch scorecard handoff, daily brief greeting/audio alignment, and the ops-console loading path.
+The superseded production remediation builds were **1.0.4** / versionCode **20** at commit `8bc91a8` and **1.0.5** / versionCode **21** at commit `6ce29d0`. The appeal target is **1.0.6** / versionCode **22** so it includes the later main-branch fixes for theme related watches, related-watch scorecard handoff, daily brief greeting/audio alignment, the ops-console loading path, and the mobile header / Intel alert-center polish in `d678930`.
 
-Production appeal build **1.0.5** / versionCode **21** finished on EAS:
-- Build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`
-- AAB artifact: `https://expo.dev/artifacts/eas/IzZhQ3oAmUX9AxjeWDeVb5Vbop_a0ew5_fjzqTVOE3Y.aab`
+Production appeal build **1.0.6** / versionCode **22** on EAS:
+- Build page: Pending — fill after production build finishes
+- AAB artifact: Pending — fill after production build finishes
+
+Preview phone-install build **1.0.6** / versionCode **22** on EAS:
+- Build page: Pending — fill after preview build finishes
+- APK artifact: Pending — fill after preview build finishes
 
 Rebuild AAB: `cd mobile && eas build --platform android --profile production`
+Rebuild APK: `cd mobile && eas build --platform android --profile preview`
 
 ---
 
@@ -93,6 +98,8 @@ Native shell must **not** call `openExternalSubscribe()` / open `/pricing` for d
 - [ ] Terms of Service URL: `https://www.motivefxai.com/terms`
 - [ ] In-app disclaimer visible (terminal footer + auth screen)
 - [x] **No web checkout steering for digital subscriptions** (1.0.4+)
+- [x] **Monitor-only positioning preserved** — no claims of brokerage, betting execution, personalized financial advice, or live Play Billing
+- [x] **UI clarity updated** — mobile header and Intel alerts support read/clear flows so reviewers are less likely to interpret stale alerts as broken UI
 - [ ] **Play Billing** configured before re-enabling in-app purchase CTAs (`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` + Play products)
 - [ ] Reviewer demo credentials in Console review notes (no 2FA)
 

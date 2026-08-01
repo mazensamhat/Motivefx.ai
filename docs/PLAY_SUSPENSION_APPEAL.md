@@ -4,11 +4,14 @@
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.5**, versionCode **21** (EAS production AAB — finished)
-**EAS build URL/status:** Finished at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`
-**AAB artifact:** `https://expo.dev/artifacts/eas/IzZhQ3oAmUX9AxjeWDeVb5Vbop_a0ew5_fjzqTVOE3Y.aab`
+**Remediation binary (target):** version **1.0.6**, versionCode **22** (EAS production AAB — pending)
+**EAS production build URL/status:** Pending — fill after build finishes
+**AAB artifact:** Pending — fill after build finishes
+**EAS preview APK URL/status:** Pending — fill after build finishes
+**APK artifact:** Pending — fill after build finishes
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 **Superseded remediation build:** version **1.0.4**, versionCode **20** (EAS `008d58f3-1c09-4cad-a121-e7ab01bfa8a6`, commit `8bc91a8`)
+**Superseded remediation build:** version **1.0.5**, versionCode **21** (EAS `8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`, commit `6ce29d0`)
 
 ---
 
@@ -32,7 +35,7 @@ We are appealing the suspension of MotiveFX.AI (`ai.motivefx.app`) under the Enf
 
 3. **Payments / external purchase steering (self-identified before this appeal)**  
    - **Risk:** Auth and terminal copy / CTAs directed users to purchase or manage digital subscriptions on the website (`motivefxai.com/pricing`), including iOS-oriented “opens in Safari” language on Android. Native shell fallbacks opened the pricing URL when store billing was not configured. That pattern conflicts with Google Play Payments for digital subscriptions.  
-   - **Remediation included in 1.0.5 / versionCode 21:**
+   - **Remediation included in 1.0.6 / versionCode 22:**
      - Removed Android-facing CTAs and copy that steer users to web checkout for digital subscriptions (native auth disclaimer; terminal subscribe / module unlock / simulation CTAs in the MotiveFXNative WebView shell).  
      - Blocked Stripe / `/pricing` / checkout URLs from opening inside or from the Android app shell (`shouldOverrideUrlLoading` / open-external bridge).  
      - Native and WebView subscribe paths no longer fall back to the website; they show a non-steering message when store billing is not configured.  
@@ -41,15 +44,15 @@ We are appealing the suspension of MotiveFX.AI (`ai.motivefx.app`) under the Enf
 
 4. **Account deletion**  
    - **Gap:** Public data-deletion policy existed at `https://www.motivefxai.com/data-deletion`, and the web Account UI called delete, but `POST /api/auth/delete-account` was missing (404), and the Android shell lacked a dedicated native deletion entry point.  
-   - **Remediation included in 1.0.5:** Implemented `POST /api/auth/delete-account` (session cookie or Bearer JWT; password + type `DELETE`); added native **Delete account** from the sign-in screen and **Account** from the terminal chrome.
+   - **Remediation included in 1.0.6:** Implemented `POST /api/auth/delete-account` (session cookie or Bearer JWT; password + type `DELETE`); added native **Delete account** from the sign-in screen and **Account** from the terminal chrome.
 
 5. **Native demo / WebView reliability fixes**
    - **Risk:** Reviewer paths could land on old native demo or WebView states that looked like broken UI rather than the current monitored terminal experience.
-   - **Remediation included in 1.0.5 / versionCode 21:** Removed the native demo landmine; fixed deep-scan and native chrome smoke issues; fixed nested scroll / touch handling in the terminal WebView; corrected black-screen / legacy-route risks; and corrected the ops console legacy schema path that could break account/admin smoke checks.
+   - **Remediation included in 1.0.6 / versionCode 22:** Removed the native demo landmine; fixed deep-scan and native chrome smoke issues; fixed nested scroll / touch handling in the terminal WebView; corrected black-screen / legacy-route risks; and corrected the ops console legacy schema path that could break account/admin smoke checks.
 
 6. **UI clarity improvements**
    - **Context:** These are not policy fixes by themselves, but they reduce the “broken UI” narrative for reviewers using the terminal.
-   - **Remediation included in 1.0.5 / versionCode 21:** Improved signal clarity, scorecard presentation, and radar click behavior so monitor-only market intelligence views are easier to understand and interact with. The current appeal build also includes the latest main-branch fixes after the superseded 1.0.4/20 build: differentiated theme related watches (`73bd62f`), related-watch scorecards opening above signal intel (`fdb34f7`), and daily brief greeting/audio alignment (`7ab6b1c`).
+   - **Remediation included in 1.0.6 / versionCode 22:** Improved signal clarity, scorecard presentation, and radar click behavior so monitor-only market intelligence views are easier to understand and interact with. The current appeal build also includes the latest main-branch fixes after the superseded 1.0.4/20 and 1.0.5/21 builds: differentiated theme related watches (`73bd62f`), related-watch scorecards opening above signal intel (`fdb34f7`), daily brief greeting/audio alignment (`7ab6b1c`), and mobile header / alert-center polish (`d678930`), including read/clear actions for Intel alerts. These are UI clarity and reliability improvements; they do not change the monitor-only product scope or claim Play Billing is live.
 
 ### Process change (why this stops recurring)
 
@@ -68,7 +71,7 @@ MotiveFX.AI is predictive market intelligence and research software. It is infor
 
 Please use the demo credentials provided in the Play Console review notes for this release (email/password). Age gate: enter a birth year of 18+. After sign-in, the terminal loads; Account → delete path is available from the native chrome.
 
-We respectfully request reinstatement and review of build **1.0.5** (versionCode **21**) after upload.
+We respectfully request reinstatement and review of build **1.0.6** (versionCode **22**) after upload.
 
 Thank you,  
 MotiveFX.AI / MotiveFX team
@@ -79,7 +82,7 @@ MotiveFX.AI / MotiveFX team
 
 - Do **not** claim Google Play Billing is live until `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` is set in EAS, Play subscription products exist, and purchase + entitlement sync is verified on a device.  
 - Do **not** claim the WebView terminal is a fully native UI. The shell is Age gate → Auth → WebView(`/terminal`).  
-- Do **not** submit this appeal against 1.0.3/17, 1.0.4/19, or the superseded 1.0.4/20 build; upload **1.0.5** with versionCode **21** first.
+- Do **not** submit this appeal against 1.0.3/17, 1.0.4/19, 1.0.4/20, or 1.0.5/21; upload **1.0.6** with versionCode **22** first.
 - Deploy the site API including `delete-account` **and** native-handoff / terminal middleware fixes before reviewers exercise the app.  
 - Do **not** claim “all CTAs removed from the entire product” — only that the **Android app shell** no longer steers to web checkout for digital goods.  
 - Confirm the uploaded AAB’s `versionName` / `versionCode` in Play Console and paste those exact numbers into the appeal.
@@ -92,7 +95,8 @@ See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (upd
 
 - [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
 - [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
-- [x] EAS production AAB **1.0.5** / versionCode **21** built (`8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`); upload + device smoke still required before appeal
+- [ ] EAS production AAB **1.0.6** / versionCode **22** built and uploaded; device smoke still required before appeal
+- [ ] EAS preview APK **1.0.6** / versionCode **22** installed on phone for smoke testing
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
