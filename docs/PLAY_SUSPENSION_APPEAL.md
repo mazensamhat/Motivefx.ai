@@ -4,7 +4,7 @@
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.4**, versionCode **18** (build after this appeal package lands on `main`)  
+**Remediation binary (target):** version **1.0.4**, versionCode **18+** (confirm the AAB’s actual `versionCode` after EAS — production profile uses `autoIncrement`)  
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 
 ---
@@ -29,15 +29,16 @@ We are appealing the suspension of MotiveFX.AI (`ai.motivefx.app`) under the Enf
 
 3. **Payments / external purchase steering (self-identified before this appeal)**  
    - **Risk:** Auth and terminal copy / CTAs directed users to purchase or manage digital subscriptions on the website (`motivefxai.com/pricing`), including iOS-oriented “opens in Safari” language on Android. Native shell fallbacks opened the pricing URL when store billing was not configured. That pattern conflicts with Google Play Payments for digital subscriptions.  
-   - **Remediation in 1.0.4 / versionCode 18:**  
-     - Removed all in-app CTAs and copy that steer users to web checkout for digital subscriptions.  
-     - Blocked Stripe / `/pricing` / checkout URLs from opening inside or from the Android app shell.  
+   - **Remediation in 1.0.4 / versionCode 18+:**  
+     - Removed Android-facing CTAs and copy that steer users to web checkout for digital subscriptions (native auth disclaimer; terminal subscribe / module unlock / simulation CTAs in the MotiveFXNative WebView shell).  
+     - Blocked Stripe / `/pricing` / checkout URLs from opening inside or from the Android app shell (`shouldOverrideUrlLoading` / open-external bridge).  
      - Native and WebView subscribe paths no longer fall back to the website; they show a non-steering message when store billing is not configured.  
-     - Clarified disclaimer: informational product; store billing for in-app digital subscriptions when offered.
+     - Clarified disclaimer: informational product; store billing for in-app digital subscriptions when offered.  
+     - **Note:** The public marketing website still has `/pricing` for browser users. That path is not offered as a purchase CTA inside the Android app shell.
 
 4. **Account deletion**  
    - **Gap:** Public data-deletion policy existed at `https://www.motivefxai.com/data-deletion`, and the web Account UI called delete, but `POST /api/auth/delete-account` was missing (404), and the Android shell lacked a dedicated native deletion entry point.  
-   - **Remediation in 1.0.4:** Implemented `POST /api/auth/delete-account`; added native **Delete account** from the sign-in screen and **Account** from the terminal chrome (password + type `DELETE`).
+   - **Remediation in 1.0.4:** Implemented `POST /api/auth/delete-account` (session cookie or Bearer JWT; password + type `DELETE`); added native **Delete account** from the sign-in screen and **Account** from the terminal chrome.
 
 ### Process change (why this stops recurring)
 
@@ -56,7 +57,7 @@ MotiveFX.AI is predictive market intelligence and research software. It is infor
 
 Please use the demo credentials provided in the Play Console review notes for this release (email/password). Age gate: enter a birth year of 18+. After sign-in, the terminal loads; Account → delete path is available from the native chrome.
 
-We respectfully request reinstatement and review of build **1.0.4 (versionCode 18)** after upload.
+We respectfully request reinstatement and review of build **1.0.4** (versionCode as uploaded — see AAB) after upload.
 
 Thank you,  
 MotiveFX.AI / MotiveFX team
@@ -66,9 +67,11 @@ MotiveFX.AI / MotiveFX team
 ## Honesty constraints (internal — do not weaken these in the live appeal)
 
 - Do **not** claim Google Play Billing is live until `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` is set in EAS, Play subscription products exist, and purchase + entitlement sync is verified on a device.  
-- Do **not** claim the WebView terminal is a fully native UI.  
-- Do **not** submit this appeal against 1.0.3/17; upload **1.0.4/18** (or later) first.  
-- Deploy the web terminal + `delete-account` API before reviewers exercise deletion.
+- Do **not** claim the WebView terminal is a fully native UI. The shell is Age gate → Auth → WebView(`/terminal`).  
+- Do **not** submit this appeal against 1.0.3/17; upload **1.0.4** with a new versionCode first.  
+- Deploy the site API including `delete-account` **and** native-handoff / terminal middleware fixes before reviewers exercise the app.  
+- Do **not** claim “all CTAs removed from the entire product” — only that the **Android app shell** no longer steers to web checkout for digital goods.  
+- Confirm the uploaded AAB’s `versionName` / `versionCode` in Play Console and paste those exact numbers into the appeal (EAS `autoIncrement` may bump versionCode past 18).
 
 ---
 
@@ -76,10 +79,10 @@ MotiveFX.AI / MotiveFX team
 
 See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (updated). Minimum:
 
-- [ ] Deploy site API including `/api/auth/delete-account`  
-- [ ] Rebuild & deploy web terminal bundle (native-shell billing CTAs removed)  
-- [ ] EAS production AAB **1.0.4** / versionCode **18** uploaded to Play  
+- [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
+- [ ] Confirm production terminal bundle still contains native-shell billing gating (no “Manage on the web” / Safari / pricing CTAs in MotiveFXNative)  
+- [ ] EAS production AAB **1.0.4** uploaded; record actual versionCode from the AAB  
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
-- [ ] Decide: either finish Play Billing before re-enabling purchase CTAs, or keep purchase CTAs off in the Android shell
+- [ ] Decide: either finish Play Billing before re-enabling purchase CTAs, or keep purchase CTAs off in the Android shell (`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` unset → CTAs stay off)

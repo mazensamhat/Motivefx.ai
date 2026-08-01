@@ -221,30 +221,28 @@ export function TerminalScreen({
         `${buildAuthInjectionScript(accessToken, refreshToken, userId)}\n${VIEWPORT_LOCK_SCRIPT}`
       );
 
-      // Start terminal immediately — do not block on native-handoff network roundtrip.
-      const uri = TERMINAL_URL.endsWith("/") ? TERMINAL_URL : `${TERMINAL_URL}/`;
+      // Prefer cookie handoff URL so middleware does not force ?demo=1 (which unlocks
+      // every module client-side and can race native-shell purchase gating).
+      const terminalPath = "/terminal";
+      const uri = accessToken
+        ? `${API_BASE}/auth/native-handoff?token=${encodeURIComponent(accessToken)}&next=${encodeURIComponent(terminalPath)}`
+        : TERMINAL_URL.replace(/\/$/, "") || `${WEB_BASE}/terminal`;
       setSourceUri(uri);
       setPhase("ready");
       setLoading(false);
 
-      // Best-effort cookie handoff in background (does not delay first paint).
+      // Best-effort cookie refresh in background (Set-Cookie on fetch; WebView may ignore).
       if (accessToken) {
         void (async () => {
           try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 1200);
-            const handoff = await fetch(`${API_BASE}/auth/native-handoff`, {
+            await fetch(`${API_BASE}/auth/native-handoff`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`,
               },
               body: JSON.stringify({ refresh_token: refreshToken }),
-              signal: controller.signal,
             });
-            clearTimeout(timeout);
-            if (!handoff.ok) return;
-            // Cookie is set on the response; WebView already has localStorage tokens.
           } catch (e) {
             console.warn("native-handoff skipped", e);
           }

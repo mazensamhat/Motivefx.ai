@@ -18,6 +18,11 @@ function wantsPublicDemo(request: NextRequest): boolean {
   return false;
 }
 
+function isNativeAppShell(request: NextRequest): boolean {
+  const ua = request.headers.get("user-agent") ?? "";
+  return /MotiveFXNative/i.test(ua);
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -28,6 +33,16 @@ export function middleware(request: NextRequest) {
 
   const session = request.cookies.get(SESSION_COOKIE)?.value;
   const demo = wantsPublicDemo(request);
+  // Android/iOS WebView injects session via localStorage + custom UA.
+  // Never force or keep ?demo=1 here — demo unlocks every module via hasModule()
+  // and can surface public-demo purchase CTAs if native detection races.
+  if (isNativeAppShell(request)) {
+    const response = NextResponse.next();
+    if (request.cookies.get(DEMO_COOKIE)?.value === "1") {
+      response.cookies.set(DEMO_COOKIE, "", { path: "/", maxAge: 0 });
+    }
+    return response;
+  }
 
   if (!session && !demo) {
     // Prefer ungated read-only demo over a hard login wall for bare /terminal.

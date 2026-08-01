@@ -12,17 +12,21 @@ export const API_BASE = envUrl(process.env.EXPO_PUBLIC_API_URL, DEFAULT_API);
 
 export const WEB_BASE = envUrl(process.env.EXPO_PUBLIC_WEB_URL, DEFAULT_WEB);
 
-/** Full terminal UI (matches web mobile bottom-nav design) */
+/** Full terminal UI (matches web mobile bottom-nav design).
+ * Prefer `/terminal` (no trailing slash) — `/terminal/` 308s and can land in ?demo=1
+ * when the session cookie is not yet set.
+ */
 export const TERMINAL_URL = envUrl(
   process.env.EXPO_PUBLIC_TERMINAL_URL,
-  `${WEB_BASE}/terminal/`
+  `${WEB_BASE}/terminal`
 );
 
 export const LEGAL = {
   privacy: `${WEB_BASE}/privacy`,
   terms: `${WEB_BASE}/terms`,
   dataDeletion: `${WEB_BASE}/data-deletion`,
-  /** Informational only — do not deep-link Android users here to buy digital goods. */
+  /** Informational only — never deep-link Android users here to buy digital goods. */
+  // Intentionally unused in the Android shell (Play Payments). Kept for docs/store copy.
   subscribe: `${WEB_BASE}/pricing`,
 } as const;
 
