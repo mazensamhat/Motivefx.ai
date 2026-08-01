@@ -43,12 +43,12 @@ Play reviewers saw Sign in fail with a red **fetch failed / canceled** error, wh
 The superseded production remediation builds were **1.0.4** / versionCode **20** at commit `8bc91a8` and **1.0.5** / versionCode **21** at commit `6ce29d0`. The appeal target is **1.0.6** / versionCode **22** so it includes the later main-branch fixes for theme related watches, related-watch scorecard handoff, daily brief greeting/audio alignment, the ops-console loading path, and the mobile header / Intel alert-center polish in `d678930`.
 
 Production appeal build **1.0.6** / versionCode **22** on EAS:
-- Build page: Pending — fill after production build finishes
-- AAB artifact: Pending — fill after production build finishes
+- Build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`
+- AAB artifact: `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab`
 
 Preview phone-install build **1.0.6** / versionCode **22** on EAS:
-- Build page: Pending — fill after preview build finishes
-- APK artifact: Pending — fill after preview build finishes
+- Build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`
+- APK artifact: `https://expo.dev/artifacts/eas/imJVCiVFQAaYWQuSOQbX0Ds9kfQ8735DKKcOqg6G_0c.apk`
 
 Rebuild AAB: `cd mobile && eas build --platform android --profile production`
 Rebuild APK: `cd mobile && eas build --platform android --profile preview`

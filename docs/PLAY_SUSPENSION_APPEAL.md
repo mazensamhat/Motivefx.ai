@@ -4,11 +4,11 @@
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.6**, versionCode **22** (EAS production AAB — pending)
-**EAS production build URL/status:** Pending — fill after build finishes
-**AAB artifact:** Pending — fill after build finishes
-**EAS preview APK URL/status:** Pending — fill after build finishes
-**APK artifact:** Pending — fill after build finishes
+**Remediation binary (target):** version **1.0.6**, versionCode **22** (EAS production AAB — finished)
+**EAS production build URL/status:** Finished at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`
+**AAB artifact:** `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab`
+**EAS preview APK URL/status:** Finished at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`
+**APK artifact:** `https://expo.dev/artifacts/eas/imJVCiVFQAaYWQuSOQbX0Ds9kfQ8735DKKcOqg6G_0c.apk`
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 **Superseded remediation build:** version **1.0.4**, versionCode **20** (EAS `008d58f3-1c09-4cad-a121-e7ab01bfa8a6`, commit `8bc91a8`)
 **Superseded remediation build:** version **1.0.5**, versionCode **21** (EAS `8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`, commit `6ce29d0`)
@@ -95,8 +95,8 @@ See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (upd
 
 - [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
 - [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
-- [ ] EAS production AAB **1.0.6** / versionCode **22** built and uploaded; device smoke still required before appeal
-- [ ] EAS preview APK **1.0.6** / versionCode **22** installed on phone for smoke testing
+- [x] EAS production AAB **1.0.6** / versionCode **22** built (`52f83a92-def2-4b3b-bc7b-650ebfa3e480`); upload + device smoke still required before appeal
+- [ ] EAS preview APK **1.0.6** / versionCode **22** installed on phone for smoke testing (`8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`)
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
