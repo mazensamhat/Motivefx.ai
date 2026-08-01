@@ -4,7 +4,8 @@ import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
 import type { BrandModuleId } from "../brand/moduleBrand";
-import type { AdvisorResult } from "../types";
+import { useApi } from "../hooks/useApi";
+import type { AdvisorResult, HomeBriefing } from "../types";
 import type { AssetDeepDivePayload } from "../utils/assetDeepDive";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { validateSymbolForModule } from "../utils/symbolUniverse";
@@ -55,6 +56,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [starring, setStarring] = useState<string | null>(null);
   const { items: watchlistItems, addItem: addToWatchlist } = useWatchlist();
+  const { data: briefing } = useApi<HomeBriefing>("/home/briefing", 120_000);
   const qtyLabel = module === "crypto" ? "Amount" : "Shares";
   const brandModule = MODULE_TO_BRAND[module];
   const localWriteEpoch = useRef(0);
@@ -301,6 +303,11 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
 
   function openHoldingDetail(h: Holding) {
     setSelectedSymbol(h.symbol);
+    const sym = h.symbol.toUpperCase();
+    const match = briefing?.opportunities?.find(
+      (o) => o.symbol.toUpperCase() === sym || o.symbol.toUpperCase().includes(sym)
+    );
+    const briefingNote = match?.reasons?.filter(Boolean).join(" ") ?? "";
     setDeepDive(
       buildAssetDeepDive(
         {
@@ -308,8 +315,18 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
           shares: h.shares,
           amount: h.amount,
           price: h.avg_cost,
-          side: "buy",
+          side: match?.stance?.includes("avoid") || match?.stance?.includes("sell") ? "sell" : "buy",
+          type: match?.signals?.some((s) => /put/i.test(s))
+            ? "put"
+            : match?.signals?.some((s) => /call/i.test(s))
+              ? "call"
+              : undefined,
+          note: briefingNote || undefined,
+          briefingNote: briefingNote || undefined,
+          premium: undefined,
+          changePct: undefined,
           timestamp: new Date().toISOString(),
+          id: `holding-${sym}`,
         },
         brandModule
       )

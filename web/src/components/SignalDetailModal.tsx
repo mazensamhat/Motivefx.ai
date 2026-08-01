@@ -1,6 +1,7 @@
-import { BookOpen, X } from "lucide-react";
+import { BookOpen, ListChecks, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import type { SignalDetailPayload } from "../utils/signalIntel";import { formatSignalShareText } from "../utils/shareSignal";
+import type { SignalDetailPayload } from "../utils/signalIntel";
+import { formatSignalShareText } from "../utils/shareSignal";
 import { IntelActionBar } from "./IntelActionBar";
 
 interface Props extends SignalDetailPayload {
@@ -13,6 +14,7 @@ export function SignalDetailModal({
   definition,
   example,
   contextLines,
+  nextSteps,
   symbol,
   confidence,
   journalNote,
@@ -30,7 +32,8 @@ export function SignalDetailModal({
 
   return createPortal(
     <div className="modal-overlay signal-detail-overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="signal-detail-modal glass-card" onClick={(e) => e.stopPropagation()}>        <header className="signal-detail-header">
+      <div className="signal-detail-modal glass-card" onClick={(e) => e.stopPropagation()}>
+        <header className="signal-detail-header">
           <div>
             <span className="signal-detail-label">
               <BookOpen size={14} /> Signal intel
@@ -48,20 +51,40 @@ export function SignalDetailModal({
 
         {confidence != null && (
           <p className="signal-detail-confidence">
-            Signal strength: <strong>{confidence}%</strong> — algorithmic assessment, not a prediction.
+            Desk attention: <strong>{confidence}%</strong> — how loud the feeds are, not a prediction.
           </p>
         )}
 
-        <p className="signal-detail-def">{definition}</p>
-
-        {example && <p className="signal-detail-example">Example: {example}</p>}
+        <section className="signal-detail-section">
+          <h4 className="signal-detail-section-title">What it is</h4>
+          <p className="signal-detail-def">{definition}</p>
+          {example && <p className="signal-detail-example">Example: {example}</p>}
+        </section>
 
         {contextLines && contextLines.length > 0 && (
-          <ul className="signal-detail-context">
-            {contextLines.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
+          <section className="signal-detail-section">
+            <h4 className="signal-detail-section-title">
+              {symbol ? `Why it showed up for $${symbol}` : "Why it showed up"}
+            </h4>
+            <ul className="signal-detail-context">
+              {contextLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {nextSteps && nextSteps.length > 0 && (
+          <section className="signal-detail-section">
+            <h4 className="signal-detail-section-title">
+              <ListChecks size={14} /> What to do next (research)
+            </h4>
+            <ol className="signal-detail-next">
+              {nextSteps.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ol>
+          </section>
         )}
 
         <IntelActionBar
@@ -70,7 +93,7 @@ export function SignalDetailModal({
           journalMeta={journalMeta}
         />
 
-        <p className="signal-detail-footer">Educational intel only — not financial advice.</p>
+        <p className="signal-detail-footer">Educational intel only — not financial advice. Monitor only.</p>
       </div>
     </div>,
     document.body

@@ -1,4 +1,5 @@
 import { SIGNAL_GLOSSARY, type GlossaryEntry } from "../config/signalGlossary";
+import { beginnerNextSteps } from "./signalClarity";
 
 export interface SignalDetailPayload {
   title: string;
@@ -6,6 +7,8 @@ export interface SignalDetailPayload {
   definition: string;
   example?: string;
   contextLines?: string[];
+  /** Plain-language research checklist for beginners — not trade instructions */
+  nextSteps?: string[];
   symbol?: string;
   confidence?: number;
   journalNote?: string;
@@ -30,6 +33,20 @@ const ALIAS_TO_GLOSSARY: Record<string, string> = {
   "event market": "event-market",
   "24h volume": "volume-spike",
   "block flow": "unusual-options",
+  "call bias": "unusual-options",
+  "put hedge": "unusual-options",
+  "premium spike": "unusual-options",
+  "open interest shift": "unusual-options",
+  "congress cross-check": "congress-flow",
+  "volume breakout": "volume-spike",
+  "thin liquidity flag": "volume-spike",
+  "catalyst watch": "volume-spike",
+  "exchange outflow": "whale-alert",
+  "exchange inflow": "whale-alert",
+  "wallet cluster": "whale-alert",
+  "steam move": "line-move",
+  "odds swing": "event-market",
+  "crowd consensus": "event-market",
   "pink slip flow": "volume-spike",
   "bet slip": "sharp-money",
   "motivfx score": "motivfx-score",
@@ -103,24 +120,32 @@ export function resolveSignalDetail(
   extra?: Partial<SignalDetailPayload>
 ): SignalDetailPayload {
   const entry = findGlossary(label);
+  const symbol = extra?.symbol;
+  const category = extra?.category ?? entry?.category ?? "Signal";
+  const nextSteps = extra?.nextSteps ?? beginnerNextSteps(symbol, category);
+
   if (entry) {
     return {
       title: entry.term,
-      category: entry.category,
       definition: entry.definition,
       example: entry.example,
       ...extra,
+      category: extra?.category ?? entry.category,
       contextLines: extra?.contextLines,
+      nextSteps,
+      symbol,
     };
   }
 
   return {
     title: label,
-    category: extra?.category ?? "Signal",
+    category,
     definition:
       extra?.definition ??
       `${label} is a live intel tag from MotiveFX desks. Cross-reference with the Why? panel and your own research — informational context only.`,
     ...extra,
+    nextSteps,
+    symbol,
   };
 }
 
@@ -306,9 +331,9 @@ export function homeScoreDetail(score: number, marketConfidence: string, stars: 
   return resolveSignalDetail("MotiveFX Score", {
     category: "Home",
     contextLines: [
-      `Score: ${score}/100 · ${stars} of 5 stars`,
-      `Signal density: ${marketConfidence}`,
-      "Higher scores mean more cross-desk activity is flagged right now.",
+      `Desk attention: ${score}/100 · ${stars} of 5 stars`,
+      `Feed density: ${marketConfidence}`,
+      "Higher scores mean more cross-desk activity is flagged right now — not that markets will rise.",
     ],
   });
 }
@@ -357,14 +382,18 @@ export function themeSignalDetail(input: {
 
 export function confidenceDetail(symbol: string, confidence: number, title: string): SignalDetailPayload {
   return {
-    title: "Signal strength",
+    title: "Desk attention",
     category: "Signal lens",
     definition:
-      "Algorithmic signal strength from cross-referencing flow, volume, news, and historical similar setups. Informational context only — not a probability of profit or a prediction.",
+      "How loud the desks are on this name from flow, volume, news, and similar setups. Informational only — not a probability of profit, not a buy score, and not a prediction.",
     symbol,
     confidence,
-    contextLines: [`${title} · ${confidence}% signal strength tier.`],
-    journalNote: `${symbol}: ${title} (${confidence}% signal strength)`,
+    contextLines: [
+      `$${symbol}: ${title} · ${confidence}% desk attention.`,
+      "Higher % means more cross-feed activity flagged — not that the stock will go up.",
+    ],
+    nextSteps: beginnerNextSteps(symbol, "Trades"),
+    journalNote: `${symbol}: ${title} (${confidence}% desk attention)`,
     journalMeta: { symbol, signalTitle: title },
   };
 }

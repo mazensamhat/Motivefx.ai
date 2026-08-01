@@ -276,7 +276,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           cards={themeRadarCards}
           updatedAt={b.generatedAt}
           onExploreGraph={exploreSignalGraph}
-          subtitle="Top developing situations · ranked by signal strength · informational only"
+          subtitle="Top developing situations · ranked by desk attention · informational only"
         />
       </div>
 
@@ -390,9 +390,9 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                   type="button"
                   className="opportunity-metric-btn"
                   onClick={() => inspectDetail(confidenceDetail(o.symbol, o.confidence, o.title))}
-                  title="What is signal strength?"
+                  title="What is desk attention?"
                 >
-                  <span className="metric-label">Signal strength</span>
+                  <span className="metric-label">Desk attention</span>
                   <span className="metric-value">{o.confidence}%</span>
                 </button>
                 {o.probability != null && (
@@ -429,7 +429,11 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                   <SignalChip
                     key={s}
                     label={s}
-                    detail={{ symbol: o.symbol, confidence: o.confidence }}
+                    detail={{
+                      symbol: o.symbol,
+                      confidence: o.confidence,
+                      contextLines: o.reasons?.slice(0, 3),
+                    }}
                   />
                 ))}
               </div>

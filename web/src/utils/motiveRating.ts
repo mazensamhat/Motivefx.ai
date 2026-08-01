@@ -1,5 +1,11 @@
 /** MotiveFX proprietary stance rating — descriptive, not prescriptive. */
 
+import {
+  expandSignalToReason as expandSignalClarity,
+  stancePlainExplain,
+  type SignalReasonContext,
+} from "./signalClarity";
+
 export type MotiveRatingVariant = "buy" | "sell" | "neutral";
 
 export type MotiveRatingContext = "markets" | "betting" | "predictions";
@@ -25,17 +31,17 @@ export const MOTIVE_RATING_DISCLAIMER =
   "Based on algorithmic analysis of market data. Not financial advice.";
 
 const STANCE_LABELS: Record<string, string> = {
-  long_term_hold: "Long-term hold",
-  would_hold: "I would hold",
-  short_term_hold: "Short-term hold",
-  hold: "Hold",
-  wouldnt_buy: "I wouldn't buy",
-  would_avoid: "I would avoid",
-  sell: "Sell",
+  long_term_hold: "Longer-term attention",
+  would_hold: "Supportive context",
+  short_term_hold: "Near-term attention",
+  hold: "Mixed / watch",
+  wouldnt_buy: "Cautious on new entries",
+  would_avoid: "Elevated caution",
+  sell: "Defensive lean",
   // legacy engine keys
-  buy: "I would hold",
-  lean: "Short-term hold",
-  fade: "I would avoid",
+  buy: "Supportive context",
+  lean: "Near-term attention",
+  fade: "Elevated caution",
 };
 
 /** Map composite score (0–100) to a stance key used by the advisor engine. */
@@ -142,7 +148,7 @@ export function resolveMotiveRating(
 }
 
 export function formatMotiveSignalScore(score: number): string {
-  return `${score} / 100`;
+  return `${score} / 100 attention`;
 }
 
 /** Prefer explicit reasons from the advisor engine; otherwise expand signals/reasoning into readable lines. */
@@ -150,9 +156,16 @@ export function formatSignalReasons(
   signals: string[],
   reasoning?: string,
   limit = 5,
-  explicitReasons?: string[]
+  explicitReasons?: string[],
+  ctx?: SignalReasonContext
 ): string[] {
-  if (explicitReasons?.length) return explicitReasons.slice(0, limit);
+  if (explicitReasons?.length) {
+    const lines = explicitReasons.slice(0, limit);
+    if (ctx?.symbol && !lines.some((l) => /not a|informational|attention/i.test(l))) {
+      return [...lines, stancePlainExplain("hold")].slice(0, limit + 1);
+    }
+    return lines;
+  }
 
   const fromReasoning = reasoning
     ? reasoning
@@ -163,7 +176,7 @@ export function formatSignalReasons(
 
   if (fromReasoning.length >= 2) return fromReasoning.slice(0, limit);
 
-  const expanded = signals.filter(Boolean).map((s) => expandSignalToReason(s));
+  const expanded = signals.filter(Boolean).map((s) => expandSignalClarity(s, ctx));
   if (expanded.length) return expanded.slice(0, limit);
 
   if (reasoning) {
@@ -176,27 +189,9 @@ export function formatSignalReasons(
   return [];
 }
 
-function expandSignalToReason(signal: string): string {
-  const s = signal.toLowerCase();
-  if (s.includes("vol/oi") || s.includes("unusual")) {
-    return `${signal} — options volume exceeded typical open-interest ranges, a common precursor to directional positioning.`;
-  }
-  if (s.includes("whale")) {
-    return `${signal} — large on-chain transfer flagged; monitor exchange reserves and spot liquidity.`;
-  }
-  if (s.includes("sharp")) {
-    return `${signal} — professional handle diverges from public ticket count on this matchup.`;
-  }
-  if (s.includes("volume") || s.includes("microcap") || s.includes("pink")) {
-    return `${signal} — relative volume spike on a sub-$5 name; elevated volatility context.`;
-  }
-  if (s.includes("congress") || s.includes("insider")) {
-    return `${signal} — recent disclosure cross-referenced with price and flow activity.`;
-  }
-  if (s.includes("event market") || s.includes("polymarket")) {
-    return `${signal} — implied odds from prediction market; reflects crowd consensus, not a forecast.`;
-  }
-  return `${signal} — flagged by MotiveFX desk scanners and cross-referenced with live feeds.`;
+/** @deprecated use signalClarity.expandSignalToReason — kept for any direct imports */
+export function expandSignalToReason(signal: string, ctx?: SignalReasonContext): string {
+  return expandSignalClarity(signal, ctx);
 }
 
 export function sentimentBadgeClass(tier: MotiveRating["tier"]): string {

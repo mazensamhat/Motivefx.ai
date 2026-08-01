@@ -16,6 +16,7 @@ import {
   runPhase2Engines,
 } from "./engines";
 import { getIntelPrefs } from "./intel-prefs";
+import { pickSignalsForOpportunity, stancePlainExplain } from "./signal-clarity";
 
 /** Browser-local anonymous ids (u_…) are not persisted users — skip DB lookups. */
 function isEphemeralUserId(userId: string | null | undefined): boolean {
@@ -90,19 +91,19 @@ function resolveStanceFromScore(score: number): string {
 function stancePhrase(action: string): string {
   switch (action) {
     case "long_term_hold":
-      return "Long-term hold";
+      return "Longer-term attention";
     case "would_hold":
-      return "I would hold";
+      return "Supportive context";
     case "short_term_hold":
-      return "Short-term hold";
+      return "Near-term attention";
     case "wouldnt_buy":
-      return "I wouldn't buy";
+      return "Cautious on new entries";
     case "would_avoid":
-      return "I would avoid";
+      return "Elevated caution";
     case "sell":
-      return "Sell";
+      return "Defensive lean";
     default:
-      return "Hold";
+      return "Mixed / watch";
   }
 }
 
@@ -297,6 +298,14 @@ export async function buildHomeBriefing(opts: {
     const sym = o.symbol ?? "?";
     const stanceScore = o.type === "call" ? conf : Math.max(20, 100 - conf);
     const stance = resolveStanceFromScore(stanceScore);
+    const signals = pickSignalsForOpportunity({
+      module: "trades",
+      symbol: sym,
+      type: o.type,
+      volOiRatio: Number(o.volOiRatio) || undefined,
+      premium: Number(o.premium) || undefined,
+      note: o.note,
+    });
     opportunities.push({
       id: `trades-${sym}-${o.type}`,
       module: "trades",
@@ -307,11 +316,11 @@ export async function buildHomeBriefing(opts: {
       expectedMove: `Modeled +${Math.min(12, 4 + Math.floor(conf / 12))}% scenario*`,
       riskLevel: riskFromConfidence(conf, "trades"),
       stars: stars(conf),
-      signals: ["Options Flow", "Unusual Volume", "AI Lens"],
+      signals,
       reasons: [
-        `Unusual ${o.type} flow detected — Vol/OI ${o.volOiRatio}x average.`,
-        `Premium block ~$${Math.floor(Number(o.premium) || 0).toLocaleString()} on $${sym}.`,
-        `Desk stance: ${stancePhrase(stance)} (informational — not a trade recommendation).`,
+        `$${sym}: unusual ${o.type} flow — Vol/OI ${o.volOiRatio}x average (options volume vs contracts already open).`,
+        `$${sym}: premium block ~$${Math.floor(Number(o.premium) || 0).toLocaleString()}.`,
+        stancePlainExplain(stance),
       ],
     });
   }
@@ -319,6 +328,13 @@ export async function buildHomeBriefing(opts: {
   for (const p of penny.slice(0, 2)) {
     const conf = Math.min(88, 52 + Math.floor(Math.abs(Number(p.changePct) || 0) * 2));
     const stance = resolveStanceFromScore(conf);
+    const signals = pickSignalsForOpportunity({
+      module: "penny",
+      symbol: p.symbol,
+      changePct: Number(p.changePct) || undefined,
+      volRatio: Number(p.volRatio) || undefined,
+      note: p.note,
+    });
     opportunities.push({
       id: `penny-${p.symbol}`,
       module: "penny",
@@ -329,11 +345,13 @@ export async function buildHomeBriefing(opts: {
       expectedMove: `Session ${Number(p.changePct).toFixed(1)}% context*`,
       riskLevel: riskFromConfidence(conf, "penny"),
       stars: stars(conf),
-      signals: ["Unusual Volume", "Microcap Scanner", "AI Lens"],
+      signals,
       reasons: [
-        p.note ?? `Volume ${p.volRatio}x average on sub-$5 name.`,
-        "Pink slip scanner flagged catalyst-style activity.",
-        `Desk stance: ${stancePhrase(stance)} — higher volatility context.`,
+        p.note
+          ? `$${p.symbol}: ${p.note}`
+          : `$${p.symbol}: volume ${p.volRatio}x average on a sub-$5 name.`,
+        `$${p.symbol}: session move ${Number(p.changePct) >= 0 ? "+" : ""}${Number(p.changePct).toFixed(1)}% — thin names can reverse quickly.`,
+        stancePlainExplain(stance),
       ],
     });
   }
@@ -341,21 +359,29 @@ export async function buildHomeBriefing(opts: {
   for (const w of whales.slice(0, 1)) {
     const conf = 78;
     const stance = resolveStanceFromScore(conf);
-    opportunities.push({
-      id: `crypto-${w.asset ?? "BTC"}`,
+    const asset = w.asset ?? "BTC";
+    const signals = pickSignalsForOpportunity({
       module: "crypto",
-      symbol: w.asset ?? "BTC",
+      symbol: asset,
+      amountUsd: Number(w.amountUsd) || undefined,
+      direction: String(w.direction ?? ""),
+      note: (w as { note?: string }).note,
+    });
+    opportunities.push({
+      id: `crypto-${asset}`,
+      module: "crypto",
+      symbol: asset,
       title: stancePhrase(stance),
       stance,
       confidence: conf,
       expectedMove: "On-chain context",
       riskLevel: "medium",
       stars: stars(conf),
-      signals: ["Whale Transfer", "On-Chain", "AI Lens"],
+      signals,
       reasons: [
-        `$${Math.floor(Number(w.amountUsd) / 1_000_000)}M moved — ${(w as { note?: string }).note ?? w.direction ?? "exchange flow"}.`,
-        "Large wallet activity often precedes volatility windows.",
-        `Desk stance: ${stancePhrase(stance)}.`,
+        `$${asset}: ~$${Math.floor(Number(w.amountUsd) / 1_000_000)}M moved — ${(w as { note?: string }).note ?? w.direction ?? "exchange flow"}.`,
+        `$${asset}: large wallet activity is volatility context, not a trade instruction.`,
+        stancePlainExplain(stance),
       ],
     });
   }
@@ -363,21 +389,27 @@ export async function buildHomeBriefing(opts: {
   for (const l of lines.slice(0, 2)) {
     const conf = 60;
     const stance = resolveStanceFromScore(conf);
-    opportunities.push({
-      id: `betting-${String(l.matchup).slice(0, 20)}`,
+    const matchup = String(l.matchup);
+    const signals = pickSignalsForOpportunity({
       module: "betting",
-      symbol: l.matchup,
+      symbol: matchup,
+      note: `${l.sport} ${l.currentLine ?? ""}`,
+    });
+    opportunities.push({
+      id: `betting-${matchup.slice(0, 20)}`,
+      module: "betting",
+      symbol: matchup,
       title: stancePhrase(stance),
       stance,
       confidence: conf,
       expectedMove: "Line context",
       riskLevel: riskFromConfidence(conf, "betting"),
       stars: stars(conf),
-      signals: ["Line Movement"],
+      signals,
       reasons: [
-        `${l.sport}${l.book ? ` · ${l.book}` : ""} — ${l.currentLine ?? "live board"}.`,
-        "Public vs sharp ticket splits are not available on this feed.",
-        `Desk stance: ${stancePhrase(stance)} — odds context only.`,
+        `${matchup}: ${l.sport}${l.book ? ` · ${l.book}` : ""} — ${l.currentLine ?? "live board"}.`,
+        `${matchup}: public vs sharp ticket splits may be incomplete on this feed.`,
+        stancePlainExplain(stance),
       ],
     });
   }
@@ -386,21 +418,28 @@ export async function buildHomeBriefing(opts: {
     const yes = Math.round((Number(m.yes) || 0.5) * 100);
     const conf = Math.max(55, Math.min(85, yes > 50 ? yes : 100 - yes));
     const stance = resolveStanceFromScore(conf);
+    const marketLabel = String(m.market).slice(0, 48);
+    const signals = pickSignalsForOpportunity({
+      module: "predictions",
+      symbol: marketLabel,
+      yesPct: yes,
+      note: String(m.categoryLabel ?? m.category ?? ""),
+    });
     opportunities.push({
       id: `pred-${String(m.market).slice(0, 24)}`,
       module: "predictions",
-      symbol: String(m.market).slice(0, 48),
+      symbol: marketLabel,
       title: stancePhrase(stance),
       stance,
       confidence: conf,
       expectedMove: `${yes}% implied yes*`,
       riskLevel: "medium",
       stars: stars(conf),
-      signals: ["Event Market", "24h Volume", "AI Lens"],
+      signals,
       reasons: [
-        `Market pricing ${yes}% yes on ${m.platform ?? "Polymarket"}.`,
-        `Category: ${m.categoryLabel ?? m.category ?? "events"}.`,
-        `Desk stance: ${stancePhrase(stance)} — not a prediction recommendation.`,
+        `${marketLabel}: pricing ${yes}% yes on ${m.platform ?? "Polymarket"}.`,
+        `${marketLabel}: category ${m.categoryLabel ?? m.category ?? "events"} — crowd odds, not a forecast.`,
+        stancePlainExplain(stance),
       ],
     });
   }

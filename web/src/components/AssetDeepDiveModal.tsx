@@ -3,7 +3,9 @@ import {
   BarChart3,
   Coins,
   ExternalLink,
+  Eye,
   Home,
+  ListChecks,
   Sparkles,
   Trophy,
   TrendingUp,
@@ -14,8 +16,11 @@ import type { BrandModuleId } from "../brand/moduleBrand";
 import { MODULE_BRAND } from "../brand/moduleBrand";
 import { useApi } from "../hooks/useApi";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
+import { useSignalDetail } from "../hooks/useSignalDetail";
 import type { AssetDeepDivePayload } from "../utils/assetDeepDive";
+import { resolveSignalDetail } from "../utils/signalIntel";
 import type { HomeBriefing } from "../types";
+import { MotiveScorecardPanel } from "./MotiveScorecard";
 import { NeonAreaChart } from "./NeonAreaChart";
 import { SlideToConfirm } from "./SlideToConfirm";
 
@@ -40,6 +45,7 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
   const [redirecting, setRedirecting] = useState(false);
   const [redirectError, setRedirectError] = useState<string | null>(null);
   const { getPlatformLabel, getPref, openDeeplink, openSetup } = usePlatformPrefs();
+  const { inspectDetail } = useSignalDetail();
   const { data: briefing } = useApi<HomeBriefing>("/home/briefing", 120_000);
   const brand = MODULE_BRAND[module];
   const platformLabel = getPlatformLabel(module);
@@ -56,6 +62,10 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
       : [];
 
   const Icon = MODULE_ICONS[module];
+  const plainSummary = payload.plainSummary || payload.aiAdvice;
+  const whatItMeans = payload.whatItMeans?.length ? payload.whatItMeans : [payload.aiAdvice];
+  const whatToWatch = payload.whatToWatch ?? [];
+  const signalStack = payload.signalStack ?? [];
 
   function actionLabels(side: "BUY" | "SELL") {
     const app = platformLabel ?? "your app";
@@ -89,6 +99,20 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
     } finally {
       setRedirecting(false);
     }
+  }
+
+  function openChip(label: string, why: string) {
+    inspectDetail(
+      resolveSignalDetail(label, {
+        symbol: sym,
+        category: brand.name,
+        contextLines: [
+          why,
+          ...(relatedSignals[0]?.reasons?.slice(0, 2) ?? []),
+        ].filter(Boolean) as string[],
+        confidence: payload?.confidence,
+      })
+    );
   }
 
   return (
@@ -142,13 +166,14 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
                   >
                     {kpi.value}
                   </span>
+                  {kpi.hint ? <span className="asset-dive-kpi-hint">{kpi.hint}</span> : null}
                 </div>
               ))}
             </div>
 
             <div className="asset-dive-chart-panel">
               <div className="asset-dive-chart-header">
-                <span>Intraday Trajectory Matrix</span>
+                <span>Price context chart</span>
                 <span className="asset-dive-chart-desc">{payload.chartDesc}</span>
               </div>
               <NeonAreaChart
@@ -159,46 +184,105 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
                 showNodes
               />
               <div className="asset-dive-chart-footer">
-                <span>Opening desk bell</span>
-                <span>Current feed update</span>
+                <span>Earlier in session</span>
+                <span>Latest context</span>
               </div>
             </div>
+
+            {payload.scorecard && (
+              <MotiveScorecardPanel scorecard={payload.scorecard} accent={brand.accent} />
+            )}
           </div>
 
           <aside className="asset-dive-console">
             <div className="asset-dive-ai-block">
               <div className="asset-dive-ai-label">
-                <Wand2 size={12} /> AI Insight Signal
+                <Wand2 size={12} /> In plain English
               </div>
-              <p className="asset-dive-ai-text">{payload.aiAdvice}</p>
+              <p className="asset-dive-ai-text">{plainSummary}</p>
+              {payload.stanceExplain ? (
+                <p className="asset-dive-stance-explain">{payload.stanceExplain}</p>
+              ) : null}
+
+              <div className="asset-dive-plain-section">
+                <div className="asset-dive-plain-heading">
+                  <Eye size={12} /> What this means
+                </div>
+                <ul className="asset-dive-plain-list">
+                  {whatItMeans.map((line, i) => (
+                    <li key={`mean-${i}`}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {whatToWatch.length > 0 && (
+                <div className="asset-dive-plain-section">
+                  <div className="asset-dive-plain-heading">
+                    <ListChecks size={12} /> What to watch next
+                  </div>
+                  <ul className="asset-dive-plain-list">
+                    {whatToWatch.map((line, i) => (
+                      <li key={`watch-${i}`}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {signalStack.length > 0 && (
+                <div className="asset-dive-plain-section">
+                  <span className="asset-dive-related-label">Signals on this name</span>
+                  <div className="asset-dive-signal-stack">
+                    {signalStack.map((chip) => (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        className="asset-dive-signal-chip"
+                        style={{ borderColor: `${brand.accent}55`, color: brand.accent }}
+                        onClick={() => openChip(chip.label, chip.why)}
+                      >
+                        <span className="asset-dive-signal-chip-label">{chip.label}</span>
+                        <span className="asset-dive-signal-chip-why">{chip.why}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {relatedSignals.length > 0 && (
                 <div className="asset-dive-related">
-                  <span className="asset-dive-related-label">Live desk signals</span>
+                  <span className="asset-dive-related-label">Also on today’s desk</span>
                   <ul>
                     {relatedSignals.slice(0, 3).map((o) => (
                       <li key={o.id}>
-                        {o.title} · {o.confidence}% · {o.signals[0]}
+                        {o.title} · {o.confidence}% attention · {o.signals[0]}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
+
               <div className="asset-dive-confidence">
                 <div className="asset-dive-confidence-row">
-                  <span>Signal strength</span>
+                  <span>Desk attention</span>
                   <span style={{ color: brand.accent }}>{payload.confidence}%</span>
                 </div>
                 <div className="asset-dive-confidence-bar">
                   <div
                     className="asset-dive-confidence-fill"
-                    style={{ width: `${payload.confidence}%`, background: `linear-gradient(90deg, ${brand.accent}, var(--green))` }}
+                    style={{
+                      width: `${payload.confidence}%`,
+                      background: `linear-gradient(90deg, ${brand.accent}, var(--green))`,
+                    }}
                   />
                 </div>
+                <p className="asset-dive-confidence-hint">
+                  How loud the feeds are for this name — not a prediction or buy score.
+                </p>
               </div>
             </div>
 
             <div className="asset-dive-sandbox">
-              <span className="asset-dive-sandbox-label">Execute via your connected app</span>
+              <span className="asset-dive-sandbox-label">Open in your connected app (optional)</span>
 
               {hasPlatform ? (
                 <p className="asset-dive-platform-hint">

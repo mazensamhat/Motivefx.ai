@@ -6,7 +6,6 @@ import {
   Settings2,
   User,
   Users,
-  Wallet,
 } from "lucide-react";
 import type { TabId } from "../types";
 import { brandForTab } from "../brand/moduleBrand";
@@ -71,13 +70,14 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
           <Home size={14} strokeWidth={2.2} />
           <span>Home</span>
         </button>
-        <button type="button" className="mobile-header-tool" onClick={openSetup}>
+        <button
+          type="button"
+          className="mobile-header-tool"
+          onClick={openSetup}
+          aria-label="My apps and brokers"
+        >
           <Settings2 size={14} strokeWidth={2.2} />
-          <span>My Apps</span>
-        </button>
-        <button type="button" className="mobile-header-tool" onClick={openSetup}>
-          <Wallet size={14} strokeWidth={2.2} />
-          <span>Brokers</span>
+          <span>Apps</span>
         </button>
         <button type="button" className="mobile-header-tool" onClick={onOpenGlossary}>
           <BookOpen size={14} strokeWidth={2.2} />

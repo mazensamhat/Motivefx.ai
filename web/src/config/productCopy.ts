@@ -7,13 +7,13 @@ export const LABELS = {
   holdingsOverview: "Holdings Overview",
   cryptoHoldings: "Crypto Holdings",
   pinkSlipHoldings: "Pink Slip Holdings",
-  signalStrength: "Signal strength",
+  signalStrength: "Desk attention",
   aiConfidence: "AI confidence",
   marketIntelligence: "Market intelligence",
 } as const;
 
 export function formatSignalStrength(pct: number): string {
-  return `${pct}% signal strength`;
+  return `${pct}% desk attention`;
 }
 
 export function formatAiConfidence(pct: number): string {
