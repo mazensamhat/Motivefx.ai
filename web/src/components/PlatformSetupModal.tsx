@@ -100,8 +100,8 @@ export function PlatformSetupModal({ catalog, prefs, onSave, onClose }: Props) {
             Connect your apps & brokers
           </h2>
           <p className="platform-setup-sub">
-            Tell us where you trade, bet, and buy predictions. When you confirm a buy or sell in
-            MotiveFX.AI, we&apos;ll send you straight to the right app or website.
+            Optional: choose the external apps you already use for research follow-ups. MotiveFX.AI is
+            monitor-only — it does not place trades, bets, or purchases inside this app.
           </p>
         </header>
 
