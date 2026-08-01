@@ -5,6 +5,11 @@ import { findUserSafeCached } from "@/lib/load-user";
 import { planForUser } from "@/lib/terminal/plan";
 import { upsertAlerts } from "@/lib/terminal/alerts";
 import { evaluateSignalAlertRules } from "@/lib/terminal/engines";
+import {
+  formatBriefingGreeting,
+  formatBriefingKicker,
+  getBriefingPeriod,
+} from "../../../../../../../packages/shared/src/briefing-period";
 import type {
   ConsensusBreak,
   MarketGenome,
@@ -19,10 +24,12 @@ export const maxDuration = 15;
 function fallbackBriefing(displayName: string | null) {
   const name = (displayName ?? "Trader").split(/\s+/)[0];
   const now = new Date();
-  const hour = now.getUTCHours();
-  const period = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const period = getBriefingPeriod(now);
   return {
-    greeting: `Good ${period}, ${name}`,
+    greeting: formatBriefingGreeting(period, name),
+    greetingName: name,
+    briefingPeriod: period,
+    briefingKicker: formatBriefingKicker(period),
     tagline: "Daily Brief · Opportunity Radar",
     motivfxScore: 62,
     stars: 3,

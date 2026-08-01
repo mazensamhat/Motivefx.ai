@@ -11,9 +11,10 @@ import {
 
 interface Props {
   script: string;
+  intro?: string;
 }
 
-export function AudioBriefingButton({ script }: Props) {
+export function AudioBriefingButton({ script, intro = "" }: Props) {
   const { profile } = useGenerationalProfile();
   const [playing, setPlaying] = useState(false);
   const [loadingVoice, setLoadingVoice] = useState(false);
@@ -52,7 +53,7 @@ export function AudioBriefingButton({ script }: Props) {
       const voice = voiceRef.current ?? (await pickBriefingVoice());
       voiceRef.current = voice;
 
-      const chunks = chunkBriefingScript(profile.intelAudioIntro, script);
+      const chunks = chunkBriefingScript(intro, script);
       const { rate, pitch, pauseMs } = briefingRateForCohort(profile.id);
 
       setLoadingVoice(false);

@@ -84,7 +84,7 @@ export const GENERATIONAL_PROFILES: Record<CohortId, GenerationalProfile> = {
     intelLoadingMessage: "Synthesizing cross-market signals…",
     intelInsightsTitle: "AI Insights Desk",
     intelHomeTipLabel: "Desk tip",
-    intelAudioIntro: "Here's your morning intel.",
+    intelAudioIntro: "Here's your intel.",
   },
   genx: {
     id: "genx",

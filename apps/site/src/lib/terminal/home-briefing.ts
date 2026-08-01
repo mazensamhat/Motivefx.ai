@@ -17,6 +17,11 @@ import {
 } from "./engines";
 import { getIntelPrefs } from "./intel-prefs";
 import { pickSignalsForOpportunity, stancePlainExplain } from "./signal-clarity";
+import {
+  formatBriefingGreeting,
+  formatBriefingKicker,
+  getBriefingPeriod,
+} from "../../../../../packages/shared/src/briefing-period";
 
 /** Browser-local anonymous ids (u_…) are not persisted users — skip DB lookups. */
 function isEphemeralUserId(userId: string | null | undefined): boolean {
@@ -105,6 +110,37 @@ function stancePhrase(action: string): string {
     default:
       return "Mixed / watch";
   }
+}
+
+function trimSentence(value: string, max = 150): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function plainSignalText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\bVol\/OI\b/gi, "unusual options activity")
+    .replace(/\bavg\b/gi, "average")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function opportunityDisplayName(o: Record<string, unknown> | undefined): string {
+  if (!o) return "the radar";
+  const symbol = String(o.symbol ?? "").trim();
+  return symbol ? symbol : String(o.title ?? "the top radar item");
+}
+
+function opportunitySummary(o: Record<string, unknown> | undefined): string | null {
+  if (!o) return null;
+  const name = opportunityDisplayName(o);
+  const signals = (o.signals as string[] | undefined) ?? [];
+  const reasons = (o.reasons as string[] | undefined) ?? [];
+  const context = plainSignalText(signals[0] ?? reasons[0] ?? o.title);
+  const confidence = Number(o.confidence ?? 0);
+  const confidenceLine = confidence ? ` It has ${confidence}% signal attention.` : "";
+  return trimSentence(`${name} is the top radar item${context ? `, with ${context.toLowerCase()}` : ""}.${confidenceLine}`);
 }
 
 function symbolMatch(tracked: Set<string>, opportunitySymbol: string): boolean {
@@ -277,10 +313,10 @@ export async function buildHomeBriefing(opts: {
   plan?: TerminalPlan | null;
 }) {
   const now = new Date();
-  const hour = now.getUTCHours();
-  const period = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const period = getBriefingPeriod(now);
   const name = (opts.displayName ?? "Trader").split(/\s+/)[0];
-  const greeting = `Good ${period}, ${name}`;
+  const greeting = formatBriefingGreeting(period, name);
+  const briefingKicker = formatBriefingKicker(period);
 
   const [whales, lines, markets, congressTrades] = await Promise.all([
     withFeedTimeout(fetchWhaleAlerts(), [], 3500),
@@ -535,6 +571,16 @@ export async function buildHomeBriefing(opts: {
 
   const topBreak = phase2.consensusBreaks[0];
   const topTheme = phase2.probabilityViews.find((v) => v.id.startsWith("theme-"));
+  const topRisk = top8.find((o) => o.riskLevel === "high" || o.riskLevel === "extreme");
+  const topOpportunitySummary = opportunitySummary(top);
+  const themeLine = topTheme
+    ? `${topTheme.theme} is the main theme to watch, with ${topTheme.probability}% probability in the current model view.`
+    : null;
+  const riskLine = topBreak
+    ? `Watch ${trimSentence(topBreak.claim, 90)} because ${trimSentence(topBreak.breakReason, 130)}`
+    : topRisk
+      ? `Watch ${opportunityDisplayName(topRisk)} because it carries ${topRisk.riskLevel} risk in today's scan.`
+      : "Risk is mostly headline-driven right now, so keep position sizing and timing in view.";
 
   // Enrich theme watchlist rows with live probability
   const themeWatchlist = (intelPrefs?.themeWatchlist ?? []).map((t) => {
@@ -551,6 +597,9 @@ export async function buildHomeBriefing(opts: {
 
   let briefing: Record<string, unknown> = {
     greeting,
+    greetingName: name,
+    briefingPeriod: period,
+    briefingKicker,
     tagline: "Daily Brief · Opportunity Radar · Predictive",
     motivfxScore: score,
     stars: stars(score),
@@ -558,14 +607,14 @@ export async function buildHomeBriefing(opts: {
     opportunityCount: top8.length,
     highRiskAlerts: highRisk,
     portfolioDelta: null,
-    biggestRisk: topBreak
-      ? `Consensus Break: ${topBreak.claim.slice(0, 72)}`
-      : options.length
-        ? "Tesla earnings week"
-        : "Macro headline risk",
+    biggestRisk: riskLine,
     biggestOpportunity: topTheme?.theme ?? top?.symbol ?? "Scanning…",
     topAiTip: top
-      ? `Intel lens: $${top.symbol} — ${(top.signals as string[])?.[0]}. Probability Engine ${phase2.probabilityViews.find((v) => v.id === `opp-${top.id}`)?.probability ?? top.confidence}%.`
+      ? [
+          topOpportunitySummary,
+          themeLine,
+          "Use this as monitor-only context, not a buy or sell call.",
+        ].filter(Boolean).join(" ")
       : personalized.intelNote,
     moduleSummaries: [
       { module: "trades", label: "Trades", count: ledger.trades, tab: "stocks", newSignals: ledger.matched.trades },
@@ -594,13 +643,12 @@ export async function buildHomeBriefing(opts: {
     themeWatchlist,
     alertRules: intelPrefs?.alertRules ?? [],
     audioBriefingScript: [
-      `Good ${period}. Here's your MotiveFX Daily Brief.`,
-      `Market confidence is ${densityWord} — desk score ${score} out of 100.`,
-      top ? `On Opportunity Radar, the top flag is ${top.symbol}: ${top.title}. Confidence sits at ${top.confidence} percent.` : "",
-      topTheme ? `Probability Engine theme lead: ${topTheme.theme} at ${topTheme.probability} percent.` : "",
-      topBreak ? `Consensus Break watch: ${topBreak.breakReason.slice(0, 160)}` : "",
+      `Market confidence looks ${densityWord}, with a MotiveFX score of ${score} out of 100.`,
+      topOpportunitySummary,
+      themeLine,
+      `The main risk to monitor: ${riskLine}`,
       personalized.coverageLine ? String(personalized.coverageLine).replace(" today", " on your radar today") : "",
-      "That's your Daily Brief. This is informational context only, not financial advice.",
+      "That's the brief. It's monitor-only context, not financial advice.",
     ].filter(Boolean).join(" "),
     sentiment,
     breakingNewsCount: Math.min(12, 4 + top8.length),

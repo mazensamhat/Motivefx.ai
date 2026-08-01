@@ -261,6 +261,9 @@ export interface MarketGenome {
 
 export interface HomeBriefing {
   greeting: string;
+  greetingName?: string | null;
+  briefingPeriod?: "morning" | "afternoon" | "evening";
+  briefingKicker?: string;
   tagline: string;
   motivfxScore: number;
   stars: number;

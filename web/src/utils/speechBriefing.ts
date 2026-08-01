@@ -14,9 +14,12 @@ function scoreVoice(v: SpeechSynthesisVoice): number {
   let score = 0;
   if (name.includes("natural")) score += 120;
   if (name.includes("neural")) score += 120;
+  if (name.includes("multilingual")) score += 95;
   if (name.includes("online")) score += 90;
   if (name.includes("premium")) score += 70;
   if (name.includes("enhanced")) score += 50;
+  if (name.includes("microsoft")) score += 35;
+  if (name.includes("ava")) score += 45;
   if (name.includes("samantha")) score += 55;
   if (name.includes("karen")) score += 45;
   if (name.includes("moira")) score += 45;
@@ -73,6 +76,10 @@ export function humanizeForSpeech(text: string): string {
   return text
     .replace(/MotiveFX/gi, "Motive FX")
     .replace(/\bAI\b/g, "A.I.")
+    .replace(/\bVol\/OI\b/gi, "unusual options activity")
+    .replace(/\bavg\b/gi, "average")
+    .replace(/\bdesk\b/gi, "dashboard")
+    .replace(/\$([A-Z]{1,6})\b/g, "$1")
     .replace(/(\d+)%/g, "$1 percent")
     .replace(/\$(\d[\d,]*)/g, "$1 dollars")
     .replace(/\*/g, "")
@@ -171,12 +178,12 @@ export function stopBriefingSpeech(): void {
 export function briefingRateForCohort(cohort: string): { rate: number; pitch: number; pauseMs: number } {
   switch (cohort) {
     case "boomer":
-      return { rate: 0.88, pitch: 0.94, pauseMs: 420 };
+      return { rate: 0.92, pitch: 0.98, pauseMs: 430 };
     case "genz":
-      return { rate: 0.96, pitch: 1.02, pauseMs: 260 };
+      return { rate: 0.98, pitch: 1.01, pauseMs: 300 };
     case "genx":
-      return { rate: 0.91, pitch: 0.95, pauseMs: 360 };
+      return { rate: 0.94, pitch: 0.98, pauseMs: 380 };
     default:
-      return { rate: 0.93, pitch: 0.97, pauseMs: 320 };
+      return { rate: 0.96, pitch: 1, pauseMs: 340 };
   }
 }

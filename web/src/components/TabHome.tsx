@@ -37,6 +37,12 @@ import {
 } from "../utils/themeIntel";
 import { resolveMotiveRating, stanceLabel } from "../utils/motiveRating";
 import type { BrandModuleId } from "../brand/moduleBrand";
+import {
+  formatBriefingGreeting,
+  formatBriefingIntro,
+  formatBriefingKicker,
+  getBriefingPeriod,
+} from "../../../packages/shared/src/briefing-period";
 
 const RISK_LABEL: Record<string, string> = {
   low: "Low",
@@ -54,6 +60,11 @@ const MODULE_TILES: { tab: TabId; brand: keyof typeof MODULE_BRAND; label: strin
   { tab: "betting", brand: "betting", label: "Bets" },
   { tab: "predictions", brand: "predictions", label: "Predictions" },
 ];
+
+function nameFromGreeting(greeting: string | undefined): string | null {
+  const [, name] = (greeting ?? "").split(",", 2);
+  return name?.trim() || null;
+}
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -145,6 +156,11 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   const showWarmup = Boolean(refreshing || error || (b as { degraded?: boolean }).degraded);
 
   const p = b.personalized;
+  const localPeriod = getBriefingPeriod();
+  const greetingName = b.greetingName ?? nameFromGreeting(b.greeting);
+  const localGreeting = formatBriefingGreeting(localPeriod, greetingName);
+  const briefingKicker = formatBriefingKicker(localPeriod);
+  const audioIntro = formatBriefingIntro(localPeriod, greetingName);
 
   const emergingCount = Math.max(1, Math.min(9, Math.round(b.opportunityCount / 3) || 1));
 
@@ -228,9 +244,9 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
         <section className="home-overview-card home-overview-compact">
           <div className="home-overview-top">
             <div>
-              <div className="home-overview-label">Daily Brief</div>
+              <div className="home-overview-label">{briefingKicker}</div>
               <p className="mf-summary-sub">
-                {b.greeting} · {b.tagline}
+                {localGreeting} · {b.tagline}
               </p>
               <p className="mf-summary-sub">
                 Confidence <strong>{b.marketConfidence}</strong>
@@ -260,7 +276,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
           </div>
           <div className="home-hero-actions" style={{ marginTop: "0.85rem" }}>
             {b.audioBriefingScript && hasFeature("voice_briefing") && (
-              <AudioBriefingButton script={b.audioBriefingScript} />
+              <AudioBriefingButton script={b.audioBriefingScript} intro={audioIntro} />
             )}
             <button
               type="button"

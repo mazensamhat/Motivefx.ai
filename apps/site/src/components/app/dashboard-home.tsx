@@ -29,6 +29,10 @@ import {
 import { PRICING_TIERS, upgradeTiersFrom, type IntelligenceMarketId, type PricingTierId } from "@/lib/tiers";
 
 import { userHasLiveMarketAccess } from "@/lib/entitlements";
+import {
+  formatBriefingGreeting,
+  getBriefingPeriod,
+} from "../../../../../packages/shared/src/briefing-period";
 
 
 
@@ -128,11 +132,9 @@ export function DashboardHome({
 
   const firstName = email.split("@")[0] ?? "Trader";
 
-  const hour = new Date().getHours();
+  const period = getBriefingPeriod();
 
-  const greeting =
-
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = formatBriefingGreeting(period);
 
 
 

@@ -190,7 +190,7 @@ function whyForChip(label: string, sym: string, input: OpportunitySignalInput): 
     return `$${sym} is in a thinner / smaller-cap context — moves can be sharp and reverse quickly.`;
   }
   if (l.includes("catalyst")) {
-    return `Desk flagged $${sym} for a possible news or catalyst window — verify headlines yourself.`;
+    return `MotiveFX flagged $${sym} for a possible news or catalyst window — verify headlines yourself.`;
   }
   if (l.includes("whale") || l.includes("on-chain") || l.includes("exchange") || l.includes("wallet")) {
     return `Large ${sym} wallet/exchange flow${input.amountUsd ? ` (~$${Math.floor(input.amountUsd / 1e6)}M)` : ""} — context for volatility, not a trade order.`;
@@ -205,12 +205,12 @@ function whyForChip(label: string, sym: string, input: OpportunitySignalInput): 
     return `$${sym} appears near recent disclosure activity — cross-check filings; not a tip.`;
   }
   if (l.includes("ai")) {
-    return `MotiveFX cross-checked $${sym} against other desk feeds for this session.`;
+    return `MotiveFX cross-checked $${sym} against other signal feeds for this session.`;
   }
   if (l.includes("options")) {
-    return `Options desk scanners highlighted $${sym} versus its own recent baseline.`;
+    return `Options activity highlighted $${sym} versus its own recent baseline.`;
   }
-  return `Tagged on $${sym} from live desk scanners — research before acting.`;
+  return `Tagged on $${sym} by the live signal review — research before acting.`;
 }
 
 export function expandSignalToReason(signal: string, ctx?: SignalReasonContext): string {
@@ -242,7 +242,7 @@ export function expandSignalToReason(signal: string, ctx?: SignalReasonContext):
     const y = m.yesPct != null ? ` Implied yes ~${m.yesPct}%.` : "";
     return `${signal} — crowd pricing on the contract.${y} Reflects consensus, not a forecast.`;
   }
-  return `${signal} on ${sym} — flagged by MotiveFX desk scanners. Cross-check with your own research.`;
+  return `${signal} on ${sym} — flagged by MotiveFX signal review. Cross-check with your own research.`;
 }
 
 export function beginnerNextSteps(symbol?: string, category?: string): string[] {
