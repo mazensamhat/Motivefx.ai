@@ -22,12 +22,12 @@ createRoot(document.getElementById("root")!).render(
           <GenerationalProvider>
             <PlatformPrefsProvider>
               <IntelToastProvider>
-                <AssetDeepDiveProvider>
-                  <SignalDetailProvider>
+                <SignalDetailProvider>
+                  <AssetDeepDiveProvider>
                     <App />
                     <AccountSettingsHost />
-                  </SignalDetailProvider>
-                </AssetDeepDiveProvider>
+                  </AssetDeepDiveProvider>
+                </SignalDetailProvider>
               </IntelToastProvider>
             </PlatformPrefsProvider>
           </GenerationalProvider>
