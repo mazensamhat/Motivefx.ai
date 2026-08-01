@@ -4,8 +4,8 @@
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.5**, versionCode **21** (EAS production AAB — pending; update with build URL after completion)
-**EAS build URL/status:** Pending new production build for version **1.0.5** / versionCode **21**
+**Remediation binary (target):** version **1.0.5**, versionCode **21** (EAS production AAB — pending completion)
+**EAS build URL/status:** Pending at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 **Superseded remediation build:** version **1.0.4**, versionCode **20** (EAS `008d58f3-1c09-4cad-a121-e7ab01bfa8a6`, commit `8bc91a8`)
 
