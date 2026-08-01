@@ -1,10 +1,10 @@
-# Google Play Suspension Appeal — MotiveFX.AI (`ai.motivefx.app`)
+﻿# Google Play Suspension Appeal — MotiveFX.AI (`ai.motivefx.app`)
 
 **Do not submit this appeal until the checklist at the bottom of this file (and in the companion “before appealing” note) is complete.** A weak appeal after Enforcement Process suspension can escalate toward developer-account termination.
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
-**Remediation binary (target):** version **1.0.4**, versionCode **confirm from AAB** (repo `app.json` seeds `versionCode` **18**; EAS production uses `autoIncrement`, so the uploaded AAB may be **19+** — paste the exact number from Play Console / `aapt dump badging`)  
+**Remediation binary (target):** version **1.0.4**, versionCode **19** (EAS production build `35f5fae2-f047-4a1e-9c7c-d3603924b82f`, commit `d238c92`)
 **Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
 
 ---
@@ -81,7 +81,7 @@ See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (upd
 
 - [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
 - [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
-- [ ] EAS production AAB **1.0.4** uploaded; record **exact** versionCode from the AAB (autoIncrement may exceed 18)  
+- [x] EAS production AAB **1.0.4** / versionCode **19** built (`35f5fae2-f047-4a1e-9c7c-d3603924b82f`); upload + device smoke still required before appeal  
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
