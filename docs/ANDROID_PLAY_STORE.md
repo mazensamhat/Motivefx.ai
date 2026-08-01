@@ -8,7 +8,7 @@
 
 Play suspended the app under **Enforcement Process** (repeated non-compliance). Do **not** appeal until:
 
-1. Binary **1.0.4+** / versionCode **18+** is built and uploaded  
+1. Binary **1.0.5** / versionCode **21** is built and uploaded
 2. Site deploy includes `POST /api/auth/delete-account`  
 3. Terminal web bundle is rebuilt so native-shell subscribe CTAs no longer open web pricing  
 4. Appeal draft in `docs/PLAY_SUSPENSION_APPEAL.md` is reviewed and only claims shipped fixes  
@@ -33,12 +33,14 @@ Play reviewers saw Sign in fail with a red **fetch failed / canceled** error, wh
 
 ### Payments steering removal (2026-08)
 
-**Fix (app 1.0.4 / versionCode 18):**
+**Fix included in app 1.0.5 / versionCode 21:**
 - Auth disclaimer no longer points to web `/pricing` or “Safari”
 - Terminal shell blocks Stripe/pricing/checkout URLs (does not open external checkout)
 - Native IAP fallback no longer opens the website
 - Web terminal native-shell paths remove “Manage subscription on website” CTAs
 - Native Delete account entry points + `POST /api/auth/delete-account`
+
+The superseded production remediation build **1.0.4** / versionCode **20** finished on EAS at commit `8bc91a8`. The appeal target is **1.0.5** / versionCode **21** so it includes the later main-branch fixes for theme related watches, related-watch scorecard handoff, daily brief greeting/audio alignment, and the ops-console loading path.
 
 Rebuild AAB: `cd mobile && eas build --platform android --profile production`
 
