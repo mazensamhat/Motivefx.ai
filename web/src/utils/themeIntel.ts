@@ -37,9 +37,225 @@ function isCautiousTheme(status?: string, band?: string, direction?: string): bo
   );
 }
 
+type WatchModule = RelatedWatchItem["deepDiveModule"];
+
+interface CuratedWatch {
+  symbol: string;
+  module: WatchModule;
+  why: string;
+  cautiousWhy?: string;
+}
+
+interface ThemeWatchPool {
+  id: string;
+  match: RegExp;
+  watches: CuratedWatch[];
+}
+
+const CURATED_THEME_WATCH_POOLS: ThemeWatchPool[] = [
+  {
+    id: "ai-infrastructure",
+    match: /\b(ai|artificial intelligence|data center|datacenter|semi|chip|compute|infrastructure)\b/i,
+    watches: [
+      { symbol: "NVDA", module: "trades", why: "GPU demand is a direct read-through for AI infrastructure buildouts." },
+      { symbol: "AVGO", module: "trades", why: "Networking silicon and custom accelerators sit inside the AI capex chain." },
+      { symbol: "TSM", module: "trades", why: "Advanced foundry capacity is a bottleneck for AI chip supply." },
+      { symbol: "SMCI", module: "trades", why: "AI server demand makes this a high-beta infrastructure watch." },
+      { symbol: "AMD", module: "trades", why: "Accelerator competition keeps AMD tied to AI compute spending." },
+    ],
+  },
+  {
+    id: "energy-transition",
+    match: /\b(energy transition|renewable|solar|battery|lithium|ev|clean energy|grid|power)\b/i,
+    watches: [
+      { symbol: "XOM", module: "trades", why: "Large-cap energy cash flows shape the transition spending backdrop." },
+      { symbol: "CVX", module: "trades", why: "Integrated oil exposure tracks the conventional-energy side of transition pressure." },
+      { symbol: "ENPH", module: "trades", why: "Solar inverter demand is sensitive to renewable adoption and rates." },
+      { symbol: "FSLR", module: "trades", why: "Utility-scale solar orders are a direct transition read-through." },
+      { symbol: "LIT", module: "trades", why: "Lithium and battery supply chains are core inputs for electrification." },
+    ],
+  },
+  {
+    id: "defense",
+    match: /\b(defense|military|aerospace|geopolitical|weapons|missile|security spending|defence)\b/i,
+    watches: [
+      { symbol: "LMT", module: "trades", why: "Prime contractor backlog is closely tied to defense spending cycles." },
+      { symbol: "RTX", module: "trades", why: "Missile defense and aerospace exposure link RTX to procurement headlines." },
+      { symbol: "NOC", module: "trades", why: "Space, cyber, and strategic systems make NOC a defense-budget proxy." },
+      { symbol: "GD", module: "trades", why: "Shipbuilding and combat systems connect GD to military appropriations." },
+      { symbol: "KTOS", module: "pinkslips", why: "Drone and tactical systems exposure adds a higher-volatility defense watch." },
+    ],
+  },
+  {
+    id: "housing",
+    match: /\b(housing|homebuilder|mortgage|real estate|rent|construction|home sales)\b/i,
+    watches: [
+      { symbol: "XHB", module: "trades", why: "Homebuilder ETF flow is a broad read on housing risk appetite." },
+      { symbol: "LEN", module: "trades", why: "Large builder orders and incentives track demand in new homes." },
+      { symbol: "DHI", module: "trades", why: "Scale and entry-level exposure make DHI sensitive to mortgage affordability." },
+      { symbol: "HD", module: "trades", why: "Renovation demand often moves with housing turnover and equity." },
+      { symbol: "OPEN", module: "pinkslips", why: "Housing transaction volatility makes OPEN a cautious, high-beta watch." },
+    ],
+  },
+  {
+    id: "inflation-rates",
+    match: /\b(inflation|cpi|rates|fed|yield|treasury|stagflation|dollar)\b/i,
+    watches: [
+      { symbol: "TLT", module: "trades", why: "Long-duration Treasuries are sensitive to inflation and rate repricing." },
+      { symbol: "GLD", module: "trades", why: "Gold often reacts to real-rate and inflation-hedge narratives." },
+      { symbol: "XLP", module: "trades", why: "Staples can show how investors price defensive inflation exposure." },
+      { symbol: "COST", module: "trades", why: "Traffic and pricing power make Costco a consumer-inflation watch." },
+      { symbol: "BTC", module: "crypto", why: "Crypto liquidity can react quickly to dollar and real-rate expectations." },
+    ],
+  },
+  {
+    id: "china",
+    match: /\b(china|tariff|export control|yuan|hong kong|beijing|taiwan|supply chain)\b/i,
+    watches: [
+      { symbol: "FXI", module: "trades", why: "Large-cap China ETF flow is the broadest liquid policy read-through." },
+      { symbol: "BABA", module: "trades", why: "Mega-cap China internet sentiment often moves with policy tone." },
+      { symbol: "KWEB", module: "trades", why: "China internet exposure tracks growth and regulatory expectations." },
+      { symbol: "TSM", module: "trades", why: "Taiwan semiconductor supply risk is central to export-control headlines." },
+      { symbol: "USDCNH", module: "crypto", why: "Offshore yuan pressure can spill into global risk and crypto liquidity." },
+    ],
+  },
+  {
+    id: "consumer",
+    match: /\b(consumer|retail|holiday|spending|mall|ecommerce|e-commerce|wage)\b/i,
+    watches: [
+      { symbol: "AMZN", module: "trades", why: "E-commerce and cloud demand give AMZN broad consumer sensitivity." },
+      { symbol: "WMT", module: "trades", why: "Grocery and value retail share show household spending pressure." },
+      { symbol: "COST", module: "trades", why: "Membership traffic is a clean read on resilient consumer demand." },
+      { symbol: "XLY", module: "trades", why: "Discretionary ETF flow summarizes risk appetite toward consumer cyclicals." },
+      { symbol: "NKE", module: "trades", why: "Apparel demand and China exposure tie NKE to discretionary spending." },
+    ],
+  },
+  {
+    id: "industrial-freight",
+    match: /\b(industrial|freight|rail|shipping|factory|manufacturing|logistics|supply)\b/i,
+    watches: [
+      { symbol: "CAT", module: "trades", why: "Machinery demand reflects construction, mining, and industrial capex." },
+      { symbol: "DE", module: "trades", why: "Equipment orders are a cyclical read on farm and industrial spending." },
+      { symbol: "UNP", module: "trades", why: "Rail volumes help confirm or question freight-cycle strength." },
+      { symbol: "XLI", module: "trades", why: "Industrial ETF flow captures the broader cyclical basket." },
+      { symbol: "FDX", module: "trades", why: "Package volumes and guidance are direct logistics-cycle indicators." },
+    ],
+  },
+  {
+    id: "crypto-liquidity",
+    match: /\b(crypto|bitcoin|ethereum|stablecoin|token|on-chain|liquidity)\b/i,
+    watches: [
+      { symbol: "BTC", module: "crypto", why: "Bitcoin leads broad crypto risk appetite and liquidity swings." },
+      { symbol: "ETH", module: "crypto", why: "Ethereum activity reflects app, staking, and risk-on crypto demand." },
+      { symbol: "COIN", module: "trades", why: "Exchange revenue sensitivity links COIN to crypto trading activity." },
+      { symbol: "MSTR", module: "trades", why: "Balance-sheet Bitcoin exposure makes MSTR a high-beta crypto proxy." },
+      { symbol: "SOL", module: "crypto", why: "High-throughput chain activity can confirm speculative crypto momentum." },
+    ],
+  },
+  {
+    id: "policy-predictions",
+    match: /\b(election|policy|congress|regulation|approval|court|budget|shutdown)\b/i,
+    watches: [
+      { symbol: "Policy outcome odds", module: "predictions", why: "Prediction markets can show whether policy odds are repricing." },
+      { symbol: "SPY", module: "trades", why: "Broad-market ETF flow shows whether policy risk is hitting risk appetite." },
+      { symbol: "XLF", module: "trades", why: "Financials often react quickly to regulatory and rate-policy shifts." },
+      { symbol: "TLT", module: "trades", why: "Treasuries track the rates channel for budget and policy headlines." },
+      { symbol: "Election volatility", module: "betting", why: "Betting-market swings can flag changing political risk assumptions." },
+    ],
+  },
+];
+
+const DEFAULT_THEME_WATCHES: CuratedWatch[] = [
+  { symbol: "SPY", module: "trades", why: "Broad-market flow helps confirm whether the theme is spreading." },
+  { symbol: "QQQ", module: "trades", why: "Growth exposure is a useful cross-check for risk appetite." },
+  { symbol: "IWM", module: "trades", why: "Small-cap breadth can confirm or challenge the theme." },
+  { symbol: "TLT", module: "trades", why: "Rates can amplify or mute theme pressure across desks." },
+  { symbol: "BTC", module: "crypto", why: "Crypto liquidity offers an early read on speculative risk tone." },
+];
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function themeKey(opts: {
+  theme?: string;
+  themeId?: string;
+  relatedSymbols?: string[];
+  beneficiaries?: string[];
+  affectedAssets?: string[];
+}): string {
+  return [
+    opts.themeId,
+    opts.theme,
+    ...(opts.relatedSymbols ?? []),
+    ...(opts.beneficiaries ?? []),
+    ...(opts.affectedAssets ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function curatedPoolForTheme(key: string): CuratedWatch[] {
+  const pool = CURATED_THEME_WATCH_POOLS.find((p) => p.match.test(key))?.watches ?? DEFAULT_THEME_WATCHES;
+  return pool;
+}
+
+function rotateBySeed<T>(items: T[], seedKey: string): T[] {
+  if (items.length <= 1) return [...items];
+  const start = hashString(seedKey) % items.length;
+  return [...items.slice(start), ...items.slice(0, start)];
+}
+
+function curatedWatch(
+  watch: CuratedWatch,
+  input: {
+    theme: string;
+    seedKey: string;
+    cautious: boolean;
+  }
+): RelatedWatchItem {
+  const seed = hashString(`${input.seedKey}:${watch.symbol}:${watch.module}`);
+  const attention = input.cautious ? 55 + (seed % 18) : 68 + (seed % 22);
+  const why = input.cautious && watch.cautiousWhy ? watch.cautiousWhy : watch.why;
+  const stance = input.cautious ? "Cautious attention" : "Supportive attention";
+  const side = input.cautious ? "sell" : "buy";
+  const id = `theme-curated-${hashString(`${input.seedKey}:${watch.symbol}`).toString(36)}`;
+
+  return {
+    symbol: watch.symbol,
+    desk: deskName(watch.module),
+    stanceLabel: stance,
+    attention,
+    blurb: `${stance}: ${why}`,
+    deepDiveModule: watch.module,
+    deepDiveRow: {
+      symbol: watch.symbol,
+      note: why,
+      briefingNote: `${input.theme}: ${why}`,
+      side,
+      type: input.cautious && watch.module === "trades" ? "put" : watch.module === "trades" ? "call" : undefined,
+      matchup: watch.module === "betting" ? watch.symbol : undefined,
+      market: watch.module === "predictions" ? watch.symbol : undefined,
+      asset: watch.module === "crypto" ? watch.symbol : undefined,
+      direction: watch.module === "crypto" ? (input.cautious ? "outflow watch" : "inflow watch") : undefined,
+      yes: watch.module === "predictions" ? attention / 100 : undefined,
+      platform: watch.module === "predictions" ? "Theme watch" : undefined,
+      categoryLabel: watch.module === "predictions" ? "Theme probability" : undefined,
+      timestamp: new Date().toISOString(),
+      id,
+    },
+  };
+}
+
 function opportunityWatch(
   o: HomeOpportunity,
-  cautiousTheme: boolean
+  cautiousTheme: boolean,
+  theme?: string
 ): RelatedWatchItem {
   const mod = brandModuleFromOpp(o.module);
   const rawStance = stanceLabel(o.stance ?? o.title);
@@ -47,9 +263,12 @@ function opportunityWatch(
     cautiousTheme && !/caution|defensive|avoid|mixed/i.test(rawStance)
       ? "Elevated caution"
       : rawStance;
+  const themeTie = theme
+    ? `Related to "${theme}" through live ${deskName(o.module)} desk signals.`
+    : `${o.confidence}% desk attention.`;
   const blurb = cautiousTheme
-    ? `Watch $${o.symbol} on the ${deskName(o.module)} desk — theme pressure is softer; treat as awareness, not a sell order.`
-    : `Watch $${o.symbol} on the ${deskName(o.module)} desk · ${o.confidence}% desk attention.`;
+    ? `Cautious attention: ${themeTie} Treat as awareness, not an order.`
+    : `Supportive attention: ${themeTie}`;
 
   return {
     symbol: o.symbol,
@@ -80,6 +299,7 @@ export function pickRelatedWatches(
     relatedSymbols?: string[];
     beneficiaries?: string[];
     affectedAssets?: string[];
+    themeId?: string;
     theme?: string;
     cautious?: boolean;
     limit?: number;
@@ -106,36 +326,59 @@ export function pickRelatedWatches(
       score += 2;
     }
     score += o.confidence / 100;
-    return { o, score };
+    const relevanceScore = score - o.confidence / 100;
+    return { o, score, relevanceScore };
   });
 
   scored.sort((a, b) => b.score - a.score);
 
   const picked: HomeOpportunity[] = [];
   const seenMod = new Set<string>();
-  for (const { o, score } of scored) {
+  for (const { o, relevanceScore } of scored) {
     if (picked.length >= limit) break;
-    if (score < 1 && picked.length >= 2) continue;
+    if (relevanceScore < 1) continue;
     // Prefer desk diversity after first two matches
-    if (picked.length >= 2 && seenMod.has(o.module) && scored.some((x) => !seenMod.has(x.o.module) && x.score > 0)) {
+    if (
+      picked.length >= 2 &&
+      seenMod.has(o.module) &&
+      scored.some((x) => !seenMod.has(x.o.module) && x.relevanceScore >= 1)
+    ) {
       continue;
     }
     picked.push(o);
     seenMod.add(o.module);
   }
 
-  // Fill remaining with top desks if thin
-  if (picked.length < Math.min(3, opportunities.length)) {
+  const theme = opts.theme ?? "this theme";
+  const seedKey = themeKey(opts) || theme;
+  const watches = picked.slice(0, limit).map((o) => opportunityWatch(o, Boolean(opts.cautious), theme));
+  const seenWatchKeys = new Set(watches.map((w) => `${w.deepDiveModule}:${w.symbol.toUpperCase()}`));
+
+  for (const watch of rotateBySeed(curatedPoolForTheme(seedKey), seedKey)) {
+    if (watches.length >= limit) break;
+    const key = `${watch.module}:${watch.symbol.toUpperCase()}`;
+    if (seenWatchKeys.has(key)) continue;
+    watches.push(curatedWatch(watch, { theme, seedKey, cautious: Boolean(opts.cautious) }));
+    seenWatchKeys.add(key);
+  }
+
+  // Last-resort fill only after theme-aware watches are exhausted.
+  if (watches.length < Math.min(3, opportunities.length)) {
     for (const { o } of scored) {
-      if (picked.length >= limit) break;
-      if (!picked.includes(o)) picked.push(o);
+      if (watches.length >= limit) break;
+      const mod = brandModuleFromOpp(o.module);
+      const key = `${mod}:${o.symbol.toUpperCase()}`;
+      if (seenWatchKeys.has(key)) continue;
+      watches.push(opportunityWatch(o, Boolean(opts.cautious), theme));
+      seenWatchKeys.add(key);
     }
   }
 
-  return picked.slice(0, limit).map((o) => opportunityWatch(o, Boolean(opts.cautious)));
+  return watches.slice(0, limit);
 }
 
 export function buildThemeIntelDetail(input: {
+  themeId?: string;
   theme: string;
   status?: string;
   band?: string;
@@ -157,6 +400,7 @@ export function buildThemeIntelDetail(input: {
     relatedSymbols: input.relatedSymbols,
     beneficiaries: input.beneficiaries,
     affectedAssets: input.affectedAssets,
+    themeId: input.themeId,
     theme: input.theme,
     cautious,
     limit: 5,
@@ -224,6 +468,7 @@ export function buildThemeFromProbabilityView(
   const status =
     statusLabel ?? (rising ? "↑ Rising" : cooling ? "↓ Cooling" : "→ Stable");
   return buildThemeIntelDetail({
+    themeId: theme.id,
     theme: theme.theme,
     status,
     direction: theme.direction,
@@ -243,6 +488,7 @@ export function buildRadarCardDetail(
   opportunities: HomeOpportunity[]
 ): SignalDetailPayload {
   return buildThemeIntelDetail({
+    themeId: card.id,
     theme: card.title,
     status: card.status,
     band: card.band,
