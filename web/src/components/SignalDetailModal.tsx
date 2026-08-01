@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { BookOpen, ListChecks, LayoutPanelTop, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import type { RelatedWatchItem, SignalDetailPayload } from "../utils/signalIntel";
@@ -40,7 +41,15 @@ export function SignalDetailModal({
     Boolean(deepDiveModule) &&
     Boolean(deepDiveRow || symbol);
 
-  function openFullScorecard() {
+  function openScorecardAfterClose(row: Record<string, unknown>, module: NonNullable<SignalDetailPayload["deepDiveModule"]>) {
+    onClose();
+    window.setTimeout(() => {
+      deepDive?.openDeepDive(row, module);
+    }, 0);
+  }
+
+  function openFullScorecard(e: MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
     if (!deepDive || !deepDiveModule) return;
     const row =
       deepDiveRow ??
@@ -49,14 +58,13 @@ export function SignalDetailModal({
         timestamp: new Date().toISOString(),
         note: title,
       } as Record<string, unknown>);
-    onClose();
-    deepDive.openDeepDive(row, deepDiveModule);
+    openScorecardAfterClose(row, deepDiveModule);
   }
 
-  function openWatch(w: RelatedWatchItem) {
+  function openWatch(e: MouseEvent<HTMLButtonElement>, w: RelatedWatchItem) {
+    e.stopPropagation();
     if (!deepDive) return;
-    onClose();
-    deepDive.openDeepDive(w.deepDiveRow, w.deepDiveModule);
+    openScorecardAfterClose(w.deepDiveRow, w.deepDiveModule);
   }
 
   return createPortal(
@@ -127,7 +135,7 @@ export function SignalDetailModal({
                   <button
                     type="button"
                     className="signal-detail-watch-btn"
-                    onClick={() => openWatch(w)}
+                    onClick={(e) => openWatch(e, w)}
                     disabled={!deepDive}
                   >
                     <span className="signal-detail-watch-top">

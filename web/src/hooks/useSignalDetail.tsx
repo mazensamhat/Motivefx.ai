@@ -5,6 +5,8 @@ import { resolveSignalDetail, type SignalDetailPayload } from "../utils/signalIn
 interface SignalDetailContextValue {
   inspectSignal: (label: string, extra?: Partial<SignalDetailPayload>) => void;
   inspectDetail: (payload: SignalDetailPayload) => void;
+  closeDetail: () => void;
+  detail: SignalDetailPayload | null;
 }
 
 const SignalDetailContext = createContext<SignalDetailContextValue | null>(null);
@@ -20,12 +22,13 @@ export function SignalDetailProvider({ children }: { children: ReactNode }) {
     setDetail(payload);
   }, []);
 
+  const closeDetail = useCallback(() => {
+    setDetail(null);
+  }, []);
+
   return (
-    <SignalDetailContext.Provider value={{ inspectSignal, inspectDetail }}>
+    <SignalDetailContext.Provider value={{ inspectSignal, inspectDetail, closeDetail, detail }}>
       {children}
-      {detail && (
-        <SignalDetailModal {...detail} onClose={() => setDetail(null)} />
-      )}
     </SignalDetailContext.Provider>
   );
 }
@@ -34,4 +37,10 @@ export function useSignalDetail() {
   const ctx = useContext(SignalDetailContext);
   if (!ctx) throw new Error("useSignalDetail must be used within SignalDetailProvider");
   return ctx;
+}
+
+export function SignalDetailHost() {
+  const { closeDetail, detail } = useSignalDetail();
+
+  return detail ? <SignalDetailModal {...detail} onClose={closeDetail} /> : null;
 }

@@ -8,7 +8,7 @@ import { ModulesProvider } from "./hooks/useModules";
 import { GenerationalProvider } from "./hooks/useGenerationalProfile";
 import { PlatformPrefsProvider } from "./hooks/usePlatformPrefs";
 import { AssetDeepDiveProvider } from "./hooks/useAssetDeepDive";
-import { SignalDetailProvider } from "./hooks/useSignalDetail";
+import { SignalDetailHost, SignalDetailProvider } from "./hooks/useSignalDetail";
 import { IntelToastProvider } from "./hooks/useIntelToast";
 import { AccountSettingsHost } from "./components/AccountSettingsHost";
 import "./styles/global.css";
@@ -26,6 +26,7 @@ createRoot(document.getElementById("root")!).render(
                   <AssetDeepDiveProvider>
                     <App />
                     <AccountSettingsHost />
+                    <SignalDetailHost />
                   </AssetDeepDiveProvider>
                 </SignalDetailProvider>
               </IntelToastProvider>
