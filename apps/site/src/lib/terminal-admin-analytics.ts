@@ -1,5 +1,6 @@
 import { prisma } from "@motivefx/database";
 import type { AdminDashboard } from "@/lib/admin-api";
+import { isPrismaMissingColumnError } from "@/lib/load-user";
 import { PRICING_TIERS } from "@/lib/tiers";
 
 const MODULES = ["trades", "crypto", "betting", "penny", "predictions"] as const;
@@ -31,6 +32,30 @@ const TIER_MRR_USD: Record<string, number> = Object.fromEntries(
 
 const CANCELLED_STATUSES = new Set(["cancelled", "canceled", "churned"]);
 
+async function getPayingUsersSafe() {
+  const select = { intelligenceTier: true, selectedMarkets: true } as const;
+  try {
+    return await prisma.user.findMany({
+      where: {
+        disabledAt: null,
+        subscriptionStatus: "active",
+        OR: [{ stripeSubscriptionId: { not: null } }, { billingProvider: { not: null } }],
+      },
+      select,
+    });
+  } catch (error) {
+    if (!isPrismaMissingColumnError(error)) throw error;
+    return prisma.user.findMany({
+      where: {
+        disabledAt: null,
+        subscriptionStatus: "active",
+        stripeSubscriptionId: { not: null },
+      },
+      select,
+    });
+  }
+}
+
 function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -56,14 +81,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
   const [totalUsers, payingUsers, usage24h, usage14d, usage30d, recentUsers, allUsers, churnEvents30d] =
     await Promise.all([
       prisma.user.count(),
-      prisma.user.findMany({
-        where: {
-          disabledAt: null,
-          subscriptionStatus: "active",
-          OR: [{ stripeSubscriptionId: { not: null } }, { billingProvider: { not: null } }],
-        },
-        select: { intelligenceTier: true, selectedMarkets: true },
-      }),
+      getPayingUsersSafe(),
       prisma.usageEvent.count({ where: { createdAt: { gte: since24h } } }),
       prisma.usageEvent.findMany({
         where: { createdAt: { gte: since14d } },

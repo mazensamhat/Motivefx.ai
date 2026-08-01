@@ -1,4 +1,5 @@
 import { prisma } from "@motivefx/database";
+import { isPrismaMissingColumnError } from "@/lib/load-user";
 import { PRICING_TIERS, type PricingTierId } from "@/lib/tiers";
 
 /**
@@ -73,6 +74,8 @@ type PayingUser = {
   mrr: number;
 };
 
+type FinancialUser = Omit<PayingUser, "mrr">;
+
 /** A revenue-generating subscriber: active status, not comp, not disabled, has billing. */
 function isPaying(u: {
   subscriptionStatus: string;
@@ -84,6 +87,42 @@ function isPaying(u: {
   if (u.subscriptionStatus === "comp") return false;
   if (u.subscriptionStatus !== "active") return false;
   return Boolean(u.stripeSubscriptionId) || Boolean(u.billingProvider);
+}
+
+async function getFinancialUsersSafe(): Promise<FinancialUser[]> {
+  const select = {
+    id: true,
+    email: true,
+    intelligenceTier: true,
+    subscriptionStatus: true,
+    billingProvider: true,
+    stripeSubscriptionId: true,
+    accessExpiresAt: true,
+    disabledAt: true,
+    lastSeenAt: true,
+    createdAt: true,
+    signupCountry: true,
+  } as const;
+  try {
+    return await prisma.user.findMany({ select });
+  } catch (error) {
+    if (!isPrismaMissingColumnError(error)) throw error;
+    const rows = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        intelligenceTier: true,
+        subscriptionStatus: true,
+        stripeSubscriptionId: true,
+        accessExpiresAt: true,
+        disabledAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        signupCountry: true,
+      },
+    });
+    return rows.map((row) => ({ ...row, billingProvider: null }));
+  }
 }
 
 export type FinancialSnapshot = Awaited<ReturnType<typeof getFinancialSnapshot>>;
@@ -110,21 +149,7 @@ export async function getFinancialSnapshot() {
     journalCount,
     alertAgg,
   ] = await Promise.all([
-    prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        intelligenceTier: true,
-        subscriptionStatus: true,
-        billingProvider: true,
-        stripeSubscriptionId: true,
-        accessExpiresAt: true,
-        disabledAt: true,
-        lastSeenAt: true,
-        createdAt: true,
-        signupCountry: true,
-      },
-    }),
+    getFinancialUsersSafe(),
     prisma.user.count({ where: { subscriptionStatus: "comp", disabledAt: null } }),
     prisma.usageEvent.findMany({
       where: { createdAt: { gte: since24h }, userId: { not: null } },
