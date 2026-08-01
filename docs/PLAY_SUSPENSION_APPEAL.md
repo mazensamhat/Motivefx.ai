@@ -1,6 +1,6 @@
 ﻿# Google Play Suspension Appeal — MotiveFX.AI (`ai.motivefx.app`)
 
-**Do not submit this appeal until the checklist at the bottom of this file (and in the companion “before appealing” note) is complete.** A weak appeal after Enforcement Process suspension can escalate toward developer-account termination.
+**Submit-now status:** User smoke-tested the 1.0.6 / versionCode 22 preview build on a physical phone and is ready to submit the appeal now. Upload the production AAB first if it is not already attached in Play Console.
 
 **App:** MotiveFX.AI  
 **Package:** `ai.motivefx.app`  
@@ -14,6 +14,16 @@
 **Superseded remediation build:** version **1.0.5**, versionCode **21** (EAS `8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`, commit `6ce29d0`)
 
 ---
+
+## Play Console form (1000 chars)
+
+Paste this into **Describe the changes you will make to fix this issue if your appeal is granted.** Character count: **987**.
+
+```text
+We understand this suspension followed non-compliance and broken functionality: unresponsive sign-in, Android payment steering risk, and incomplete account deletion. We have already fixed these in MotiveFX.AI 1.0.6 (versionCode 22) and will upload/submit that AAB for review.
+
+Shipped fixes: auth uses soft timeouts/retry instead of hard AbortController cancellation, so Sign in no longer shows canceled-fetch dead-end errors; Android native/WebView paths no longer open web pricing, Stripe checkout, or subscription management for digital goods. Play Billing is not claimed live, and purchase CTAs stay non-steering unless store billing is configured. We added POST /api/auth/delete-account plus in-app Delete account/Account paths; public deletion URL: https://www.motivefxai.com/data-deletion. We removed the forced native demo landmine, hardened shell modals/chrome/deep-scan paths, fixed scroll/touch behavior and header polish, and preserved monitor-only informational positioning.
+```
 
 ## Appeal body (paste into Play Console)
 
@@ -95,8 +105,8 @@ See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (upd
 
 - [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
 - [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
-- [x] EAS production AAB **1.0.6** / versionCode **22** built (`52f83a92-def2-4b3b-bc7b-650ebfa3e480`); upload + device smoke still required before appeal
-- [ ] EAS preview APK **1.0.6** / versionCode **22** installed on phone for smoke testing (`8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`)
+- [x] EAS production AAB **1.0.6** / versionCode **22** built (`52f83a92-def2-4b3b-bc7b-650ebfa3e480`); upload first if not already attached in Play Console
+- [x] EAS preview APK **1.0.6** / versionCode **22** installed and smoke-tested on phone (`8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`)
 - [ ] Review notes: working demo account (no 2FA), age-gate instructions  
 - [ ] Data Safety form matches actual collection (email, account ID, app activity)  
 - [ ] Store listing no longer tells users to buy subscriptions only on the website  
