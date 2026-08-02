@@ -79,3 +79,24 @@ MotiveFX.AI / MotiveFX team
 - Do not add claims that are not true in production.
 - Do not say the app has Play Billing unless RevenueCat Android key, Play products, purchase flow, and entitlement sync are verified.
 - If Google names gambling policy as the concern, treat the current package/listing as high-risk and move to the relaunch checklist.
+
+## Support ticket (1000 chars)
+
+File a Google Play **support ticket** (not free-form email). Paste the issue description below. Character count: **985** (max 1000).
+
+```text
+MotiveFX.AI (ai.motivefx.app): appeal denied under Enforcement Process (repeated violations). Request clarification and reconsideration of remediated build 1.0.6 / versionCode 22 (AAB attached).
+
+Fixes in 1.0.6/22: soft auth timeouts/retry (no AbortController cancel); WebView load/retry + scroll/touch hardened; Android no longer opens web pricing, Stripe checkout, or sub management for digital goods; CTAs non-steering (Play Billing not claimed live); POST /api/auth/delete-account + in-app Delete account/Account; https://www.motivefxai.com/data-deletion; native demo/legacy risks removed. Monitor-only intelligence - not broker, sportsbook, or personalized advice.
+
+Please confirm (A) which Policy status item(s), screens, listing/Data Safety/content-rating, or reviewer flows still failed after 1.0.6/22; OR (B) whether this listing/package is final and ineligible for reinstatement. If an older binary was reviewed, please reconsider versionCode 22.
+
+MotiveFX.AI / MotiveFX team
+```
+
+### Attachment checklist
+
+- `docs/PLAY_SUSPENSION_APPEAL.md` or a short PDF summarizing remediations
+- Link/list AAB: version **1.0.6**, versionCode **22** — Expo artifact `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab` (build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`)
+- Screenshot of Play Console **Policy status** (if accessible)
+- Data deletion URL page: `https://www.motivefxai.com/data-deletion`
