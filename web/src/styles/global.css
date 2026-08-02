@@ -315,8 +315,16 @@ html.motivefx-native-shell .app-footer {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+html.motivefx-native-shell .live-feed,
 html.motivefx-native-shell .live-feed-bar {
-  top: env(safe-area-inset-top, 0px);
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 2rem;
+  max-height: 2.35rem;
+  padding: 0.35rem 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 html.motivefx-native-shell .module-sidebar {
@@ -392,6 +400,8 @@ html.motivefx-native-shell .live-feed-inner {
   display: inline-flex;
   width: max-content;
   animation: scroll 48s linear infinite;
+  white-space: nowrap;
+  will-change: transform;
 }
 
 html.motivefx-native-shell .feed-item {
@@ -399,6 +409,8 @@ html.motivefx-native-shell .feed-item {
   max-width: min(22rem, 78vw);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 /* Companion mode: suppress stray web checkout CTAs if any remain */
@@ -10542,6 +10554,49 @@ html[data-gen="boomer"] .gen-setup-preview {
 .ts-badge.tone-up { color: #34d399; background: rgba(52, 211, 153, 0.1); }
 .ts-badge.tone-cool { color: #7dd3fc; background: rgba(125, 211, 252, 0.1); }
 .ts-badge.tone-down { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+@media (max-width: 520px) {
+  .todays-signals-body {
+    padding-inline: 0.85rem;
+  }
+
+  .ts-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    padding: 0.62rem 0.65rem;
+  }
+
+  .ts-copy,
+  .ts-label,
+  .ts-hint {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ts-label {
+    display: block;
+    font-size: 0.84rem;
+  }
+
+  .ts-hint {
+    display: block;
+    max-width: 100%;
+    font-size: 0.6rem;
+    opacity: 0.78;
+  }
+
+  .ts-badge {
+    justify-self: end;
+    max-width: 5.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ts-chevron {
+    display: none;
+  }
+}
 .todays-signals-gauge {
   text-align: center;
   border: 0;

@@ -11,7 +11,7 @@ export function LiveFeed() {
 
   if (events.length === 0) {
     return (
-      <div className="live-feed">
+      <div className="live-feed live-feed-bar" aria-label="Live market feed">
         <div className="feed-item" style={{ padding: "0 1.5rem" }}>
           Scanning markets for smart money signals…
         </div>
@@ -22,7 +22,7 @@ export function LiveFeed() {
   const doubled = [...events, ...events];
 
   return (
-    <div className="live-feed">
+    <div className="live-feed live-feed-bar" aria-label="Live market feed">
       <div className="live-feed-inner">
         {doubled.map((e, i) => (
           <button
