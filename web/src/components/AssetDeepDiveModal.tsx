@@ -17,6 +17,7 @@ import { MODULE_BRAND } from "../brand/moduleBrand";
 import { useApi } from "../hooks/useApi";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
 import { useSignalDetail } from "../hooks/useSignalDetail";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 import type { AssetDeepDivePayload } from "../utils/assetDeepDive";
 import { resolveSignalDetail } from "../utils/signalIntel";
 import type { HomeBriefing } from "../types";
@@ -50,6 +51,8 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
   const brand = MODULE_BRAND[module];
   const platformLabel = getPlatformLabel(module);
   const hasPlatform = Boolean(getPref(module)?.platformId);
+  const androidPlaySafeActionBlocked =
+    isNativeAndroidShell() && (module === "betting" || module === "predictions");
 
   if (!payload) return null;
 
@@ -282,9 +285,16 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
             </div>
 
             <div className="asset-dive-sandbox">
-              <span className="asset-dive-sandbox-label">Open in your connected app (optional)</span>
+              <span className="asset-dive-sandbox-label">
+                {androidPlaySafeActionBlocked ? "Monitor-only Android intel" : "Open in your connected app (optional)"}
+              </span>
 
-              {hasPlatform ? (
+              {androidPlaySafeActionBlocked ? (
+                <p className="asset-dive-platform-hint">
+                  Odds and event-market scorecards stay informational in the Android app. MotiveFX does
+                  not open sportsbooks, prediction-market venues, or wagering workflows.
+                </p>
+              ) : hasPlatform ? (
                 <p className="asset-dive-platform-hint">
                   <ExternalLink size={11} />
                   Opens <strong>{platformLabel}</strong> in a new tab after you slide to confirm.
@@ -298,49 +308,53 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
                 </div>
               )}
 
-              <div className="asset-dive-stake-row">
-                <span>Reference stake size</span>
-                <span className="asset-dive-stake-val">${stake.toLocaleString()}</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={5000}
-                step={50}
-                value={stake}
-                onChange={(e) => setStake(Number(e.target.value))}
-                className="asset-dive-stake-slider"
-                style={{ accentColor: brand.accent }}
-              />
-
-              {hasPlatform && (
+              {!androidPlaySafeActionBlocked && (
                 <>
-                  <div className="asset-dive-action-btns">
-                    <button
-                      type="button"
-                      className="asset-dive-btn asset-dive-btn-buy"
-                      onClick={() => setPendingSide("BUY")}
-                      disabled={redirecting}
-                    >
-                      {actionLabels("BUY")}
-                    </button>
-                    <button
-                      type="button"
-                      className="asset-dive-btn asset-dive-btn-sell"
-                      onClick={() => setPendingSide("SELL")}
-                      disabled={redirecting}
-                    >
-                      {actionLabels("SELL")}
-                    </button>
+                  <div className="asset-dive-stake-row">
+                    <span>Reference stake size</span>
+                    <span className="asset-dive-stake-val">${stake.toLocaleString()}</span>
                   </div>
+                  <input
+                    type="range"
+                    min={50}
+                    max={5000}
+                    step={50}
+                    value={stake}
+                    onChange={(e) => setStake(Number(e.target.value))}
+                    className="asset-dive-stake-slider"
+                    style={{ accentColor: brand.accent }}
+                  />
 
-                  {pendingSide && (
-                    <SlideToConfirm
-                      label={`Slide to open ${platformLabel} · ${pendingSide}`}
-                      accent={pendingSide === "BUY" ? brand.accent : "#ff5252"}
-                      onConfirm={handleSlideConfirm}
-                      disabled={redirecting}
-                    />
+                  {hasPlatform && (
+                    <>
+                      <div className="asset-dive-action-btns">
+                        <button
+                          type="button"
+                          className="asset-dive-btn asset-dive-btn-buy"
+                          onClick={() => setPendingSide("BUY")}
+                          disabled={redirecting}
+                        >
+                          {actionLabels("BUY")}
+                        </button>
+                        <button
+                          type="button"
+                          className="asset-dive-btn asset-dive-btn-sell"
+                          onClick={() => setPendingSide("SELL")}
+                          disabled={redirecting}
+                        >
+                          {actionLabels("SELL")}
+                        </button>
+                      </div>
+
+                      {pendingSide && (
+                        <SlideToConfirm
+                          label={`Slide to open ${platformLabel} · ${pendingSide}`}
+                          accent={pendingSide === "BUY" ? brand.accent : "#ff5252"}
+                          onConfirm={handleSlideConfirm}
+                          disabled={redirecting}
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}

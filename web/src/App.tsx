@@ -21,7 +21,7 @@ import { useModules } from "./hooks/useModules";
 import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
-import { isNativeShell } from "./lib/nativeShell";
+import { isNativeAndroidShell, isNativeShell } from "./lib/nativeShell";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { DataDeletionPage } from "./pages/DataDeletionPage";
@@ -44,6 +44,13 @@ const TABS: { id: TabId; label: string; module: string }[] = [
 
 const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
 const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
+
+function playSafeModuleLabel(tab: { id: TabId; label: string }) {
+  if (!isNativeAndroidShell()) return tab.label;
+  if (tab.id === "betting") return "Odds intel";
+  if (tab.id === "predictions") return "Event intel";
+  return tab.label;
+}
 
 function legalHref(page: string) {
   return SITE_EMBED ? `/terminal/?page=${page}` : `/?page=${page}`;
@@ -170,7 +177,7 @@ export default function App() {
             {activeTab === "home" ? (
               <TabHome onNavigate={setActiveTab} onOpenGlossary={() => setGlossaryOpen(true)} />
             ) : (
-              <ModuleGate module={active.module} moduleLabel={active.label}>
+              <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
                 {activeTab === "stocks" && <TabStocks />}
                 {activeTab === "penny" && <TabPenny />}
                 {activeTab === "crypto" && <TabCrypto />}

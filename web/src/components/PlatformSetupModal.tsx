@@ -9,6 +9,7 @@ import {
   type PlatformPref,
 } from "../config/tradingPlatforms";
 import { MODULE_BRAND, type BrandModuleId } from "../brand/moduleBrand";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 
 const PLATFORM_TO_BRAND: Record<PlatformModuleKey, BrandModuleId> = {
   trades: "trades",
@@ -29,12 +30,15 @@ const CUSTOM_ID = "custom";
 
 export function PlatformSetupModal({ catalog, prefs, onSave, onClose }: Props) {
   const { active, allowedMarkets } = useModules();
+  const androidPlaySafe = isNativeAndroidShell();
   const subscribed =
     allowedMarkets.length > 0
       ? (allowedMarkets.map((m) => APP_MODULE_TO_PLATFORM[m]).filter(Boolean) as PlatformModuleKey[])
       : active.filter((m) => m !== "annual").map((m) => APP_MODULE_TO_PLATFORM[m]).filter(Boolean) as PlatformModuleKey[];
 
-  const modulesToShow = subscribed.length > 0 ? subscribed : PLATFORM_MODULE_KEYS;
+  const modulesToShow = (subscribed.length > 0 ? subscribed : PLATFORM_MODULE_KEYS).filter(
+    (key) => !androidPlaySafe || (key !== "betting" && key !== "predictions")
+  );
 
   const [draft, setDraft] = useState<Record<string, PlatformPref>>(() => {
     const init: Record<string, PlatformPref> = {};
@@ -100,12 +104,21 @@ export function PlatformSetupModal({ catalog, prefs, onSave, onClose }: Props) {
             Connect your apps & brokers
           </h2>
           <p className="platform-setup-sub">
-            Optional: choose the external apps you already use for research follow-ups. MotiveFX.AI is
+            Optional: choose the external apps you already use for research follow-ups. MotiveFX is
             monitor-only — it does not place trades, bets, or purchases inside this app.
+            {androidPlaySafe
+              ? " Sportsbook and prediction-market app handoffs are not shown in the Android app."
+              : ""}
           </p>
         </header>
 
         <div className="platform-setup-grid">
+          {modulesToShow.length === 0 && (
+            <p className="platform-setup-sub">
+              MotiveFX keeps odds and event-market desks in research mode on Android, so there are no
+              external wagering apps to configure here.
+            </p>
+          )}
           {modulesToShow.map((key) => {
             const accent = MODULE_BRAND[PLATFORM_TO_BRAND[key]].accent;
             const entry = draft[key] ?? { platformId: "" };

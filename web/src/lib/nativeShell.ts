@@ -4,6 +4,15 @@ export function isNativeShell(): boolean {
   return /MotiveFXNative/i.test(navigator.userAgent);
 }
 
+/** True only for the Expo Android WebView shell used for Google Play builds. */
+export function isNativeAndroidShell(): boolean {
+  if (!isNativeShell()) return false;
+  if (typeof window !== "undefined" && window.__MOTIVEFX_NATIVE_PLATFORM__) {
+    return window.__MOTIVEFX_NATIVE_PLATFORM__ === "android";
+  }
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+}
+
 /** True when the native shell injected RevenueCat / store billing availability. */
 export function isNativeIapAvailable(): boolean {
   if (typeof window === "undefined") return false;
@@ -126,5 +135,6 @@ declare global {
   interface Window {
     ReactNativeWebView?: { postMessage: (message: string) => void };
     __MOTIVEFX_NATIVE_IAP__?: boolean;
+    __MOTIVEFX_NATIVE_PLATFORM__?: "android" | "ios" | "web" | string;
   }
 }

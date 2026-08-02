@@ -2,6 +2,7 @@ import { BookOpen, Home, Lock, Settings2, Users } from "lucide-react";
 import { TAB_TO_BRAND, brandForTab } from "../brand/moduleBrand";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 import { MotiveFxBrandLogo, MotivFxLogo } from "./MotivFxLogo";
 import type { TabId } from "../types";
 
@@ -34,6 +35,12 @@ export function ModuleSidebar({
   const { openSetup } = usePlatformPrefs();
   const { profile, openSetup: openGenSetup } = useGenerationalProfile();
   const activeBrand = brandForTab(activeTab);
+  const playSafeLabel = (tab: { id: TabId; label: string }) => {
+    if (!isNativeAndroidShell()) return tab.label;
+    if (tab.id === "betting") return "Odds intel";
+    if (tab.id === "predictions") return "Event intel";
+    return tab.label;
+  };
 
   return (
     <aside className="module-sidebar glass-panel">
@@ -46,7 +53,7 @@ export function ModuleSidebar({
         )}
       </div>
 
-      <div className="sidebar-label">Market Desks</div>
+      <div className="sidebar-label">{isNativeAndroidShell() ? "Market Monitors" : "Market Desks"}</div>
       <nav className="sidebar-nav">
         {NAV.map((t) => {
           const locked = t.module !== "home" && !hasModule(t.module);
@@ -71,7 +78,7 @@ export function ModuleSidebar({
                 />
               )}
               <span className="sidebar-item-text">
-                {t.label}
+                {playSafeLabel(t)}
                 {locked && <Lock size={11} className="sidebar-lock" />}
                 {pulse > 0 && !active && (
                   <span className="sidebar-pulse-badge">{pulse} new</span>
@@ -93,7 +100,7 @@ export function ModuleSidebar({
         </div>
         <button type="button" className="sidebar-apps-btn" onClick={openSetup}>
           <Settings2 size={12} />
-          My Apps & Brokers
+          {isNativeAndroidShell() ? "Research Apps" : "My Apps & Brokers"}
         </button>
         <button type="button" className="sidebar-apps-btn" onClick={onOpenGlossary}>
           <BookOpen size={12} />

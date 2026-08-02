@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Filter, RefreshCw, X } from "lucide-react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { apiGet, getUserId } from "../lib/api";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { AssetDeepDiveModal } from "./AssetDeepDiveModal";
 import { formatTime, formatUsd } from "./ActivityPanel";
@@ -54,6 +55,7 @@ function displayCount(v: unknown): string {
 
 export function BetMarketActivityPanel() {
   const isMobile = useMediaQuery("(max-width: 900px)");
+  const androidPlaySafe = isNativeAndroidShell();
   const [sport, setSport] = useState("");
   const [matchup, setMatchup] = useState("");
   const [minBets, setMinBets] = useState("");
@@ -128,11 +130,15 @@ export function BetMarketActivityPanel() {
       <div className={`card glass-card activity-panel terminal-panel ${isMobile ? "activity-panel-mobile" : ""}`}>
         <div className="card-header card-header-bold">
           <div>
-            <h2 className="card-title card-title-lg">Sports Bet Activity</h2>
+            <h2 className="card-title card-title-lg">
+              {androidPlaySafe ? "Sports Odds Intel" : "Sports Bet Activity"}
+            </h2>
             <p className="activity-panel-sub">
-              {isMobile
-                ? "Live sportsbook quotes from the line board."
-                : "Live sportsbook quotes (SharpAPI / Odds API). Click a row for deep-dive context."}
+              {androidPlaySafe
+                ? "Live odds board for research context only. No sportsbook handoffs or wagering actions."
+                : isMobile
+                  ? "Live sportsbook quotes from the line board."
+                  : "Live sportsbook quotes (SharpAPI / Odds API). Click a row for deep-dive context."}
             </p>
           </div>
           <div className="activity-actions">

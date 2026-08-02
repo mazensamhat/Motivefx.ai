@@ -19,6 +19,7 @@ import {
   type PlatformPref,
 } from "../config/tradingPlatforms";
 import { apiGet, apiPost } from "../lib/api";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 import { PlatformSetupModal } from "../components/PlatformSetupModal";
 import { useAuth } from "./useAuth";
 
@@ -174,6 +175,11 @@ export function PlatformPrefsProvider({ children }: { children: ReactNode }) {
     ) => {
       if (!user?.userId) throw new Error("Sign in to open your broker app.");
       const module = brandToPlatformModule(brand);
+      if (isNativeAndroidShell() && (module === "betting" || module === "predictions")) {
+        throw new Error(
+          "MotiveFX on Android is monitor-only for odds and event-market intel. Sportsbook and prediction-market app handoffs are disabled."
+        );
+      }
       const res = await apiPost<{ url: string; platformName: string }>(
         "/advisor/platform-deeplink",
         {

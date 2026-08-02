@@ -27,6 +27,7 @@ import { MotivFxLogo } from "./MotivFxLogo";
 import { TodaysSignalsCard, type TodaysSignalRow } from "./TodaysSignalsCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { useSignalDetail } from "../hooks/useSignalDetail";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 import { formatSignalStrength } from "../config/productCopy";
 import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail } from "../utils/signalIntel";
 import {
@@ -90,6 +91,12 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
   } | null>(null);
 
   const b = data;
+  const playSafeTileLabel = (tile: { tab: TabId; label: string }) => {
+    if (!isNativeAndroidShell()) return tile.label;
+    if (tile.tab === "betting") return "Odds intel";
+    if (tile.tab === "predictions") return "Event intel";
+    return tile.label;
+  };
 
   useEffect(() => {
     if (!b?.generatedAt) return;
@@ -348,7 +355,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                 onClick={() => onNavigate(tile.tab)}
               >
                 <MotivFxLogo module={tile.brand} size={28} />
-                <span className="home-module-tile-label">{tile.label}</span>
+                <span className="home-module-tile-label">{playSafeTileLabel(tile)}</span>
                 <span className="home-module-tile-sub">
                   {summary
                     ? `${summary.count} tracked${summary.newSignals ? ` · ${summary.newSignals} new` : ""}`

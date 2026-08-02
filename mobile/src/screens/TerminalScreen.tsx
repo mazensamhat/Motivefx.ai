@@ -43,6 +43,7 @@ const VIEWPORT_LOCK_SCRIPT = `
     try {
       document.documentElement.classList.add("motivefx-native-shell");
       window.__MOTIVEFX_NATIVE_IAP__ = ${isIapConfigured() ? "true" : "false"};
+      window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
       var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
       var meta = document.querySelector('meta[name="viewport"]');
       if (!meta) {
@@ -95,6 +96,7 @@ function buildAuthInjectionScript(
         if (refreshToken) localStorage.setItem("motivefx_refresh_token", refreshToken);
         if (userId) localStorage.setItem("motivefx_user_id", userId);
         window.__MOTIVEFX_NATIVE_IAP__ = ${isIapConfigured() ? "true" : "false"};
+        window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
       } catch (e) {}
       true;
     })();

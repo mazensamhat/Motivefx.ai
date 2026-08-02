@@ -54,7 +54,7 @@ export function AgeGateScreen({ onAccepted }: Props) {
       <View style={[styles.flex, styles.container]}>
         <Text style={styles.title}>Access restricted</Text>
         <Text style={styles.body}>
-          MotiveFX.AI includes sports-betting and event-market intelligence modules. You must be{" "}
+          MotiveFX includes sports and event-market intelligence modules. You must be{" "}
           {MIN_AGE} or older to use this app.
         </Text>
         <Text style={styles.hint}>Close the app or enter a birth year that confirms you are 18+.</Text>
@@ -82,10 +82,10 @@ export function AgeGateScreen({ onAccepted }: Props) {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.brand}>MotiveFX.AI</Text>
+        <Text style={styles.brand}>MotiveFX</Text>
       <Text style={styles.title}>Age verification</Text>
       <Text style={styles.body}>
-        This app includes gambling-adjacent sports betting and prediction-market intelligence. Enter
+        This app includes sports odds and event-market intelligence. Enter
         your <Text style={styles.strong}>birth year</Text> to confirm you are at least{" "}
         <Text style={styles.strong}>{MIN_AGE} years old</Text> and that this content is legal where
         you live.

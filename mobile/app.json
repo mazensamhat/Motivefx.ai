@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "MotiveFX.AI",
-    "slug": "motivefx",
-    "version": "1.0.6",
+    "name": "MotiveFX",
+    "slug": "motivefx-android",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -25,8 +25,8 @@
       "buildNumber": "16"
     },
     "android": {
-      "package": "ai.motivefx.app",
-      "versionCode": 22,
+      "package": "com.motivefx.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0c1118"

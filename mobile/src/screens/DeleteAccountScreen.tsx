@@ -128,7 +128,7 @@ export function DeleteAccountScreen({ onCancel, onDeleted }: Props) {
       >
         <Text style={styles.title}>Delete account</Text>
         <Text style={styles.body}>
-          This permanently deletes your MotiveFX.AI account and associated personal data we control.
+          This permanently deletes your MotiveFX account and associated personal data we control.
           Most data is removed within 30 days. This cannot be undone.
         </Text>
 

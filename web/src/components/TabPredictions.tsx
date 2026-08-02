@@ -16,10 +16,12 @@ import { SimulationBanner } from "./SimulationBanner";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 
 export function TabPredictions() {
   const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
+  const androidPlaySafe = isNativeAndroidShell();
   const enabled = !modulesLoading && hasModule("predictions");
   const simMode = isSimulationOnly("predictions");
   const markets = useApi<{
@@ -46,19 +48,27 @@ export function TabPredictions() {
       <ModuleIntelStrip tab="predictions" />
       {simMode && <SimulationBanner module="predictions" />}
       <PortfolioOverview
-        label="PORTFOLIO VALUE"
+        label={androidPlaySafe ? "EVENT INTEL" : "PORTFOLIO VALUE"}
         value={simMode ? simulation?.bankroll : result?.portfolio_value}
-        subtitle={simMode ? "Simulation · virtual bankroll · Monitor only" : "Demo · war, celebrity & Fed markets · Monitor only"}
+        subtitle={
+          androidPlaySafe
+            ? "Research board · no prediction-market handoffs · Monitor only"
+            : simMode
+              ? "Simulation · virtual bankroll · Monitor only"
+              : "Demo · war, celebrity & Fed markets · Monitor only"
+        }
         winRate={calcWinRate(result?.recommendations)}
         module="predictions"
       />
       <div className="grid-2" style={{ marginBottom: "1rem" }}>
-        <PredictionTracker
-          analyzing={loading}
-          setAnalyzing={() => {}}
-          onAnalyzed={(d) => applyResult(d, true)}
-          simulationMode={simMode}
-        />
+        {!androidPlaySafe && (
+          <PredictionTracker
+            analyzing={loading}
+            setAnalyzing={() => {}}
+            onAnalyzed={(d) => applyResult(d, true)}
+            simulationMode={simMode}
+          />
+        )}
         <AiAdvisor
           summary={result?.summary}
           aiNarrative={result?.ai_narrative}
@@ -129,7 +139,7 @@ export function TabPredictions() {
         </div>
       </div>
       <NewsPanel module="predictions" />
-      <PredictionActivityPanel />
+      {!androidPlaySafe && <PredictionActivityPanel />}
     </>
   );
 }

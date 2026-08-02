@@ -17,6 +17,7 @@ import { SimulationBanner } from "./SimulationBanner";
 import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 
 const BETTING_SPORT_FILTERS = [
   { value: "all", label: "All" },
@@ -33,6 +34,7 @@ export function TabBetting() {
   const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const [selectedSport, setSelectedSport] = useState("all");
+  const androidPlaySafe = isNativeAndroidShell();
   const enabled = !modulesLoading && hasModule("betting");
   const simMode = isSimulationOnly("betting");
   const sportQuery =
@@ -79,11 +81,11 @@ export function TabBetting() {
       <div className="mf-stat-row">
         <div className="mf-stat-card">
           <span className="mf-stat-val">{activeCount}</span>
-          <span className="mf-stat-lbl">Active</span>
+          <span className="mf-stat-lbl">{androidPlaySafe ? "Signals" : "Active"}</span>
         </div>
         <div className="mf-stat-card">
           <span className="mf-stat-val">{settledCount}</span>
-          <span className="mf-stat-lbl">Settled</span>
+          <span className="mf-stat-lbl">{androidPlaySafe ? "Reviewed" : "Settled"}</span>
         </div>
         <div className="mf-stat-card">
           <span className="mf-stat-val">
@@ -91,13 +93,19 @@ export function TabBetting() {
               ? `$${bankroll.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
               : "—"}
           </span>
-          <span className="mf-stat-lbl">Balance</span>
+          <span className="mf-stat-lbl">{androidPlaySafe ? "Monitor bank" : "Balance"}</span>
         </div>
       </div>
       <PortfolioOverview
-        label="ACTIVE BETS"
+        label={androidPlaySafe ? "ODDS INTEL" : "ACTIVE BETS"}
         value={bankroll}
-        subtitle={simMode ? "Simulation · virtual bankroll · Monitor only" : "Demo slip · Monitor only"}
+        subtitle={
+          androidPlaySafe
+            ? "Research board · no sportsbook handoffs · Monitor only"
+            : simMode
+              ? "Simulation · virtual bankroll · Monitor only"
+              : "Demo slip · Monitor only"
+        }
         winRate={calcWinRate(result?.recommendations)}
         module="betting"
       />
@@ -121,12 +129,14 @@ export function TabBetting() {
         </div>
       </div>
       <div className="grid-2" style={{ marginBottom: "1rem" }}>
-        <BetTracker
-          analyzing={loading}
-          setAnalyzing={() => {}}
-          onAnalyzed={(d) => applyResult(d, true)}
-          simulationMode={simMode}
-        />
+        {!androidPlaySafe && (
+          <BetTracker
+            analyzing={loading}
+            setAnalyzing={() => {}}
+            onAnalyzed={(d) => applyResult(d, true)}
+            simulationMode={simMode}
+          />
+        )}
         <AiAdvisor
           summary={result?.summary}
           aiNarrative={result?.ai_narrative}
@@ -290,7 +300,7 @@ export function TabBetting() {
       </div>
       <NewsPanel module="betting" />
       <BetMarketActivityPanel />
-      <BetActivityPanel />
+      {!androidPlaySafe && <BetActivityPanel />}
     </>
   );
 }

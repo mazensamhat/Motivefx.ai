@@ -1,6 +1,6 @@
 # Google Play Relaunch With New Listing
 
-Use this only if the Google Play developer account remains in good standing and Google allows publishing a new compliant version with a **new package name** and **new app name**. Do not try to clone the suspended listing.
+Use this only if the Google Play developer account remains in good standing and Google allows publishing a new compliant version with a **new package name** and the locked app name **MotiveFX**. Do not try to clone the suspended listing/package.
 
 ## Recommendation
 
@@ -16,39 +16,33 @@ The safest packaging is:
 
 ## New App Identity
 
-Do not reuse **MotiveFX.AI** as the app name. Suggested names that are not direct clones:
+Locked identity for this relaunch:
 
-- Motive Signals
-- Motive Market Intel
-- Signal Desk by Motive
-- Motive Monitor
-- Market Pulse AI
-- SignalWatch AI
-- Motive Research Desk
+- Google Play store/app display name: **MotiveFX**
+- Android package/applicationId: **`com.motivefx.app`**
+- Expo slug: **`motivefx-android`**
+- Android release train: **1.0.0 / versionCode 1**
 
-Avoid names like "MotiveFX.AI 2", "MotiveFX Pro", or "MotiveFX Signals" if they read like the same suspended listing with a small suffix.
+Do not reuse the suspended package **`ai.motivefx.app`**. Do not use **MotiveFX.AI** as the new Play listing name.
 
 ## High-Level Expo Rename Steps
 
 In `mobile/app.json`:
 
-- Change `expo.name` to the new Play-safe app name.
-- Consider changing `expo.slug` if the EAS project should be distinct.
-- Change `expo.scheme` if deep links should not reuse `motivefx`.
-- Change `expo.android.package` from `ai.motivefx.app` to a new unique package, for example:
-  - `ai.motive.signals`
-  - `ai.motive.marketintel`
-  - `com.motive.marketpulse`
-- Bump `expo.version` for the new launch train.
-- Reset or intentionally set `expo.android.versionCode` for the new package's first release train.
-- Decide whether to create a new EAS project or keep the same EAS project with a new Android package. If creating a new EAS project, update `extra.eas.projectId` after `eas init` / project linking.
+- `expo.name` is **MotiveFX**.
+- `expo.slug` is **`motivefx-android`** so the EAS project can be separated from the prior listing if needed.
+- `expo.scheme` remains **`motivefx`** for brand deep links.
+- `expo.android.package` is **`com.motivefx.app`**.
+- `expo.version` is **1.0.0**.
+- `expo.android.versionCode` is **1** for the new package's first release train.
+- Current `extra.eas.projectId` may still point at the previous Expo project. If Expo refuses to build or links artifacts to the prior app, run `eas init` from `mobile/`, create/link a new Expo project for MotiveFX, then commit the new `extra.eas.projectId`.
 
 In `mobile/eas.json`:
 
 - Keep `production.android.buildType` as `app-bundle`.
 - Keep production URLs pointed at the compliant production web host.
 - Disable or omit Android purchase paths unless Play Billing is fully configured and verified.
-- Use separate EAS profiles only if you need a Play-safe Android flavor that hides betting/prediction surfaces while web/iOS keep broader features.
+- Android native WebView now runs in Play-safe monitor mode: sports/event-market desks remain informational, but sportsbook/prediction-market app handoffs and bet/position entry ledgers are hidden or disabled.
 
 Before building:
 
@@ -62,8 +56,8 @@ Do **not** run EAS builds or submissions until the Play-safe scope is finalized.
 
 - [ ] Android first launch includes an 18+ age gate if prediction, betting-adjacent, financial, or mature market content remains visible.
 - [ ] App copy says "informational", "research", "signals", "market intelligence", or "monitoring"; it does not imply wagering execution or guaranteed outcomes.
-- [ ] No bet placement, sportsbook account, deposit, withdrawal, odds-shopping, parlay builder, or "place bet" workflow is visible on Android.
-- [ ] If betting/prediction desks remain, label them as analysis/monitoring and remove gambling-looking CTAs.
+- [x] No bet placement, sportsbook account, deposit, withdrawal, odds-shopping, parlay builder, or "place bet" workflow is visible on Android native.
+- [x] Betting/prediction desks remain as odds/event intel monitors with gambling-looking CTAs removed on Android native.
 - [ ] Consider hiding betting desks entirely for Android until Google confirms policy fit.
 - [ ] Financial disclaimers remain visible and accurate.
 - [ ] Reviewer can access the core app without 2FA, invite codes, dead gates, or paid-only walls.
@@ -87,7 +81,7 @@ Do **not** run EAS builds or submissions until the Play-safe scope is finalized.
 
 ## Store Listing Checklist
 
-- [ ] New app name and icon do not look like a direct clone of the suspended listing.
+- [x] New package is `com.motivefx.app`; app name is MotiveFX, not MotiveFX.AI.
 - [ ] Short description avoids betting, wagering, winning, sportsbook, guaranteed predictions, or purchase steering language.
 - [ ] Full description emphasizes monitor-only market intelligence.
 - [ ] Screenshots show login, watchlists/signals, alerts, and account deletion, not betting placement flows.
@@ -124,7 +118,7 @@ Avoid language like:
 Proceed with a new listing only after:
 
 - [ ] Play Console Policy status has been checked and any active account-level issue is understood.
-- [ ] The Android package and app name are new.
-- [ ] Betting/predictions surfaces are removed, hidden, or made clearly monitor-only.
+- [x] The Android package is new and the app name is locked to MotiveFX.
+- [x] Betting/predictions surfaces are hidden where they look like entry/placement workflows, or made clearly monitor-only on Android native.
 - [ ] Payment steering is eliminated or Play Billing is live.
 - [ ] Data Safety, content rating, account deletion, reviewer notes, screenshots, and the binary match each other.

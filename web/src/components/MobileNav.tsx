@@ -1,5 +1,6 @@
 import { MotivFxLogo } from "./MotivFxLogo";
 import { TAB_TO_BRAND } from "../brand/moduleBrand";
+import { isNativeAndroidShell } from "../lib/nativeShell";
 import type { TabId } from "../types";
 
 /** Trading modules only — workspace chrome lives in the mobile header toolbar. */
@@ -17,6 +18,13 @@ interface BottomNavProps {
 }
 
 export function MobileBottomNav({ activeTab, onSelect }: BottomNavProps) {
+  const playSafeLabel = (tab: { id: TabId; label: string }) => {
+    if (!isNativeAndroidShell()) return tab.label;
+    if (tab.id === "betting") return "Odds intel";
+    if (tab.id === "predictions") return "Event intel";
+    return tab.label;
+  };
+
   return (
     <nav className="mobile-bottom-nav" aria-label="Trading modules">
       {BOTTOM_MODULES.map((tab) => {
@@ -32,7 +40,7 @@ export function MobileBottomNav({ activeTab, onSelect }: BottomNavProps) {
             aria-current={active ? "page" : undefined}
           >
             <MotivFxLogo module={brand} size={22} dimmed={!active} />
-            <span>{tab.label}</span>
+            <span>{playSafeLabel(tab)}</span>
           </button>
         );
       })}

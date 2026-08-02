@@ -1,5 +1,13 @@
 # Google Play Appeal Reply After Denial
 
+## SEND THIS EMAIL NOW
+
+Reply to: `googleplay-developer-support@google.com`
+
+Subject: `Request for clarification and reconsideration - MotiveFX.AI (ai.motivefx.app)`
+
+Body: copy everything under **Paste-Ready Reply Email** below, starting with `Dear Google Play Review Team,` and ending with `MotiveFX.AI / MotiveFX team`.
+
 Use this if replying to the Google Play denial email after the appeal was denied under **Enforcement Process / repeated violations**. Keep the tone factual. Do not claim Google Play Billing is live unless it is actually configured, reviewed, and verified.
 
 ## Current Verdict

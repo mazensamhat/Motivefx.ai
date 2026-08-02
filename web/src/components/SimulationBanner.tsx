@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useModules } from "../hooks/useModules";
 import { getUserId } from "../lib/api";
 import {
+  isNativeAndroidShell,
   isNativeIapAvailable,
   isNativeShell,
   requestNativeIapPurchase,
@@ -15,6 +16,7 @@ interface Props {
 export function SimulationBanner({ module }: Props) {
   const { isSimulationOnly, simulation, subscribeModule } = useModules();
   const native = isNativeShell();
+  const androidPlaySafe = isNativeAndroidShell();
   const [nativeIap, setNativeIap] = useState(false);
 
   useEffect(() => {
@@ -27,7 +29,13 @@ export function SimulationBanner({ module }: Props) {
 
   const daysLeft = simulation.daysRemaining ?? 0;
   const bankroll = simulation.bankroll ?? 1000;
-  const label = module === "betting" ? "Sports betting" : "Prediction markets";
+  const label = androidPlaySafe
+    ? module === "betting"
+      ? "Odds intel"
+      : "Event intel"
+    : module === "betting"
+      ? "Sports betting"
+      : "Prediction markets";
 
   return (
     <div className="simulation-banner">
@@ -38,8 +46,9 @@ export function SimulationBanner({ module }: Props) {
             {label} · Simulation mode
           </div>
           <p className="simulation-banner-copy">
-            Enter picks with virtual money — outcomes settle instantly so you can see how MotiveFX
-            tracks and grades your edge. No real wagers.
+            {androidPlaySafe
+              ? "Research-only monitor mode for Android. No wagers, venue handoffs, or bet placement workflows."
+              : "Enter picks with virtual money — outcomes settle instantly so you can see how MotiveFX tracks and grades your edge. No real wagers."}
           </p>
         </div>
       </div>

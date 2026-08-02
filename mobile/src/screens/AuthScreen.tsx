@@ -105,7 +105,7 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <Text style={styles.title}>MotiveFX.AI</Text>
+        <Text style={styles.title}>MotiveFX</Text>
         <Text style={styles.sub}>
           {pendingToken
             ? "Enter your 2FA code"
@@ -257,7 +257,7 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
         ) : null}
 
         <Text style={styles.disclaimer}>
-          Informational only. Not financial advice. MotiveFX.AI provides market research and analytics —
+          Informational only. Not financial advice. MotiveFX provides market research and analytics —
           not brokerage, sportsbook, or investment advice. Digital subscriptions, when offered in this
           app, are sold through the platform store (Google Play Billing / App Store). This app does not
           direct you to buy subscriptions on the website.
