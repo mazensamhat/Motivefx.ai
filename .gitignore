@@ -47,3 +47,7 @@ npm-debug.log*
 
 .vercel
 .env*
+
+# Local Google Play support ticket binary (keep on disk; do not commit)
+docs/play-support-ticket/*.aab
+

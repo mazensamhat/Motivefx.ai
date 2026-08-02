@@ -1,0 +1,114 @@
+﻿# Google Play Suspension Appeal — MotiveFX.AI (`ai.motivefx.app`)
+
+**Submit-now status:** User smoke-tested the 1.0.6 / versionCode 22 preview build on a physical phone and is ready to submit the appeal now. Upload the production AAB first if it is not already attached in Play Console.
+
+**App:** MotiveFX.AI  
+**Package:** `ai.motivefx.app`  
+**Remediation binary (target):** version **1.0.6**, versionCode **22** (EAS production AAB — finished)
+**EAS production build URL/status:** Finished at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`
+**AAB artifact:** `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab`
+**EAS preview APK URL/status:** Finished at `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`
+**APK artifact:** `https://expo.dev/artifacts/eas/imJVCiVFQAaYWQuSOQbX0Ds9kfQ8735DKKcOqg6G_0c.apk`
+**Previous production binary under review:** version **1.0.3**, versionCode **17** (EAS `8fa80431-57c5-4be7-98e3-b5753a839052`)
+**Superseded remediation build:** version **1.0.4**, versionCode **20** (EAS `008d58f3-1c09-4cad-a121-e7ab01bfa8a6`, commit `8bc91a8`)
+**Superseded remediation build:** version **1.0.5**, versionCode **21** (EAS `8a1bf80a-6a04-47ad-bb72-071e1f8fec9e`, commit `6ce29d0`)
+
+---
+
+## Play Console form (1000 chars)
+
+Paste this into **Describe the changes you will make to fix this issue if your appeal is granted.** Character count: **987**.
+
+```text
+We understand this suspension followed non-compliance and broken functionality: unresponsive sign-in, Android payment steering risk, and incomplete account deletion. We have already fixed these in MotiveFX.AI 1.0.6 (versionCode 22) and will upload/submit that AAB for review.
+
+Shipped fixes: auth uses soft timeouts/retry instead of hard AbortController cancellation, so Sign in no longer shows canceled-fetch dead-end errors; Android native/WebView paths no longer open web pricing, Stripe checkout, or subscription management for digital goods. Play Billing is not claimed live, and purchase CTAs stay non-steering unless store billing is configured. We added POST /api/auth/delete-account plus in-app Delete account/Account paths; public deletion URL: https://www.motivefxai.com/data-deletion. We removed the forced native demo landmine, hardened shell modals/chrome/deep-scan paths, fixed scroll/touch behavior and header polish, and preserved monitor-only informational positioning.
+```
+
+## Appeal body (paste into Play Console)
+
+Dear Google Play Review Team,
+
+We are appealing the suspension of MotiveFX.AI (`ai.motivefx.app`) under the Enforcement Process for repeated non-compliance. We take the repeated-rejection pattern seriously. Below is a factual record of prior rejection themes, what we changed, and the process changes we put in place so the same class of issues does not recur.
+
+### Prior rejection themes and remediations
+
+1. **Broken Functionality — app freezing / unresponsive / cannot scroll**  
+   - **Seen in:** Android builds through approximately versionCode **11–13** (commits addressing ANR/scroll, including `48b31cf`, `f13918c`).  
+   - **Cause:** Hung network calls during auth boot; full-screen WebView loader with no timeout; Android WebView scroll container locked; RevenueCat / billing configured on cold start (ANR risk).  
+   - **Fix shipped:** Fetch timeouts; cached-session boot; WebView load watchdog + Retry; nested scroll enabled; deferred IAP configuration until after first interactive load; scroll CSS for the native shell.
+
+2. **Broken Functionality — unresponsive UI (Sign in)**  
+   - **Seen in:** version **1.0.3** / versionCode **16–17** (fix commit `87a1600`).  
+   - **Cause:** Auth fetch used `AbortController.abort()` after a hard timeout. On React Native/Expo this surfaced as “fetch failed: Fetch request has been canceled,” which reads as a dead Sign in control.  
+   - **Fix shipped in 1.0.3:** Soft `Promise.race` timeouts (no abort on auth fetch); actionable error copy; one automatic retry on transient network failures; larger Sign in tap target and clear loading/disabled state.
+
+3. **Payments / external purchase steering (self-identified before this appeal)**  
+   - **Risk:** Auth and terminal copy / CTAs directed users to purchase or manage digital subscriptions on the website (`motivefxai.com/pricing`), including iOS-oriented “opens in Safari” language on Android. Native shell fallbacks opened the pricing URL when store billing was not configured. That pattern conflicts with Google Play Payments for digital subscriptions.  
+   - **Remediation included in 1.0.6 / versionCode 22:**
+     - Removed Android-facing CTAs and copy that steer users to web checkout for digital subscriptions (native auth disclaimer; terminal subscribe / module unlock / simulation CTAs in the MotiveFXNative WebView shell).  
+     - Blocked Stripe / `/pricing` / checkout URLs from opening inside or from the Android app shell (`shouldOverrideUrlLoading` / open-external bridge).  
+     - Native and WebView subscribe paths no longer fall back to the website; they show a non-steering message when store billing is not configured.  
+     - Clarified disclaimer: informational product; store billing for in-app digital subscriptions when offered.  
+     - **Note:** The public marketing website still has `/pricing` for browser users. That path is not offered as a purchase CTA inside the Android app shell.
+
+4. **Account deletion**  
+   - **Gap:** Public data-deletion policy existed at `https://www.motivefxai.com/data-deletion`, and the web Account UI called delete, but `POST /api/auth/delete-account` was missing (404), and the Android shell lacked a dedicated native deletion entry point.  
+   - **Remediation included in 1.0.6:** Implemented `POST /api/auth/delete-account` (session cookie or Bearer JWT; password + type `DELETE`); added native **Delete account** from the sign-in screen and **Account** from the terminal chrome.
+
+5. **Native demo / WebView reliability fixes**
+   - **Risk:** Reviewer paths could land on old native demo or WebView states that looked like broken UI rather than the current monitored terminal experience.
+   - **Remediation included in 1.0.6 / versionCode 22:** Removed the native demo landmine; fixed deep-scan and native chrome smoke issues; fixed nested scroll / touch handling in the terminal WebView; corrected black-screen / legacy-route risks; and corrected the ops console legacy schema path that could break account/admin smoke checks.
+
+6. **UI clarity improvements**
+   - **Context:** These are not policy fixes by themselves, but they reduce the “broken UI” narrative for reviewers using the terminal.
+   - **Remediation included in 1.0.6 / versionCode 22:** Improved signal clarity, scorecard presentation, and radar click behavior so monitor-only market intelligence views are easier to understand and interact with. The current appeal build also includes the latest main-branch fixes after the superseded 1.0.4/20 and 1.0.5/21 builds: differentiated theme related watches (`73bd62f`), related-watch scorecards opening above signal intel (`fdb34f7`), daily brief greeting/audio alignment (`7ab6b1c`), and mobile header / alert-center polish (`d678930`), including read/clear actions for Intel alerts. These are UI clarity and reliability improvements; they do not change the monitor-only product scope or claim Play Billing is live.
+
+### Process change (why this stops recurring)
+
+We changed our release process for Play submissions:
+
+1. **Pre-submit policy checklist** covering Payments (no web digital-goods CTAs), Broken Functionality (every primary control + failure/retry path), Account deletion (in-app + public URL), Data Safety alignment, and reviewer demo credentials.  
+2. **No Play resubmission** until a physical-device smoke test of: age gate → register/sign-in → terminal load → scroll → sign-out → delete-account path → offline/error Retry.  
+3. **Payments gate:** Android builds must not open web pricing/checkout for digital subscriptions. Store billing (Play Billing via RevenueCat) must be fully configured before any in-app purchase CTA is re-enabled.  
+4. **Version discipline:** Each policy fix ships under a new `version` / `versionCode` with review notes listing the exact change.
+
+### Product clarification
+
+MotiveFX.AI is predictive market intelligence and research software. It is informational only — not a broker, sportsbook, or source of personalized financial advice. Disclaimers appear on auth and in the terminal.
+
+### Reviewer access
+
+Please use the demo credentials provided in the Play Console review notes for this release (email/password). Age gate: enter a birth year of 18+. After sign-in, the terminal loads; Account → delete path is available from the native chrome.
+
+We respectfully request reinstatement and review of build **1.0.6** (versionCode **22**) after upload.
+
+Thank you,  
+MotiveFX.AI / MotiveFX team
+
+---
+
+## Honesty constraints (internal — do not weaken these in the live appeal)
+
+- Do **not** claim Google Play Billing is live until `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` is set in EAS, Play subscription products exist, and purchase + entitlement sync is verified on a device.  
+- Do **not** claim the WebView terminal is a fully native UI. The shell is Age gate → Auth → WebView(`/terminal`).  
+- Do **not** submit this appeal against 1.0.3/17, 1.0.4/19, 1.0.4/20, or 1.0.5/21; upload **1.0.6** with versionCode **22** first.
+- Deploy the site API including `delete-account` **and** native-handoff / terminal middleware fixes before reviewers exercise the app.  
+- Do **not** claim “all CTAs removed from the entire product” — only that the **Android app shell** no longer steers to web checkout for digital goods.  
+- Confirm the uploaded AAB’s `versionName` / `versionCode` in Play Console and paste those exact numbers into the appeal.
+
+---
+
+## Before appealing — operator checklist
+
+See the short checklist in the agent handoff / `docs/ANDROID_PLAY_STORE.md` (updated). Minimum:
+
+- [ ] Deploy site API including `/api/auth/delete-account` **and** `/api/auth/native-handoff` (GET+POST) + middleware native-UA fix  
+- [ ] Confirm production terminal bundle is the remediating build (`index-M9YeQlZu.js` or newer) — no orphaned Safari/pricing companion assets under `/terminal`  
+- [x] EAS production AAB **1.0.6** / versionCode **22** built (`52f83a92-def2-4b3b-bc7b-650ebfa3e480`); upload first if not already attached in Play Console
+- [x] EAS preview APK **1.0.6** / versionCode **22** installed and smoke-tested on phone (`8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`)
+- [ ] Review notes: working demo account (no 2FA), age-gate instructions  
+- [ ] Data Safety form matches actual collection (email, account ID, app activity)  
+- [ ] Store listing no longer tells users to buy subscriptions only on the website  
+- [ ] Decide: either finish Play Billing before re-enabling purchase CTAs, or keep purchase CTAs off in the Android shell (`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` unset → CTAs stay off)  
+- [ ] Paste exact versionName / versionCode into the appeal body before submit

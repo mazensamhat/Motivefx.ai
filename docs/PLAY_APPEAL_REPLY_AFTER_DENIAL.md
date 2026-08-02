@@ -82,21 +82,10 @@ MotiveFX.AI / MotiveFX team
 
 ## Support ticket (1000 chars)
 
-File a Google Play **support ticket** (not free-form email). Paste the issue description below. Character count: **985** (max 1000).
+**Use one local folder — no link hunting:** `docs/play-support-ticket/`
 
-```text
-MotiveFX.AI (ai.motivefx.app): appeal denied under Enforcement Process (repeated violations). Request clarification and reconsideration of remediated build 1.0.6 / versionCode 22 (AAB attached).
+1. Open `docs/play-support-ticket/README_ATTACH_THESE.txt` and follow it.
+2. Copy all of `docs/play-support-ticket/TICKET_DESCRIPTION.txt` into the Google Play support ticket (985 chars; max 1000).
+3. Attach the files already in that folder (`MotiveFX.AI-1.0.6-22.aab`, `REMEDIATIONS.md`, `DATA_DELETION_URL.txt`). Optionally add a Policy status screenshot to the same folder and attach it too.
 
-Fixes in 1.0.6/22: soft auth timeouts/retry (no AbortController cancel); WebView load/retry + scroll/touch hardened; Android no longer opens web pricing, Stripe checkout, or sub management for digital goods; CTAs non-steering (Play Billing not claimed live); POST /api/auth/delete-account + in-app Delete account/Account; https://www.motivefxai.com/data-deletion; native demo/legacy risks removed. Monitor-only intelligence - not broker, sportsbook, or personalized advice.
-
-Please confirm (A) which Policy status item(s), screens, listing/Data Safety/content-rating, or reviewer flows still failed after 1.0.6/22; OR (B) whether this listing/package is final and ineligible for reinstatement. If an older binary was reviewed, please reconsider versionCode 22.
-
-MotiveFX.AI / MotiveFX team
-```
-
-### Attachment checklist
-
-- `docs/PLAY_SUSPENSION_APPEAL.md` or a short PDF summarizing remediations
-- Link/list AAB: version **1.0.6**, versionCode **22** - Expo artifact `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab` (build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`)
-- Screenshot of Play Console **Policy status** (if accessible)
-- Data deletion URL page: `https://www.motivefxai.com/data-deletion`
+The AAB is kept locally in that folder (gitignored). Ticket body says “AAB attached” so you do not need Expo URLs in the ticket.
