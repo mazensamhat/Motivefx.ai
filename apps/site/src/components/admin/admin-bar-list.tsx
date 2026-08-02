@@ -7,6 +7,10 @@ export function BarList({
   labelKey: string;
   valueKey: string;
 }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-slate-400">No data available yet.</p>;
+  }
+
   const max = Math.max(...items.map((i) => Number(i[valueKey]) || 0), 1);
   return (
     <div className="admin-bar-list">

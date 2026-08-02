@@ -45,6 +45,19 @@ function round(n: number, dp = 2): number {
   return Math.round(n * f) / f;
 }
 
+async function safeFinancialQuery<T>(
+  label: string,
+  fallback: T,
+  query: () => Promise<T>
+): Promise<T> {
+  try {
+    return await query();
+  } catch (error) {
+    console.error(`[admin/financial:${label}]`, error);
+    return fallback;
+  }
+}
+
 function startOfMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
@@ -125,6 +138,10 @@ async function getFinancialUsersSafe(): Promise<FinancialUser[]> {
   }
 }
 
+async function getAlertAgg() {
+  return prisma.intelAlert.groupBy({ by: ["seen"], _count: { _all: true } });
+}
+
 export type FinancialSnapshot = Awaited<ReturnType<typeof getFinancialSnapshot>>;
 
 export async function getFinancialSnapshot() {
@@ -149,35 +166,55 @@ export async function getFinancialSnapshot() {
     journalCount,
     alertAgg,
   ] = await Promise.all([
-    getFinancialUsersSafe(),
-    prisma.user.count({ where: { subscriptionStatus: "comp", disabledAt: null } }),
-    prisma.usageEvent.findMany({
-      where: { createdAt: { gte: since24h }, userId: { not: null } },
-      select: { userId: true },
-      distinct: ["userId"],
-    }),
-    prisma.usageEvent.findMany({
-      where: { createdAt: { gte: since7d }, userId: { not: null } },
-      select: { userId: true },
-      distinct: ["userId"],
-    }),
-    prisma.usageEvent.findMany({
-      where: { createdAt: { gte: since30d }, userId: { not: null } },
-      select: { userId: true },
-      distinct: ["userId"],
-    }),
-    prisma.userBet.findMany({
-      where: { isSimulation: false },
-      select: { userId: true, status: true, outcome: true, pnl: true, sport: true },
-    }),
-    prisma.userPrediction.findMany({
-      where: { isSimulation: false },
-      select: { userId: true, status: true, outcome: true, pnl: true, category: true },
-    }),
-    prisma.userPortfolio.findMany({ select: { userId: true }, distinct: ["userId"] }),
-    prisma.watchlistItem.count(),
-    prisma.intelJournalEntry.count(),
-    prisma.intelAlert.groupBy({ by: ["seen"], _count: { _all: true } }),
+    safeFinancialQuery("users", [] as FinancialUser[], () => getFinancialUsersSafe()),
+    safeFinancialQuery("comp-users", 0, () =>
+      prisma.user.count({ where: { subscriptionStatus: "comp", disabledAt: null } })
+    ),
+    safeFinancialQuery("usage-1d", [] as { userId: string | null }[], () =>
+      prisma.usageEvent.findMany({
+        where: { createdAt: { gte: since24h }, userId: { not: null } },
+        select: { userId: true },
+        distinct: ["userId"],
+      })
+    ),
+    safeFinancialQuery("usage-7d", [] as { userId: string | null }[], () =>
+      prisma.usageEvent.findMany({
+        where: { createdAt: { gte: since7d }, userId: { not: null } },
+        select: { userId: true },
+        distinct: ["userId"],
+      })
+    ),
+    safeFinancialQuery("usage-30d", [] as { userId: string | null }[], () =>
+      prisma.usageEvent.findMany({
+        where: { createdAt: { gte: since30d }, userId: { not: null } },
+        select: { userId: true },
+        distinct: ["userId"],
+      })
+    ),
+    safeFinancialQuery(
+      "bets",
+      [] as { userId: string; status: string; outcome: string | null; pnl: number | null; sport: string }[],
+      () =>
+        prisma.userBet.findMany({
+          where: { isSimulation: false },
+          select: { userId: true, status: true, outcome: true, pnl: true, sport: true },
+        })
+    ),
+    safeFinancialQuery(
+      "predictions",
+      [] as { userId: string; status: string; outcome: string | null; pnl: number | null; category: string }[],
+      () =>
+        prisma.userPrediction.findMany({
+          where: { isSimulation: false },
+          select: { userId: true, status: true, outcome: true, pnl: true, category: true },
+        })
+    ),
+    safeFinancialQuery("portfolios", [] as { userId: string }[], () =>
+      prisma.userPortfolio.findMany({ select: { userId: true }, distinct: ["userId"] })
+    ),
+    safeFinancialQuery("watchlist", 0, () => prisma.watchlistItem.count()),
+    safeFinancialQuery("journal", 0, () => prisma.intelJournalEntry.count()),
+    safeFinancialQuery("alerts", [] as Awaited<ReturnType<typeof getAlertAgg>>, getAlertAgg),
   ]);
 
   // ---- Subscriber base ----------------------------------------------------

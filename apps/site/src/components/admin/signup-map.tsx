@@ -132,7 +132,13 @@ export function SignupMap({ data }: { data: SignupMapData }) {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-        <SignupLeafletMap key={fitKey} points={filteredPoints} fitKey={fitKey} />
+        {data.locatedUsers === 0 ? (
+          <div className="flex h-[240px] items-center justify-center bg-[#0a1628] px-4 text-center text-sm text-slate-400">
+            No geolocated signups yet. The map will populate once signup country or coordinates are recorded.
+          </div>
+        ) : (
+          <SignupLeafletMap key={fitKey} points={filteredPoints} fitKey={fitKey} />
+        )}
         {cityCounts.length > 0 && (
           <div className="border-t border-[var(--border)] bg-[rgba(8,10,12,0.8)] px-4 py-3">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">

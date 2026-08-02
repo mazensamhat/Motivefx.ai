@@ -32,6 +32,19 @@ const TIER_MRR_USD: Record<string, number> = Object.fromEntries(
 
 const CANCELLED_STATUSES = new Set(["cancelled", "canceled", "churned"]);
 
+async function safeDashboardQuery<T>(
+  label: string,
+  fallback: T,
+  query: () => Promise<T>
+): Promise<T> {
+  try {
+    return await query();
+  } catch (error) {
+    console.error(`[admin/dashboard:${label}]`, error);
+    return fallback;
+  }
+}
+
 async function getPayingUsersSafe() {
   const select = { intelligenceTier: true, selectedMarkets: true } as const;
   try {
@@ -80,47 +93,59 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
 
   const [totalUsers, payingUsers, usage24h, usage14d, usage30d, recentUsers, allUsers, churnEvents30d] =
     await Promise.all([
-      prisma.user.count(),
-      getPayingUsersSafe(),
-      prisma.usageEvent.count({ where: { createdAt: { gte: since24h } } }),
-      prisma.usageEvent.findMany({
-        where: { createdAt: { gte: since14d } },
-        select: {
-          module: true,
-          statusCode: true,
-          durationMs: true,
-          createdAt: true,
-        },
-      }),
-      prisma.usageEvent.findMany({
-        where: { createdAt: { gte: since30d } },
-        select: { module: true, userId: true },
-      }),
-      prisma.user.findMany({
-        select: {
-          id: true,
-          email: true,
-          selectedMarkets: true,
-          signupCountry: true,
-          signupCity: true,
-          acquisitionChannel: true,
-          lastSeenAt: true,
-          createdAt: true,
-        },
-        orderBy: [{ lastSeenAt: "desc" }, { createdAt: "desc" }],
-        take: 50,
-      }),
-      prisma.user.findMany({
-        select: { signupCountry: true, signupRegion: true, signupCity: true },
-      }),
-      prisma.user.count({
-        where: {
-          OR: [
-            { subscriptionStatus: { in: [...CANCELLED_STATUSES] } },
-            { disabledAt: { gte: since30d } },
-          ],
-        },
-      }),
+      safeDashboardQuery("total-users", 0, () => prisma.user.count()),
+      safeDashboardQuery("paying-users", [], () => getPayingUsersSafe()),
+      safeDashboardQuery("usage-24h", 0, () =>
+        prisma.usageEvent.count({ where: { createdAt: { gte: since24h } } })
+      ),
+      safeDashboardQuery("usage-14d", [], () =>
+        prisma.usageEvent.findMany({
+          where: { createdAt: { gte: since14d } },
+          select: {
+            module: true,
+            statusCode: true,
+            durationMs: true,
+            createdAt: true,
+          },
+        })
+      ),
+      safeDashboardQuery("usage-30d", [], () =>
+        prisma.usageEvent.findMany({
+          where: { createdAt: { gte: since30d } },
+          select: { module: true, userId: true },
+        })
+      ),
+      safeDashboardQuery("recent-users", [], () =>
+        prisma.user.findMany({
+          select: {
+            id: true,
+            email: true,
+            selectedMarkets: true,
+            signupCountry: true,
+            signupCity: true,
+            acquisitionChannel: true,
+            lastSeenAt: true,
+            createdAt: true,
+          },
+          orderBy: [{ lastSeenAt: "desc" }, { createdAt: "desc" }],
+          take: 50,
+        })
+      ),
+      safeDashboardQuery("locations", [], () =>
+        prisma.user.findMany({
+          select: { signupCountry: true, signupRegion: true, signupCity: true },
+        })
+      ),
+      safeDashboardQuery("churn-30d", 0, () =>
+        prisma.user.count({
+          where: {
+            OR: [
+              { subscriptionStatus: { in: [...CANCELLED_STATUSES] } },
+              { disabledAt: { gte: since30d } },
+            ],
+          },
+        })
+      ),
     ]);
 
   const estimatedMrrUsd = Math.round(
@@ -154,6 +179,10 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     if (days.includes(day)) cells[mod][day] = (cells[mod][day] ?? 0) + 1;
   }
   const max = Math.max(1, ...Object.values(cells).flatMap((row) => Object.values(row)));
+  const heatmapModules = [
+    ...MODULES,
+    ...Object.keys(cells).filter((module) => !MODULES.includes(module as (typeof MODULES)[number])),
+  ];
 
   const moduleEvents = new Map<string, { events: number; users: Set<string> }>();
   for (const event of usage30d) {
@@ -213,7 +242,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
         ok: errors <= 5,
       };
     }),
-    activityHeatmap: { days, modules: [...MODULES], cells, max },
+    activityHeatmap: { days, modules: heatmapModules, cells, max },
     moduleActivityRanking: [...moduleEvents.entries()]
       .map(([module, row]) => ({
         module,

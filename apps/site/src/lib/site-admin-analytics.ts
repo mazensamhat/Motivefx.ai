@@ -50,6 +50,9 @@ export async function getSiteAdminSnapshot() {
       stripeSubscriptionId: true,
     },
     orderBy: { createdAt: "desc" },
+  }).catch((error) => {
+    console.error("[admin/site-dashboard:users]", error);
+    return [];
   });
 
   const labels = dayLabels(14);

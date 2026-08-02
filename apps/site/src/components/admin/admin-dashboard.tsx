@@ -30,11 +30,93 @@ function heatColor(value: number, max: number): string {
   return `rgba(0, 230, 118, ${0.12 + t * 0.75})`;
 }
 
+function dayLabels(days: number) {
+  const labels: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    labels.push(d.toISOString().slice(0, 10));
+  }
+  return labels;
+}
+
 type SiteDashboard = {
   signupsByDay: { day: string; count: number }[];
   signupMap: SignupMapData;
   totalUsers: number;
 };
+
+const emptySignupMap: SignupMapData = {
+  totalUsers: 0,
+  locatedUsers: 0,
+  points: [],
+  filters: { continents: [], countries: [], regions: [], cities: [] },
+};
+
+const defaultDashboard: AdminDashboard = {
+  generatedAt: new Date().toISOString(),
+  kpis: {
+    totalUsers: 0,
+    activeModuleSubscriptions: 0,
+    annualSubscribers: 0,
+    estimatedMrrUsd: 0,
+    usageEvents24h: 0,
+    churnEvents30d: 0,
+    annualPriceUsd: 0,
+  },
+  subscriptionsByModule: [],
+  moduleHealth: [],
+  activityHeatmap: { days: dayLabels(14), modules: [], cells: {}, max: 1 },
+  moduleActivityRanking: [],
+  churnByModule: [],
+  demographics: {
+    cohorts: [],
+    sex: [],
+    gender: [],
+    ageBuckets: [],
+    topLocations: [],
+    paymentMethods: [],
+  },
+  payments: {
+    revenueUsd: 0,
+    transactions: 0,
+    avgTicketUsd: 0,
+    byPlanTier: [],
+    byPaymentMethod: [],
+    recent: [],
+  },
+  recentUsers: [],
+};
+
+function normalizeDashboard(snapshot: Partial<AdminDashboard>): AdminDashboard {
+  const activityHeatmap = snapshot.activityHeatmap ?? defaultDashboard.activityHeatmap;
+  return {
+    ...defaultDashboard,
+    ...snapshot,
+    kpis: { ...defaultDashboard.kpis, ...snapshot.kpis },
+    subscriptionsByModule: snapshot.subscriptionsByModule ?? [],
+    moduleHealth: snapshot.moduleHealth ?? [],
+    activityHeatmap: {
+      days: activityHeatmap.days?.length ? activityHeatmap.days : defaultDashboard.activityHeatmap.days,
+      modules: activityHeatmap.modules ?? [],
+      cells: activityHeatmap.cells ?? {},
+      max: Number.isFinite(activityHeatmap.max) ? activityHeatmap.max : 1,
+    },
+    moduleActivityRanking: snapshot.moduleActivityRanking ?? [],
+    churnByModule: snapshot.churnByModule ?? [],
+    demographics: { ...defaultDashboard.demographics, ...snapshot.demographics },
+    payments: { ...defaultDashboard.payments, ...snapshot.payments },
+    recentUsers: snapshot.recentUsers ?? [],
+  };
+}
+
+function normalizeSiteDashboard(snapshot: Partial<SiteDashboard>): SiteDashboard {
+  return {
+    signupsByDay: snapshot.signupsByDay ?? [],
+    signupMap: { ...emptySignupMap, ...snapshot.signupMap },
+    totalUsers: snapshot.totalUsers ?? 0,
+  };
+}
 
 export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [loading, setLoading] = useState(true);
@@ -47,12 +129,12 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setError(null);
     try {
       const [dashRes, siteRes] = await Promise.all([
-        adminGet<AdminDashboard>("/dashboard"),
+        adminGet<Partial<AdminDashboard>>("/dashboard"),
         fetch("/api/admin/site-dashboard", { cache: "no-store" }),
       ]);
-      setData(dashRes);
+      setData(normalizeDashboard(dashRes));
       if (siteRes.ok) {
-        setSiteData((await siteRes.json()) as SiteDashboard);
+        setSiteData(normalizeSiteDashboard((await siteRes.json()) as Partial<SiteDashboard>));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
@@ -88,6 +170,9 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
   const { kpis, activityHeatmap, demographics, payments } = data;
   const maxSignup = Math.max(...(siteData?.signupsByDay.map((d) => d.count) ?? [0]), 1);
+  const heatmapHasData = Object.values(activityHeatmap.cells).some((row) =>
+    Object.values(row).some((value) => value > 0)
+  );
 
   return (
     <div className="admin-shell mx-auto max-w-7xl">
@@ -206,38 +291,49 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
       <section className="admin-panel app-panel">
         <h2>Activity heatmap (14 days)</h2>
-        <div className="admin-heatmap-wrap">
-          <table className="admin-heatmap">
-            <thead>
-              <tr>
-                <th>Module</th>
-                {activityHeatmap.days.map((d) => (
-                  <th key={d}>{d.slice(5)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {activityHeatmap.modules.map((mod) => (
-                <tr key={mod}>
-                  <td>{mod}</td>
-                  {activityHeatmap.days.map((day) => {
-                    const val = activityHeatmap.cells[mod]?.[day] ?? 0;
-                    return (
-                      <td
-                        key={day}
-                        className="admin-heatmap-cell"
-                        style={{ background: heatColor(val, activityHeatmap.max) }}
-                        title={`${mod} · ${day}: ${val} events`}
-                      >
-                        {val > 0 ? val : ""}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {activityHeatmap.modules.length === 0 ? (
+          <p className="text-sm text-slate-400">No activity modules have reported usage yet.</p>
+        ) : (
+          <>
+            {!heatmapHasData && (
+              <p className="mb-3 text-sm text-slate-400">
+                No usage events in the last 14 days. The heatmap will populate as terminal or API traffic arrives.
+              </p>
+            )}
+            <div className="admin-heatmap-wrap">
+              <table className="admin-heatmap">
+                <thead>
+                  <tr>
+                    <th>Module</th>
+                    {activityHeatmap.days.map((d) => (
+                      <th key={d}>{d.slice(5)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activityHeatmap.modules.map((mod) => (
+                    <tr key={mod}>
+                      <td>{mod}</td>
+                      {activityHeatmap.days.map((day) => {
+                        const val = activityHeatmap.cells[mod]?.[day] ?? 0;
+                        return (
+                          <td
+                            key={day}
+                            className="admin-heatmap-cell"
+                            style={{ background: heatColor(val, activityHeatmap.max) }}
+                            title={`${mod} · ${day}: ${val} events`}
+                          >
+                            {val > 0 ? val : ""}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
 
       {siteData?.signupsByDay && (
