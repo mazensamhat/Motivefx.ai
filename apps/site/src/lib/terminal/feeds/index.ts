@@ -228,6 +228,7 @@ export type MarketActivityItem = {
   stake: number | null;
   matchup: string;
   sport: string;
+  sportKey?: string;
   sportLabel: string;
   odds: string;
   gameBetCount: number;
@@ -268,9 +269,11 @@ export function demoLineMoves(): LineMoveItem[] {
 
 /**
  * Cap sports polled per uncached refresh. Each sport costs 1 quota unit (h2h × us).
- * Prefer the requested league, then a short in-season list — never stampede 8 sports.
+ * Prefer the requested league, then the major-board list.
  * Skip `upcoming` as a first hop (it often returns NPB/KBO and still burns a credit).
  */
+const ALL_SPORTS_KEY = "all";
+const SELECTED_SPORT_MIN_LINES = 4;
 const ODDS_SPORT_FALLBACKS = [
   "baseball_mlb",
   "soccer_usa_mls",
@@ -282,7 +285,7 @@ const ODDS_SPORT_FALLBACKS = [
 ];
 
 /** Hard cap on Odds API calls per cache miss (quota protection). */
-const ODDS_MAX_SPORTS_PER_REFRESH = 3;
+const ODDS_MAX_SPORTS_PER_REFRESH = ODDS_SPORT_FALLBACKS.length;
 
 /** Server-side TTL so LiveFeed / briefing / line-moves share one refresh. */
 const ODDS_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -294,12 +297,9 @@ const PREFERRED_SPORT_KEYS = new Set([
   "soccer_usa_mls",
   "basketball_nba",
   "basketball_wnba",
-  "basketball_ncaab",
   "americanfootball_nfl",
-  "americanfootball_ncaaf",
   "icehockey_nhl",
   "mma_mixed_martial_arts",
-  "boxing_boxing",
 ]);
 
 const LINE_MOVE_LIMIT = 12;
@@ -392,6 +392,13 @@ function sharpApiBaseUrl(): string {
 function sharpLeagueToSportKey(league: string, sport: string): string {
   const l = league.trim().toLowerCase();
   const s = sport.trim().toLowerCase();
+  const compactLeague = l.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (
+    ["mls", "usa_mls", "soccer_usa_mls", "major_league_soccer"].includes(compactLeague) ||
+    (s === "soccer" && (compactLeague.includes("mls") || compactLeague.includes("major_league_soccer")))
+  ) {
+    return "soccer_usa_mls";
+  }
   const byLeague: Record<string, string> = {
     mlb: "baseball_mlb",
     nba: "basketball_nba",
@@ -525,6 +532,7 @@ export function mapLineMovesToMarketActivity(lines: LineMoveItem[]): MarketActiv
       stake: null,
       matchup: l.matchup,
       sport: l.sport,
+      sportKey: l.sportKey,
       sportLabel: sportLabelFromLine(l),
       odds,
       gameBetCount: Math.max(lineEntries.length, 1),
@@ -940,14 +948,12 @@ function sportKeyPriority(sportKey: string): number {
   const key = sportKey.trim().toLowerCase();
   if (!key) return 2;
   if (PREFERRED_SPORT_KEYS.has(key)) return 0;
-  // Other soccer after MLS; still ahead of NPB/KBO flood.
-  if (key.startsWith("soccer_")) return 1;
-  if (key.includes("nba") || key.includes("wnba")) return 0;
+  // Other soccer stays secondary; MLS is the only soccer league promoted by default.
   return 2;
 }
 
 function isPreferredLine(item: LineMoveItem): boolean {
-  return sportKeyPriority(item.sportKey ?? "") <= 1;
+  return sportKeyPriority(item.sportKey ?? "") === 0;
 }
 
 function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
@@ -1110,22 +1116,55 @@ async function fetchOddsForSport(sport: string, key: string): Promise<OddsSportR
   return { ok: true, items: mapOddsGames(Array.isArray(games) ? games : []) };
 }
 
-export async function fetchLineMoves(sport = "baseball_mlb"): Promise<LineMoveItem[]> {
+export async function fetchLineMoves(sport = ALL_SPORTS_KEY): Promise<LineMoveItem[]> {
   const result = await fetchLineMovesWithMeta(sport);
   return result.items;
+}
+
+function normalizeSportFilter(sport = ALL_SPORTS_KEY): string {
+  const raw = sport.trim().toLowerCase();
+  if (!raw || raw === "all" || raw === "upcoming" || raw === "default") return ALL_SPORTS_KEY;
+  const aliases: Record<string, string> = {
+    baseball: "baseball_mlb",
+    mlb: "baseball_mlb",
+    basketball: "basketball_nba",
+    nba: "basketball_nba",
+    wnba: "basketball_wnba",
+    football: "americanfootball_nfl",
+    nfl: "americanfootball_nfl",
+    hockey: "icehockey_nhl",
+    nhl: "icehockey_nhl",
+    soccer: "soccer_usa_mls",
+    mls: "soccer_usa_mls",
+    mma: "mma_mixed_martial_arts",
+    ufc: "mma_mixed_martial_arts",
+    tennis: "tennis_atp",
+  };
+  return aliases[raw] ?? raw;
+}
+
+function oddsSportsForRequest(sport: string, requestedOnly = false): string[] {
+  const requested = normalizeSportFilter(sport);
+  if (requested === ALL_SPORTS_KEY) {
+    return ODDS_SPORT_FALLBACKS.slice(0, ODDS_MAX_SPORTS_PER_REFRESH);
+  }
+  if (requestedOnly) return [requested];
+  return [requested, ...ODDS_SPORT_FALLBACKS.filter((s) => s !== requested)].slice(
+    0,
+    ODDS_MAX_SPORTS_PER_REFRESH
+  );
 }
 
 async function fetchLineMovesFromOddsApi(
   sport: string,
   key: string,
   updatedAt: string,
-  sharpNote?: string
+  sharpNote?: string,
+  requestedOnly = false
 ): Promise<{ items: LineMoveItem[] } & FeedMeta> {
-  // Requested sport first, then short fallback list — max ODDS_MAX_SPORTS_PER_REFRESH calls.
-  const sports = [sport, ...ODDS_SPORT_FALLBACKS.filter((s) => s !== sport)].slice(
-    0,
-    ODDS_MAX_SPORTS_PER_REFRESH
-  );
+  // Requested sport first, or the full major-board list for the default All view.
+  const sports = oddsSportsForRequest(sport, requestedOnly);
+  const requestedAll = normalizeSportFilter(sport) === ALL_SPORTS_KEY;
   const seen = new Set<string>();
   const emptySports: string[] = [];
   const softErrors: string[] = [];
@@ -1148,8 +1187,10 @@ async function fetchLineMovesFromOddsApi(
             const preferredCount = preferredCoverageCount(diversified);
             const variety = preferredSportVariety(diversified);
             // Stop early once we have usable preferred coverage (quota-first).
-            const enoughPreferred = preferredCount >= PREFERRED_COVERAGE_TARGET && variety >= 1;
-            const enoughMixed = diversified.length >= 6 && preferredCount >= 2;
+            const enoughPreferred =
+              preferredCount >= PREFERRED_COVERAGE_TARGET && variety >= (requestedAll ? 2 : 1);
+            const enoughMixed =
+              diversified.length >= 6 && preferredCount >= 2 && (!requestedAll || variety >= 2);
             if (enoughPreferred || enoughMixed) {
               return {
                 items: diversified,
@@ -1177,7 +1218,7 @@ async function fetchLineMovesFromOddsApi(
             };
           }
           return {
-            items: [],
+            items: demoLineMoves(),
             source: "demo",
             updatedAt,
             error: withSharpNote(result.message),
@@ -1250,7 +1291,7 @@ async function fetchLineMovesUncached(
     }
   }
 
-  // Backup: The Odds API (cached + max 3 sports).
+  // Backup: The Odds API (cached + capped major-board fanout).
   if (oddsKey) {
     return fetchLineMovesFromOddsApi(sport, oddsKey, updatedAt, sharpNote);
   }
@@ -1331,13 +1372,55 @@ function filterBoardBySport(items: LineMoveItem[], sport: string): LineMoveItem[
 }
 
 export async function fetchLineMovesWithMeta(
-  sport = "baseball_mlb"
+  sport = ALL_SPORTS_KEY
 ): Promise<{ items: LineMoveItem[]; sharpDerived?: SharpActionItem[] } & FeedMeta> {
+  const requestedSport = normalizeSportFilter(sport);
   const board = await withTtlCache(lineMovesCache, "board", ODDS_CACHE_TTL_MS, () =>
-    fetchLineMovesUncached(sport)
+    fetchLineMovesUncached(ALL_SPORTS_KEY)
   );
 
-  const filtered = filterBoardBySport(board.items, sport);
+  if (requestedSport === ALL_SPORTS_KEY) {
+    return {
+      ...board,
+      items: diversifyLineMoves(board.items),
+    };
+  }
+
+  const filtered = filterBoardBySport(board.items, requestedSport);
+  const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
+
+  // Selected sport is present but thin — top up that exact sport from Odds API.
+  if (oddsKey && filtered.length < SELECTED_SPORT_MIN_LINES) {
+    const sportKey = `sport:${requestedSport}`;
+    const sportBoard = await withTtlCache(lineMovesCache, sportKey, ODDS_CACHE_TTL_MS, () =>
+      fetchLineMovesFromOddsApi(
+        requestedSport,
+        oddsKey,
+        now(),
+        filtered.length
+          ? board.error ?? "Selected sport was thin on Sharp board — querying The Odds API."
+          : board.error ?? "Requested sport not on Sharp board — querying The Odds API.",
+        true
+      )
+    );
+    const liveOdds = sportBoard.source === "live" ? filterBoardBySport(sportBoard.items, requestedSport) : [];
+    const merged = diversifyLineMoves(mergeLineMoves(filtered, liveOdds));
+    if (merged.length) {
+      const source = board.source === "live" || liveOdds.length ? "live" : "demo";
+      return {
+        ...board,
+        source,
+        provider: source === "live" ? board.provider ?? sportBoard.provider : undefined,
+        items: merged,
+        error: sportBoard.error ?? board.error,
+        sharpDerived: board.sharpDerived?.filter((s) =>
+          merged.some((f) => f.matchup.toLowerCase() === s.matchup.toLowerCase())
+        ),
+      };
+    }
+    if (!filtered.length && sportBoard.items.length) return sportBoard;
+  }
+
   if (filtered.length > 0) {
     return {
       ...board,
@@ -1348,28 +1431,13 @@ export async function fetchLineMovesWithMeta(
     };
   }
 
-  // Requested sport missing from the shared Sharp board — try Odds API for that sport only.
-  const oddsKey = process.env.THE_ODDS_API_KEY?.trim();
-  if (oddsKey) {
-    const sportKey = `sport:${sport.trim().toLowerCase() || "default"}`;
-    const sportBoard = await withTtlCache(lineMovesCache, sportKey, ODDS_CACHE_TTL_MS, () =>
-      fetchLineMovesFromOddsApi(
-        sport,
-        oddsKey,
-        now(),
-        board.error ?? "Requested sport not on Sharp board — querying The Odds API."
-      )
-    );
-    if (sportBoard.items.length) return sportBoard;
-  }
-
   // Last resort: return diversified mixed board with a clear note (better than empty).
   return {
     ...board,
     items: diversifyLineMoves(board.items),
     error:
       board.error ??
-      `No live ${sport} lines right now — showing mixed board.`,
+      `No live ${requestedSport} lines right now — showing mixed board.`,
   };
 }
 
@@ -1388,8 +1456,10 @@ export const SHARP_MONEY_UNAVAILABLE_MESSAGE =
 export const SHARP_MONEY_DERIVED_NOTE =
   "Derived from moneyline consensus (soft books vs sharp books when available) — not true public/sharp ticket splits.";
 
-export async function fetchSharpActionWithMeta(): Promise<{ items: SharpActionItem[] } & FeedMeta> {
-  const board = await fetchLineMovesWithMeta();
+export async function fetchSharpActionWithMeta(
+  sport = ALL_SPORTS_KEY
+): Promise<{ items: SharpActionItem[] } & FeedMeta> {
+  const board = await fetchLineMovesWithMeta(sport);
   const fromSharpRows = board.sharpDerived?.length ? board.sharpDerived : [];
   const items =
     fromSharpRows.length > 0

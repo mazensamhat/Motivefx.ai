@@ -9,23 +9,38 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function routeSportToFeedSport(sport: string): string {
+  const key = sport.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    football: "americanfootball_nfl",
+    basketball: "basketball_nba",
+    baseball: "baseball_mlb",
+    hockey: "icehockey_nhl",
+    soccer: "soccer_usa_mls",
+    mma: "mma_mixed_martial_arts",
+    tennis: "tennis_atp",
+  };
+  return aliases[key] ?? (key || "all");
+}
+
 export async function GET(request: Request) {
   try {
     await resolveAccess(request, "betting");
     const url = new URL(request.url);
     const sportFilter = (url.searchParams.get("sport") ?? "").trim().toLowerCase();
+    const feedSport = routeSportToFeedSport(sportFilter);
     const matchupFilter = (url.searchParams.get("matchup") ?? "").trim().toLowerCase();
     const minBets = Number(url.searchParams.get("min_bets") ?? 0);
 
     const [board, sharp] = await Promise.all([
-      fetchLineMovesWithMeta(),
-      fetchSharpActionWithMeta(),
+      fetchLineMovesWithMeta(feedSport),
+      fetchSharpActionWithMeta(feedSport),
     ]);
 
     let items = mapLineMovesToMarketActivity(board.items);
     if (sportFilter) {
       items = items.filter((r) => {
-        const blob = `${r.sport} ${r.sportLabel}`.toLowerCase();
+        const blob = `${r.sport} ${r.sportKey ?? ""} ${r.sportLabel}`.toLowerCase();
         const keyMap: Record<string, string[]> = {
           football: ["nfl", "ncaaf", "football"],
           basketball: ["nba", "wnba", "ncaab", "basketball"],

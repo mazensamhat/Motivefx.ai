@@ -299,6 +299,7 @@ let inflight: Promise<BitqueryFetchResult> | null = null;
 /** Rotate secondary title keyword so we don't burn 4 queries every refresh. */
 let titleRotation = 0;
 const TITLE_KEYWORDS = ["NBA", "NFL", "Esports"] as const;
+const CRICKET_ENRICHMENT_CAP = 2;
 
 export function getBitqueryQuotaStatus() {
   const now = Date.now();
@@ -404,7 +405,7 @@ async function fetchLiveBitquery(token: string, limit: number): Promise<Bitquery
       return { items: [], error: cricket.error, coolingDown: true };
     }
   } else {
-    rows.push(...cricket.rows);
+    rows.push(...cricket.rows.slice(0, CRICKET_ENRICHMENT_CAP));
   }
 
   // Only spend a second query if we still need rows and aren't cooling down.

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Target, TrendingDown } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
@@ -18,11 +18,25 @@ import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 
+const BETTING_SPORT_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "baseball_mlb", label: "MLB" },
+  { value: "americanfootball_nfl", label: "NFL" },
+  { value: "basketball_nba", label: "NBA" },
+  { value: "icehockey_nhl", label: "NHL" },
+  { value: "basketball_wnba", label: "WNBA" },
+  { value: "soccer_usa_mls", label: "MLS" },
+  { value: "mma_mixed_martial_arts", label: "MMA" },
+];
+
 export function TabBetting() {
   const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
+  const [selectedSport, setSelectedSport] = useState("all");
   const enabled = !modulesLoading && hasModule("betting");
   const simMode = isSimulationOnly("betting");
+  const sportQuery =
+    selectedSport === "all" ? "" : `?sport=${encodeURIComponent(selectedSport)}`;
   const lines = useApi<{
     items: LineMove[];
     source?: "live" | "demo";
@@ -33,7 +47,7 @@ export function TabBetting() {
       sharp_api?: { remaining: number | null };
       the_odds_api?: { remaining: number | null; used: number | null };
     };
-  }>("/betting/line-moves", 300_000);
+  }>(`/betting/line-moves${sportQuery}`, 300_000);
   const sharp = useApi<{
     items: SharpAction[];
     source?: "live" | "demo";
@@ -41,7 +55,7 @@ export function TabBetting() {
     error?: string | null;
     derivedNote?: string | null;
     provider?: "sharp_api" | "the_odds_api" | null;
-  }>("/betting/sharp-action");
+  }>(`/betting/sharp-action${sportQuery}`);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
 
   const linesUpdated =
@@ -87,6 +101,25 @@ export function TabBetting() {
         winRate={calcWinRate(result?.recommendations)}
         module="betting"
       />
+      <div className="card glass-card" style={{ marginBottom: "1rem", padding: "0.75rem 1rem" }}>
+        <div className="section-label" style={{ marginBottom: "0.5rem" }}>Board filter</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+          {BETTING_SPORT_FILTERS.map((option) => {
+            const active = selectedSport === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`btn btn-sm ${active ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setSelectedSport(option.value)}
+                aria-pressed={active}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className="grid-2" style={{ marginBottom: "1rem" }}>
         <BetTracker
           analyzing={loading}

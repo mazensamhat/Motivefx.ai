@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const sport = url.searchParams.get("sport") ?? "baseball_mlb";
+  const sport = url.searchParams.get("sport") ?? "all";
   const result = await fetchLineMovesWithMeta(sport);
   return json({
     items: result.items,

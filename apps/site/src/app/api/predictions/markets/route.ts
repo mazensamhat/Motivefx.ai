@@ -17,10 +17,12 @@ type BitquerySoft = {
 };
 
 /** Never let Bitquery delay the Gamma board. */
+const BITQUERY_ENRICHMENT_LIMIT = 3;
+
 async function bitqueryEnrichment(limit: number): Promise<BitquerySoft> {
   try {
     return await Promise.race([
-      fetchBitquerySportsMarkets(Math.min(10, limit)),
+      fetchBitquerySportsMarkets(Math.min(BITQUERY_ENRICHMENT_LIMIT, limit)),
       new Promise<BitquerySoft>((resolve) => {
         setTimeout(() => resolve({ items: [], coolingDown: true }), 2_500);
       }),
@@ -50,8 +52,15 @@ export async function GET(request: Request) {
     if (bq.items.length) {
       bitqueryCount = bq.items.length;
       const seen = new Set(items.map((m) => m.market.toLowerCase()));
-      const extra = bq.items.filter((m) => !seen.has(m.market.toLowerCase()));
-      items = [...extra.slice(0, 8), ...items];
+      const extra = bq.items
+        .filter((m) => !seen.has(m.market.toLowerCase()))
+        .slice(0, BITQUERY_ENRICHMENT_LIMIT);
+      if (category) {
+        items = [...items, ...extra];
+      } else {
+        const gammaCount = Math.max(0, limit - extra.length);
+        items = [...items.slice(0, gammaCount), ...extra];
+      }
     }
   }
 
