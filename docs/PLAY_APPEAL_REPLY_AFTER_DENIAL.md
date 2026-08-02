@@ -85,7 +85,7 @@ MotiveFX.AI / MotiveFX team
 **Use one local folder — no link hunting:** `docs/play-support-ticket/`
 
 1. Open `docs/play-support-ticket/README_ATTACH_THESE.txt` and follow it.
-2. Copy all of `docs/play-support-ticket/TICKET_DESCRIPTION.txt` into the Google Play support ticket (985 chars; max 1000).
-3. Attach the files already in that folder (`MotiveFX.AI-1.0.6-22.aab`, `REMEDIATIONS.md`, `DATA_DELETION_URL.txt`). Optionally add a Policy status screenshot to the same folder and attach it too.
+2. Copy all of `docs/play-support-ticket/TICKET_DESCRIPTION.txt` into the Google Play support ticket (max 1000 chars).
+3. Attach from that folder: `AAB_DOWNLOAD.txt` (direct AAB URL — ticket form cannot accept >21MB binaries), `REMEDIATIONS.md`, `DATA_DELETION_URL.txt`. Optionally add a Policy status screenshot and attach it too.
 
-The AAB is kept locally in that folder (gitignored). Ticket body says “AAB attached” so you do not need Expo URLs in the ticket.
+Do not attach the `.aab` binary to the ticket. A local copy may remain in the folder (gitignored) for other uses; the ticket gets the link file instead.

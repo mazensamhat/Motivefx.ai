@@ -1,4 +1,4 @@
-MotiveFX.AI (ai.motivefx.app): appeal denied under Enforcement Process (repeated violations). Request clarification and reconsideration of remediated build 1.0.6 / versionCode 22 (AAB attached).
+MotiveFX.AI (ai.motivefx.app): appeal denied under Enforcement Process (repeated violations). Request clarification and reconsideration of remediated build 1.0.6 / versionCode 22 (AAB link: AAB_DOWNLOAD.txt).
 
 Fixes in 1.0.6/22: soft auth timeouts/retry (no AbortController cancel); WebView load/retry + scroll/touch hardened; Android no longer opens web pricing, Stripe checkout, or sub management for digital goods; CTAs non-steering (Play Billing not claimed live); POST /api/auth/delete-account + in-app Delete account/Account; https://www.motivefxai.com/data-deletion; native demo/legacy risks removed. Monitor-only intelligence - not broker, sportsbook, or personalized advice.
 

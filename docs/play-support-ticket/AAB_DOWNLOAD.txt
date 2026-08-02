@@ -1,0 +1,8 @@
+App: MotiveFX.AI (ai.motivefx.app)
+Version: 1.0.6 / versionCode 22
+
+Direct AAB download URL:
+https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab
+
+Note: This is the same binary as in Play Console App Bundle Explorer if already uploaded.
+The Google Play support ticket form cannot accept attachments larger than 21MB, so the AAB download URL is provided here instead of attaching the .aab file.
