@@ -97,6 +97,6 @@ MotiveFX.AI / MotiveFX team
 ### Attachment checklist
 
 - `docs/PLAY_SUSPENSION_APPEAL.md` or a short PDF summarizing remediations
-- Link/list AAB: version **1.0.6**, versionCode **22** — Expo artifact `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab` (build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`)
+- Link/list AAB: version **1.0.6**, versionCode **22** - Expo artifact `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab` (build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`)
 - Screenshot of Play Console **Policy status** (if accessible)
 - Data deletion URL page: `https://www.motivefxai.com/data-deletion`
