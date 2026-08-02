@@ -56,10 +56,11 @@ const VIEWPORT_LOCK_SCRIPT = `
         var style = document.createElement("style");
         style.id = "motivefx-native-scroll-fix";
         style.textContent = [
-          "html.motivefx-native-shell,html.motivefx-native-shell body{height:100%!important;overflow:hidden!important;}",
+          "html.motivefx-native-shell,html.motivefx-native-shell body{height:100%!important;overflow:hidden!important;padding:0!important;margin:0!important;}",
           "html.motivefx-native-shell #root,html.motivefx-native-shell .app{height:100%!important;min-height:0!important;overflow:hidden!important;display:flex;flex-direction:column;}",
           "html.motivefx-native-shell .app-body{flex:1 1 auto;min-height:0!important;overflow:hidden!important;}",
           "html.motivefx-native-shell .app-content{flex:1 1 auto;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;touch-action:pan-y;}",
+          "html.motivefx-native-shell .workspace-header{padding-top:0!important;margin-top:0!important;}",
         ].join("");
         (document.head || document.documentElement).appendChild(style);
       }
@@ -577,32 +578,6 @@ export function TerminalScreen({
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.chrome}>
-        <Text style={styles.chromeTitle}>MotiveFX.AI</Text>
-        <View style={styles.chromeActions}>
-          {onRequestDeleteAccount ? (
-            <Pressable
-              onPress={onRequestDeleteAccount}
-              accessibilityRole="button"
-              accessibilityLabel="Delete account"
-              hitSlop={8}
-              style={styles.chromeBtn}
-            >
-              <Text style={styles.chromeBtnText}>Account</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => void logout()}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-            hitSlop={8}
-            style={styles.chromeBtn}
-          >
-            <Text style={styles.chromeBtnText}>Sign out</Text>
-          </Pressable>
-        </View>
-      </View>
-
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -643,21 +618,6 @@ export function TerminalScreen({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   centered: { justifyContent: "center", paddingHorizontal: 24, gap: 12 },
-  chrome: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
-    minHeight: 44,
-  },
-  chromeTitle: { color: colors.text, fontWeight: "700", fontSize: 14 },
-  chromeActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  chromeBtn: { paddingHorizontal: 10, paddingVertical: 8, minHeight: 40, justifyContent: "center" },
-  chromeBtnText: { color: colors.accent, fontSize: 13, fontWeight: "600" },
   webview: { flex: 1, backgroundColor: colors.bg },
   loader: {
     ...StyleSheet.absoluteFill,

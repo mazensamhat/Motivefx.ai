@@ -12,7 +12,6 @@ import { brandForTab } from "../brand/moduleBrand";
 import { useAuth } from "../hooks/useAuth";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
-import { isNativeShell } from "../lib/nativeShell";
 import { AccountMenu } from "./AccountMenu";
 import { AlertCenterBell } from "./AlertCenterBell";
 import { MotiveFxBrandLogo } from "./MotivFxLogo";
@@ -30,7 +29,6 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
   const { isAuthenticated, openAccount, openAuth, logout } = useAuth();
   const { openSetup } = usePlatformPrefs();
   const { profile, openSetup: openGenSetup } = useGenerationalProfile();
-  const nativeShell = isNativeShell();
 
   return (
     <header className="workspace-header">
@@ -90,31 +88,29 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
           <Users size={14} strokeWidth={2.2} />
           <span>{profile.name} mode</span>
         </button>
-        {/* Native shell already exposes Account / Sign out in the RN chrome — avoid duplicate dead-looking controls. */}
-        {!nativeShell &&
-          (isAuthenticated ? (
-            <>
-              <button type="button" className="mobile-header-tool" onClick={openAccount}>
-                <User size={14} strokeWidth={2.2} />
-                <span>Account</span>
-              </button>
-              <button
-                type="button"
-                className="mobile-header-tool"
-                onClick={() => {
-                  void logout();
-                }}
-              >
-                <LogOut size={14} strokeWidth={2.2} />
-                <span>Sign out</span>
-              </button>
-            </>
-          ) : (
-            <button type="button" className="mobile-header-tool" onClick={() => openAuth("login")}>
-              <LogIn size={14} strokeWidth={2.2} />
-              <span>Sign in</span>
+        {isAuthenticated ? (
+          <>
+            <button type="button" className="mobile-header-tool" onClick={openAccount}>
+              <User size={14} strokeWidth={2.2} />
+              <span>Account</span>
             </button>
-          ))}
+            <button
+              type="button"
+              className="mobile-header-tool"
+              onClick={() => {
+                void logout();
+              }}
+            >
+              <LogOut size={14} strokeWidth={2.2} />
+              <span>Sign out</span>
+            </button>
+          </>
+        ) : (
+          <button type="button" className="mobile-header-tool" onClick={() => openAuth("login")}>
+            <LogIn size={14} strokeWidth={2.2} />
+            <span>Sign in</span>
+          </button>
+        )}
       </nav>
     </header>
   );
