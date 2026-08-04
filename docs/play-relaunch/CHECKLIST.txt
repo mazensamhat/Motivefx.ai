@@ -29,7 +29,8 @@ NOW → SUBMIT
    - https://www.motivefxai.com/privacy
    - https://www.motivefxai.com/terms
    - https://www.motivefxai.com/data-deletion
-   - https://www.motivefxai.com/.well-known/assetlinks.json (package com.motivefx.app)
+   - https://www.motivefxai.com/.well-known/assetlinks.json (package com.motivefx.app; upload SHA-256 updated 2026-08-04 from AAB 56060db5… — redeploy site)
+     SHA-256: 92:4F:49:04:E0:74:E0:88:C0:E0:B9:5E:EC:28:44:A2:6F:88:13:38:02:A3:6F:82:76:68:D5:8F:0C:F7:98:91
    - POST /api/auth/delete-account
 
 4. Smoke-test on a physical Android device (preview APK first is fine):

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MotiveFX",
-    "slug": "motivefx-android",
+    "slug": "motivefx",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -47,6 +47,7 @@
       "eas": {
         "projectId": "be5b49f1-61c1-4d22-960d-12a3a898f913"
       }
-    }
+    },
+    "owner": "msamhat"
   }
 }

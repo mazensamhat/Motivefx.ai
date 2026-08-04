@@ -61,7 +61,8 @@ Confirm `applicationId` is `com.motivefx.app` and `app_name` is MotiveFX.
 - [ ] Store screenshots (Play-safe; no placement UI)
 - [ ] Create new app in Play Console; upload AAB
 - [ ] Data Safety, content rating, financial features, distribution
-- [ ] After first signed AAB: confirm upload-key SHA-256 still matches `assetlinks.json` (redeploy site if EAS uses a different key)
+- [x] Upload-key SHA-256 updated in `apps/site/public/.well-known/assetlinks.json` from production AAB `56060db5-5324-4563-8226-d23fbc2faceb` (EAS-generated upload keystore, 2026-08-04): `92:4F:49:04:E0:74:E0:88:C0:E0:B9:5E:EC:28:44:A2:6F:88:13:38:02:A3:6F:82:76:68:D5:8F:0C:F7:98:91` — **redeploy site** so `/.well-known/assetlinks.json` is live
+- [ ] After first Play upload: if Play App Signing is enabled, also add the **App signing key certificate** SHA-256 from Play Console → Setup → App signing (assetlinks can list both upload + app-signing fingerprints)
 - [ ] Keep iOS `bundleIdentifier` `ai.motivefx.app` as-is for Apple until a separate iOS rename is planned (Android only uses `com.motivefx.app`)
 
 ## Explicit non-claims
