@@ -2314,6 +2314,10 @@ html.motivefx-native-shell:not(:has(.app-content)) .app-layout {
   margin: 0 0 1rem;
 }
 
+.admin-panel.app-panel {
+  margin-bottom: 1rem;
+}
+
 .admin-bar-list {
   display: flex;
   flex-direction: column;
@@ -2353,32 +2357,70 @@ html.motivefx-native-shell:not(:has(.app-content)) .app-layout {
 
 .admin-heatmap-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 140px;
 }
 
 .admin-heatmap {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.6875rem;
+  table-layout: fixed;
 }
 
 .admin-heatmap th,
 .admin-heatmap td {
-  padding: 0.35rem;
+  padding: 0.4rem 0.35rem;
   text-align: center;
   border: 1px solid var(--border);
   color: var(--text-muted);
+  height: 28px;
+  vertical-align: middle;
 }
 
 .admin-heatmap th:first-child,
 .admin-heatmap td:first-child {
   text-align: left;
   font-weight: 600;
-  text-transform: capitalize;
+  text-transform: none;
   color: white;
+  width: 96px;
+  min-width: 88px;
 }
 
 .admin-heatmap-cell {
-  min-width: 28px;
+  min-width: 32px;
+  min-height: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-heat-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.admin-heat-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.admin-util-cell {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 140px;
+}
+
+.admin-util-cell span {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-health-list {

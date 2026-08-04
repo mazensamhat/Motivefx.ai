@@ -20,6 +20,7 @@ import { useApi } from "./hooks/useApi";
 import { useModules } from "./hooks/useModules";
 import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
+import { useModuleUsageTracker } from "./hooks/useModuleUsageTracker";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
 import { isNativeAndroidShell, isNativeShell } from "./lib/nativeShell";
 import { PrivacyPage } from "./pages/PrivacyPage";
@@ -83,6 +84,7 @@ export default function App() {
   const { badges: pulseBadges } = useModulePulse(activeTab);
   const { hasModule, annualPrice, active: activeModules } = useModules();
   const { isAuthenticated, openAuth, isAdmin } = useAuth();
+  useModuleUsageTracker(activeTab);
   const liveCount = Object.values(health.data?.feeds ?? {}).filter(Boolean).length;
   const sharpRemaining = health.data?.quota?.sharp_api?.remaining;
   const oddsRemaining = health.data?.quota?.the_odds_api?.remaining;

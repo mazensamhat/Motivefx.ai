@@ -1,5 +1,6 @@
 export interface AdminDashboard {
   generatedAt: string;
+  moduleLabels?: Record<string, string>;
   kpis: {
     totalUsers: number;
     activeModuleSubscriptions: number;
@@ -8,8 +9,23 @@ export interface AdminDashboard {
     usageEvents24h: number;
     churnEvents30d: number;
     annualPriceUsd: number;
+    seatUtilizationPct?: number;
+    payingActive30d?: number;
   };
-  subscriptionsByModule: { module: string; active: number; inactive: number }[];
+  subscriptionsByModule: {
+    module: string;
+    label?: string;
+    active: number;
+    inactive: number;
+  }[];
+  moduleUtilization?: {
+    module: string;
+    label: string;
+    subscribed: number;
+    activeUsers: number;
+    events: number;
+    utilizationPct: number;
+  }[];
   moduleHealth: {
     module: string;
     label: string;
@@ -25,8 +41,13 @@ export interface AdminDashboard {
     cells: Record<string, Record<string, number>>;
     max: number;
   };
-  moduleActivityRanking: { module: string; events: number; unique_users: number }[];
-  churnByModule: { module: string; cancellations: number }[];
+  moduleActivityRanking: {
+    module: string;
+    label?: string;
+    events: number;
+    unique_users: number;
+  }[];
+  churnByModule: { module: string; label?: string; cancellations: number }[];
   demographics: {
     cohorts: { cohort: string; c: number }[];
     sex: { sex: string; c: number }[];

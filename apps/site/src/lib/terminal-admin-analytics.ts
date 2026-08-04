@@ -1,16 +1,19 @@
 import { prisma } from "@motivefx/database";
 import type { AdminDashboard } from "@/lib/admin-api";
+import { parseUserMarkets } from "@/lib/entitlements";
 import { isPrismaMissingColumnError } from "@/lib/load-user";
 import { PRICING_TIERS } from "@/lib/tiers";
 
 const MODULES = ["trades", "crypto", "betting", "penny", "predictions"] as const;
 
 const MODULE_LABELS: Record<string, string> = {
+  home: "Home",
   trades: "Stocks",
   crypto: "Crypto",
   betting: "Betting",
   penny: "Pink Slips",
   predictions: "Predictions",
+  api: "Public API",
 };
 
 /** Selected-market id (from tiers.ts) → terminal module key. */
@@ -46,7 +49,12 @@ async function safeDashboardQuery<T>(
 }
 
 async function getPayingUsersSafe() {
-  const select = { intelligenceTier: true, selectedMarkets: true } as const;
+  const select = {
+    id: true,
+    intelligenceTier: true,
+    selectedMarkets: true,
+    lastSeenAt: true,
+  } as const;
   try {
     return await prisma.user.findMany({
       where: {
@@ -69,19 +77,26 @@ async function getPayingUsersSafe() {
   }
 }
 
-function daysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function dayLabels(days: number) {
+/** UTC calendar day labels so heatmap keys match `createdAt.toISOString().slice(0,10)`. */
+function utcDayLabels(days: number) {
   const labels: string[] = [];
+  const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
-    labels.push(daysAgo(i).toISOString().slice(0, 10));
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+    labels.push(d.toISOString().slice(0, 10));
   }
   return labels;
+}
+
+function marketsForUser(raw: string | null | undefined): string[] {
+  const parsed = parseUserMarkets(raw ?? null);
+  if (parsed.length) return parsed;
+  // Legacy comma-separated fallback
+  if (!raw || raw.trim().startsWith("[")) return [];
+  return raw
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
 }
 
 export async function getAdminDashboard(): Promise<AdminDashboard> {
@@ -106,6 +121,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
             statusCode: true,
             durationMs: true,
             createdAt: true,
+            userId: true,
           },
         })
       ),
@@ -153,23 +169,20 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
   );
   const annualSubscribers = payingUsers.filter((u) => u.intelligenceTier === "elite").length;
 
-  // Real "subscriptions by module": paying users who selected each market.
+  // Real "subscriptions by module": paying users who selected each market (JSON array).
   const subsByModule = new Map<string, number>(MODULES.map((m) => [m, 0]));
   for (const user of payingUsers) {
-    const markets = (user.selectedMarkets ?? "")
-      .split(",")
-      .map((m) => m.trim())
-      .filter(Boolean);
+    const markets = marketsForUser(user.selectedMarkets);
     for (const market of markets) {
       const mod = MARKET_TO_MODULE[market] ?? market;
       if (subsByModule.has(mod)) subsByModule.set(mod, (subsByModule.get(mod) ?? 0) + 1);
     }
   }
 
-  const days = dayLabels(14);
+  const days = utcDayLabels(14);
   const usage7d = usage14d.filter((event) => event.createdAt >= since7d);
   const cells: Record<string, Record<string, number>> = {};
-  for (const mod of MODULES) {
+  for (const mod of [...MODULES, "home", "api"] as const) {
     cells[mod] = Object.fromEntries(days.map((day) => [day, 0]));
   }
   for (const event of usage14d) {
@@ -180,8 +193,12 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
   }
   const max = Math.max(1, ...Object.values(cells).flatMap((row) => Object.values(row)));
   const heatmapModules = [
+    "home",
     ...MODULES,
-    ...Object.keys(cells).filter((module) => !MODULES.includes(module as (typeof MODULES)[number])),
+    ...Object.keys(cells).filter(
+      (module) =>
+        module !== "home" && !MODULES.includes(module as (typeof MODULES)[number])
+    ),
   ];
 
   const moduleEvents = new Map<string, { events: number; users: Set<string> }>();
@@ -192,6 +209,30 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     if (event.userId) row.users.add(event.userId);
     moduleEvents.set(mod, row);
   }
+
+  // Module utilization: active users (30d usage) / paying seats that selected the market.
+  const moduleUtilization = MODULES.map((module) => {
+    const subscribed = subsByModule.get(module) ?? 0;
+    const activeUsers = moduleEvents.get(module)?.users.size ?? 0;
+    const events = moduleEvents.get(module)?.events ?? 0;
+    const utilizationPct =
+      subscribed > 0 ? Math.round((Math.min(activeUsers, subscribed) / subscribed) * 1000) / 10 : 0;
+    return {
+      module,
+      label: MODULE_LABELS[module] ?? module,
+      subscribed,
+      activeUsers,
+      events,
+      utilizationPct,
+    };
+  });
+
+  const payingActive30d = payingUsers.filter(
+    (u) => u.lastSeenAt != null && u.lastSeenAt >= since30d
+  ).length;
+  const seatUtilizationPct = payingUsers.length
+    ? Math.round((payingActive30d / payingUsers.length) * 1000) / 10
+    : 0;
 
   const locCounts = new Map<string, { country: string; region: string; city: string; c: number }>();
   for (const user of allUsers) {
@@ -209,6 +250,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
 
   return {
     generatedAt: now.toISOString(),
+    moduleLabels: MODULE_LABELS,
     kpis: {
       totalUsers,
       activeModuleSubscriptions: payingUsers.length,
@@ -217,12 +259,16 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
       usageEvents24h: usage24h,
       churnEvents30d,
       annualPriceUsd: 1299,
+      seatUtilizationPct,
+      payingActive30d,
     },
     subscriptionsByModule: MODULES.map((module) => ({
       module,
+      label: MODULE_LABELS[module] ?? module,
       active: subsByModule.get(module) ?? 0,
       inactive: 0,
     })),
+    moduleUtilization,
     moduleHealth: MODULES.map((module) => {
       const events = usage7d.filter((event) => event.module === module);
       const errors = events.filter((event) => (event.statusCode ?? 200) >= 400).length;
@@ -246,11 +292,16 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     moduleActivityRanking: [...moduleEvents.entries()]
       .map(([module, row]) => ({
         module,
+        label: MODULE_LABELS[module] ?? module,
         events: row.events,
         unique_users: row.users.size,
       }))
       .sort((a, b) => b.events - a.events),
-    churnByModule: MODULES.map((module) => ({ module, cancellations: 0 })),
+    churnByModule: MODULES.map((module) => ({
+      module,
+      label: MODULE_LABELS[module] ?? module,
+      cancellations: 0,
+    })),
     demographics: {
       cohorts: [],
       sex: [],

@@ -6,6 +6,7 @@ import {
   Activity,
   BarChart3,
   ExternalLink,
+  Gauge,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -14,6 +15,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { ActivityHeatmap } from "@/components/admin/activity-heatmap";
 import { BarList } from "@/components/admin/admin-bar-list";
 import { FeedbackInboxPanel } from "@/components/admin/feedback-inbox-panel";
 import { FinancialPanel } from "@/components/admin/financial-panel";
@@ -24,17 +26,11 @@ import { adminGet, type AdminDashboard } from "@/lib/admin-api";
 import { clientLogout } from "@/lib/auth-client";
 import { MOTIVELIFE_OPS_URL, MOTIVEPULSE_OPS_URL } from "@/lib/ops-links";
 
-function heatColor(value: number, max: number): string {
-  if (max <= 0 || value <= 0) return "rgba(255,255,255,0.03)";
-  const t = value / max;
-  return `rgba(0, 230, 118, ${0.12 + t * 0.75})`;
-}
-
-function dayLabels(days: number) {
+function utcDayLabels(days: number) {
   const labels: string[] = [];
+  const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
     labels.push(d.toISOString().slice(0, 10));
   }
   return labels;
@@ -55,6 +51,7 @@ const emptySignupMap: SignupMapData = {
 
 const defaultDashboard: AdminDashboard = {
   generatedAt: new Date().toISOString(),
+  moduleLabels: {},
   kpis: {
     totalUsers: 0,
     activeModuleSubscriptions: 0,
@@ -63,10 +60,13 @@ const defaultDashboard: AdminDashboard = {
     usageEvents24h: 0,
     churnEvents30d: 0,
     annualPriceUsd: 0,
+    seatUtilizationPct: 0,
+    payingActive30d: 0,
   },
   subscriptionsByModule: [],
+  moduleUtilization: [],
   moduleHealth: [],
-  activityHeatmap: { days: dayLabels(14), modules: [], cells: {}, max: 1 },
+  activityHeatmap: { days: utcDayLabels(14), modules: [], cells: {}, max: 1 },
   moduleActivityRanking: [],
   churnByModule: [],
   demographics: {
@@ -94,7 +94,9 @@ function normalizeDashboard(snapshot: Partial<AdminDashboard>): AdminDashboard {
     ...defaultDashboard,
     ...snapshot,
     kpis: { ...defaultDashboard.kpis, ...snapshot.kpis },
+    moduleLabels: { ...defaultDashboard.moduleLabels, ...snapshot.moduleLabels },
     subscriptionsByModule: snapshot.subscriptionsByModule ?? [],
+    moduleUtilization: snapshot.moduleUtilization ?? [],
     moduleHealth: snapshot.moduleHealth ?? [],
     activityHeatmap: {
       days: activityHeatmap.days?.length ? activityHeatmap.days : defaultDashboard.activityHeatmap.days,
@@ -116,6 +118,14 @@ function normalizeSiteDashboard(snapshot: Partial<SiteDashboard>): SiteDashboard
     signupMap: { ...emptySignupMap, ...snapshot.signupMap },
     totalUsers: snapshot.totalUsers ?? 0,
   };
+}
+
+function labelOf(
+  labels: Record<string, string> | undefined,
+  key: string,
+  fallback?: string
+) {
+  return labels?.[key] ?? fallback ?? key;
 }
 
 export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
@@ -161,41 +171,53 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         <Shield className="h-8 w-8 text-[#00e676]" />
         <h1 className="text-xl font-semibold text-white">Ops Console unavailable</h1>
         <p className="text-center text-sm text-slate-400">{error}</p>
-        <Link href="/app" className="admin-btn">← Back to terminal</Link>
+        <Link href="/app" className="admin-btn">
+          ← Back to terminal
+        </Link>
       </div>
     );
   }
 
   if (!data) return null;
 
-  const { kpis, activityHeatmap, demographics, payments } = data;
+  const { kpis, activityHeatmap, demographics, payments, moduleLabels } = data;
   const maxSignup = Math.max(...(siteData?.signupsByDay.map((d) => d.count) ?? [0]), 1);
-  const heatmapHasData = Object.values(activityHeatmap.cells).some((row) =>
-    Object.values(row).some((value) => value > 0)
-  );
+  const utilRows = data.moduleUtilization ?? [];
 
   return (
     <div className="admin-shell mx-auto max-w-7xl">
       <header className="admin-header app-panel">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#00e676]">MotiveFX Ops Console</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#00e676]">
+            MotiveFX Ops Console
+          </p>
           <h1>Platform intelligence</h1>
           <p className="admin-header-sub">
             Signed in as {adminEmail} · updated {new Date(data.generatedAt).toLocaleString()}
           </p>
         </div>
         <div className="admin-header-actions">
-          <a href={MOTIVELIFE_OPS_URL} target="_blank" rel="noopener noreferrer" className="admin-btn">
+          <a
+            href={MOTIVELIFE_OPS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="admin-btn"
+          >
             <ExternalLink className="h-3.5 w-3.5" /> Motive Life Ops
           </a>
-          <a href={MOTIVEPULSE_OPS_URL} target="_blank" rel="noopener noreferrer" className="admin-btn">
+          <a
+            href={MOTIVEPULSE_OPS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="admin-btn"
+          >
             <ExternalLink className="h-3.5 w-3.5" /> MotivePulse Ops
           </a>
           <Link href="/app" className="admin-btn">
             <LayoutDashboard className="h-3.5 w-3.5" /> Terminal
           </Link>
           <button type="button" className="admin-btn" onClick={load} disabled={loading}>
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            <RefreshCw className="h-3.5 w-3.5" /> {loading ? "Refreshing…" : "Refresh"}
           </button>
           <button type="button" className="admin-btn" onClick={() => clientLogout()}>
             <LogOut className="h-3.5 w-3.5" /> Sign out
@@ -227,8 +249,9 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <strong>{kpis.usageEvents24h}</strong>
         </div>
         <div className="admin-kpi app-panel">
-          <span className="admin-kpi-label">Annual subs</span>
-          <strong>{kpis.annualSubscribers}</strong>
+          <Gauge className="h-4 w-4" />
+          <span className="admin-kpi-label">Seat util (30d)</span>
+          <strong>{kpis.seatUtilizationPct ?? 0}%</strong>
         </div>
         <div className="admin-kpi app-panel admin-kpi-warn">
           <span className="admin-kpi-label">Churn (30d)</span>
@@ -264,7 +287,9 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               <tbody>
                 {data.channelPerformance.channels.map((ch) => (
                   <tr key={ch.id}>
-                    <td><strong>{ch.platform}</strong></td>
+                    <td>
+                      <strong>{ch.platform}</strong>
+                    </td>
                     <td>{ch.handle}</td>
                     <td>{ch.signups}</td>
                     <td>{ch.payments}</td>
@@ -281,60 +306,82 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       <div className="admin-grid-2">
         <section className="admin-panel app-panel">
           <h2>Subscriptions by module</h2>
-          <BarList items={data.subscriptionsByModule} labelKey="module" valueKey="active" />
+          <BarList
+            items={data.subscriptionsByModule.map((m) => ({
+              module: labelOf(moduleLabels, m.module, m.label),
+              active: m.active,
+            }))}
+            labelKey="module"
+            valueKey="active"
+          />
         </section>
         <section className="admin-panel app-panel">
           <h2>Module activity (30d)</h2>
-          <BarList items={data.moduleActivityRanking} labelKey="module" valueKey="events" />
+          <BarList
+            items={data.moduleActivityRanking.map((m) => ({
+              module: labelOf(moduleLabels, m.module, m.label),
+              events: m.events,
+            }))}
+            labelKey="module"
+            valueKey="events"
+          />
         </section>
       </div>
 
       <section className="admin-panel app-panel">
-        <h2>Activity heatmap (14 days)</h2>
-        {activityHeatmap.modules.length === 0 ? (
-          <p className="text-sm text-slate-400">No activity modules have reported usage yet.</p>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2>Module utilization</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Active users with usage events vs paying seats that selected each market · seat util{" "}
+              {kpis.seatUtilizationPct ?? 0}% ({kpis.payingActive30d ?? 0}/
+              {kpis.activeModuleSubscriptions} paying seen in 30d)
+            </p>
+          </div>
+        </div>
+        {utilRows.length === 0 ? (
+          <p className="text-sm text-slate-400">No utilization data yet.</p>
         ) : (
-          <>
-            {!heatmapHasData && (
-              <p className="mb-3 text-sm text-slate-400">
-                No usage events in the last 14 days. The heatmap will populate as terminal or API traffic arrives.
-              </p>
-            )}
-            <div className="admin-heatmap-wrap">
-              <table className="admin-heatmap">
-                <thead>
-                  <tr>
-                    <th>Module</th>
-                    {activityHeatmap.days.map((d) => (
-                      <th key={d}>{d.slice(5)}</th>
-                    ))}
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Seats</th>
+                  <th>Active users</th>
+                  <th>Events</th>
+                  <th>Utilization</th>
+                </tr>
+              </thead>
+              <tbody>
+                {utilRows.map((row) => (
+                  <tr key={row.module}>
+                    <td>
+                      <strong>{row.label}</strong>
+                    </td>
+                    <td>{row.subscribed}</td>
+                    <td>{row.activeUsers}</td>
+                    <td>{row.events}</td>
+                    <td>
+                      <div className="admin-util-cell">
+                        <div className="admin-bar-track">
+                          <div
+                            className="admin-bar-fill"
+                            style={{ width: `${Math.min(100, row.utilizationPct)}%` }}
+                          />
+                        </div>
+                        <span>{row.utilizationPct}%</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {activityHeatmap.modules.map((mod) => (
-                    <tr key={mod}>
-                      <td>{mod}</td>
-                      {activityHeatmap.days.map((day) => {
-                        const val = activityHeatmap.cells[mod]?.[day] ?? 0;
-                        return (
-                          <td
-                            key={day}
-                            className="admin-heatmap-cell"
-                            style={{ background: heatColor(val, activityHeatmap.max) }}
-                            title={`${mod} · ${day}: ${val} events`}
-                          >
-                            {val > 0 ? val : ""}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
+
+      <ActivityHeatmap heatmap={activityHeatmap} moduleLabels={moduleLabels} />
 
       {siteData?.signupsByDay && (
         <section className="admin-panel app-panel">
@@ -357,7 +404,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       <div className="admin-grid-2">
         <section className="admin-panel app-panel">
           <h2>Churn by module (30d)</h2>
-          <BarList items={data.churnByModule} labelKey="module" valueKey="cancellations" />
+          <BarList
+            items={data.churnByModule.map((m) => ({
+              module: labelOf(moduleLabels, m.module, m.label),
+              cancellations: m.cancellations,
+            }))}
+            labelKey="module"
+            valueKey="cancellations"
+          />
         </section>
         <section className="admin-panel app-panel">
           <h2>Module health</h2>
@@ -403,7 +457,11 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
-                <tr><th>City</th><th>Country</th><th>Users</th></tr>
+                <tr>
+                  <th>City</th>
+                  <th>Country</th>
+                  <th>Users</th>
+                </tr>
               </thead>
               <tbody>
                 {demographics.topLocations.map((loc) => (

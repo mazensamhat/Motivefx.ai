@@ -320,7 +320,7 @@ export function FinancialPanel() {
       <section className="admin-panel app-panel">
         <div className="mb-4 flex items-center gap-2">
           <Activity className="h-4 w-4 text-[#00e676]" />
-          <h2>Product engagement</h2>
+          <h2>Product engagement &amp; utilization</h2>
         </div>
         <div className="admin-kpi-grid">
           <div className="admin-kpi app-panel">

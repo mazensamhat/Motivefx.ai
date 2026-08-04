@@ -401,13 +401,20 @@ export async function getFinancialSnapshot() {
   const alertsTotal = alertAgg.reduce((s, a) => s + a._count._all, 0);
   const alertsUnread = alertAgg.find((a) => a.seen === false)?._count._all ?? 0;
 
+  // Prefer UsageEvent-based DAU/WAU/MAU; fall back to lastSeenAt so utilization
+  // is not blank when module-open metering was missing historically.
+  const lastSeenDau = allUsers.filter((u) => u.lastSeenAt && u.lastSeenAt >= since24h).length;
+  const lastSeenWau = allUsers.filter((u) => u.lastSeenAt && u.lastSeenAt >= since7d).length;
+  const lastSeenMau = allUsers.filter((u) => u.lastSeenAt && u.lastSeenAt >= since30d).length;
+  const dau = usage1dUsers.length || lastSeenDau;
+  const wau = usage7dUsers.length || lastSeenWau;
+  const mau = usage30dUsers.length || lastSeenMau;
+
   const product = {
-    dau: usage1dUsers.length,
-    wau: usage7dUsers.length,
-    mau: usage30dUsers.length,
-    stickiness: usage30dUsers.length
-      ? round((usage1dUsers.length / usage30dUsers.length) * 100, 1)
-      : 0,
+    dau,
+    wau,
+    mau,
+    stickiness: mau ? round((dau / mau) * 100, 1) : 0,
     bettors: realBettors,
     openBets,
     settledBets,
