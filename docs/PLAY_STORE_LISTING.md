@@ -1,6 +1,9 @@
-# MotiveFX.AI — Google Play store listing fields
+# MotiveFX — Google Play store listing fields (new listing)
 
-Copy these into Play Console → **Grow users** → **Store presence** → **Main store listing** (and **App content** / **Privacy policy** where prompted).
+Use for the **new** app only: display name **MotiveFX**, package **`com.motivefx.app`**.  
+Do not paste this into the suspended MotiveFX.AI / `ai.motivefx.app` listing.
+
+Master steps: [`PLAY_RELAUNCH_NEW_LISTING.md`](./PLAY_RELAUNCH_NEW_LISTING.md) · Plain list: [`play-relaunch/CHECKLIST.txt`](./play-relaunch/CHECKLIST.txt)
 
 ## Required disclosure URLs
 
@@ -10,26 +13,18 @@ Copy these into Play Console → **Grow users** → **Store presence** → **Mai
 | **Account / data deletion** | `https://www.motivefxai.com/data-deletion` |
 | **Terms of Service** | `https://www.motivefxai.com/terms` |
 | **Marketing / website** | `https://www.motivefxai.com` |
-| **Support** | `https://www.motivefxai.com` (or `mailto:support@motivefx.ai`) |
-| **Pricing (public web)** | `https://www.motivefxai.com/pricing` |
-| **Product preview (no login)** | `https://www.motivefxai.com/demo` |
+| **Support** | `https://www.motivefxai.com` or `mailto:support@motivefx.ai` |
 
-## Billing (critical for store review)
+Do **not** put the public `/pricing` page in Play listing text as a purchase path for the Android app.
 
-**Do not** tell Play users inside the Android app to buy digital subscriptions on the website. That is Payments steering and is a common repeated-rejection cause.
+## Billing (critical)
 
-**Current Android policy (1.0.4+):**
-- No in-app CTAs that open `motivefxai.com/pricing` or Stripe checkout for digital goods
-- When Google Play Billing is configured (RevenueCat Android key + Play products), sell subscriptions through Play Billing only
-- Until Play Billing is live, the app must not offer purchase buttons that open the web
+- This Android build does **not** sell digital subscriptions (`EXPO_PUBLIC_IAP_ENABLED=false`).
+- The app must **not** steer users to website checkout for digital goods.
+- Store listing must **not** say “subscribe on our website.”
+- Re-enable Play Billing only after RevenueCat Android + Play products + entitlement sync are verified.
 
-**Store listing** should describe the product as informational market intelligence. Avoid “billing only on the website” language that implies the app unlocks paid digital content purchased outside Play.
-
-After Play Billing is verified on device, update this section and re-enable in-app subscribe CTAs that call native IAP only.
-
-## Social profiles (site footer + Play Console)
-
-Use these MotiveFX-owned profiles (do not use MotiveLife URLs):
+## Social profiles
 
 | Platform | URL |
 |----------|-----|
@@ -37,26 +32,20 @@ Use these MotiveFX-owned profiles (do not use MotiveLife URLs):
 | **Facebook** | `https://www.facebook.com/profile.php?id=61591532050605` |
 | **LinkedIn** | `https://www.linkedin.com/company/motivefx-ai/` |
 
-Site footer Follow links default to the URLs above (`apps/site/src/lib/social.ts`). Optional Vercel overrides:
-
-- `SOCIAL_INSTAGRAM_URL`
-- `SOCIAL_FACEBOOK_URL`
-- `SOCIAL_LINKEDIN_URL`
-
-Play Console: paste the same URLs into contact/social fields when available; always set **website** to `https://www.motivefxai.com`.
-
 ## Short description (≤80 chars)
 
 ```
-AI market intel for stocks, crypto, options, sports & prediction markets.
+AI market intelligence for stocks, crypto, options & event markets. Monitor only.
 ```
+
+(Character check: keep ≤80; trim if Console rejects.)
 
 ## Full description (draft)
 
 ```
-MotiveFX.AI is an AI market intelligence terminal — informational research only.
+MotiveFX is an AI market intelligence terminal for informational research.
 
-Track stocks, crypto, options flow, pink slips, sports betting analytics, and prediction markets (including Polymarket) in one place. Motive Signal™ scores help you prioritize what to research next. Plain-English “Why it matters” briefs explain the context.
+Monitor stocks, crypto, options flow, and event-market context in one place. Motive Signal™ scores help you prioritize what to research next. Plain-English briefs explain why a move matters.
 
 What MotiveFX is:
 • Research and analytics software
@@ -66,29 +55,25 @@ What MotiveFX is:
 What MotiveFX is NOT:
 • A broker or exchange
 • A sportsbook or gambling operator
-• Personalized financial, investment, or betting advice
+• A place to place bets or trades
+• Personalized financial, investment, or wagering advice
 
-Try the preview (no login): https://www.motivefxai.com/demo
 Privacy: https://www.motivefxai.com/privacy
 Delete your data: https://www.motivefxai.com/data-deletion
 Terms: https://www.motivefxai.com/terms
-Learning Center: https://www.motivefxai.com/learn
-Motive Signal methodology: https://www.motivefxai.com/motive-signal
 ```
 
-## Learning Center (public site)
+## Screenshots guidance
 
-Product tracks live at `https://www.motivefxai.com/learn` — stocks, crypto, options, prediction markets, sports betting, pink slips, plus AI investing and skills tracks.
+Show: age gate / sign-in, Home signals, stocks/crypto monitors, Account → Delete account.  
+Avoid: bet slips, “place bet”, sportsbook logos as CTAs, Polymarket handoff buttons, “lock in” / “cash out” language.
 
 ## Checklist
 
-- [ ] Privacy policy URL set in Play Console App content
-- [ ] Data deletion URL set (Account deletion / Data safety)
+- [ ] Privacy policy URL in App content
+- [ ] Data deletion URL set
 - [ ] Website = `https://www.motivefxai.com`
-- [ ] Short + full description pasted (**no** “buy on website only” steering)
-- [ ] Social / contact fields use MotiveFX Instagram, Facebook, LinkedIn URLs above
-- [ ] In-app auth links open Privacy, Terms, and Data deletion
-- [ ] In-app Delete account works (native Account / Delete account)
-- [ ] Reviewer demo credentials in review notes
-
-See also: `docs/ANDROID_PLAY_STORE.md` · Appeal draft: `docs/PLAY_SUSPENSION_APPEAL.md`
+- [ ] Short + full description (no website purchase steering)
+- [ ] Screenshots are Play-safe / monitor-only
+- [ ] In-app Delete account works
+- [ ] Reviewer credentials in review notes (no 2FA)

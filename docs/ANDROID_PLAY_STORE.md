@@ -1,129 +1,81 @@
-# MotiveFX.AI — Android & Google Play Store
+# MotiveFX — Android & Google Play Store
 
-> Phase 1 scaffold complete. Terminal loads in Expo WebView for 1:1 mobile design parity with the web app.
-
----
-
-## Enforcement / suspension (2026-08)
-
-Play suspended the app under **Enforcement Process** (repeated non-compliance). Do **not** appeal until:
-
-1. Binary **1.0.6** / versionCode **22** is built and uploaded
-2. Site deploy includes `POST /api/auth/delete-account`  
-3. Terminal web bundle is rebuilt so native-shell subscribe CTAs no longer open web pricing  
-4. Appeal draft in `docs/PLAY_SUSPENSION_APPEAL.md` is reviewed and only claims shipped fixes  
-
-**Plain assessment:** Without Google Play Billing fully configured, the Android app must **not** offer purchase CTAs that open the website. Current remediation removes steering. Re-enabling paid unlock CTAs without Play Billing will likely cause another Payments rejection.
+> Expo WebView terminal for 1:1 mobile parity with the web app.  
+> **Relaunch path:** new listing **MotiveFX** / package **`com.motivefx.app`** — see [`PLAY_RELAUNCH_NEW_LISTING.md`](./PLAY_RELAUNCH_NEW_LISTING.md).
 
 ---
 
-## Play rejection notes (Broken Functionality)
+## Enforcement note (2026-08)
 
-### Sign-in "Fetch request has been canceled" (2026-07)
+The prior listing **MotiveFX.AI** (`ai.motivefx.app`) was suspended; appeal denied. Treat that package as dead.
 
-Play reviewers saw Sign in fail with a red **fetch failed / canceled** error, which reads as an unresponsive button.
+- Do **not** upload new binaries to the suspended app.
+- Relaunch only with package **`com.motivefx.app`**, display name **MotiveFX**, version **1.0.0** / versionCode **1**.
+- Plain steps: [`play-relaunch/CHECKLIST.txt`](./play-relaunch/CHECKLIST.txt)
 
-**Cause:** `AbortController.abort()` on fetch timeout surfaces in React Native/Expo as *"Fetch request has been canceled"* instead of a clear timeout.
-
-**Fix (app 1.0.3 / versionCode 16–17):**
-- Soft timeouts via `Promise.race` (no abort signal on auth/API fetch)
-- Map cancel/network failures to actionable copy
-- One automatic retry on transient auth network errors
-- Larger Sign in hit target + disabled styling while loading
-
-### Payments steering removal (2026-08)
-
-**Fix included in app 1.0.6 / versionCode 22:**
-- Auth disclaimer no longer points to web `/pricing` or “Safari”
-- Terminal shell blocks Stripe/pricing/checkout URLs (does not open external checkout)
-- Native IAP fallback no longer opens the website
-- Web terminal native-shell paths remove “Manage subscription on website” CTAs
-- Native Delete account entry points + `POST /api/auth/delete-account`
-
-The superseded production remediation builds were **1.0.4** / versionCode **20** at commit `8bc91a8` and **1.0.5** / versionCode **21** at commit `6ce29d0`. The appeal target is **1.0.6** / versionCode **22** so it includes the later main-branch fixes for theme related watches, related-watch scorecard handoff, daily brief greeting/audio alignment, the ops-console loading path, and the mobile header / Intel alert-center polish in `d678930`.
-
-Production appeal build **1.0.6** / versionCode **22** on EAS:
-- Build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/52f83a92-def2-4b3b-bc7b-650ebfa3e480`
-- AAB artifact: `https://expo.dev/artifacts/eas/QSF7vR-v6EUxsd2tRbB0LTUic3G8gReZV9emZJo1Z-8.aab`
-
-Preview phone-install build **1.0.6** / versionCode **22** on EAS:
-- Build page: `https://expo.dev/accounts/msamhat/projects/motivefx/builds/8d9e54e0-bb4a-4c2b-a07d-3d4a8acd1592`
-- APK artifact: `https://expo.dev/artifacts/eas/imJVCiVFQAaYWQuSOQbX0Ds9kfQ8735DKKcOqg6G_0c.apk`
-
-Rebuild AAB: `cd mobile && eas build --platform android --profile production`
-Rebuild APK: `cd mobile && eas build --platform android --profile preview`
+**Plain assessment:** Without Google Play Billing fully configured, the Android app must **not** offer purchase CTAs that open the website. Current builds keep `EXPO_PUBLIC_IAP_ENABLED=false` and block web checkout URLs.
 
 ---
 
-## Architecture decision
+## Architecture
 
 | Approach | Status | Notes |
 |----------|--------|-------|
-| **Expo + WebView terminal** | **Active** | Loads `https://www.motivefxai.com/terminal/` after native auth — matches `MobileBottomNav` design |
-| Expo native screens | Legacy stubs | `HomeScreen`, `StocksScreen`, etc. kept for future native parity |
-| Capacitor wrapper | Deferred | Web terminal already mobile-optimized; Expo chosen per `MOBILE_STRATEGY.md` |
+| **Expo + WebView terminal** | **Active** | Loads `https://www.motivefxai.com/terminal` after native auth |
+| Expo native screens | Legacy stubs | Kept for future native parity |
 
-**Play risk:** A thin WebView wrapper can fail **Minimum Functionality**. Mitigations today: native age gate, native auth, native account deletion chrome, error/retry shell, deferred billing SDK. Longer-term: Phase 3 native feed screens.
-
----
-
-## What was built
-
-### Mobile app (`mobile/`)
-
-| File | Purpose |
-|------|---------|
-| `src/screens/TerminalScreen.tsx` | Full-screen WebView + auth token injection + payments URL block |
-| `src/screens/DeleteAccountScreen.tsx` | In-app account deletion (Play requirement) |
-| `src/navigation/RootNavigator.tsx` | Age gate → Auth / Delete / Terminal |
-| `src/config.ts` | `EXPO_PUBLIC_TERMINAL_URL`, API, legal URLs |
-| `app.json` | Android package `ai.motivefx.app` |
-| `eas.json` | `preview` (APK) + `production` (AAB) |
-
-### Web terminal (`web/`)
-
-Native shell must **not** call `openExternalSubscribe()` / open `/pricing` for digital goods. Store billing only when `__MOTIVEFX_NATIVE_IAP__` is true.
+**Play risk:** Thin WebView wrappers can fail Minimum Functionality. Mitigations: native age gate, native auth, native account deletion, error/retry shell, deferred billing SDK, Android Play-safe desk mode.
 
 ---
 
-## Play Store submission checklist
+## Mobile identity (`mobile/app.json`)
 
-### Policy & compliance
-
-- [ ] **Data safety form** — email, user ID, usage; no undeclared sensitive scopes
-- [ ] **Financial features** declaration in Play Console
-- [ ] **Content rating** (IARC) — betting references may increase age rating
-- [ ] Privacy policy URL: `https://www.motivefxai.com/privacy`
-- [ ] **Account deletion / data deletion URL:** `https://www.motivefxai.com/data-deletion`
-- [ ] Terms of Service URL: `https://www.motivefxai.com/terms`
-- [ ] In-app disclaimer visible (terminal footer + auth screen)
-- [x] **No web checkout steering for digital subscriptions** (1.0.4+)
-- [x] **Monitor-only positioning preserved** — no claims of brokerage, betting execution, personalized financial advice, or live Play Billing
-- [x] **UI clarity updated** — mobile header and Intel alerts support read/clear flows so reviewers are less likely to interpret stale alerts as broken UI
-- [ ] **Play Billing** configured before re-enabling in-app purchase CTAs (`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` + Play products)
-- [ ] Reviewer demo credentials in Console review notes (no 2FA)
-
-### Billing policy (current)
-
-Digital subscriptions **must not** be sold via website links from the Android app. Options:
-
-1. **Preferred:** Google Play Billing (RevenueCat Android) + verified purchase → entitlement sync  
-2. **Interim:** No purchase CTAs in the native shell; signed-in users can access plans already on the account; website remains the place to buy **outside** the app (not linked from the app)
+| Field | Value |
+|-------|--------|
+| `expo.name` | MotiveFX |
+| `expo.android.package` | `com.motivefx.app` |
+| `expo.version` | 1.0.0 |
+| `expo.android.versionCode` | 1 |
+| `expo.scheme` | `motivefx` |
+| `expo.ios.bundleIdentifier` | `ai.motivefx.app` (iOS unchanged for now) |
+| Permissions | `INTERNET`, `VIBRATE` |
 
 ---
 
-## Local development / EAS
+## Play-safe Android behavior
 
-See prior sections in git history for `expo prebuild` and `eas build` commands. Production profile builds an AAB.
+- Betting / predictions desks: **monitor-only** odds/event intel; no sportsbook or prediction-market app handoffs; bet/position ledgers hidden on Android native.
+- Payments: never open Stripe / `/pricing` / web subscription management for digital goods from the native shell.
+- IAP: disabled via `EXPO_PUBLIC_IAP_ENABLED=false` until Play Billing is verified.
+- Auth: soft timeouts (no abort-on-timeout that surfaces as “canceled”).
+- Account deletion: in-app + `https://www.motivefxai.com/data-deletion` + `POST /api/auth/delete-account`.
 
 ---
 
-## Android App Links (Digital Asset Links)
+## EAS
+
+```bash
+cd mobile
+eas build --platform android --profile production   # AAB
+eas build --platform android --profile preview       # APK smoke
+```
+
+---
+
+## Android App Links
 
 Hosted statement: `https://www.motivefxai.com/.well-known/assetlinks.json`  
-Package: `ai.motivefx.app`  
-`mobile/app.json` currently has custom scheme `motivefx` only (no verified App Links).
+Package: **`com.motivefx.app`**  
+Verify SHA-256 against the upload / app-signing cert after the first EAS build. Custom scheme `motivefx` remains available without App Links.
 
 ---
 
-*Last updated: August 1, 2026*
+## Disclosure URLs
+
+- Privacy: `https://www.motivefxai.com/privacy`
+- Terms: `https://www.motivefxai.com/terms`
+- Data deletion: `https://www.motivefxai.com/data-deletion`
+
+---
+
+*Last updated: August 4, 2026*

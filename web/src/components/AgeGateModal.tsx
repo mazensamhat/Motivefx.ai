@@ -62,8 +62,8 @@ export function AgeGateModal({ moduleLabel, onVerified }: Props) {
         <div className="age-gate-modal glass-panel">
           <h2 id="age-gate-title">Access restricted</h2>
           <p>
-            You must be {MIN_AGE}+ (19+ in some Canadian provinces) to use {moduleLabel}. MotiveFX.AI
-            includes sports-betting and event-market intelligence modules.
+            You must be {MIN_AGE}+ (19+ in some Canadian provinces) to use {moduleLabel}. MotiveFX
+            includes sports odds and event-market intelligence modules (monitor-only).
           </p>
           {!declined && (
             <div className="age-gate-actions">
@@ -130,7 +130,7 @@ export function AppAgeGate({ children }: { children: ReactNode }) {
   const [ok, setOk] = useState(() => isAgeVerified());
   if (!ok) {
     return (
-      <AgeGateModal moduleLabel="MotiveFX.AI" onVerified={() => setOk(true)} />
+      <AgeGateModal moduleLabel="MotiveFX" onVerified={() => setOk(true)} />
     );
   }
   return <>{children}</>;

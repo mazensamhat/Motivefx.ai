@@ -21,7 +21,7 @@ const MIN_AGE = 18;
 
 /**
  * Birth-year age assurance on first launch (before auth).
- * Justifies Age Rating "In-App Controls" / age assurance for sports-betting modules.
+ * Justifies Age Rating "In-App Controls" / age assurance for sports/event intel modules.
  */
 export function AgeGateScreen({ onAccepted }: Props) {
   const currentYear = new Date().getFullYear();

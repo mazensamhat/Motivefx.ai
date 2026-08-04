@@ -1,0 +1,90 @@
+MotiveFX Google Play relaunch — plain ordered checklist
+=======================================================
+Package: com.motivefx.app
+App name: MotiveFX
+Version: 1.0.0 / versionCode 1
+DO NOT upload to suspended MotiveFX.AI / ai.motivefx.app
+
+Full guide: docs/PLAY_RELAUNCH_NEW_LISTING.md
+Audit log: docs/play-relaunch/CLEAN_STATUS.md
+Listing copy: docs/PLAY_STORE_LISTING.md
+
+NOW → SUBMIT
+------------
+
+1. Confirm Play Console developer account can create/publish a NEW app
+   (Policy status OK; do not use the suspended listing).
+
+2. Confirm code identity (already set in mobile/app.json):
+   - name MotiveFX
+   - package com.motivefx.app
+   - version 1.0.0
+   - versionCode 1
+   - EXPO_PUBLIC_IAP_ENABLED=false in mobile/eas.json
+   - If you use a local android/ folder, wipe it first:
+     cd mobile && npx expo prebuild --platform android --clean
+     (EAS cloud builds already regenerate from app.json.)
+
+3. Deploy website if needed so these are live:
+   - https://www.motivefxai.com/privacy
+   - https://www.motivefxai.com/terms
+   - https://www.motivefxai.com/data-deletion
+   - https://www.motivefxai.com/.well-known/assetlinks.json (package com.motivefx.app)
+   - POST /api/auth/delete-account
+
+4. Smoke-test on a physical Android device (preview APK first is fine):
+   cd mobile
+   eas build --platform android --profile preview
+   Then: age gate → sign-in → terminal scroll → delete-account path →
+   confirm NO /pricing or Stripe opens → betting/predictions look monitor-only.
+
+5. Build production AAB:
+   cd mobile
+   eas build --platform android --profile production
+   Download the .aab from the EAS build page.
+
+6. Play Console → Create app
+   - App name: MotiveFX
+   - App (not game)
+   - Free
+   - Accept declarations
+   NEVER create/upload under the old MotiveFX.AI package.
+
+7. Store listing
+   - Icon, feature graphic, phone screenshots (no bet slips / place-bet UI)
+   - Short + full description from docs/PLAY_STORE_LISTING.md
+   - Privacy: https://www.motivefxai.com/privacy
+   - Website: https://www.motivefxai.com
+   - Data deletion: https://www.motivefxai.com/data-deletion
+
+8. App content
+   - Privacy policy URL
+   - Data Safety form (match privacy policy)
+   - Content rating / IARC (financial + sports/event intel)
+   - Target audience: not children; 18+
+   - Financial features declaration if asked
+   - Account deletion: in-app + public URL above
+
+9. Pricing & distribution
+   - Free app
+   - No in-app products claimed live
+   - Choose countries carefully
+   - Review notes: demo login (no 2FA), age gate, smoke path,
+     delete account path, "Play Billing not live; no web checkout for digital goods"
+
+10. Create internal/closed/production release
+    - Upload the NEW AAB (com.motivefx.app, 1.0.0 / 1)
+    - Send for review
+
+11. After submit
+    - Watch Policy status and review email
+    - Do not flip IAP_ENABLED until Play Billing is verified
+    - If rejected for gambling look: hide betting/predictions on Android and resubmit
+
+NEVER
+-----
+- Upload to suspended ai.motivefx.app
+- Use listing name MotiveFX.AI
+- Claim Play Billing / IAP is live
+- Steer users to website pricing for digital goods
+- Ship screenshots of bet placement / sportsbook handoffs

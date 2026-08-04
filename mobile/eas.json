@@ -21,7 +21,7 @@
         "EXPO_PUBLIC_API_URL": "https://www.motivefxai.com/api",
         "EXPO_PUBLIC_WEB_URL": "https://www.motivefxai.com",
         "EXPO_PUBLIC_TERMINAL_URL": "https://www.motivefxai.com/terminal",
-        "EXPO_PUBLIC_IAP_ENABLED": "true"
+        "EXPO_PUBLIC_IAP_ENABLED": "false"
       }
     },
     "production": {
@@ -33,7 +33,7 @@
         "EXPO_PUBLIC_API_URL": "https://www.motivefxai.com/api",
         "EXPO_PUBLIC_WEB_URL": "https://www.motivefxai.com",
         "EXPO_PUBLIC_TERMINAL_URL": "https://www.motivefxai.com/terminal",
-        "EXPO_PUBLIC_IAP_ENABLED": "true"
+        "EXPO_PUBLIC_IAP_ENABLED": "false"
       }
     }
   },

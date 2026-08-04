@@ -89,7 +89,7 @@ export function DataDeletionPage() {
       <ol>
 
         <li>
-          In the MotiveFX.AI mobile app: open <strong>Account</strong> (or <strong>Delete account</strong> on
+          In the MotiveFX mobile app: open <strong>Account</strong> (or <strong>Delete account</strong> on
           sign-in), enter your password, and type <code>DELETE</code>.
         </li>
 

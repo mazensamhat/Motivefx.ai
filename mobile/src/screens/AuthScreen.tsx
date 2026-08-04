@@ -258,11 +258,11 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
 
         <Text style={styles.disclaimer}>
           Informational only. Not financial advice. MotiveFX provides market research and analytics —
-          not brokerage, sportsbook, or investment advice. Digital subscriptions, when offered in this
-          app, are sold through the platform store (Google Play Billing / App Store). This app does not
-          direct you to buy subscriptions on the website.
+          not brokerage, sportsbook, or investment advice. This app does not direct you to buy
+          subscriptions on the website. In-app digital subscriptions, when offered, use the platform
+          store — not web checkout.
         </Text>
-        <Text style={styles.buildTag}>Build 1.0.4</Text>
+        <Text style={styles.buildTag}>Build 1.0.0 · com.motivefx.app</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

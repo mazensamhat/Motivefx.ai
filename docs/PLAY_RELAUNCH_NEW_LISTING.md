@@ -1,124 +1,181 @@
-# Google Play Relaunch With New Listing
+# Google Play Relaunch With New Listing — Master Guide
 
-Use this only if the Google Play developer account remains in good standing and Google allows publishing a new compliant version with a **new package name** and the locked app name **MotiveFX**. Do not try to clone the suspended listing/package.
+**Status:** Old listing `ai.motivefx.app` / MotiveFX.AI is suspended (appeal denied). Do **not** upload to that app. Relaunch only as a **new** Play app.
 
-## Recommendation
+Locked identity:
 
-Relaunch as a Play-safe, monitor-only intelligence product. Avoid a name, screenshots, CTAs, or first-run flow that makes the app look like a betting app, sportsbook companion, or real-money wagering tool.
+| Field | Value |
+|-------|-------|
+| Play display name | **MotiveFX** |
+| Package / applicationId | **`com.motivefx.app`** |
+| Version / versionCode | **1.0.0 / 1** |
+| Expo slug | `motivefx-android` |
+| URL scheme | `motivefx` |
 
-The safest packaging is:
+Master plain checklist: [`docs/play-relaunch/CHECKLIST.txt`](./play-relaunch/CHECKLIST.txt)  
+Audit log for this pass: [`docs/play-relaunch/CLEAN_STATUS.md`](./play-relaunch/CLEAN_STATUS.md)
 
-- Market/prediction intelligence only.
-- No bet placement UI on Android.
-- No sportsbook, odds-shopping, parlay, "place bet", "lock in", "cash out", "win", or similar CTAs.
-- Betting/predictions desks hidden, renamed, or presented as news/intelligence watchlists unless Google Play gambling eligibility is confirmed.
-- No external checkout steering for digital subscriptions.
+---
 
-## New App Identity
+## 1. Pre-submit code checklist (verified clean)
 
-Locked identity for this relaunch:
+Confirm before any EAS production build:
 
-- Google Play store/app display name: **MotiveFX**
-- Android package/applicationId: **`com.motivefx.app`**
-- Expo slug: **`motivefx-android`**
-- Android release train: **1.0.0 / versionCode 1**
+- [x] `mobile/app.json`: name **MotiveFX**, package **`com.motivefx.app`**, version **1.0.0**, versionCode **1**
+- [x] Do **not** reuse package **`ai.motivefx.app`** for Android
+- [x] Android native Play-safe mode: betting/predictions desks are odds/event **intel monitors**; sportsbook / prediction-market app handoffs off; bet/position **ledgers hidden** on Android native
+- [x] No Android path opens `/pricing`, Stripe, or web subscription management for digital goods
+- [x] `EXPO_PUBLIC_IAP_ENABLED` is **`false`** in `mobile/eas.json` preview + production until Play Billing is fully configured and verified
+- [x] Soft auth timeouts (no `AbortController.abort()` on auth fetch)
+- [x] WebView load watchdog + Retry; nested scroll enabled
+- [x] In-app **Delete account** (auth screen + Account modal) + public `https://www.motivefxai.com/data-deletion`
+- [x] Privacy / Terms: `https://www.motivefxai.com/privacy` · `https://www.motivefxai.com/terms`
+- [x] Permissions in app.json: `INTERNET`, `VIBRATE` only; Expo defaults for storage / `SYSTEM_ALERT_WINDOW` blocked
+- [x] Auth / age-gate user-facing brand = **MotiveFX** (not MotiveFX.AI)
+- [ ] If building locally (not EAS), run `npx expo prebuild --platform android --clean` so native `applicationId` is not a stale `ai.motivefx.app`
+- [ ] Physical-device smoke test completed (section 8 below)
+- [ ] Store listing assets ready (section 4)
+- [ ] Play Console Policy status checked — account must allow publishing a new app
 
-Do not reuse the suspended package **`ai.motivefx.app`**. Do not use **MotiveFX.AI** as the new Play listing name.
+Do **not** claim Google Play Billing is live. Purchase CTAs stay non-steering until RC Android key + Play products + entitlement sync are verified end-to-end.
 
-## High-Level Expo Rename Steps
+---
 
-In `mobile/app.json`:
+## 2. EAS production AAB (when ready)
 
-- `expo.name` is **MotiveFX**.
-- `expo.slug` is **`motivefx-android`** so the EAS project can be separated from the prior listing if needed.
-- `expo.scheme` remains **`motivefx`** for brand deep links.
-- `expo.android.package` is **`com.motivefx.app`**.
-- `expo.version` is **1.0.0**.
-- `expo.android.versionCode` is **1** for the new package's first release train.
-- Current `extra.eas.projectId` may still point at the previous Expo project. If Expo refuses to build or links artifacts to the prior app, run `eas init` from `mobile/`, create/link a new Expo project for MotiveFX, then commit the new `extra.eas.projectId`.
+From repo root:
 
-In `mobile/eas.json`:
+```bash
+cd mobile
+eas build --platform android --profile production
+```
 
-- Keep `production.android.buildType` as `app-bundle`.
-- Keep production URLs pointed at the compliant production web host.
-- Disable or omit Android purchase paths unless Play Billing is fully configured and verified.
-- Android native WebView now runs in Play-safe monitor mode: sports/event-market desks remain informational, but sportsbook/prediction-market app handoffs and bet/position entry ledgers are hidden or disabled.
+Or: `npm run build:android:production` inside `mobile/`.
 
-Before building:
+Notes:
 
-- Run the normal Expo/EAS config validation.
-- Confirm generated Android manifest/package uses the new package name.
-- Confirm no release artifacts, screenshots, or review notes refer to the suspended package as the active app.
+- Profile `production` → `app-bundle` (AAB), `autoIncrement: false` (keeps versionCode **1** for first new-package upload).
+- Preview APK for phone smoke: `eas build --platform android --profile preview`
+- If Expo links the wrong project, run `eas init` from `mobile/`, commit the new `extra.eas.projectId`, then rebuild.
+- After first signed build, verify the upload-key SHA-256 in `apps/site/public/.well-known/assetlinks.json` matches Play App signing / upload cert (package must be **`com.motivefx.app`**). Redeploy the site if the fingerprint changes.
+- Do **not** run `eas submit` to the suspended listing.
 
-Do **not** run EAS builds or submissions until the Play-safe scope is finalized.
+---
 
-## Product Scope Checklist
+## 3. Play Console — create the NEW app
 
-- [ ] Android first launch includes an 18+ age gate if prediction, betting-adjacent, financial, or mature market content remains visible.
-- [ ] App copy says "informational", "research", "signals", "market intelligence", or "monitoring"; it does not imply wagering execution or guaranteed outcomes.
-- [x] No bet placement, sportsbook account, deposit, withdrawal, odds-shopping, parlay builder, or "place bet" workflow is visible on Android native.
-- [x] Betting/prediction desks remain as odds/event intel monitors with gambling-looking CTAs removed on Android native.
-- [ ] Consider hiding betting desks entirely for Android until Google confirms policy fit.
-- [ ] Financial disclaimers remain visible and accurate.
-- [ ] Reviewer can access the core app without 2FA, invite codes, dead gates, or paid-only walls.
+1. Open [Google Play Console](https://play.google.com/console) → **Create app** (never “upload” into MotiveFX.AI / `ai.motivefx.app`).
+2. Exact fields:
 
-## Payments Checklist
+| Field | Enter |
+|-------|--------|
+| App name | **MotiveFX** |
+| Default language | English (United States) or your primary locale |
+| App or game | **App** |
+| Free or paid | **Free** |
+| Declarations | Accept Play policies / US export laws as prompted |
 
-- [ ] No buttons, links, modals, WebView bridges, auth copy, terminal copy, or error states open website pricing, Stripe checkout, or subscription management for Android digital subscriptions.
-- [ ] If subscriptions are sold in-app, Google Play Billing is configured end-to-end before review.
-- [ ] If Play Billing is not ready, Android may show entitlement status but must not steer users to web purchase.
-- [ ] Website `/pricing` may exist for browser users, but the Android app must not direct users there for digital goods.
-- [ ] Store listing does not say "subscribe on our website" or equivalent.
+3. After creation, under **Release → Setup → App integrity / App signing**, note that the package must match **`com.motivefx.app`** (comes from the AAB; you cannot change it later).
+4. **Do not** transfer or clone the suspended app listing.
 
-## Account And Data Checklist
+Suggested category: **Finance** or **News & Magazines** (intelligence/research). Avoid **Casino** / gambling categories unless you have confirmed gambling-policy eligibility.
 
-- [ ] In-app account deletion is available from a clearly named Account/Delete account path.
-- [ ] Public data deletion URL is live and matches Play Console.
-- [ ] `POST /api/auth/delete-account` or the equivalent production endpoint is deployed and tested.
-- [ ] Privacy Policy and Terms URLs are live, reachable without login, and match app behavior.
-- [ ] Data Safety accurately declares account info, identifiers, app activity, diagnostics, and any financial/user-entered market data actually collected.
-- [ ] No undeclared sensitive permissions are requested.
+---
 
-## Store Listing Checklist
+## 4. Store listing assets needed
 
-- [x] New package is `com.motivefx.app`; app name is MotiveFX, not MotiveFX.AI.
-- [ ] Short description avoids betting, wagering, winning, sportsbook, guaranteed predictions, or purchase steering language.
-- [ ] Full description emphasizes monitor-only market intelligence.
-- [ ] Screenshots show login, watchlists/signals, alerts, and account deletion, not betting placement flows.
-- [ ] Content rating answers account for financial content and any betting-adjacent references.
-- [ ] Financial features declaration is completed if applicable.
-- [ ] App category and tags do not imply gambling unless the app qualifies under Google Play's gambling policies for the target regions.
-- [ ] Review notes include demo credentials, age-gate instruction, core smoke path, delete-account path, and a plain statement that Android does not sell digital subscriptions outside Play Billing.
+Prepare before review:
 
-## Reviewer Access Smoke Test
+| Asset | Notes |
+|-------|--------|
+| App icon | 512×512 PNG (matches adaptive icon brand) |
+| Feature graphic | 1024×500 |
+| Phone screenshots | ≥2; show **login**, **monitor-only desks**, **account / delete**, **signals/watchlists** — **not** bet slips, “place bet”, sportsbook CTAs, or Polymarket handoffs |
+| Short description | ≤80 chars — monitor/intel language only (see `PLAY_STORE_LISTING.md`) |
+| Full description | Informational market intelligence; explicit “not a sportsbook / not brokerage” |
+| Privacy policy URL | `https://www.motivefxai.com/privacy` |
+| App website | `https://www.motivefxai.com` |
+| Support email | `support@motivefx.ai` (or Console contact email) |
+| Data deletion URL | `https://www.motivefxai.com/data-deletion` |
 
-Run on a physical Android device before submission:
+Copy drafts: [`docs/PLAY_STORE_LISTING.md`](./PLAY_STORE_LISTING.md)
 
-- [ ] Fresh install opens age gate and accepts an 18+ year.
-- [ ] Register/sign in works without canceled-fetch or frozen-button errors.
-- [ ] Terminal or native intelligence home loads within a reasonable time.
-- [ ] Scroll, taps, back behavior, retry, and sign-out work.
-- [ ] Account deletion path is visible and testable.
-- [ ] Offline or failed network state shows retry/helpful copy.
-- [ ] No Android path opens `/pricing`, Stripe, subscription management, or browser checkout.
-- [ ] No Android path exposes bet-placement-looking UI unless policy eligibility is documented.
+---
 
-## Suggested Play-Safe Positioning
+## 5. Data Safety / content rating / target audience
 
-Use language like:
+### Data Safety
 
-> Signal Desk by Motive provides AI-assisted market monitoring, watchlists, and research summaries for informational use. It does not place trades, place bets, operate wagering, or provide personalized financial advice.
+Declare only what the app actually collects, typically:
 
-Avoid language like:
+- Account info (email, user ID)
+- App activity / diagnostics as applicable
+- User-entered market watchlists / holdings if stored
+- No payment card numbers stored by Motive (Stripe/Play hold billing when used)
 
-> Beat the books, find winning bets, lock picks, place bets, guaranteed predictions, unlock premium picks on our website.
+Align answers with Privacy Policy. Account deletion must be available in-app and via the public URL.
 
-## Decision Gate
+### Content rating (IARC questionnaire)
 
-Proceed with a new listing only after:
+Answer honestly for financial content and **sports/event-market intelligence** references. Expect 18+ / mature where betting-adjacent content exists, even if monitor-only. Complete **Financial features** declaration if prompted.
 
-- [ ] Play Console Policy status has been checked and any active account-level issue is understood.
-- [x] The Android package is new and the app name is locked to MotiveFX.
-- [x] Betting/predictions surfaces are hidden where they look like entry/placement workflows, or made clearly monitor-only on Android native.
-- [ ] Payment steering is eliminated or Play Billing is live.
-- [ ] Data Safety, content rating, account deletion, reviewer notes, screenshots, and the binary match each other.
+### Target audience
+
+Do **not** target children. Age gate is 18+.
+
+---
+
+## 6. Pricing & distribution
+
+- App is **Free**.
+- Digital subscriptions: **not sold in this Android build** (`EXPO_PUBLIC_IAP_ENABLED=false`). Entitled web accounts still work when signed in.
+- When Play Billing is ready later: set RevenueCat Android key + Play products, flip `EXPO_PUBLIC_IAP_ENABLED` to `true`, bump versionCode, re-smoke, then resubmit.
+- Countries: start with regions you operate legally; exclude where sports/event intel creates regulatory risk if unsure.
+- Review notes must include: demo credentials (no 2FA), age-gate steps, core smoke path, delete-account path, and a plain statement that **Android does not sell digital subscriptions outside Play Billing** and **Play Billing is not claimed live** in this build.
+
+---
+
+## 7. What NOT to do
+
+- Do **not** upload this AAB to the suspended MotiveFX.AI / `ai.motivefx.app` listing.
+- Do **not** reuse package `ai.motivefx.app` or listing name **MotiveFX.AI**.
+- Do **not** claim IAP / Play Billing is live.
+- Do **not** put “subscribe on our website” in the store listing or in-app CTAs.
+- Do **not** show bet-placement, sportsbook deep links, or prediction-venue handoffs in screenshots or the Android native shell.
+- Do **not** force `?demo=1` reviewer landmines.
+- Do **not** submit without a physical-device smoke test.
+
+---
+
+## 8. Reviewer smoke test (physical Android)
+
+- [ ] Fresh install → 18+ age gate
+- [ ] Register / sign-in (no canceled-fetch / frozen button)
+- [ ] Terminal loads; scroll / taps / back / retry / sign-out work
+- [ ] Betting/predictions (if visible) read as **intel monitors**, no sportsbook handoff, no bet ledger entry UI
+- [ ] Account deletion path visible and testable
+- [ ] Offline / failed network shows Retry
+- [ ] No path opens `/pricing`, Stripe, or browser checkout for digital goods
+- [ ] No CTA claims Play Billing is available
+
+---
+
+## 9. Post-submit monitoring
+
+- Watch Play Console **Policy status**, pre-launch report, and review replies daily.
+- Keep versionCode discipline: every policy fix → new versionCode.
+- If rejected for gambling impression: hide betting/predictions desks entirely on Android before resubmitting.
+- If rejected for payments: re-verify no web checkout URLs and that `IAP_ENABLED` remains false until billing is real.
+- After approval: monitor crashes/ANRs; do not re-enable IAP without a verified Play Billing path.
+
+---
+
+## Decision gate
+
+Proceed only when:
+
+- [x] New package + app name locked (`com.motivefx.app` / MotiveFX)
+- [x] Play-safe Android native gates on; payment steering blocked; IAP flag off
+- [ ] Account Policy status allows a new listing
+- [ ] Smoke test + assets + Data Safety + content rating complete
+- [ ] You are uploading to a **new** app, not the suspended one
