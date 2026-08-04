@@ -53,6 +53,8 @@ const VIEWPORT_LOCK_SCRIPT = `
       }
       if (meta) meta.setAttribute("content", content);
       // Belt-and-suspenders scroll fix for Android WebView reviewers.
+      // Terminal uses nested .app-content scroll; Ops/legal/account pages do not —
+      // without doc-scroll mode, body overflow:hidden traps touch (Z Fold / Play class bug).
       if (!document.getElementById("motivefx-native-scroll-fix")) {
         var style = document.createElement("style");
         style.id = "motivefx-native-scroll-fix";
@@ -62,8 +64,33 @@ const VIEWPORT_LOCK_SCRIPT = `
           "html.motivefx-native-shell .app-body{flex:1 1 auto;min-height:0!important;overflow:hidden!important;}",
           "html.motivefx-native-shell .app-content{flex:1 1 auto;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;touch-action:pan-y;}",
           "html.motivefx-native-shell .workspace-header{padding-top:0!important;margin-top:0!important;}",
+          "html.motivefx-native-shell.motivefx-native-doc-scroll,html.motivefx-native-shell.motivefx-native-doc-scroll body{height:auto!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior-y:auto;}",
+          "html.motivefx-native-shell.motivefx-native-doc-scroll .admin-shell,html.motivefx-native-shell.motivefx-native-doc-scroll .legal-page,html.motivefx-native-shell.motivefx-native-doc-scroll .app-layout{touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}",
         ].join("");
         (document.head || document.documentElement).appendChild(style);
+      }
+      function syncNativeScrollMode() {
+        var nested = document.querySelector(".app-content");
+        document.documentElement.classList.toggle("motivefx-native-doc-scroll", !nested);
+      }
+      syncNativeScrollMode();
+      if (!window.__MOTIVEFX_NATIVE_SCROLL_OBS__) {
+        window.__MOTIVEFX_NATIVE_SCROLL_OBS__ = true;
+        var scrollSyncQueued = false;
+        function queueNativeScrollSync() {
+          if (scrollSyncQueued) return;
+          scrollSyncQueued = true;
+          requestAnimationFrame(function () {
+            scrollSyncQueued = false;
+            syncNativeScrollMode();
+          });
+        }
+        try {
+          var obs = new MutationObserver(queueNativeScrollSync);
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+        } catch (obsErr) {}
+        document.addEventListener("DOMContentLoaded", syncNativeScrollMode);
+        window.addEventListener("pageshow", syncNativeScrollMode);
       }
     } catch (e) {}
     true;

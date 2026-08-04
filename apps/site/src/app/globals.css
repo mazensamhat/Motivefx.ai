@@ -2157,6 +2157,32 @@ a.store-badge-play:hover .store-badge-title {
   padding: 1.25rem;
 }
 
+/*
+ * Native Android WebView injects motivefx-native-shell with body overflow:hidden
+ * and nested scroll on .app-content (terminal only). Ops /app desks have no
+ * .app-content — unlock document scroll so finger pan works (Play / Z Fold class).
+ */
+html.motivefx-native-shell.motivefx-native-doc-scroll,
+html.motivefx-native-shell.motivefx-native-doc-scroll body,
+html.motivefx-native-shell:not(:has(.app-content)),
+html.motivefx-native-shell:not(:has(.app-content)) body {
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-y: auto;
+}
+
+html.motivefx-native-shell.motivefx-native-doc-scroll .admin-shell,
+html.motivefx-native-shell:not(:has(.app-content)) .admin-shell,
+html.motivefx-native-shell.motivefx-native-doc-scroll .app-layout,
+html.motivefx-native-shell:not(:has(.app-content)) .app-layout {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 .admin-header {
   display: flex;
   flex-wrap: wrap;

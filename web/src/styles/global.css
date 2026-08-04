@@ -344,6 +344,29 @@ html.motivefx-native-shell .app-content {
   touch-action: pan-x pan-y;
 }
 
+/* Ops / legal / account desks: no .app-content nested scroller — unlock document
+   scroll so Android WebView touch pans (same trap as Z Fold nested-scroll bugs). */
+html.motivefx-native-shell.motivefx-native-doc-scroll,
+html.motivefx-native-shell.motivefx-native-doc-scroll body,
+html.motivefx-native-shell:not(:has(.app-content)),
+html.motivefx-native-shell:not(:has(.app-content)) body {
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-y: auto;
+}
+
+html.motivefx-native-shell.motivefx-native-doc-scroll .admin-shell,
+html.motivefx-native-shell:not(:has(.app-content)) .admin-shell,
+html.motivefx-native-shell.motivefx-native-doc-scroll .legal-page,
+html.motivefx-native-shell:not(:has(.app-content)) .legal-page {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 html.motivefx-native-shell .mobile-bottom-nav {
   display: flex;
 }
