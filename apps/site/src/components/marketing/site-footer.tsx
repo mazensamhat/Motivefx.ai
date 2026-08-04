@@ -7,6 +7,7 @@ import { MOTIVE_CORP, MOTIVE_FAMILY_LINKS } from "@/lib/motive-family";
 import { SITE } from "@/lib/site-config";
 import { SOCIAL_LINKS } from "@/lib/social";
 import { MotiveFamilyStrip } from "./ecosystem-section";
+import { StoreBadges } from "./store-badges";
 
 export function SiteFooter() {
   return (
@@ -49,7 +50,14 @@ export function SiteFooter() {
               <li>
                 <Link href="/tools">Tools</Link>
               </li>
+              <li>
+                <Link href="/#get-the-app">Get the app</Link>
+              </li>
             </ul>
+          </div>
+          <div className="footer-col">
+            <p className="footer-heading">Download</p>
+            <StoreBadges variant="links" />
           </div>
           <div className="footer-col">
             <p className="footer-heading">Markets</p>

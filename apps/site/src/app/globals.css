@@ -1408,14 +1408,80 @@ body {
   gap: 0.75rem;
   margin-top: 1.5rem;
   flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .store-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 1rem 0.55rem 0.85rem;
+  border-radius: 0.65rem;
   border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
   font-size: 0.8rem;
   color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.store-badge-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.store-badge-eyebrow {
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.store-badge-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+a.store-badge-play {
+  border-color: rgba(0, 230, 118, 0.35);
+  color: #e2e8f0;
+}
+
+a.store-badge-play:hover {
+  border-color: rgba(0, 230, 118, 0.7);
+  background: rgba(0, 230, 118, 0.08);
+  color: #fff;
+}
+
+a.store-badge-play:hover .store-badge-title {
+  color: var(--green);
+}
+
+.store-badge-soon {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
+}
+
+.store-badge-soon .store-badge-title {
+  color: #cbd5e1;
+}
+
+.store-link-soon {
+  color: #64748b;
+}
+
+.hero-vision-copy .store-buttons,
+.cta-panel .store-buttons {
+  margin-top: 0;
+  justify-content: center;
+}
+
+.hero-vision-copy .store-buttons {
+  justify-content: flex-start;
 }
 
 .phone-frame {

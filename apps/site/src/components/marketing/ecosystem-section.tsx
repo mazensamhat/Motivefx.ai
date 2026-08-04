@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ECOSYSTEM } from "@/lib/marketing-copy";
 import { MOTIVE_FAMILY_LINKS } from "@/lib/motive-family";
+import { STORE_COPY } from "@/lib/store-links";
+import { StoreBadges } from "./store-badges";
 
 export function EcosystemSection() {
   return (
@@ -46,19 +48,13 @@ export function EcosystemSection() {
 
 export function MobileSection() {
   return (
-    <section className="section-pad mobile-section">
+    <section className="section-pad mobile-section" id="get-the-app">
       <div className="mx-auto max-w-6xl px-4 grid gap-10 lg:grid-cols-2 lg:items-center">
         <div>
           <p className="section-kicker">Mobile</p>
-          <h2 className="section-title">Intelligence in your pocket</h2>
-          <p className="section-desc">
-            Native apps rolling out on iOS and Android. Voice briefings, push alerts, and Apple Watch
-            glances — same Motive Signal, anywhere.
-          </p>
-          <div className="store-buttons">
-            <span className="store-badge">App Store — soon</span>
-            <span className="store-badge">Google Play — soon</span>
-          </div>
+          <h2 className="section-title">{STORE_COPY.mobileHeadline}</h2>
+          <p className="section-desc">{STORE_COPY.mobileBody}</p>
+          <StoreBadges />
         </div>
         <div className="mobile-mock" aria-hidden>
           <div className="phone-frame">

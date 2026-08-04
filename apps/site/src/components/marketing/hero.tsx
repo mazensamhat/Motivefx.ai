@@ -9,7 +9,9 @@ import {
   HERO_SUBHEAD,
   TAGLINE,
 } from "@/lib/marketing-copy";
+import { PLAY_STORE_URL, STORE_COPY } from "@/lib/store-links";
 import { HeroSignalGraph } from "./hero-signal-graph";
+import { StoreBadges } from "./store-badges";
 
 export function Hero() {
   return (
@@ -42,6 +44,9 @@ export function Hero() {
               Explore the Relationship Graph
             </Button>
           </div>
+          <div className="mt-5">
+            <StoreBadges />
+          </div>
           <p className="hero-secondary-link">
             <Link href="/motive-signal" className="text-brand-green underline-offset-2 hover:underline">
               What is Motive Signal™?
@@ -50,6 +55,16 @@ export function Hero() {
             <Link href="/pricing" className="text-brand-green underline-offset-2 hover:underline">
               View plans
             </Link>
+            {" · "}
+            <a
+              href={PLAY_STORE_URL}
+              className="text-brand-green underline-offset-2 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={STORE_COPY.playAria}
+            >
+              Get MotiveFX on Google Play
+            </a>
           </p>
 
           <ul className="hero-trust-list">

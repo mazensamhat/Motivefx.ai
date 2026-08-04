@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FINAL_CTA_ACCENT, FINAL_CTA_HEADLINE, FINAL_CTA_SUB } from "@/lib/marketing-copy";
+import { StoreBadges } from "./store-badges";
 
 export function CtaSection() {
   return (
@@ -22,6 +23,9 @@ export function CtaSection() {
             <Button href="/pricing" size="lg" variant="secondary">
               Unlock MotiveFX
             </Button>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <StoreBadges />
           </div>
           <p className="mt-5 text-sm text-slate-400">
             Building for a desk or API?{" "}

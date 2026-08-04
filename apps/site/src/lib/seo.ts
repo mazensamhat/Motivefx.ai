@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SITE } from "./site-config";
+import { PLAY_STORE_URL } from "./store-links";
 
 export function pageMetadata({
   title,
@@ -119,12 +120,14 @@ export function softwareApplicationJsonLd(): JsonLd {
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: SITE.name,
+    name: "MotiveFX",
     applicationCategory: "FinanceApplication",
-    operatingSystem: "Web, iOS, Android",
+    operatingSystem: "Web, Android",
+    downloadUrl: PLAY_STORE_URL,
+    installUrl: PLAY_STORE_URL,
     offers: {
       "@type": "Offer",
-      price: "29.99",
+      price: "0",
       priceCurrency: "USD",
     },
   };
