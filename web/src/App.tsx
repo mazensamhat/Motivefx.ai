@@ -209,8 +209,8 @@ export default function App() {
               <a href={legalHref("data-deletion")}>Data deletion</a>
               <a href={legalHref("cookies")}>Cookies</a>
               <a href={legalHref("disclaimer")}>Disclaimer</a>
-              {SITE_EMBED && <a href="/app/settings">Site account</a>}
-              {SITE_EMBED && isAdmin && <a href="/admin">Ops Console</a>}
+              {SITE_EMBED && !isNativeShell() && <a href="/app/settings">Site account</a>}
+              {SITE_EMBED && isAdmin && !isNativeShell() && <a href="/admin">Ops Console</a>}
               {!SITE_EMBED && (
                 <a href="?view=admin" className="admin-footer-link">
                   Ops Console

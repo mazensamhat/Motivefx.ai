@@ -8,6 +8,13 @@ function envUrl(value: string | undefined, fallback: string): string {
   return trimmed || fallback;
 }
 
+/** Keep in sync with mobile/app.json expo.version / ios.buildNumber. */
+export const APP_VERSION = "1.0.0";
+export const IOS_BUILD_NUMBER = "17";
+export const ANDROID_VERSION_CODE = 1;
+export const BUNDLE_ID_IOS = "ai.motivefx.app";
+export const APP_DISPLAY_NAME = "MotiveFX.AI";
+
 export const API_BASE = envUrl(process.env.EXPO_PUBLIC_API_URL, DEFAULT_API);
 
 export const WEB_BASE = envUrl(process.env.EXPO_PUBLIC_WEB_URL, DEFAULT_WEB);

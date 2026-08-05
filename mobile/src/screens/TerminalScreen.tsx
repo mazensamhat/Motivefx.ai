@@ -168,6 +168,23 @@ function isBillingOrCheckoutUrl(url: string): boolean {
   }
 }
 
+/** Web routes that leave the terminal SPA and often render blank / wrong in the shell. */
+function isOffTerminalShellUrl(url: string): "auth" | "admin" | "app" | null {
+  try {
+    const u = new URL(url);
+    if (!isAllowedOrigin(url)) return null;
+    const path = u.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+    if (path === "/login" || path === "/register" || path.startsWith("/login/") || path.startsWith("/register/")) {
+      return "auth";
+    }
+    if (path === "/admin" || path.startsWith("/admin/")) return "admin";
+    if (path === "/app" || path.startsWith("/app/")) return "app";
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function TerminalScreen({
   onRequestDeleteAccount,
 }: {
@@ -198,14 +215,16 @@ export function TerminalScreen({
     }
   }, []);
 
-  /* If the page never finishes loading, drop the spinner instead of freezing
-     the screen behind an eternal loader (Play "app not responding" policy). */
+  /* If the page never finishes loading, show a recoverable error — never leave
+     an infinite black WebView with no chrome (App Store 2.1 Completeness). */
   const armLoadWatchdog = useCallback(() => {
     clearLoadWatchdog();
     loadWatchdogRef.current = setTimeout(() => {
       setLoading(false);
+      setHasLoadedOnce(false);
       setError("Terminal is taking too long to load. Check your connection and tap Retry.");
-    }, 12_000);
+      setPhase("failed");
+    }, 15_000);
   }, [clearLoadWatchdog]);
 
   useEffect(() => clearLoadWatchdog, [clearLoadWatchdog]);
@@ -257,9 +276,13 @@ export function TerminalScreen({
       const uri = accessToken
         ? `${API_BASE}/auth/native-handoff?token=${encodeURIComponent(accessToken)}&next=${encodeURIComponent(terminalPath)}`
         : TERMINAL_URL.replace(/\/$/, "") || `${WEB_BASE}/terminal`;
+      setHasLoadedOnce(false);
       setSourceUri(uri);
       setPhase("ready");
-      setLoading(false);
+      // Keep the branded loader until WebView onLoadEnd — clearing here caused a
+      // full-screen black gap (App Store 2.1 blank-screen rejection).
+      setLoading(true);
+      armLoadWatchdog();
 
       // Best-effort cookie refresh in background (Set-Cookie on fetch; WebView may ignore).
       if (accessToken) {
@@ -284,7 +307,7 @@ export function TerminalScreen({
       setPhase("failed");
       setLoading(false);
     }
-  }, []);
+  }, [armLoadWatchdog]);
 
   useEffect(() => {
     void prepareSession();
@@ -470,25 +493,59 @@ export function TerminalScreen({
     [logout, runPurchase, runRestore]
   );
 
-  const onShouldStartLoadWithRequest = useCallback((req: ShouldStartLoadRequest) => {
-    try {
-      const url = req.url ?? "";
-      if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
-      if (Platform.OS === "android" && req.isTopFrame === false) return true;
-      // Play / App Store payments: never open Stripe or web pricing/checkout from the app.
-      if (isBillingOrCheckoutUrl(url)) {
-        setIapBanner(
-          "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
-        );
-        return false;
+  const bounceToTerminal = useCallback(() => {
+    const terminal = TERMINAL_URL.replace(/\/$/, "") || `${WEB_BASE}/terminal`;
+    setSourceUri(terminal);
+    setHasLoadedOnce(false);
+    setLoading(true);
+    setWebViewKey((k) => k + 1);
+    armLoadWatchdog();
+  }, [armLoadWatchdog]);
+
+  const handleOffTerminalNavigation = useCallback(
+    (url: string): boolean => {
+      const kind = isOffTerminalShellUrl(url);
+      if (!kind) return false;
+      if (kind === "auth") {
+        // Prefer native AuthScreen over Next /login (often looks broken / blank in WebView).
+        void logout();
+        return true;
       }
-      if (isAllowedOrigin(url)) return true;
-      void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
-      return false;
-    } catch {
+      if (kind === "admin") {
+        setIapBanner("Ops Console is not available in the mobile app. Use the Home terminal instead.");
+        bounceToTerminal();
+        return true;
+      }
+      // /app → keep reviewers inside /terminal (site /app just redirects anyway).
+      bounceToTerminal();
       return true;
-    }
-  }, []);
+    },
+    [bounceToTerminal, logout]
+  );
+
+  const onShouldStartLoadWithRequest = useCallback(
+    (req: ShouldStartLoadRequest) => {
+      try {
+        const url = req.url ?? "";
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
+        if (Platform.OS === "android" && req.isTopFrame === false) return true;
+        // Play / App Store payments: never open Stripe or web pricing/checkout from the app.
+        if (isBillingOrCheckoutUrl(url)) {
+          setIapBanner(
+            "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
+          );
+          return false;
+        }
+        if (handleOffTerminalNavigation(url)) return false;
+        if (isAllowedOrigin(url)) return true;
+        void Linking.openURL(url).catch((e) => console.warn("openURL failed", e));
+        return false;
+      } catch {
+        return true;
+      }
+    },
+    [handleOffTerminalNavigation]
+  );
 
   const remountWebView = useCallback(() => {
     setError(null);
@@ -498,6 +555,9 @@ export function TerminalScreen({
   }, [prepareSession]);
 
   const showWebView = phase === "ready" && !!WebView && !!sourceUri;
+  /** Never show an empty dark WebView frame without chrome. */
+  const showBootOverlay =
+    phase === "boot" || !WebView || (phase === "ready" && (!hasLoadedOnce || loading));
 
   const webViewProps = useMemo(
     () => ({
@@ -513,33 +573,54 @@ export function TerminalScreen({
         clearLoadWatchdog();
         setLoading(false);
         setHasLoadedOnce(true);
+        setPhase("ready");
         // Safe window: configure billing only after the UI is interactive.
         const uid = appUserIdRef.current;
         setTimeout(() => {
           void configureIap(uid);
         }, 750);
       },
+      onNavigationStateChange: (nav: { url?: string }) => {
+        const url = nav.url ?? "";
+        if (!url.startsWith("http")) return;
+        if (isBillingOrCheckoutUrl(url)) {
+          setIapBanner(
+            "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
+          );
+          bounceToTerminal();
+          return;
+        }
+        handleOffTerminalNavigation(url);
+      },
       onError: (e: { nativeEvent: { description?: string } }) => {
         clearLoadWatchdog();
         setLoading(false);
         setError(e.nativeEvent.description || "Could not load terminal.");
+        setPhase("failed");
       },
       onHttpError: (e: { nativeEvent: { statusCode: number } }) => {
         if (e.nativeEvent.statusCode >= 500) {
           setError(`Terminal server error (${e.nativeEvent.statusCode}). Tap Retry.`);
+          setPhase("failed");
+          setLoading(false);
         }
       },
       onRenderProcessGone: () => {
         // Android renderer death: auto-remount instead of leaving a dead view.
         clearLoadWatchdog();
         setLoading(true);
+        setHasLoadedOnce(false);
         setError(null);
         setWebViewKey((k) => k + 1);
       },
       onContentProcessDidTerminate: () => {
+        // iOS WKWebView process death — remount instead of blank black screen.
         clearLoadWatchdog();
-        setLoading(false);
-        setError("Terminal view terminated. Tap Retry.");
+        setHasLoadedOnce(false);
+        setLoading(true);
+        setError(null);
+        setWebViewKey((k) => k + 1);
+        armLoadWatchdog();
       },
       injectedJavaScriptBeforeContentLoaded: injection,
       injectedJavaScript: VIEWPORT_LOCK_SCRIPT,
@@ -563,7 +644,10 @@ export function TerminalScreen({
       cacheEnabled: true,
       cacheMode: "LOAD_DEFAULT" as const,
       mixedContentMode: "always" as const,
-      userAgent: "MotiveFXNative/1.0 (AndroidScrollFix)",
+      userAgent:
+        Platform.OS === "ios"
+          ? "MotiveFXNative/1.0 (iOS; AppStore)"
+          : "MotiveFXNative/1.0 (AndroidScrollFix)",
       originWhitelist: ["https://*", "http://*", "about:blank"],
       onShouldStartLoadWithRequest,
       // Avoid hardware layer — on some review devices it freezes WebView scrolling.
@@ -577,6 +661,8 @@ export function TerminalScreen({
       hasLoadedOnce,
       armLoadWatchdog,
       clearLoadWatchdog,
+      bounceToTerminal,
+      handleOffTerminalNavigation,
     ]
   );
 
@@ -585,13 +671,10 @@ export function TerminalScreen({
       <View style={[styles.root, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.failTitle}>Terminal unavailable</Text>
         <Text style={styles.failBody}>
-          {error || "Session handoff failed. Try again or open the web terminal."}
+          {error || "Session handoff failed. Try again — the terminal will reload inside the app."}
         </Text>
         <Pressable style={styles.failButton} onPress={remountWebView}>
           <Text style={styles.failButtonText}>Retry</Text>
-        </Pressable>
-        <Pressable onPress={() => void Linking.openURL(TERMINAL_URL)}>
-          <Text style={styles.link}>Open www.motivefxai.com</Text>
         </Pressable>
         {onRequestDeleteAccount ? (
           <Pressable onPress={onRequestDeleteAccount}>
@@ -616,16 +699,19 @@ export function TerminalScreen({
         </View>
       ) : null}
 
-      {loading && (
-        <View style={styles.loader} pointerEvents="none">
-          <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={styles.loaderText}>Loading terminal…</Text>
-        </View>
-      )}
-
       {showWebView && WebView ? (
         <WebView key={webViewKey} ref={webRef as never} {...webViewProps} />
       ) : null}
+
+      {showBootOverlay && (
+        <View style={styles.loader} pointerEvents="none">
+          <Text style={styles.loaderBrand}>MotiveFX.AI</Text>
+          <ActivityIndicator color={colors.accent} size="large" />
+          <Text style={styles.loaderText}>
+            {!WebView ? "Preparing secure view…" : "Loading terminal…"}
+          </Text>
+        </View>
+      )}
 
       {iapBusy && (
         <View style={styles.iapOverlay}>
@@ -657,6 +743,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loaderText: { color: colors.muted, fontSize: 14, fontWeight: "600" },
+  loaderBrand: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
   errorBanner: {
     paddingHorizontal: 16,
     paddingVertical: 10,

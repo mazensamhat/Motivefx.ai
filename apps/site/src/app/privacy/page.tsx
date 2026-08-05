@@ -43,7 +43,8 @@ export default function PrivacyPage() {
         <ContentProse>
           <ul className="content-list">
             <li>
-              <strong>Account data:</strong> email, display name, password (hashed), optional demographics.
+              <strong>Account data:</strong> email, display name, password (hashed). Optional experience cohort
+              (not sex/gender).
             </li>
             <li>
               <strong>Usage data:</strong> modules accessed, sessions, acquisition channel, feature interactions.
@@ -60,14 +61,15 @@ export default function PrivacyPage() {
               document versions.
             </li>
             <li>
-              <strong>Payment data:</strong> via Stripe — we store subscription metadata, not full card numbers.
+              <strong>Payment data:</strong> subscription metadata via Stripe (web) and/or Apple App Store /
+              Google Play billing (mobile apps). We do not store full card numbers.
             </li>
             <li>
               <strong>Device &amp; logs:</strong> IP, browser, app version, crash logs when enabled.
             </li>
           </ul>
           <p>
-            <strong>Sensitive information.</strong> Holdings, betting, journal, and demographic data may be
+            <strong>Sensitive information.</strong> Holdings, betting, journal, and similar activity data may be
             sensitive in some jurisdictions. Provide it only if you choose to use those features.
           </p>
         </ContentProse>
@@ -134,7 +136,8 @@ export default function PrivacyPage() {
         <ContentProse>
           <p>We share data with service providers only as needed to operate the Services:</p>
           <ul className="content-list">
-            <li>Stripe (payments and billing)</li>
+            <li>Stripe (web payments and billing)</li>
+            <li>Apple and Google (in-app subscription billing when you purchase inside the iOS/Android apps)</li>
             <li>OpenAI and other AI providers (AI insights features — see Section 4)</li>
             <li>Cloud hosting, email, and notification providers</li>
             <li>Market data and odds API partners (generally no personal data; may include request metadata)</li>

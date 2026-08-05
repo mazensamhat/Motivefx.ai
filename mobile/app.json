@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MotiveFX",
+    "name": "MotiveFX.AI",
     "slug": "motivefx",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +22,7 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "16"
+      "buildNumber": "17"
     },
     "android": {
       "package": "com.motivefx.app",

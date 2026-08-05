@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { APP_DISPLAY_NAME } from "../config";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { isAgeVerified, setAgeVerified } from "../lib/ageGate";
 import { AgeGateScreen } from "../screens/AgeGateScreen";
@@ -12,6 +13,16 @@ import { colors } from "../theme";
  * No React Navigation / native-stack — those + WebView transitions were
  * crashing Android. Simple conditional render only.
  */
+function BootSplash({ label = "Starting…" }: { label?: string }) {
+  return (
+    <View style={styles.boot} accessibilityLabel={label}>
+      <Text style={styles.bootBrand}>{APP_DISPLAY_NAME}</Text>
+      <ActivityIndicator color={colors.accent} size="large" />
+      <Text style={styles.bootLabel}>{label}</Text>
+    </View>
+  );
+}
+
 function Root() {
   const { loading, isAuthenticated } = useAuth();
   const [ageChecked, setAgeChecked] = useState(false);
@@ -38,11 +49,7 @@ function Root() {
   }, []);
 
   if (!ageChecked || loading) {
-    return (
-      <View style={styles.boot}>
-        <ActivityIndicator color={colors.accent} size="large" />
-      </View>
-    );
+    return <BootSplash label={!ageChecked ? "Checking age gate…" : "Restoring session…"} />;
   }
 
   if (!ageOk) {
@@ -79,5 +86,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     alignItems: "center",
     justifyContent: "center",
+    gap: 14,
+    paddingHorizontal: 24,
+  },
+  bootBrand: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  bootLabel: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

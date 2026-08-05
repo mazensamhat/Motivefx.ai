@@ -12,7 +12,14 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
-import { API_BASE, LEGAL } from "../config";
+import {
+  API_BASE,
+  APP_DISPLAY_NAME,
+  APP_VERSION,
+  BUNDLE_ID_IOS,
+  IOS_BUILD_NUMBER,
+  LEGAL,
+} from "../config";
 import { login, mapNetworkError, persistSession, register, verify2fa } from "../lib/api";
 import { colors } from "../theme";
 
@@ -105,7 +112,7 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <Text style={styles.title}>MotiveFX</Text>
+        <Text style={styles.title}>{APP_DISPLAY_NAME}</Text>
         <Text style={styles.sub}>
           {pendingToken
             ? "Enter your 2FA code"
@@ -256,13 +263,29 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
           </Pressable>
         ) : null}
 
+        <View style={styles.legalLinks}>
+          <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
+            Privacy Policy
+          </Text>
+          <Text style={styles.legalSep}>·</Text>
+          <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
+            Terms
+          </Text>
+          <Text style={styles.legalSep}>·</Text>
+          <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.dataDeletion)}>
+            Data deletion
+          </Text>
+        </View>
+
         <Text style={styles.disclaimer}>
-          Informational only. Not financial advice. MotiveFX provides market research and analytics —
-          not brokerage, sportsbook, or investment advice. This app does not direct you to buy
-          subscriptions on the website. In-app digital subscriptions, when offered, use the platform
-          store — not web checkout.
+          Informational only. Not financial advice. {APP_DISPLAY_NAME} provides market research and
+          analytics — not brokerage, sportsbook, or investment advice. This app does not direct you to
+          purchase subscriptions on the website. In-app digital subscriptions, when offered, use Apple
+          In-App Purchase / Google Play Billing — not web checkout.
         </Text>
-        <Text style={styles.buildTag}>Build 1.0.0 · com.motivefx.app</Text>
+        <Text style={styles.buildTag}>
+          Build {APP_VERSION} ({IOS_BUILD_NUMBER}) · {Platform.OS === "ios" ? BUNDLE_ID_IOS : "com.motivefx.app"}
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -314,6 +337,15 @@ const styles = StyleSheet.create({
   link: { color: colors.accent },
   deleteWrap: { marginTop: 20, paddingVertical: 10 },
   deleteLink: { color: colors.muted, textAlign: "center", fontSize: 14, textDecorationLine: "underline" },
+  legalLinks: {
+    marginTop: 18,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  legalSep: { color: colors.dim, fontSize: 13 },
   disclaimer: { marginTop: 16, fontSize: 13, color: colors.muted, textAlign: "center", lineHeight: 19 },
   buildTag: {
     marginTop: 10,

@@ -20,18 +20,18 @@ export function PrivacyPage() {
 
       <h2>1. Information we collect</h2>
       <ul>
-        <li><strong>Account data:</strong> email, display name, password (hashed), optional demographics.</li>
-        <li><strong>Usage data:</strong> modules accessed, sessions, acquisition channel, feature interactions.</li>
-        <li><strong>Holdings &amp; activity:</strong> positions you track, bets, predictions, platform preferences.</li>
-        <li><strong>Intel features:</strong> radar symbols, journal notes, alerts, signal saves/exports.</li>
-        <li><strong>Consent records:</strong> privacy, terms, and risk acknowledgement timestamps and document versions.</li>
-        <li><strong>Payment data:</strong> via Stripe — we store subscription metadata, not full card numbers.</li>
-        <li><strong>Device &amp; logs:</strong> IP, browser, app version, crash logs when enabled.</li>
-      </ul>
-      <p>
-        <strong>Sensitive information.</strong> Holdings, betting, journal, and demographic data may be sensitive in
-        some jurisdictions. Provide it only if you choose to use those features.
-      </p>
+            <li><strong>Account data:</strong> email, display name, password (hashed). Optional experience cohort (not sex/gender).</li>
+            <li><strong>Usage data:</strong> modules accessed, sessions, acquisition channel, feature interactions.</li>
+            <li><strong>Holdings &amp; activity:</strong> positions you track, bets, predictions, platform preferences.</li>
+            <li><strong>Intel features:</strong> radar symbols, journal notes, alerts, signal saves/exports.</li>
+            <li><strong>Consent records:</strong> privacy, terms, and risk acknowledgement timestamps and document versions.</li>
+            <li><strong>Payment data:</strong> subscription metadata via Stripe (web) and/or Apple App Store / Google Play billing (mobile apps). We do not store full card numbers.</li>
+            <li><strong>Device &amp; logs:</strong> IP, browser, app version, crash logs when enabled.</li>
+          </ul>
+          <p>
+            <strong>Sensitive information.</strong> Holdings, betting, journal, and similar activity data may be
+            sensitive in some jurisdictions. Provide it only if you choose to use those features.
+          </p>
 
       <h2>2. How we use information</h2>
       <ul>
@@ -73,13 +73,14 @@ export function PrivacyPage() {
 
       <h2>6. Sharing &amp; subprocessors</h2>
       <p>We share data with service providers only as needed to operate the Services:</p>
-      <ul>
-        <li>Stripe (payments and billing)</li>
-        <li>OpenAI and other AI providers (AI insights features — see Section 4)</li>
-        <li>Cloud hosting, email, and notification providers</li>
-        <li>Market data and odds API partners (generally no personal data; may include request metadata)</li>
-        <li>Analytics and error monitoring (where enabled)</li>
-      </ul>
+          <ul>
+            <li>Stripe (web payments and billing)</li>
+            <li>Apple and Google (in-app subscription billing when you purchase inside the iOS/Android apps)</li>
+            <li>OpenAI and other AI providers (AI insights features — see Section 4)</li>
+            <li>Cloud hosting, email, and notification providers</li>
+            <li>Market data and odds API partners (generally no personal data; may include request metadata)</li>
+            <li>Analytics and error monitoring (where enabled)</li>
+          </ul>
       <p>
         We do not sell personal information. We do not share personal information for cross-context behavioral advertising.
         We may disclose information if required by law or to protect rights and safety.

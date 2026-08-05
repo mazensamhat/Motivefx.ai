@@ -24,6 +24,7 @@ import {
   syncSiteEntitlementsFromServer,
   SITE_EMBED,
 } from "../lib/siteSession";
+import { isNativeShell } from "../lib/nativeShell";
 import { AuthModal } from "../components/AuthModal";
 
 interface AuthState {
@@ -93,8 +94,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const openAuth = useCallback((mode: "login" | "register" = "login") => {
+    // Native shell: never navigate to /login?next=/app (blank / broken WebView).
+    // Ask the Expo shell to show the native AuthScreen instead.
+    if (isNativeShell()) {
+      try {
+        window.ReactNativeWebView?.postMessage("motivefx:logout");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     if (SITE_EMBED) {
-      window.location.href = mode === "register" ? "/register?next=/app" : "/login?next=/app";
+      window.location.href = mode === "register" ? "/register?next=/terminal" : "/login?next=/terminal";
       return;
     }
     setAuthMode(mode);
@@ -113,6 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
     setUser(null);
     setIsAdmin(false);
+    if (isNativeShell()) {
+      try {
+        window.ReactNativeWebView?.postMessage("motivefx:logout");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     if (SITE_EMBED) {
       try {
         await fetch("/api/auth/logout", { method: "POST" });
