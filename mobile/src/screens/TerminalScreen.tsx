@@ -42,14 +42,15 @@ const VIEWPORT_LOCK_SCRIPT = `
   (function () {
     try {
       document.documentElement.classList.add("motivefx-native-shell");
-      window.__MOTIVEFX_NATIVE_IAP__ = ${isIapConfigured() ? "true" : "false"};
+      window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
       window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
       var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
       var meta = document.querySelector('meta[name="viewport"]');
       if (!meta) {
-        meta = document.createElement("meta");
-        meta.setAttribute("name", "viewport");
-        if (document.head) document.head.appendChild(meta);
+        var metaEl = document.createElement("meta");
+        metaEl.setAttribute("name", "viewport");
+        if (document.head) document.head.appendChild(metaEl);
+        meta = metaEl;
       }
       if (meta) meta.setAttribute("content", content);
       // Belt-and-suspenders scroll fix for Android WebView reviewers.
@@ -66,6 +67,12 @@ const VIEWPORT_LOCK_SCRIPT = `
           "html.motivefx-native-shell .workspace-header{padding-top:0!important;margin-top:0!important;}",
           "html.motivefx-native-shell.motivefx-native-doc-scroll,html.motivefx-native-shell.motivefx-native-doc-scroll body{height:auto!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior-y:auto;}",
           "html.motivefx-native-shell.motivefx-native-doc-scroll .admin-shell,html.motivefx-native-shell.motivefx-native-doc-scroll .legal-page,html.motivefx-native-shell.motivefx-native-doc-scroll .app-layout{touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}",
+          // iOS free reader (2.1b / 3.1.1): hide purchase / subscription UI in WebView.
+          ${
+            Platform.OS === "ios"
+              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell a[href*='/pricing']{display:none!important;}",`
+              : ""
+          }
         ].join("");
         (document.head || document.documentElement).appendChild(style);
       }
@@ -122,7 +129,7 @@ function buildAuthInjectionScript(
         if (accessToken) localStorage.setItem("motivefx_access_token", accessToken);
         if (refreshToken) localStorage.setItem("motivefx_refresh_token", refreshToken);
         if (userId) localStorage.setItem("motivefx_user_id", userId);
-        window.__MOTIVEFX_NATIVE_IAP__ = ${isIapConfigured() ? "true" : "false"};
+        window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
         window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
       } catch (e) {}
       true;
@@ -187,11 +194,14 @@ function isOffTerminalShellUrl(url: string): "auth" | "admin" | "app" | null {
 
 export function TerminalScreen({
   onRequestDeleteAccount,
+  onRequestSignIn,
 }: {
   onRequestDeleteAccount?: () => void;
+  /** iOS guest: open native AuthScreen without blocking market insights. */
+  onRequestSignIn?: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
   const [WebView, setWebView] = useState<WebViewComponent | null>(null);
   const [phase, setPhase] = useState<"boot" | "ready" | "failed">("boot");
   const [sourceUri, setSourceUri] = useState<string | null>(null);
@@ -272,10 +282,14 @@ export function TerminalScreen({
 
       // Prefer cookie handoff URL so middleware does not force ?demo=1 (which unlocks
       // every module client-side and can race native-shell purchase gating).
+      // iOS guest browse (5.1.1(v)): load demo/read-only terminal without an account.
       const terminalPath = "/terminal";
+      const terminalBase = TERMINAL_URL.replace(/\/$/, "") || `${WEB_BASE}/terminal`;
       const uri = accessToken
         ? `${API_BASE}/auth/native-handoff?token=${encodeURIComponent(accessToken)}&next=${encodeURIComponent(terminalPath)}`
-        : TERMINAL_URL.replace(/\/$/, "") || `${WEB_BASE}/terminal`;
+        : Platform.OS === "ios"
+          ? `${terminalBase}?demo=1`
+          : terminalBase;
       setHasLoadedOnce(false);
       setSourceUri(uri);
       setPhase("ready");
@@ -368,8 +382,22 @@ export function TerminalScreen({
     []
   );
 
+  const freeReaderBillingMessage =
+    Platform.OS === "ios"
+      ? "This iOS app is a free informational reader. Purchases and subscriptions are not available in the app."
+      : "Web checkout is not available inside the app. Digital subscriptions use store billing when configured.";
+
   const runPurchase = useCallback(
     async (tierRaw?: string, userId?: string) => {
+      if (Platform.OS === "ios") {
+        setIapBanner(freeReaderBillingMessage);
+        notifyWeb({
+          type: "iap_result",
+          ok: false,
+          error: "In-app purchases are not available in this iOS build.",
+        });
+        return;
+      }
       if (iapBusy) return;
       if (!isIapConfigured()) {
         // Play Payments: never steer users to web checkout for digital subscriptions.
@@ -412,11 +440,15 @@ export function TerminalScreen({
         setIapBusy(false);
       }
     },
-    [iapBusy, notifyWeb, syncAppleToServer]
+    [freeReaderBillingMessage, iapBusy, notifyWeb, syncAppleToServer]
   );
 
   const runRestore = useCallback(
     async (userId?: string) => {
+      if (Platform.OS === "ios") {
+        setIapBanner(freeReaderBillingMessage);
+        return;
+      }
       if (iapBusy) return;
       if (!isIapConfigured()) {
         setIapBanner("In-app purchase is not configured.");
@@ -450,7 +482,7 @@ export function TerminalScreen({
         setIapBusy(false);
       }
     },
-    [iapBusy, notifyWeb, syncAppleToServer]
+    [freeReaderBillingMessage, iapBusy, notifyWeb, syncAppleToServer]
   );
 
   const onMessage = useCallback(
@@ -465,9 +497,7 @@ export function TerminalScreen({
           const parsed = JSON.parse(raw) as NativeMsg;
           if (parsed?.type === "motivefx:open-external" && parsed.url) {
             if (isBillingOrCheckoutUrl(parsed.url)) {
-              setIapBanner(
-                "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
-              );
+              setIapBanner(freeReaderBillingMessage);
               return;
             }
             void Linking.openURL(parsed.url).catch((e) => console.warn("openURL failed", e));
@@ -475,7 +505,9 @@ export function TerminalScreen({
           }
           if (parsed.type === "session" && parsed.userId) {
             appUserIdRef.current = parsed.userId;
-            void configureIap(parsed.userId);
+            if (Platform.OS !== "ios") {
+              void configureIap(parsed.userId);
+            }
             return;
           }
           if (parsed.type === "iap_purchase") {
@@ -490,23 +522,30 @@ export function TerminalScreen({
         console.warn("Terminal onMessage failed", e);
       }
     },
-    [logout, runPurchase, runRestore]
+    [freeReaderBillingMessage, logout, runPurchase, runRestore]
   );
 
   const bounceToTerminal = useCallback(() => {
     const terminal = TERMINAL_URL.replace(/\/$/, "") || `${WEB_BASE}/terminal`;
-    setSourceUri(terminal);
+    const guestUri =
+      Platform.OS === "ios" && !isAuthenticated ? `${terminal}?demo=1` : terminal;
+    setSourceUri(guestUri);
     setHasLoadedOnce(false);
     setLoading(true);
     setWebViewKey((k) => k + 1);
     armLoadWatchdog();
-  }, [armLoadWatchdog]);
+  }, [armLoadWatchdog, isAuthenticated]);
 
   const handleOffTerminalNavigation = useCallback(
     (url: string): boolean => {
       const kind = isOffTerminalShellUrl(url);
       if (!kind) return false;
       if (kind === "auth") {
+        // iOS guest: optional native sign-in — do not trap reviewers behind a login wall.
+        if (onRequestSignIn && !isAuthenticated) {
+          onRequestSignIn();
+          return true;
+        }
         // Prefer native AuthScreen over Next /login (often looks broken / blank in WebView).
         void logout();
         return true;
@@ -520,7 +559,7 @@ export function TerminalScreen({
       bounceToTerminal();
       return true;
     },
-    [bounceToTerminal, logout]
+    [bounceToTerminal, isAuthenticated, logout, onRequestSignIn]
   );
 
   const onShouldStartLoadWithRequest = useCallback(
@@ -531,9 +570,7 @@ export function TerminalScreen({
         if (Platform.OS === "android" && req.isTopFrame === false) return true;
         // Play / App Store payments: never open Stripe or web pricing/checkout from the app.
         if (isBillingOrCheckoutUrl(url)) {
-          setIapBanner(
-            "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
-          );
+          setIapBanner(freeReaderBillingMessage);
           return false;
         }
         if (handleOffTerminalNavigation(url)) return false;
@@ -544,7 +581,7 @@ export function TerminalScreen({
         return true;
       }
     },
-    [handleOffTerminalNavigation]
+    [freeReaderBillingMessage, handleOffTerminalNavigation]
   );
 
   const remountWebView = useCallback(() => {
@@ -574,7 +611,9 @@ export function TerminalScreen({
         setLoading(false);
         setHasLoadedOnce(true);
         setPhase("ready");
-        // Safe window: configure billing only after the UI is interactive.
+        // Safe window: configure billing only after the UI is interactive (Android only —
+        // iOS free-reader path keeps StoreKit / RevenueCat off).
+        if (Platform.OS === "ios") return;
         const uid = appUserIdRef.current;
         setTimeout(() => {
           void configureIap(uid);
@@ -585,7 +624,9 @@ export function TerminalScreen({
         if (!url.startsWith("http")) return;
         if (isBillingOrCheckoutUrl(url)) {
           setIapBanner(
-            "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
+            Platform.OS === "ios"
+              ? "This iOS app is a free informational reader. Purchases and subscriptions are not available in the app."
+              : "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
           );
           bounceToTerminal();
           return;
@@ -684,12 +725,25 @@ export function TerminalScreen({
         <Pressable onPress={() => void logout()}>
           <Text style={styles.linkMuted}>Sign out</Text>
         </Pressable>
+        {onRequestSignIn ? (
+          <Pressable onPress={onRequestSignIn}>
+            <Text style={styles.link}>Sign in</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
+      {onRequestSignIn ? (
+        <View style={styles.guestBar}>
+          <Text style={styles.guestBarText}>Browsing as guest · market insights unlock without an account</Text>
+          <Pressable onPress={onRequestSignIn} accessibilityRole="button" accessibilityLabel="Sign in">
+            <Text style={styles.guestBarLink}>Sign in</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -772,6 +826,19 @@ const styles = StyleSheet.create({
   failButtonText: { color: colors.bg, fontWeight: "700" },
   link: { color: colors.accent, textAlign: "center", marginTop: 8 },
   linkMuted: { color: colors.dim, textAlign: "center", marginTop: 8 },
+  guestBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "rgba(0, 198, 255, 0.08)",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  guestBarText: { color: colors.muted, fontSize: 12, flex: 1, lineHeight: 16 },
+  guestBarLink: { color: colors.accent, fontWeight: "700", fontSize: 13 },
   iapOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: "center",

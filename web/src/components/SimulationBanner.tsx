@@ -5,6 +5,7 @@ import { getUserId } from "../lib/api";
 import {
   isNativeAndroidShell,
   isNativeIapAvailable,
+  isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
@@ -71,6 +72,7 @@ export function SimulationBanner({ module }: Props) {
           type="button"
           className="btn btn-primary btn-sm simulation-banner-cta"
           onClick={() => {
+            if (isNativeIosShell()) return;
             if (native && nativeIap) {
               requestNativeIapPurchase("lite", getUserId());
               return;
@@ -81,7 +83,8 @@ export function SimulationBanner({ module }: Props) {
             }
             subscribeModule(module);
           }}
-          disabled={native && !nativeIap}
+          disabled={(native && !nativeIap) || isNativeIosShell()}
+          style={isNativeIosShell() ? { display: "none" } : undefined}
         >
           {native && nativeIap
             ? "Subscribe in app"

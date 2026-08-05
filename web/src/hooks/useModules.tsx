@@ -5,6 +5,7 @@ import { resolveAcquisitionChannel } from "../lib/acquisition";
 import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
+  isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
@@ -430,7 +431,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      {winOpen && winStory && !hasAnnual && (
+      {winOpen && winStory && !hasAnnual && !isNativeIosShell() && (
         <WinHookModal
           story={winStory}
           subscribedModule={winModule}

@@ -25,9 +25,11 @@ import { colors } from "../theme";
 
 interface Props {
   onRequestDeleteAccount?: () => void;
+  /** iOS guest browse (5.1.1(v)) — skip account creation and open the terminal. */
+  onContinueWithoutAccount?: () => void;
 }
 
-export function AuthScreen({ onRequestDeleteAccount }: Props) {
+export function AuthScreen({ onRequestDeleteAccount, onContinueWithoutAccount }: Props) {
   const { setUser } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -116,9 +118,13 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
         <Text style={styles.sub}>
           {pendingToken
             ? "Enter your 2FA code"
-            : mode === "login"
-              ? "Sign in to your account"
-              : "Create your account"}
+            : onContinueWithoutAccount
+              ? mode === "login"
+                ? "Sign in is optional — or continue without an account"
+                : "Create an account — or continue without one"
+              : mode === "login"
+                ? "Sign in to your account"
+                : "Create your account"}
         </Text>
 
         {!pendingToken && (
@@ -220,6 +226,18 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
           )}
         </Pressable>
 
+        {onContinueWithoutAccount && !pendingToken ? (
+          <Pressable
+            style={styles.guestButton}
+            onPress={onContinueWithoutAccount}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Continue without account"
+          >
+            <Text style={styles.guestButtonText}>Continue without account</Text>
+          </Pressable>
+        ) : null}
+
         {!pendingToken && (
           <Pressable
             onPress={() => {
@@ -278,10 +296,9 @@ export function AuthScreen({ onRequestDeleteAccount }: Props) {
         </View>
 
         <Text style={styles.disclaimer}>
-          Informational only. Not financial advice. {APP_DISPLAY_NAME} provides market research and
-          analytics — not brokerage, sportsbook, or investment advice. This app does not direct you to
-          purchase subscriptions on the website. In-app digital subscriptions, when offered, use Apple
-          In-App Purchase / Google Play Billing — not web checkout.
+          {Platform.OS === "ios"
+            ? `Informational only. Not financial advice. ${APP_DISPLAY_NAME} is a free market-insights reader on iOS — no in-app purchases or subscriptions in this build. Account sign-in is optional (saved prefs, delete account).`
+            : `Informational only. Not financial advice. ${APP_DISPLAY_NAME} provides market research and analytics — not brokerage, sportsbook, or investment advice. This app does not direct you to purchase subscriptions on the website.`}
         </Text>
         <Text style={styles.buildTag}>
           Build {APP_VERSION} ({IOS_BUILD_NUMBER}) · {Platform.OS === "ios" ? BUNDLE_ID_IOS : "com.motivefx.app"}
@@ -320,6 +337,18 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   buttonText: { color: colors.bg, fontWeight: "700", fontSize: 16 },
+  guestButton: {
+    marginTop: 12,
+    borderRadius: 10,
+    padding: 16,
+    alignItems: "center",
+    minHeight: 52,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  guestButtonText: { color: colors.text, fontWeight: "700", fontSize: 16 },
   switch: { color: colors.accent, textAlign: "center", marginTop: 16, fontSize: 15, paddingVertical: 8 },
   errorBox: {
     marginBottom: 10,

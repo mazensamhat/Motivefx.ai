@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { APP_DISPLAY_NAME } from "../config";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { isAgeVerified, setAgeVerified } from "../lib/ageGate";
@@ -12,6 +12,10 @@ import { colors } from "../theme";
 /**
  * No React Navigation / native-stack — those + WebView transitions were
  * crashing Android. Simple conditional render only.
+ *
+ * iOS (App Store 5.1.1(v)): after age gate, enter terminal in guest/demo
+ * browse — do NOT force register/login before market insights.
+ * Android may still require sign-in before the terminal.
  */
 function BootSplash({ label = "Starting…" }: { label?: string }) {
   return (
@@ -28,6 +32,9 @@ function Root() {
   const [ageChecked, setAgeChecked] = useState(false);
   const [ageOk, setAgeOk] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  /** iOS only: optional sign-in sheet; default is guest terminal browse. */
+  const [showAuth, setShowAuth] = useState(false);
+  const iosGuestBrowse = Platform.OS === "ios";
 
   useEffect(() => {
     let cancelled = false;
@@ -65,11 +72,35 @@ function Root() {
     );
   }
 
-  if (isAuthenticated) {
-    return <TerminalScreen onRequestDeleteAccount={() => setShowDeleteAccount(true)} />;
+  // Android (and iOS when user chose Sign in): account form.
+  // iOS default: skip this and load the terminal as a guest.
+  if (!isAuthenticated && (!iosGuestBrowse || showAuth)) {
+    return (
+      <AuthScreen
+        onRequestDeleteAccount={() => setShowDeleteAccount(true)}
+        onContinueWithoutAccount={
+          iosGuestBrowse
+            ? () => {
+                setShowAuth(false);
+              }
+            : undefined
+        }
+      />
+    );
   }
 
-  return <AuthScreen onRequestDeleteAccount={() => setShowDeleteAccount(true)} />;
+  return (
+    <TerminalScreen
+      onRequestDeleteAccount={() => setShowDeleteAccount(true)}
+      onRequestSignIn={
+        iosGuestBrowse && !isAuthenticated
+          ? () => {
+              setShowAuth(true);
+            }
+          : undefined
+      }
+    />
+  );
 }
 
 export function RootNavigator() {

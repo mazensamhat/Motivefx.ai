@@ -13,9 +13,20 @@ export function isNativeAndroidShell(): boolean {
   return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
+/** True only for the Expo iOS WebView shell used for App Store builds. */
+export function isNativeIosShell(): boolean {
+  if (!isNativeShell()) return false;
+  if (typeof window !== "undefined" && window.__MOTIVEFX_NATIVE_PLATFORM__) {
+    return window.__MOTIVEFX_NATIVE_PLATFORM__ === "ios";
+  }
+  return typeof navigator !== "undefined" && /iPhone|iPad|iPod|iOS/i.test(navigator.userAgent);
+}
+
 /** True when the native shell injected RevenueCat / store billing availability. */
 export function isNativeIapAvailable(): boolean {
   if (typeof window === "undefined") return false;
+  // iOS free-reader path: never treat IAP as available until ASC products are live.
+  if (isNativeIosShell()) return false;
   return Boolean(window.__MOTIVEFX_NATIVE_IAP__);
 }
 
@@ -50,6 +61,13 @@ function postNative(msg: Record<string, unknown>): boolean {
   return true;
 }
 
+function billingBlockedMessage(): string {
+  if (isNativeIosShell()) {
+    return "This iOS app is a free informational reader. Purchases and subscriptions are not available in the app.";
+  }
+  return "Web checkout is not available inside the app. Digital subscriptions use store billing when configured.";
+}
+
 /**
  * Ask the native shell to open a URL outside the WebView.
  * Billing / pricing URLs are blocked in the native shell (store payments policy).
@@ -64,8 +82,7 @@ export function openExternalUrl(url: string): void {
         detail: {
           type: "iap_result",
           ok: false,
-          error:
-            "Web checkout is not available inside the app. Digital subscriptions use store billing when configured.",
+          error: billingBlockedMessage(),
         },
       })
     );
@@ -93,8 +110,9 @@ export function openExternalSubscribe(): void {
         detail: {
           type: "iap_result",
           ok: false,
-          error:
-            "Store billing is not configured in this app build. Existing plan access still works when you sign in.",
+          error: isNativeIosShell()
+            ? "This iOS app is a free informational reader. Purchases are not available in the app."
+            : "Store billing is not configured in this app build. Existing plan access still works when you sign in.",
         },
       })
     );

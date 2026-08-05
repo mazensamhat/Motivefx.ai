@@ -13,6 +13,7 @@ import { useModules } from "../hooks/useModules";
 import { getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
+  isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
   requestNativeIapRestore,
@@ -115,20 +116,23 @@ export function TierPricing() {
 
   if (loading) return null;
 
+  // iOS App Store free-reader path (2.1b / 3.1.1): no subscription UI at all.
+  if (isNativeIosShell()) {
+    return null;
+  }
+
   // Native shell without store billing: no web purchase CTAs (Play Payments / App Store 3.1.1).
   if (native && !nativeIap) {
     return (
       <div className="tier-pricing glass-panel pricing-terminal native-companion-billing" id="pricing">
         <div className="module-pricing-header">
-          <h3 className="pricing-terminal-title">Subscriptions</h3>
+          <h3 className="pricing-terminal-title">Plan access</h3>
           <p className="pricing-terminal-sub">
             New purchases are not offered in this app build. If your account already includes a MotiveFX
-            plan, signed-in markets remain available. Store billing (Google Play / App Store) will be used
-            for in-app purchases when configured.
+            plan, signed-in markets remain available.
           </p>
         </div>
         {iapError && <p className="auth-error">{iapError}</p>}
-        <BillingFinePrint annualPrice={1299} className="tier-pricing-fine-print" compact />
       </div>
     );
   }

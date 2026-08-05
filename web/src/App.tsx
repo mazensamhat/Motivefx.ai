@@ -22,7 +22,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
 import { useModuleUsageTracker } from "./hooks/useModuleUsageTracker";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
-import { isNativeAndroidShell, isNativeShell } from "./lib/nativeShell";
+import { isNativeAndroidShell, isNativeIosShell, isNativeShell } from "./lib/nativeShell";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { DataDeletionPage } from "./pages/DataDeletionPage";
@@ -139,10 +139,15 @@ export default function App() {
       {isPublicDemo && !isAuthenticated && (
         <div className="launch-banner" style={{ background: "rgba(34, 197, 94, 0.12)" }}>
           <span>
-            Read-only public demo — sample &amp; live feeds for exploration. Sign up to save portfolios and
-            subscribe.
+            {isNativeIosShell()
+              ? "Free informational reader — browse market insights without an account. Sign-in is optional."
+              : "Read-only public demo — sample & live feeds for exploration. Sign up to save portfolios."}
           </span>
-          {isNativeShell() ? (
+          {isNativeIosShell() ? (
+            <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("login")}>
+              Sign in (optional)
+            </button>
+          ) : isNativeShell() ? (
             <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>
               Create account
             </button>
@@ -194,11 +199,11 @@ export default function App() {
             {/* Desktop: fuller copy. Mobile: short lines + links (see CSS + .mobile / .desktop variants). */}
             <div className="app-footer-legal-desktop">
               <FinancialDisclaimer compact />
-              <BillingFinePrint annualPrice={annualPrice} />
+              {!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} />}
             </div>
             <div className="app-footer-legal-mobile">
               <FinancialDisclaimer mobile />
-              <BillingFinePrint annualPrice={annualPrice} compact />
+              {!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} compact />}
             </div>
             <div className="app-footer-links">
               <a href="/legal-documents.html" target="_blank" rel="noreferrer">

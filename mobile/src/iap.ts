@@ -44,7 +44,10 @@ const TIER_RANK: Record<IntelligenceTierId, number> = {
 let configured = false;
 
 export function isIapConfigured(): boolean {
-  const hasKey = Platform.OS === "ios" ? Boolean(IOS_API_KEY) : Boolean(ANDROID_API_KEY);
+  // App Store resubmit path: iOS is a free informational reader until ASC IAP
+  // products + RevenueCat are fully submitted (guidelines 2.1(b) / 3.1.1).
+  if (Platform.OS === "ios") return false;
+  const hasKey = Boolean(ANDROID_API_KEY);
   if (!hasKey) return false;
   // Prefer explicit flag when set; otherwise enable whenever a key is present.
   if (process.env.EXPO_PUBLIC_IAP_ENABLED != null && process.env.EXPO_PUBLIC_IAP_ENABLED !== "") {

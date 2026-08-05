@@ -6,6 +6,7 @@ import { useModules } from "../hooks/useModules";
 import { getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
+  isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
 } from "../lib/nativeShell";
@@ -81,11 +82,15 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
           <p>
             Subscribe with in-app store billing to unlock this market. Plans start at Lite ($29.99/mo).
           </p>
+        ) : isNativeIosShell() ? (
+          <p>
+            This iOS app is a free informational reader. Open Home or use demo market insights — no purchase
+            is required. Sign-in is optional for saved preferences.
+          </p>
         ) : native ? (
           <p>
             New purchases are not offered in this app build. Sign in with an account that already includes
-            this market, or use free / demo content available here. Store billing will be used for in-app
-            purchases when configured.
+            this market, or use free / demo content available here.
           </p>
         ) : (
           <p>
@@ -101,14 +106,16 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
         {simExpired && (
           <p className="module-gate-sim-hint">
             Your simulation period has ended.{" "}
-            {native && !nativeIap
-              ? "In-app store billing is not configured in this build yet."
-              : native && nativeIap
-                ? "Subscribe in the app to keep live signals."
-                : "Subscribe to keep tracking live signals and AI research."}
+            {isNativeIosShell()
+              ? "Continue with free / demo insights in this build."
+              : native && !nativeIap
+                ? "In-app store billing is not configured in this build yet."
+                : native && nativeIap
+                  ? "Subscribe in the app to keep live signals."
+                  : "Subscribe to keep tracking live signals and AI research."}
           </p>
         )}
-        {!(native && !nativeIap) && (
+        {!(native && !nativeIap) && !isNativeIosShell() && (
           <button className="btn btn-primary" onClick={onUnlock}>
             {native && nativeIap
               ? "Subscribe in app"

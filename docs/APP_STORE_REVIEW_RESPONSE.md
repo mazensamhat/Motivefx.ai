@@ -1,8 +1,8 @@
 # App Store Review Response — MotiveFX.AI
 
 **App:** MotiveFX.AI (`ai.motivefx.app`)  
-**Build for resubmit:** Version **1.0.0** (build **17**)  
-**Primary fix doc:** [`docs/APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md) (2.1.0 blank screen + 5.1.1 privacy / no web purchase steering)
+**Build for resubmit:** Version **1.0.0** (build **18**)  
+**Primary fix doc:** [`docs/APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md)
 
 **Device referenced:** iPad Air 11-inch  
 
@@ -10,17 +10,14 @@
 
 ## NEXT STEPS (ordered) — do these in App Store Connect
 
-**Current binary:** EAS production build for **1.0.0 (17)**.  
-See rejection remediations: [`docs/APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md).  
-IAP setup (when enabling StoreKit): [`docs/APP_STORE_IAP_SETUP.md`](./APP_STORE_IAP_SETUP.md).
+**Current binary:** EAS production build for **1.0.0 (18)**.  
+Paste reply: Desktop `assets/APP_STORE_RESOLUTION_CENTER_REPLY.txt` or the block in the rejection fix doc.
 
-**Before submit:** Confirm privacy + data-deletion URLs live; paste Resolution Center reply from the rejection fix doc. If selling subscriptions in-app, create ASC products and wire RevenueCat first.
-
-1. **Wait for EAS build 17 to finish.** When green, submit to App Store Connect.
-2. **Age Rating questionnaire (2.3.6):** Prefer **Age Assurance = Yes** (birth-year 18+ gate). Do **not** claim Parental Controls unless you ship real parental/PIN controls.
-3. **Paste Resolution Center reply** from [`APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md).
-4. **Review Notes:** Paste Short Review Notes from that doc; call out build **1.0.0 (17)**.
-5. **Submit** for review, then reply in Resolution Center.
+1. **Wait for EAS build 18 to finish.** When green, submit / select in App Store Connect. **Do not resubmit build 11.**
+2. **Age Rating questionnaire (2.3.6):** **Age Assurance = Yes** (birth-year 18+ gate). **Parental Controls = No** unless you ship real parental/PIN controls.
+3. **Paste Resolution Center reply** covering 5.1.1 gender, 5.1.1(v) login wall, 2.1 blank screen, 2.1b/3.1.1 free no IAP, 2.3.6 age gate.
+4. **Review Notes:** Paste Short Review Notes from [`APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md); call out build **1.0.0 (18)**.
+5. **Deploy terminal web** so iOS free-reader UI is live, then **Submit** for review.
 
 ### Commands
 
@@ -35,59 +32,39 @@ npx eas-cli submit --platform ios --profile production --latest --non-interactiv
 
 ## Suggested reply (full)
 
-Use the Resolution Center paste block in [`APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md) (covers 2.1.0 + 5.1.1). Legacy notes for gender / IAP / age gate remain below for older threads.
+Use the Resolution Center paste block in [`APP_STORE_REJECTION_FIX.md`](./APP_STORE_REJECTION_FIX.md) or  
+`C:/Users/Mazen/Desktop/assets/APP_STORE_RESOLUTION_CENTER_REPLY.txt`.
+
+### Guideline 5.1.1(v) — Login wall
+
+iOS: age gate → guest/demo terminal. Account optional.
 
 ### Guideline 5.1.1(v) — Gender
 
-**Gender is not collected during onboarding or account creation.**
+Gender is not collected during onboarding or account creation.
 
-- Registration requires only email, password, and legal consents — no sex/gender fields.
-- The terminal personalization flow asks only for experience cohort (and optionally how the user found the app). It does **not** show sex or gender fields.
-- Profile sync from onboarding always records sex/gender as **prefer not to say** (not user-selected).
+### Guideline 2.1(a) — Blank screen
 
-### Guideline 3.1.1 — In-App Purchase
+Branded loader until WebView ready (retained from build 17 → 18).
 
-When StoreKit / RevenueCat is configured (`EXPO_PUBLIC_IAP_ENABLED=true` + RC iOS key):
+### Guideline 2.1(b) + 3.1.1 — IAP
 
-- Subscription group: `Monthly` (ASC reference name)
-- Products: `Lite` / `Pro` / `Ultra` / `Ultra.Plus` (monthly) and `Elite` (yearly) — purchased with Apple IAP inside the app.
-- Native WebView subscribe CTAs call StoreKit; **Stripe Checkout is not used inside the iOS app**.
-- Users can **Restore purchases** from Account settings.
-- Free / demo / simulation content remains available without purchase.
-
-This build does **not** steer users to `motivefxai.com/pricing` in Safari for digital subscriptions.
+This build: **free informational reader** — no IAP, no web purchase steering.
 
 ### Guideline 2.3.6 — Age Rating / In-App Controls
 
-The app includes sports-betting and prediction-market **intelligence** modules (informational; not a bookmaker).
-
-We implemented a **birth-year 18+ age assurance gate on first launch** (before sign-in). Continue is enabled only when the entered birth year implies age ≥ 18. Under-18 users are blocked.
+Birth-year 18+ age assurance on first launch before content. Not Parental Controls.
 
 ---
 
 ## Short Review Notes (metadata field)
 
 ```
-Resubmission for 2.1.0 + 5.1.1. Build 1.0.0 (17).
+Resubmission for 5.1.1(v) login wall, 5.1.1 gender, 2.1 blank screen, 2.1b/3.1.1 free no IAP, 2.3.6 age gate. Build 1.0.0 (18).
 
-1) Blank screen fixed — branded loader until terminal loads; no Ops/admin deep link for reviewers.
-2) Privacy + data deletion URLs live; Delete account in-app. No gender collection.
-3) No web /pricing purchase steering. Store billing when configured.
-4) Age gate 18+ → sign in with review credentials → Home terminal.
+1) After age gate → Home/terminal guest browse (no forced login). Sign-in optional.
+2) Blank screen fixed — branded loader until terminal WebView loads.
+3) Free informational reader — no IAP, no /pricing purchase CTAs in the iOS app.
+4) No gender collection at signup.
+5) Age assurance: birth year 18+ gate on first launch before content.
 ```
-
----
-
-## Mazen checklist in App Store Connect
-
-### Before upload
-
-- [ ] Deploy site privacy + terminal native-shell fixes
-- [ ] EAS iOS build **1.0.0 / buildNumber 17**
-- [ ] (Optional IAP) ASC products + RevenueCat + `EXPO_PUBLIC_IAP_ENABLED=true`
-- [ ] Paste Resolution Center reply from `APP_STORE_REJECTION_FIX.md`
-
-### Age Rating (2.3.6)
-
-- [ ] Prefer Age Assurance = Yes (matches birth-year gate)
-- [ ] Do **not** claim Parental Controls unless you ship real parental/PIN controls
