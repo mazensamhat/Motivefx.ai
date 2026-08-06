@@ -1,7 +1,9 @@
 import { requireTerminalSession } from "./auth";
 import { findUserSafe } from "../load-user";
-import { planForUser, sandboxDemoPlan } from "./plan";
+import { hasModule, planForUser, sandboxDemoPlan } from "./plan";
 import { requireModule } from "./access";
+import { isNativeIosAppStoreRequest } from "./ios-reader";
+import { simHasModule } from "./simulation";
 
 const DEMO_COOKIE = "motivefx_demo=1";
 
@@ -19,9 +21,20 @@ export async function resolveAccess(request: Request, module?: string) {
 
   const auth = await requireTerminalSession();
   if (auth.ok) {
-    const plan = planForUser(auth.session.user);
-    if (module) requireModule(plan, module);
-    return { userId: auth.session.user.id, plan, user: auth.session.user, authenticated: true };
+    const user = auth.session.user;
+    let plan = planForUser(user);
+    if (module) {
+      const entitled =
+        hasModule(plan, module) || Boolean(simHasModule(user, module));
+      // iOS App Store free reader: allow read-only market intel without paid unlock /
+      // even after the betting/predictions simulation trial ends.
+      if (!entitled && isNativeIosAppStoreRequest(request)) {
+        plan = sandboxDemoPlan();
+      } else if (!entitled) {
+        requireModule(plan, module);
+      }
+    }
+    return { userId: user.id, plan, user, authenticated: true };
   }
 
   if (isPublicDemoRequest(request)) {

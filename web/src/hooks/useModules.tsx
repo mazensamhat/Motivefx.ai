@@ -383,6 +383,9 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   const hasModule = useCallback(
     (module: string) => {
+      // iOS App Store free informational reader: always allow viewing market tabs
+      // (monitor-only). Do not require paid unlock or an active simulation trial.
+      if (isNativeIosShell()) return true;
       if (typeof window !== "undefined") {
         const demo =
           new URLSearchParams(window.location.search).get("demo") === "1" ||
