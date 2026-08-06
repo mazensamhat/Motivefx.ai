@@ -48,6 +48,12 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
     return <AgeGateModal moduleLabel={moduleLabel} onVerified={() => setAgeOk(true)} />;
   }
 
+  // iOS App Store free reader: never show a lock wall — market tabs are viewable
+  // (monitor-only). Age gate above still applies for betting / predictions.
+  if (isNativeIosShell()) {
+    return <>{children}</>;
+  }
+
   if (hasModule(module)) {
     return <>{children}</>;
   }
