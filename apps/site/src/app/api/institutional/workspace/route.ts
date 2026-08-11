@@ -1,6 +1,6 @@
 import { badRequest, json } from "@/lib/api";
 import { requireTerminalSession, accessErrorResponse } from "@/lib/terminal/auth";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { requireFeature } from "@/lib/terminal/access";
 import { sendTeamInviteEmail } from "@/lib/email";
 import {
@@ -22,7 +22,7 @@ export async function GET() {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "team_workspace");
     await claimPendingInvites(auth.session.user);
     const dashboard = await buildInstitutionalDashboard(auth.session.user.id);
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "team_workspace");
     let body: {
       action?: string;

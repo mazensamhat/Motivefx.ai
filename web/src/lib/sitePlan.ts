@@ -91,7 +91,9 @@ export function applySitePlanToModulesPayload<T extends {
   tier?: PricingTierId;
   features?: Record<string, boolean>;
   hasAnnual?: boolean;
-}>(data: T, sitePlan: SitePlan | null): T {
+}>(data: T, sitePlan: SitePlan | null, opts?: { ignorePaid?: boolean }): T {
+  // iOS App Store free reader: never merge web/Stripe paid entitlements into the shell.
+  if (opts?.ignorePaid) return data;
   if (!sitePlan?.hasSubscription) return data;
   const modules = backendModulesForSitePlan(sitePlan);
   if (modules.length === 0) return data;

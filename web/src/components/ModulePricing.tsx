@@ -6,6 +6,7 @@ import { ModuleBrandLockup } from "./MotivFxLogo";
 import { SavingsPlanner } from "./SavingsPlanner";
 import { ImpactCalculator } from "./ImpactCalculator";
 import { Boxes, Lock, ShieldAlert, Wallet } from "lucide-react";
+import { isNativeIosShell } from "../lib/nativeShell";
 
 const MODULES = [
   { id: "trades", name: "Trades", price: 29, desc: "Holdings intel · stock activity · congress flow" },
@@ -30,6 +31,9 @@ export function ModulePricing() {
   const { hasModule, hasAnnual, annualPrice, subscribeModule, subscribeAnnual } = useModules();
   const { profile } = useGenerationalProfile();
   const ownsAll = ALL_MODULES.every((m) => hasModule(m));
+
+  // iOS App Store free reader: no module pricing / subscribe CTAs.
+  if (isNativeIosShell()) return null;
 
   return (
     <div className="module-pricing glass-panel pricing-terminal">

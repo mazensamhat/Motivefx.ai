@@ -122,3 +122,30 @@ export const DEFAULT_PLAN: UserPlanSnapshot = {
   entitlements: [],
   hasAnnual: false,
 };
+
+const IOS_READER_MODULES = ["trades", "crypto", "penny", "betting", "predictions"];
+
+/**
+ * App Store free informational reader — same insight content for every iOS user.
+ * Web/Stripe subscriptions must not unlock exclusive digital features in-app.
+ */
+export function iosFreeReaderPlan(): UserPlanSnapshot {
+  const features: Record<string, boolean> = {};
+  const entitlements: string[] = [];
+  for (const feature of Object.keys(FEATURE_MIN_TIER) as EntitlementFeature[]) {
+    const ok =
+      tierHasFeature("ultra", feature) &&
+      feature !== "api_access" &&
+      feature !== "team_workspace";
+    features[feature] = ok;
+    if (ok) entitlements.push(feature);
+  }
+  return {
+    tier: "lite",
+    selectedMarkets: [],
+    allowedMarkets: [...IOS_READER_MODULES],
+    features,
+    entitlements,
+    hasAnnual: false,
+  };
+}

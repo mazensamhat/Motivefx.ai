@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { prisma } from "@motivefx/database";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { getSession } from "@/lib/session";
-import { planForUser, hasFeature } from "@/lib/terminal/plan";
+import { hasFeature } from "@/lib/terminal/plan";
 import { sendConciergeRequestEmail } from "@/lib/email";
 import { SITE } from "@/lib/site-config";
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     const user = await prisma.user.findUnique({ where: { id: session.id } });
     if (!user) return unauthorized();
 
-    const plan = planForUser(user);
+    const plan = await entitlementsPlanForUser(user);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) {
       return badRequest("Please describe what you need in at least a sentence.");

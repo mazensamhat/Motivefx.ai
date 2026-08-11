@@ -70,7 +70,7 @@ const VIEWPORT_LOCK_SCRIPT = `
           // iOS free reader (2.1b / 3.1.1): hide purchase / subscription UI in WebView.
           ${
             Platform.OS === "ios"
-              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell a[href*='/pricing']{display:none!important;}",`
+              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell .btn-annual-cta{display:none!important;}",`
               : ""
           }
         ].join("");

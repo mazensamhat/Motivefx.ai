@@ -1,7 +1,7 @@
 import { json } from "@/lib/api";
 import { accessErrorResponse, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireModuleOrSimAllowingIosReader } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { listPredictions } from "@/lib/terminal/predictions";
 import { analyzePredictions, buildAdvisorResponse } from "@/lib/terminal/advisor-engine";
 
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if (!userId) return json({ detail: "Missing user_id" }, 400);
   try {
     if (auth.session.user.id !== userId) throw new Error("Access denied");
-    requireModuleOrSimAllowingIosReader(request, planForUser(auth.session.user), auth.session.user, "predictions");
+    requireModuleOrSimAllowingIosReader(request, await entitlementsPlanForUser(auth.session.user), auth.session.user, "predictions");
     const positions = await listPredictions(userId);
     const analyzed = await analyzePredictions(positions);
     return json(await buildAdvisorResponse("predictions", analyzed.summary, analyzed.recs));

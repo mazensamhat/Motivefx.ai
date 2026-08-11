@@ -5,7 +5,7 @@ import {
   requireTerminalSession,
 } from "@/lib/terminal/auth";
 import { requireFeature, requireModule } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { savePortfolio, type Holding } from "@/lib/terminal/portfolio";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   if (!userId) return badRequest("Missing user_id.");
   try {
     assertUserMatch(auth.session, userId);
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireModule(plan, "penny");
     requireFeature(plan, "portfolio_intelligence");
     const holdings = Array.isArray(body.holdings) ? body.holdings : [];

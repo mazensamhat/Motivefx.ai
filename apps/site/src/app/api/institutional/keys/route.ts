@@ -1,6 +1,6 @@
 import { badRequest, json } from "@/lib/api";
 import { requireTerminalSession, accessErrorResponse } from "@/lib/terminal/auth";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { requireFeature } from "@/lib/terminal/access";
 import {
   createApiKey,
@@ -15,7 +15,7 @@ export async function GET() {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "api_access");
     const keys = await listApiKeys(auth.session.user.id);
     return json({ keys });
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "api_access");
     let body: { name?: string } = {};
     try {
@@ -61,7 +61,7 @@ export async function DELETE(request: Request) {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "api_access");
     const url = new URL(request.url);
     const id = url.searchParams.get("id");

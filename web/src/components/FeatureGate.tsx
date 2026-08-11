@@ -6,6 +6,7 @@ import {
   requiredTierLabel,
 } from "../lib/entitlements";
 import { useModules } from "../hooks/useModules";
+import { isNativeIosShell } from "../lib/nativeShell";
 
 interface Props {
   feature: EntitlementFeature;
@@ -25,6 +26,11 @@ export function FeatureGate({ feature, children, compact, fallback }: Props) {
   }
 
   if (fallback) return <>{fallback}</>;
+
+  // iOS free reader: never show upgrade / pricing CTAs for locked features.
+  if (isNativeIosShell()) {
+    return null;
+  }
 
   const label = featureLabel(feature);
   const required = requiredTierLabel(feature);

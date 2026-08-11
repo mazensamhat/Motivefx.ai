@@ -1,7 +1,7 @@
 import { badRequest, json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireFeature, requireModule } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { loadPortfolio, type Holding } from "@/lib/terminal/portfolio";
 import {
   analyzeStockPortfolio,
@@ -19,7 +19,7 @@ async function handleAnalyze(module: "trades" | "crypto" | "penny", request: Req
   if (!body.user_id) return badRequest("Missing user_id.");
   try {
     assertUserMatch(auth.session, body.user_id);
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireModule(plan, module);
     requireFeature(plan, "portfolio_intelligence");
     const holdings = body.holdings?.length

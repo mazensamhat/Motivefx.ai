@@ -150,8 +150,8 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate }: Pr
             </p>
             {isNativeIosShell() ? (
               <p className="chief-locked-hint">
-                This iOS build is a free informational reader — no in-app purchases. Use Home and demo
-                market insights without upgrading.
+                This iOS build is a free informational reader — market insights stay available without a
+                purchase or web subscription unlock.
               </p>
             ) : isNativeShell() ? (
               <p className="chief-locked-hint">

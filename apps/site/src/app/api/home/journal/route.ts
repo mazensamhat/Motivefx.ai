@@ -1,7 +1,7 @@
 import { badRequest, json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireFeature } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { addJournalEntry, listJournal } from "@/lib/terminal/journal";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (!body.user_id || !body.note) return badRequest("Missing user_id or note.");
   try {
     assertUserMatch(auth.session, body.user_id);
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "decision_history");
     const id = await addJournalEntry(body.user_id, body.note, {
       module: body.module,

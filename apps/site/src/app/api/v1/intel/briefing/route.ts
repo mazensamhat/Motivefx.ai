@@ -1,6 +1,6 @@
 import { json, unauthorized } from "@/lib/api";
 import { resolveApiKeyBearer } from "@/lib/terminal/institutional";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { hasFeature } from "@/lib/terminal/plan";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { enforceApiRateLimit, withRateLimitHeaders } from "@/lib/terminal/api-metering";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const row = await resolveApiKeyBearer(request.headers.get("authorization"));
   if (!row?.user) return unauthorized("Invalid or revoked API key");
 
-  const plan = planForUser(row.user);
+  const plan = await entitlementsPlanForUser(row.user);
   if (!hasFeature(plan, "api_access")) {
     return unauthorized("API access requires Ultra+ or Elite");
   }

@@ -10,7 +10,7 @@ function envUrl(value: string | undefined, fallback: string): string {
 
 /** Keep in sync with mobile/app.json expo.version / ios.buildNumber. */
 export const APP_VERSION = "1.0.0";
-export const IOS_BUILD_NUMBER = "18";
+export const IOS_BUILD_NUMBER = "19";
 export const ANDROID_VERSION_CODE = 1;
 export const BUNDLE_ID_IOS = "ai.motivefx.app";
 export const APP_DISPLAY_NAME = "MotiveFX.AI";

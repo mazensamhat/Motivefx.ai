@@ -3,8 +3,9 @@ import { getSession } from "@/lib/session";
 import { isAdminEmail } from "@/lib/admin";
 import { findUserSafeCached } from "@/lib/load-user";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
+import { isNativeIosAppStoreRequest } from "@/lib/terminal/ios-reader";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return unauthorized();
 
@@ -12,17 +13,20 @@ export async function GET() {
   const user = await findUserSafeCached({ id: session.id });
   if (!user || user.disabledAt) return unauthorized();
 
+  // iOS App Store free reader: never surface web/Stripe paid flags to the shell.
+  const iosReader = isNativeIosAppStoreRequest(request);
+
   return json({
     user: {
       id: user.id,
       email: user.email,
-      intelligenceTier: user.intelligenceTier,
+      intelligenceTier: iosReader ? "lite" : user.intelligenceTier,
       selectedMarkets: user.selectedMarkets ? JSON.parse(user.selectedMarkets) : [],
-      stripeSubscriptionId: user.stripeSubscriptionId,
-      subscriptionStatus: user.subscriptionStatus,
-      accessExpiresAt: user.accessExpiresAt,
+      stripeSubscriptionId: iosReader ? null : user.stripeSubscriptionId,
+      subscriptionStatus: iosReader ? "none" : user.subscriptionStatus,
+      accessExpiresAt: iosReader ? null : user.accessExpiresAt,
       disabledAt: user.disabledAt,
-      hasSubscription: userHasActiveSubscription(user),
+      hasSubscription: iosReader ? false : userHasActiveSubscription(user),
       isAdmin: isAdminEmail(user.email),
       totpEnabled: Boolean(user.totpEnabled),
     },

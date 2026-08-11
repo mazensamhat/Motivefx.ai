@@ -4,12 +4,13 @@ import { getSession } from "@/lib/session";
 import { isAdminEmail } from "@/lib/admin";
 import { isPrismaMissingColumnError } from "@/lib/load-user";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
-import { backendModulesForTier } from "@/lib/terminal/plan";
+import { isNativeIosAppStoreRequest } from "@/lib/terminal/ios-reader";
+import { backendModulesForTier, iosAppStoreReaderPlan } from "@/lib/terminal/plan";
 import type { IntelligenceMarketId, PricingTierId } from "@/lib/tiers";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return unauthorized();
 
@@ -71,6 +72,23 @@ export async function GET() {
       return [] as IntelligenceMarketId[];
     }
   })();
+
+  // iOS App Store free reader: identical modules for everyone; ignore web paid flags.
+  if (isNativeIosAppStoreRequest(request)) {
+    const reader = iosAppStoreReaderPlan();
+    return json({
+      ok: true,
+      site: {
+        userId: user.id,
+        email: user.email,
+        tier: reader.tier,
+        subscriptionStatus: "none",
+        hasSubscription: false,
+        allowedModules: reader.allowedMarkets,
+        isAdmin: isAdminEmail(user.email),
+      },
+    });
+  }
 
   const hasSubscription = userHasActiveSubscription(user);
 

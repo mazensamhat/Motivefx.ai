@@ -297,7 +297,7 @@ export function AuthScreen({ onRequestDeleteAccount, onContinueWithoutAccount }:
 
         <Text style={styles.disclaimer}>
           {Platform.OS === "ios"
-            ? `Informational only. Not financial advice. ${APP_DISPLAY_NAME} is a free market-insights reader on iOS — no in-app purchases or subscriptions in this build. Account sign-in is optional (saved prefs, delete account).`
+            ? `Informational only. Not financial advice. ${APP_DISPLAY_NAME} is a free market-insights reader on iOS — no in-app purchases. Signing in with a web account does not unlock exclusive paid content. Odds/predictions desks are monitor-only intel (not wagering).`
             : `Informational only. Not financial advice. ${APP_DISPLAY_NAME} provides market research and analytics — not brokerage, sportsbook, or investment advice. This app does not direct you to purchase subscriptions on the website.`}
         </Text>
         <Text style={styles.buildTag}>

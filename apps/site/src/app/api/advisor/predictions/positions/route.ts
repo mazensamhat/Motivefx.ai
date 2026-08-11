@@ -1,7 +1,8 @@
 import { badRequest, json } from "@/lib/api";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireModuleOrSim } from "@/lib/terminal/access";
-import { planForUser, hasModule } from "@/lib/terminal/plan";
+import { hasModule } from "@/lib/terminal/plan";
 import { addPrediction } from "@/lib/terminal/predictions";
 import { simHasModule } from "@/lib/terminal/simulation";
 import { settleSimulationPrediction } from "@/lib/terminal/simulation-settle";
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   if (!body.user_id || !body.market || !body.pick) return badRequest("Missing required fields.");
   try {
     assertUserMatch(auth.session, body.user_id);
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireModuleOrSim(plan, auth.session.user, "predictions");
     const isSim = simHasModule(auth.session.user, "predictions") && !hasModule(plan, "predictions");
     const yesPrice = body.yes_price ?? 0.5;

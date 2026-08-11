@@ -5,7 +5,7 @@ import {
   requireTerminalSession,
 } from "@/lib/terminal/auth";
 import { requireFeature, requireModule } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { loadPortfolio } from "@/lib/terminal/portfolio";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ userId: string
   const { userId } = await ctx.params;
   try {
     assertUserMatch(auth.session, userId);
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireModule(plan, "penny");
     requireFeature(plan, "portfolio_intelligence");
     const holdings = await loadPortfolio(userId, "penny");

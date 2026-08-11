@@ -1,6 +1,6 @@
 import { requireTerminalSession } from "./auth";
 import { findUserSafe } from "../load-user";
-import { hasModule, planForUser, sandboxDemoPlan } from "./plan";
+import { hasModule, iosAppStoreReaderPlan, planForUser, sandboxDemoPlan } from "./plan";
 import { requireModule } from "./access";
 import { isNativeIosAppStoreRequest } from "./ios-reader";
 import { simHasModule } from "./simulation";
@@ -19,18 +19,37 @@ export async function resolveAccess(request: Request, module?: string) {
   const url = new URL(request.url);
   const userIdParam = url.searchParams.get("user_id");
 
+  // iOS App Store free reader: identical monitor content for every visitor —
+  // web/Stripe subscriptions must not unlock exclusive digital features.
+  if (isNativeIosAppStoreRequest(request)) {
+    const auth = await requireTerminalSession();
+    const plan = iosAppStoreReaderPlan();
+    if (module) requireModule(plan, module);
+    if (auth.ok) {
+      return {
+        userId: auth.session.user.id,
+        plan,
+        user: auth.session.user,
+        authenticated: true,
+      };
+    }
+    return {
+      userId: "demo",
+      plan,
+      user: null,
+      authenticated: false,
+      demo: true as const,
+    };
+  }
+
   const auth = await requireTerminalSession();
   if (auth.ok) {
     const user = auth.session.user;
-    let plan = planForUser(user);
+    const plan = planForUser(user);
     if (module) {
       const entitled =
         hasModule(plan, module) || Boolean(simHasModule(user, module));
-      // iOS App Store free reader: allow read-only market intel without paid unlock /
-      // even after the betting/predictions simulation trial ends.
-      if (!entitled && isNativeIosAppStoreRequest(request)) {
-        plan = sandboxDemoPlan();
-      } else if (!entitled) {
+      if (!entitled) {
         requireModule(plan, module);
       }
     }

@@ -149,8 +149,40 @@ export function sandboxDemoPlan(): TerminalPlan {
   };
 }
 
+/**
+ * App Store free informational reader (Guideline 3.1.1 Path B).
+ * Same monitor-only insight content for every iOS user — guest or web-subscribed.
+ * Web/Stripe/outside purchases must not unlock exclusive digital content in the iOS app.
+ */
+export function iosAppStoreReaderPlan(): TerminalPlan {
+  const selectedMarkets = INTELLIGENCE_MARKETS.map((m) => m.id);
+  const allowedMarkets = [...ALL_MODULES];
+  const features: Record<string, boolean> = {};
+  const entitlements: string[] = [];
+  for (const feature of Object.keys(FEATURE_MIN_TIER) as TerminalFeature[]) {
+    const ok =
+      tierHasFeature("ultra", feature) &&
+      feature !== "api_access" &&
+      feature !== "team_workspace";
+    features[feature] = ok;
+    if (ok) entitlements.push(feature);
+  }
+  return {
+    tier: "lite",
+    selectedMarkets,
+    allowedMarkets,
+    active: allowedMarkets,
+    features,
+    entitlements,
+    hasAnnual: false,
+    hasSubscription: false,
+  };
+}
+
 export function hasModule(plan: TerminalPlan, module: string): boolean {
-  return plan.hasSubscription && plan.allowedMarkets.includes(module);
+  // Markets listed on the plan are viewable. Free-reader / sandbox plans may
+  // populate allowedMarkets without a paid hasSubscription flag.
+  return plan.allowedMarkets.includes(module);
 }
 
 export function hasFeature(plan: TerminalPlan, feature: TerminalFeature): boolean {

@@ -2,7 +2,8 @@ import { json } from "@/lib/api";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { getSession } from "@/lib/session";
 import { findUserSafeCached } from "@/lib/load-user";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
+import type { TerminalPlan } from "@/lib/terminal/plan";
 import { upsertAlerts } from "@/lib/terminal/alerts";
 import { evaluateSignalAlertRules } from "@/lib/terminal/engines";
 import {
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
 
   let displayName: string | null = null;
   let effectiveId = queryUserId && queryUserId !== "demo" ? queryUserId : "demo";
-  let plan = null as ReturnType<typeof planForUser> | null;
+  let plan = null as TerminalPlan | null;
   let userIdForAlerts: string | null = null;
 
   try {
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
       const user = await findUserSafeCached({ id: cookie.id }, { timeoutMs: 1500 });
       if (user && !user.disabledAt) {
         displayName = user.displayName ?? user.email?.split("@")[0] ?? displayName;
-        plan = planForUser(user);
+        plan = await entitlementsPlanForUser(user);
         effectiveId = user.id;
         userIdForAlerts = user.id;
       }

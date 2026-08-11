@@ -1,6 +1,6 @@
 import type { User } from "@prisma/client";
 import type { TerminalPlan } from "./plan";
-import { hasFeature, hasModule } from "./plan";
+import { hasFeature, hasModule, iosAppStoreReaderPlan } from "./plan";
 import type { TerminalFeature } from "./plan";
 import { FeatureLockedError, ModuleLockedError } from "./auth";
 import { isNativeIosAppStoreRequest } from "./ios-reader";
@@ -61,4 +61,17 @@ export function requireFeature(plan: TerminalPlan, feature: TerminalFeature) {
   if (!hasFeature(plan, feature)) {
     throw new FeatureLockedError(feature, FEATURE_LABELS[feature] ?? feature.replace(/_/g, " "));
   }
+}
+
+/** Feature check with iOS App Store free-reader bypass (same content for all iOS users). */
+export function requireFeatureAllowingIosReader(
+  request: Request,
+  plan: TerminalPlan,
+  feature: TerminalFeature
+) {
+  if (isNativeIosAppStoreRequest(request)) {
+    const readerOk = hasFeature(iosAppStoreReaderPlan(), feature);
+    if (readerOk) return;
+  }
+  requireFeature(plan, feature);
 }

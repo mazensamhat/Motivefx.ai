@@ -19,6 +19,7 @@ import {
   EntitlementFeature,
   UserPlanSnapshot,
   hasFeatureFromMap,
+  iosFreeReaderPlan,
 } from "../lib/entitlements";
 import type { PricingTierId } from "../config/pricingTiers";
 
@@ -94,6 +95,18 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       features?: Record<string, boolean>;
       entitlements?: string[];
     }) => {
+      // iOS App Store Path B: force free-reader entitlements — ignore web paid flags.
+      if (isNativeIosShell()) {
+        const reader = iosFreeReaderPlan();
+        setActive(reader.allowedMarkets);
+        setCatalog(data.catalog ?? {});
+        setHasAnnual(false);
+        setSimulation(null);
+        if (data.annualPrice) setAnnualPrice(data.annualPrice);
+        setPlan(reader);
+        prevTierRef.current = reader.tier;
+        return;
+      }
       setActive(data.active ?? []);
       setCatalog(data.catalog ?? {});
       const annual = data.hasAnnual ?? false;
@@ -119,11 +132,16 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
   const applySitePlanOnly = useCallback(
     (sitePlan: Awaited<ReturnType<typeof fetchSitePlan>>) => {
+      if (isNativeIosShell()) {
+        applyModulesPayload({});
+        return true;
+      }
       if (!sitePlan?.hasSubscription) return false;
       applyModulesPayload(
         applySitePlanToModulesPayload(
           { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
-          sitePlan
+          sitePlan,
+          { ignorePaid: false }
         )
       );
       return true;
@@ -132,12 +150,17 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refresh = useCallback(async () => {
-    const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
+    const iosReader = isNativeIosShell();
+    const sitePlan = SITE_EMBED && !iosReader ? await fetchSitePlan() : null;
 
     if (!getAccessToken() && !SITE_EMBED) {
-      setActive([]);
-      setSimulation(null);
-      setPlan(DEFAULT_PLAN);
+      if (iosReader) {
+        applyModulesPayload({});
+      } else {
+        setActive([]);
+        setSimulation(null);
+        setPlan(DEFAULT_PLAN);
+      }
       setLoading(false);
       return;
     }
@@ -155,9 +178,13 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
         features?: Record<string, boolean>;
         entitlements?: string[];
       }>(`/advisor/modules/${getUserId()}`);
-      applyModulesPayload(applySitePlanToModulesPayload(data, sitePlan));
+      applyModulesPayload(
+        applySitePlanToModulesPayload(data, sitePlan, { ignorePaid: iosReader })
+      );
     } catch {
-      if (sitePlan?.hasSubscription) {
+      if (iosReader) {
+        applyModulesPayload({});
+      } else if (sitePlan?.hasSubscription) {
         applySitePlanOnly(sitePlan);
       } else {
         setActive([]);
@@ -303,17 +330,19 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       if (authLoading) return;
 
       setLoading(true);
+      const iosReader = isNativeIosShell();
       // Auth boot already warmed /api/auth/me via shared cache — just read plan.
-      const sitePlan = SITE_EMBED ? await fetchSitePlan() : null;
+      const sitePlan = SITE_EMBED && !iosReader ? await fetchSitePlan() : null;
 
       /* Cookie-auth site embed has no bearer token — still load modules + sim trial. */
       const hasBearer = Boolean(getAccessToken());
       if (!hasBearer && !SITE_EMBED) {
+        if (iosReader) applyModulesPayload({});
         setLoading(false);
         return;
       }
 
-      if (hasBearer) {
+      if (hasBearer && !iosReader) {
         try {
           await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
         } catch {
@@ -343,11 +372,16 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
           entitlements?: string[];
         }>(`/advisor/modules/${getUserId()}`);
 
-        const merged = applySitePlanToModulesPayload(data, sitePlan);
+        const merged = applySitePlanToModulesPayload(data, sitePlan, {
+          ignorePaid: iosReader,
+        });
         applyModulesPayload(merged);
-        isAnnual = merged.hasAnnual ?? isAnnual;
+        isAnnual = iosReader ? false : (merged.hasAnnual ?? isAnnual);
       } catch {
-        if (sitePlan?.hasSubscription) {
+        if (iosReader) {
+          applyModulesPayload({});
+          isAnnual = false;
+        } else if (sitePlan?.hasSubscription) {
           const merged = applySitePlanToModulesPayload(
             { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
             sitePlan
@@ -363,7 +397,9 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
 
-      if (annual) {
+      if (iosReader) {
+        /* no win-hook / subscribe upsells on iOS free reader */
+      } else if (annual) {
         /* refresh already applied via annual checkout */
       } else if (sub && !isAnnual) {
         triggerWinHook(sub);
@@ -399,12 +435,19 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const hasFeature = useCallback(
-    (feature: EntitlementFeature) => hasFeatureFromMap(plan.features, feature),
+    (feature: EntitlementFeature) => {
+      if (isNativeIosShell()) {
+        return hasFeatureFromMap(iosFreeReaderPlan().features, feature);
+      }
+      return hasFeatureFromMap(plan.features, feature);
+    },
     [plan.features]
   );
 
   const isSimulationOnly = useCallback(
     (module: string) => {
+      // iOS free reader: never frame content as a paid simulation upsell.
+      if (isNativeIosShell()) return false;
       if (active.includes(module) && allowedMarkets.includes(module)) return false;
       return Boolean(simulation?.active && simulation.modules.includes(module));
     },

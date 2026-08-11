@@ -1,7 +1,7 @@
 import { json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireFeature } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { clearAlerts, listAlerts, unreadCount } from "@/lib/terminal/alerts";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ userId: string
   const { userId } = await ctx.params;
   try {
     assertUserMatch(auth.session, userId);
-    requireFeature(planForUser(auth.session.user), "push_notifications");
+    requireFeature(await entitlementsPlanForUser(auth.session.user), "push_notifications");
     const alerts = await listAlerts(userId);
     return json({ alerts, unreadCount: unreadCount(alerts) });
   } catch (err) {
@@ -26,7 +26,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ userId: str
   const { userId } = await ctx.params;
   try {
     assertUserMatch(auth.session, userId);
-    requireFeature(planForUser(auth.session.user), "push_notifications");
+    requireFeature(await entitlementsPlanForUser(auth.session.user), "push_notifications");
     await clearAlerts(userId);
     return json({ cleared: true, alerts: [], unreadCount: 0 });
   } catch (err) {

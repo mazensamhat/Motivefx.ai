@@ -1,7 +1,7 @@
 import { badRequest, json, serverError } from "@/lib/api";
 import { accessErrorResponse, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireFeature } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { runAskMotive, type AskMessage } from "@/lib/ask-motive/run";
 import { CHIEF_DISCLAIMER } from "@/lib/ask-motive/system-prompt";
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
 
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "ask_motive");
 
     const body = (await request.json()) as {

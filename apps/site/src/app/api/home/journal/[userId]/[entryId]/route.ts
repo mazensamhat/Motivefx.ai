@@ -1,7 +1,7 @@
 import { json, badRequest } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireFeature } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { deleteJournalEntry, listJournal } from "@/lib/terminal/journal";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ userId: str
   const { userId, entryId } = await ctx.params;
   try {
     assertUserMatch(auth.session, userId);
-    requireFeature(planForUser(auth.session.user), "decision_history");
+    requireFeature(await entitlementsPlanForUser(auth.session.user), "decision_history");
     if (!(await deleteJournalEntry(userId, entryId))) return badRequest("Journal entry not found.");
     return json({ removed: true, entries: await listJournal(userId) });
   } catch (err) {

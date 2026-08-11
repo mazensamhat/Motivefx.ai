@@ -5,19 +5,23 @@ import {
   requireTerminalSession,
 } from "@/lib/terminal/auth";
 import { MODULE_CATALOG, ANNUAL_PRICE_USD, BUNDLE_PRICE_USD } from "@/lib/terminal/modules-catalog";
-import { planForUser } from "@/lib/terminal/plan";
+import { isNativeIosAppStoreRequest } from "@/lib/terminal/ios-reader";
+import { iosAppStoreReaderPlan, planForUser } from "@/lib/terminal/plan";
 import { ensureSimTrial } from "@/lib/terminal/simulation";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ userId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ userId: string }> }) {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
 
   const { userId } = await ctx.params;
   try {
     assertUserMatch(auth.session, userId);
-    const plan = planForUser(auth.session.user);
+    // iOS App Store: never return web/Stripe paid entitlements (3.1.1 free reader).
+    const plan = isNativeIosAppStoreRequest(req)
+      ? iosAppStoreReaderPlan()
+      : planForUser(auth.session.user);
     const simulation = await ensureSimTrial(auth.session.user);
     return json({
       active: plan.active,

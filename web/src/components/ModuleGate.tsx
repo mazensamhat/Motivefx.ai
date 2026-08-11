@@ -41,7 +41,11 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
   }, []);
 
   if (loading) {
-    return <div className="loading" style={{ padding: "3rem" }}>Checking subscription…</div>;
+    return (
+      <div className="loading" style={{ padding: "3rem" }}>
+        {isNativeIosShell() ? "Loading…" : "Checking subscription…"}
+      </div>
+    );
   }
 
   if (AGE_GATED.has(module) && !ageOk) {

@@ -1,7 +1,7 @@
 import { badRequest, json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
 import { requireFeature, requireModule } from "@/lib/terminal/access";
-import { planForUser } from "@/lib/terminal/plan";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { loadPortfolio } from "@/lib/terminal/portfolio";
 import { analyzeCryptoPortfolio, buildAdvisorResponse } from "@/lib/terminal/advisor-engine";
 
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   if (!body.user_id) return badRequest("Missing user_id.");
   try {
     assertUserMatch(auth.session, body.user_id);
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireModule(plan, "crypto");
     requireFeature(plan, "portfolio_intelligence");
     const holdings = body.holdings?.length ? body.holdings : await loadPortfolio(body.user_id, "crypto");

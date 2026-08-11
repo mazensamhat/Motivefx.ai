@@ -1,6 +1,7 @@
 import { badRequest, json } from "@/lib/api";
+import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { requireTerminalSession, accessErrorResponse } from "@/lib/terminal/auth";
-import { planForUser, hasFeature } from "@/lib/terminal/plan";
+import { hasFeature } from "@/lib/terminal/plan";
 import { requireFeature } from "@/lib/terminal/access";
 import {
   createPortfolioBook,
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "multiple_portfolios");
     const module = new URL(request.url).searchParams.get("module") ?? "";
     if (!isPortfolioModule(module)) return badRequest("module must be trades|crypto|penny");
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   const auth = await requireTerminalSession();
   if (!auth.ok) return auth.response;
   try {
-    const plan = planForUser(auth.session.user);
+    const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "multiple_portfolios");
     let body: {
       action?: string;
