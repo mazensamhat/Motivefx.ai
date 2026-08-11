@@ -4,7 +4,7 @@ import type { LiveEvent } from "../types";
 import { liveEventToSignalDetail } from "../utils/signalIntel";
 
 export function LiveFeed() {
-  // 5 min — odds board is server-cached ~10 min; 15s polling burned Odds API quota.
+  // 5 min client poll — odds/prediction boards are server-cached ~15 min (tunable 5–15).
   const { data } = useApi<{ events: LiveEvent[] }>("/live-feed", 300_000);
   const { inspectDetail } = useSignalDetail();
   const events = data?.events ?? [];

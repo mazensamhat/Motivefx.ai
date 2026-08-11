@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
@@ -18,19 +18,37 @@ import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeAndroidShell } from "../lib/nativeShell";
 
+const MARKET_CATEGORY_FILTERS = [
+  { value: "", label: "Top markets" },
+  { value: "geopolitics", label: "Geopolitics" },
+  { value: "politics", label: "Politics" },
+  { value: "economy", label: "Economy" },
+  { value: "sports", label: "Sports" },
+  { value: "crypto", label: "Crypto" },
+  { value: "entertainment", label: "Culture" },
+  { value: "science", label: "Science" },
+];
+
 export function TabPredictions() {
   const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const androidPlaySafe = isNativeAndroidShell();
   const enabled = !modulesLoading && hasModule("predictions");
   const simMode = isSimulationOnly("predictions");
+  const [category, setCategory] = useState("");
+  const marketsQuery =
+    category.trim().length > 0
+      ? `/predictions/markets?limit=20&category=${encodeURIComponent(category)}`
+      : "/predictions/markets?limit=20";
   const markets = useApi<{
     items: PredictionMarket[];
     source?: "live" | "demo";
+    provider?: string | null;
     updatedAt?: string;
     error?: string | null;
+    cacheTtlMs?: number;
     bitquery?: { enabled?: boolean; count?: number; error?: string | null };
-  }>("/predictions/markets?limit=20");
+  }>(marketsQuery, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("predictions", enabled);
 
   const marketsUpdated =
@@ -77,12 +95,34 @@ export function TabPredictions() {
           ratingContext="predictions"
         />
       </div>
+      <div className="card glass-card" style={{ marginBottom: "1rem", padding: "0.75rem 1rem" }}>
+        <div className="section-label" style={{ marginBottom: "0.5rem" }}>More markets</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+          {MARKET_CATEGORY_FILTERS.map((option) => {
+            const active = category === option.value;
+            return (
+              <button
+                key={option.value || "top"}
+                type="button"
+                className={`btn btn-sm ${active ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setCategory(option.value)}
+                aria-pressed={active}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="card-meta" style={{ marginTop: "0.65rem", fontSize: "0.75rem", opacity: 0.7 }}>
+          Polymarket Gamma · volume-sorted open markets · Monitor only
+        </p>
+      </div>
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="card-header">
-          <h2 className="card-title"><Globe size={18} /> Trending Markets</h2>
+          <h2 className="card-title"><Globe size={18} /> Top markets</h2>
           {marketsUpdated && (
             <span className="card-meta" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-              {markets.data?.source === "live" ? "Polymarket live" : "Sample"}
+              {markets.data?.source === "live" ? "Polymarket Gamma" : "Sample"}
               {markets.data?.bitquery?.enabled && (markets.data.bitquery.count ?? 0) > 0
                 ? ` · Bitquery +${markets.data.bitquery.count}`
                 : ""}

@@ -57,7 +57,7 @@ export function TabBetting() {
     error?: string | null;
     derivedNote?: string | null;
     provider?: "sharp_api" | "the_odds_api" | null;
-  }>(`/betting/sharp-action${sportQuery}`);
+  }>(`/betting/sharp-action${sportQuery}`, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
 
   const linesUpdated =
@@ -110,7 +110,7 @@ export function TabBetting() {
         module="betting"
       />
       <div className="card glass-card" style={{ marginBottom: "1rem", padding: "0.75rem 1rem" }}>
-        <div className="section-label" style={{ marginBottom: "0.5rem" }}>Board filter</div>
+        <div className="section-label" style={{ marginBottom: "0.5rem" }}>Major sports</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
           {BETTING_SPORT_FILTERS.map((option) => {
             const active = selectedSport === option.value;
@@ -127,6 +127,9 @@ export function TabBetting() {
             );
           })}
         </div>
+        <p className="card-meta" style={{ marginTop: "0.65rem", fontSize: "0.75rem", opacity: 0.7 }}>
+          Curated intelligence slate · NFL, NBA, MLB, NHL, MLS, MMA · Monitor only
+        </p>
       </div>
       <div className="grid-2" style={{ marginBottom: "1rem" }}>
         {!androidPlaySafe && (

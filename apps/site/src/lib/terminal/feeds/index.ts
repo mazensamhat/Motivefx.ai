@@ -189,10 +189,12 @@ export type FeedMeta = {
   source: "live" | "demo";
   updatedAt: string;
   error?: string;
-  /** Which odds vendor produced the board when source is live. */
-  provider?: "sharp_api" | "the_odds_api";
+  /** Which odds / prediction vendor produced the board when source is live. */
+  provider?: "sharp_api" | "the_odds_api" | "polymarket_gamma";
   /** Honest label when public/sharp panel is odds-derived, not ticket splits. */
   derivedNote?: string;
+  /** Server slate cache TTL applied to this response (ms). */
+  cacheTtlMs?: number;
 };
 
 export type LineMoveItem = {
@@ -271,25 +273,66 @@ export function demoLineMoves(): LineMoveItem[] {
  * Cap sports polled per uncached refresh. Each sport costs 1 quota unit (h2h × us).
  * Prefer the requested league, then the major-board list.
  * Skip `upcoming` as a first hop (it often returns NPB/KBO and still burns a credit).
+ *
+ * Cache policy (shared server slate):
+ * - Default TTL 15 min, clamp 5–15 min via ODDS_BOARD_CACHE_TTL_SEC / POLYMARKET_CACHE_TTL_SEC
+ * - One board key for All sports; sport filters reuse that slate when possible
+ * - Never scrape FanDuel / DraftKings HTML — SharpAPI primary, The Odds API backup only
  */
 const ALL_SPORTS_KEY = "all";
 const SELECTED_SPORT_MIN_LINES = 4;
+
+/** Major US + top soccer + MMA — ordered for Odds API fanout priority. */
 const ODDS_SPORT_FALLBACKS = [
-  "baseball_mlb",
-  "soccer_usa_mls",
-  "basketball_wnba",
-  "basketball_nba",
-  "mma_mixed_martial_arts",
   "americanfootball_nfl",
+  "basketball_nba",
+  "baseball_mlb",
   "icehockey_nhl",
+  "soccer_usa_mls",
+  "mma_mixed_martial_arts",
+  "basketball_wnba",
 ];
 
-/** Hard cap on Odds API calls per cache miss (quota protection). */
-const ODDS_MAX_SPORTS_PER_REFRESH = ODDS_SPORT_FALLBACKS.length;
+/**
+ * Hard cap on Odds API calls per cache miss (quota protection).
+ * Early-stop still applies once preferred coverage is met.
+ */
+const ODDS_MAX_SPORTS_PER_REFRESH = 4;
+
+/** Slate cache window: 5–15 minutes (tunable). Default aggressive 15 min. */
+const SLATE_CACHE_MIN_MS = 5 * 60 * 1000;
+const SLATE_CACHE_MAX_MS = 15 * 60 * 1000;
+const DEFAULT_SLATE_CACHE_MS = 15 * 60 * 1000;
+
+function resolveSlateCacheTtlMs(envKey: string, fallbackMs = DEFAULT_SLATE_CACHE_MS): number {
+  const raw = process.env[envKey]?.trim();
+  if (!raw) return fallbackMs;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return fallbackMs;
+  // Env accepts seconds (≤ 900) or raw milliseconds.
+  const ms = n <= 900 ? n * 1000 : n;
+  return Math.min(SLATE_CACHE_MAX_MS, Math.max(SLATE_CACHE_MIN_MS, Math.round(ms)));
+}
 
 /** Server-side TTL so LiveFeed / briefing / line-moves share one refresh. */
-const ODDS_CACHE_TTL_MS = 10 * 60 * 1000;
-const POLYMARKET_CACHE_TTL_MS = 10 * 60 * 1000;
+export const ODDS_CACHE_TTL_MS = resolveSlateCacheTtlMs("ODDS_BOARD_CACHE_TTL_SEC");
+/** Gamma Predictions board — free public API; still cache hard to avoid per-user hammering. */
+export const POLYMARKET_CACHE_TTL_MS = resolveSlateCacheTtlMs("POLYMARKET_CACHE_TTL_SEC");
+
+/** Single shared Gamma slate key — callers slice to their limit (no per-limit cache stampede). */
+const POLYMARKET_SLATE_KEY = "gamma:slate";
+const POLYMARKET_SLATE_LIMIT = 40;
+
+export function getSlateCacheConfig() {
+  return {
+    oddsBoardTtlMs: ODDS_CACHE_TTL_MS,
+    polymarketTtlMs: POLYMARKET_CACHE_TTL_MS,
+    oddsMaxSportsPerRefresh: ODDS_MAX_SPORTS_PER_REFRESH,
+    majorSports: [...ODDS_SPORT_FALLBACKS],
+    minTtlMs: SLATE_CACHE_MIN_MS,
+    maxTtlMs: SLATE_CACHE_MAX_MS,
+  };
+}
 
 /** Prefer these Odds API sport_keys when diversifying the line board. */
 const PREFERRED_SPORT_KEYS = new Set([
@@ -1378,12 +1421,16 @@ export async function fetchLineMovesWithMeta(
   const board = await withTtlCache(lineMovesCache, "board", ODDS_CACHE_TTL_MS, () =>
     fetchLineMovesUncached(ALL_SPORTS_KEY)
   );
+  const withCacheMeta = <T extends FeedMeta>(meta: T): T => ({
+    ...meta,
+    cacheTtlMs: ODDS_CACHE_TTL_MS,
+  });
 
   if (requestedSport === ALL_SPORTS_KEY) {
-    return {
+    return withCacheMeta({
       ...board,
       items: diversifyLineMoves(board.items),
-    };
+    });
   }
 
   const filtered = filterBoardBySport(board.items, requestedSport);
@@ -1407,7 +1454,7 @@ export async function fetchLineMovesWithMeta(
     const merged = diversifyLineMoves(mergeLineMoves(filtered, liveOdds));
     if (merged.length) {
       const source = board.source === "live" || liveOdds.length ? "live" : "demo";
-      return {
+      return withCacheMeta({
         ...board,
         source,
         provider: source === "live" ? board.provider ?? sportBoard.provider : undefined,
@@ -1416,29 +1463,29 @@ export async function fetchLineMovesWithMeta(
         sharpDerived: board.sharpDerived?.filter((s) =>
           merged.some((f) => f.matchup.toLowerCase() === s.matchup.toLowerCase())
         ),
-      };
+      });
     }
-    if (!filtered.length && sportBoard.items.length) return sportBoard;
+    if (!filtered.length && sportBoard.items.length) return withCacheMeta(sportBoard);
   }
 
   if (filtered.length > 0) {
-    return {
+    return withCacheMeta({
       ...board,
       items: diversifyLineMoves(filtered),
       sharpDerived: board.sharpDerived?.filter((s) =>
         filtered.some((f) => f.matchup.toLowerCase() === s.matchup.toLowerCase())
       ),
-    };
+    });
   }
 
   // Last resort: return diversified mixed board with a clear note (better than empty).
-  return {
+  return withCacheMeta({
     ...board,
     items: diversifyLineMoves(board.items),
     error:
       board.error ??
       `No live ${requestedSport} lines right now — showing mixed board.`,
-  };
+  });
 }
 
 /** Legacy demo rows — kept for reference/tests only; never served to the Bets UI. */
@@ -1583,12 +1630,12 @@ async function fetchPredictionMarketsUncached(
     const url = new URL("https://gamma-api.polymarket.com/events");
     url.searchParams.set("active", "true");
     url.searchParams.set("closed", "false");
-    /* Keep over-fetch tiny — Gamma event payloads are multi-MB and blow the 30s limit. */
-    url.searchParams.set("limit", String(Math.min(Math.max(limit * 2, 8), 12)));
+    /* Over-fetch enough for a full top-volume slate; keep capped — Gamma payloads are large. */
+    url.searchParams.set("limit", String(Math.min(Math.max(limit, 12), 24)));
     /* Gamma rejects volume_24hr (HTTP 422); field name is volume24hr. */
     url.searchParams.set("order", "volume24hr");
     url.searchParams.set("ascending", "false");
-    // Free public Gamma API — no Odds API key and no THE_ODDS_API_KEY usage.
+    // Free public Gamma API — no Odds API key and no THE_ODDS_API_KEY / Bitquery usage.
     // no-store: Next data cache rejects >2MB and stalls the serverless function.
     const res = await fetch(url.toString(), {
       cache: "no-store",
@@ -1599,6 +1646,8 @@ async function fetchPredictionMarketsUncached(
         items: demoPredictionMarkets().slice(0, limit),
         source: "demo",
         updatedAt,
+        provider: undefined,
+        cacheTtlMs: POLYMARKET_CACHE_TTL_MS,
         error: `Polymarket Gamma HTTP ${res.status} — showing sample markets.`,
       };
     }
@@ -1634,28 +1683,46 @@ async function fetchPredictionMarketsUncached(
         items: demoPredictionMarkets().slice(0, limit),
         source: "demo",
         updatedAt,
+        cacheTtlMs: POLYMARKET_CACHE_TTL_MS,
         error: "No open Polymarket markets in feed — showing sample markets.",
       };
     }
-    return { items, source: "live", updatedAt };
+    return {
+      items,
+      source: "live",
+      updatedAt,
+      provider: "polymarket_gamma",
+      cacheTtlMs: POLYMARKET_CACHE_TTL_MS,
+    };
   } catch (err) {
     return {
       items: demoPredictionMarkets().slice(0, limit),
       source: "demo",
       updatedAt,
+      cacheTtlMs: POLYMARKET_CACHE_TTL_MS,
       error: err instanceof Error ? err.message : "Polymarket unavailable — showing sample markets.",
     };
   }
 }
 
-/** Gamma-only path — never calls The Odds API. Cached ~10 min to avoid over-fetching. */
+/**
+ * Gamma-first Predictions board — never calls SharpAPI, The Odds API, or Bitquery.
+ * One shared slate cache (~15 min, tunable) — callers slice to their limit.
+ */
 export async function fetchPredictionMarketsWithMeta(
   limit = 20
 ): Promise<{ items: PredictionMarketItem[] } & FeedMeta> {
-  const cacheKey = `gamma:${limit}`;
-  return withTtlCache(predictionMarketsCache, cacheKey, POLYMARKET_CACHE_TTL_MS, () =>
-    fetchPredictionMarketsUncached(limit)
+  const slate = await withTtlCache(
+    predictionMarketsCache,
+    POLYMARKET_SLATE_KEY,
+    POLYMARKET_CACHE_TTL_MS,
+    () => fetchPredictionMarketsUncached(POLYMARKET_SLATE_LIMIT)
   );
+  return {
+    ...slate,
+    items: slate.items.slice(0, Math.max(1, limit)),
+    cacheTtlMs: POLYMARKET_CACHE_TTL_MS,
+  };
 }
 
 export function demoCongressTrades() {

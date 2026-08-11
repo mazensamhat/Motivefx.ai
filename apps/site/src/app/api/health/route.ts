@@ -1,5 +1,5 @@
 import { json } from "@/lib/api";
-import { getOddsApiQuota, getSharpApiQuota } from "@/lib/terminal/feeds";
+import { getOddsApiQuota, getSharpApiQuota, getSlateCacheConfig } from "@/lib/terminal/feeds";
 import {
   getBitqueryQuotaStatus,
   isBitqueryEnabled,
@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const res = await fetch(
       "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=1&order=volume24hr&ascending=false",
-      { next: { revalidate: 600 } }
+      { next: { revalidate: 900 } }
     );
     polymarket = res.ok;
   } catch {
@@ -96,6 +96,8 @@ export async function GET() {
     openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
   };
 
+  const cache = getSlateCacheConfig();
+
   return json({
     status: "ok",
     app: "MotiveFX.AI",
@@ -116,6 +118,12 @@ export async function GET() {
         configured: Boolean(oddsKey),
       },
       bitquery: getBitqueryQuotaStatus(),
+    },
+    cache: {
+      oddsBoardTtlSec: Math.round(cache.oddsBoardTtlMs / 1000),
+      polymarketTtlSec: Math.round(cache.polymarketTtlMs / 1000),
+      oddsMaxSportsPerRefresh: cache.oddsMaxSportsPerRefresh,
+      majorSports: cache.majorSports,
     },
     platform: "vercel",
   });

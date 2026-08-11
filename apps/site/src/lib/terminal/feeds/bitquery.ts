@@ -5,10 +5,11 @@
  * Bitquery is optional enrichment only — must never break or delay the Gamma board.
  *
  * Hardening (quota / session limits):
- * - 15-minute TTL cache + stale-while-revalidate (serve last good up to 2h)
+ * - 30-minute TTL cache + stale-while-revalidate (serve last good up to 2h)
  * - Circuit-breaker cooldown after 403/429 / concurrent-session errors
  * - Single-flight coalescing (no stampede across /markets + /bitquery-sports)
  * - Sequential GraphQL (never 4 parallel queries — that caused session-limit 403s)
+ * - Title keywords (NBA/NFL/Esports) first; cricket opt-in via BITQUERY_CRICKET=true
  * - Short per-request timeout so callers fall back to Gamma quickly
  *
  * Docs: https://docs.bitquery.io/docs/examples/polymarket-api/polymarket-sports-api/
@@ -32,8 +33,8 @@ export type BitqueryMarketItem = {
 const BITQUERY_ENDPOINT = "https://streaming.bitquery.io/graphql";
 const BITQUERY_OAUTH_URL = "https://oauth2.bitquery.io/oauth2/token";
 
-/** Fresh window — most Polymarket traffic hits cached enrichment. */
-const CACHE_TTL_MS = 15 * 60 * 1000;
+/** Fresh window — Bitquery is optional enrichment; prefer long cache over spend. */
+const CACHE_TTL_MS = 30 * 60 * 1000;
 /** Serve last-good results this long when Bitquery is limited / down. */
 const STALE_MAX_MS = 2 * 60 * 60 * 1000;
 /** After 403/429/session-limit, stop calling Bitquery for this long. */
@@ -299,13 +300,20 @@ let inflight: Promise<BitqueryFetchResult> | null = null;
 /** Rotate secondary title keyword so we don't burn 4 queries every refresh. */
 let titleRotation = 0;
 const TITLE_KEYWORDS = ["NBA", "NFL", "Esports"] as const;
-const CRICKET_ENRICHMENT_CAP = 2;
+/** Cap cricket rows when BITQUERY_CRICKET=true — never dominate the Gamma board. */
+const CRICKET_ENRICHMENT_CAP = 1;
+
+/** Cricket GraphQL is opt-in — expensive long-tail vs thin UX. Default off. */
+function isBitqueryCricketEnabled(): boolean {
+  return process.env.BITQUERY_CRICKET?.trim().toLowerCase() === "true";
+}
 
 export function getBitqueryQuotaStatus() {
   const now = Date.now();
   return {
     configured: isBitqueryConfigured(),
     enabled: isBitqueryEnabled(),
+    cricketEnabled: isBitqueryCricketEnabled(),
     coolingDown: now < cooldownUntil,
     cooldownEndsAt: cooldownUntil > now ? new Date(cooldownUntil).toISOString() : null,
     cacheAgeMs: bitqueryCache ? now - bitqueryCache.fetchedAt : null,
@@ -384,46 +392,53 @@ async function bitqueryGraphql(
 
 /**
  * At most 2 sequential GraphQL calls per refresh (never parallel).
- * Cricket first (unique value vs Gamma), then one rotating title keyword.
+ * Major title keywords first (NBA/NFL/Esports); cricket only when BITQUERY_CRICKET=true.
  */
 async function fetchLiveBitquery(token: string, limit: number): Promise<BitqueryFetchResult> {
   const updatedAt = new Date().toISOString();
-  const perQuery = Math.min(Math.max(limit, 6), 16);
+  const perQuery = Math.min(Math.max(limit, 6), 12);
   const rows: BitqueryTradeRow[] = [];
   const errors: string[] = [];
 
-  const cricket = await bitqueryGraphql(token, CRICKET_RESOLUTION_QUERY, {
-    time_ago: 24,
-    limit: perQuery,
-  });
-  if (cricket.error) {
-    errors.push(cricket.error);
-    if (isRateLimitedMessage(cricket.error)) {
-      cooldownUntil = Date.now() + COOLDOWN_MS;
-      const stale = staleFromCache(limit, "Bitquery rate-limited — serving cached enrichment.");
-      if (stale) return stale;
-      return { items: [], error: cricket.error, coolingDown: true };
-    }
-  } else {
-    rows.push(...cricket.rows.slice(0, CRICKET_ENRICHMENT_CAP));
-  }
-
-  // Only spend a second query if we still need rows and aren't cooling down.
-  if (rows.length < limit && Date.now() >= cooldownUntil) {
+  // Primary enrichment: one rotating major-sport title keyword (cheaper / higher UX value).
+  if (Date.now() >= cooldownUntil) {
     const keyword = TITLE_KEYWORDS[titleRotation % TITLE_KEYWORDS.length];
     titleRotation += 1;
-    const second = await bitqueryGraphql(token, SPORTS_TITLE_QUERY, {
+    const primary = await bitqueryGraphql(token, SPORTS_TITLE_QUERY, {
       time_ago: 24,
       limit: perQuery,
       title: keyword,
     });
-    if (second.error) {
-      errors.push(second.error);
-      if (isRateLimitedMessage(second.error)) {
+    if (primary.error) {
+      errors.push(primary.error);
+      if (isRateLimitedMessage(primary.error)) {
+        cooldownUntil = Date.now() + COOLDOWN_MS;
+        const stale = staleFromCache(limit, "Bitquery rate-limited — serving cached enrichment.");
+        if (stale) return stale;
+        return { items: [], error: primary.error, coolingDown: true };
+      }
+    } else {
+      rows.push(...primary.rows);
+    }
+  }
+
+  // Optional cricket long-tail — opt-in only so it cannot burn budget by default.
+  if (
+    isBitqueryCricketEnabled() &&
+    rows.length < limit &&
+    Date.now() >= cooldownUntil
+  ) {
+    const cricket = await bitqueryGraphql(token, CRICKET_RESOLUTION_QUERY, {
+      time_ago: 24,
+      limit: Math.min(perQuery, 8),
+    });
+    if (cricket.error) {
+      errors.push(cricket.error);
+      if (isRateLimitedMessage(cricket.error)) {
         cooldownUntil = Date.now() + COOLDOWN_MS;
       }
     } else {
-      rows.push(...second.rows);
+      rows.push(...cricket.rows.slice(0, CRICKET_ENRICHMENT_CAP));
     }
   }
 

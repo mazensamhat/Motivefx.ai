@@ -87,12 +87,13 @@ export const DATA_SOURCES: DataSourceEntry[] = [
     name: "The Odds API",
     status: "live",
     detail:
-      "Backup sports odds when Sharp is missing, empty, or errors. Server-cached ~10 min; max 3 sports per refresh.",
+      "Backup sports odds when Sharp is missing, empty, or errors. Server-cached ~15 min (tunable 5–15); max 4 major sports per refresh.",
   },
   {
     name: "Polymarket Gamma API",
     status: "live",
-    detail: "Public prediction-market events and prices (no API key). Never uses SharpAPI or The Odds API.",
+    detail:
+      "Primary Predictions board — public events/prices/volume (no API key). Shared ~15 min slate cache. Never uses SharpAPI or The Odds API.",
   },
   {
     name: "OpenAI",
@@ -124,7 +125,7 @@ export const DATA_SOURCES: DataSourceEntry[] = [
     name: "Bitquery Polymarket sports",
     status: "infra",
     detail:
-      "Optional enrichment (cricket/NBA/NFL/esports) when BITQUERY_API_KEY is set. Gamma remains primary for Predictions.",
+      "Optional enrichment (NBA/NFL/esports; cricket only if BITQUERY_CRICKET=true) when BITQUERY_API_KEY is set. Gamma remains primary for Predictions.",
   },
   {
     name: "Pink-sheet / microcap movers",

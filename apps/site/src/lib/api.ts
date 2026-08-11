@@ -16,6 +16,10 @@ export function serverError(message: string) {
   return NextResponse.json({ error: message }, { status: 500 });
 }
 
-export function json<T>(data: T, status = 200) {
-  return NextResponse.json(data, { status });
+export function json<T>(
+  data: T,
+  status = 200,
+  init?: { headers?: HeadersInit }
+) {
+  return NextResponse.json(data, { status, headers: init?.headers });
 }

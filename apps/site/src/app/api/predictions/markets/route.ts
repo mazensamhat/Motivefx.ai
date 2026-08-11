@@ -1,5 +1,8 @@
 import { json } from "@/lib/api";
-import { fetchPredictionMarketsWithMeta } from "@/lib/terminal/feeds";
+import {
+  fetchPredictionMarketsWithMeta,
+  POLYMARKET_CACHE_TTL_MS,
+} from "@/lib/terminal/feeds";
 import {
   fetchBitquerySportsMarkets,
   isBitqueryEnabled,
@@ -16,8 +19,8 @@ type BitquerySoft = {
   error?: string;
 };
 
-/** Never let Bitquery delay the Gamma board. */
-const BITQUERY_ENRICHMENT_LIMIT = 3;
+/** Never let Bitquery delay or dominate the Gamma board. */
+const BITQUERY_ENRICHMENT_LIMIT = 2;
 
 async function bitqueryEnrichment(limit: number): Promise<BitquerySoft> {
   try {
@@ -32,12 +35,19 @@ async function bitqueryEnrichment(limit: number): Promise<BitquerySoft> {
   }
 }
 
+function slateCacheHeaders(ttlMs: number): HeadersInit {
+  const sec = Math.max(60, Math.round(ttlMs / 1000));
+  return {
+    "Cache-Control": `public, s-maxage=${sec}, stale-while-revalidate=${sec * 2}`,
+  };
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 20), 50);
   const category = url.searchParams.get("category");
 
-  // Gamma first — this is the solid primary board.
+  // Gamma first — solid primary board (shared ~15 min slate cache).
   const result = await fetchPredictionMarketsWithMeta(category ? Math.max(limit * 3, 40) : limit);
   let items = result.items;
   let bitqueryCount = 0;
@@ -67,17 +77,24 @@ export async function GET(request: Request) {
   if (category) items = items.filter((m) => m.category === category).slice(0, limit);
   else items = items.slice(0, limit);
 
-  return json({
-    items,
-    source: result.source,
-    updatedAt: result.updatedAt,
-    error: result.error ?? null,
-    bitquery: {
-      enabled: isBitqueryEnabled(),
-      count: bitqueryCount,
-      cached: bitqueryCached,
-      coolingDown: bitqueryCoolingDown,
-      error: null,
+  const ttlMs = result.cacheTtlMs ?? POLYMARKET_CACHE_TTL_MS;
+  return json(
+    {
+      items,
+      source: result.source,
+      provider: result.provider ?? "polymarket_gamma",
+      updatedAt: result.updatedAt,
+      error: result.error ?? null,
+      cacheTtlMs: ttlMs,
+      bitquery: {
+        enabled: isBitqueryEnabled(),
+        count: bitqueryCount,
+        cached: bitqueryCached,
+        coolingDown: bitqueryCoolingDown,
+        error: null,
+      },
     },
-  });
+    200,
+    { headers: slateCacheHeaders(ttlMs) }
+  );
 }
