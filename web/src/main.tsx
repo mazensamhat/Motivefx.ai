@@ -18,8 +18,9 @@ createRoot(document.getElementById("root")!).render(
     <AppAgeGate>
       <AuthProvider>
         <NativeIapSessionBridge />
-        <ModulesProvider>
-          <GenerationalProvider>
+        {/* GenerationalProvider must wrap ModulesProvider: WinHookModal uses useGenerationalProfile */}
+        <GenerationalProvider>
+          <ModulesProvider>
             <PlatformPrefsProvider>
               <IntelToastProvider>
                 <SignalDetailProvider>
@@ -31,8 +32,8 @@ createRoot(document.getElementById("root")!).render(
                 </SignalDetailProvider>
               </IntelToastProvider>
             </PlatformPrefsProvider>
-          </GenerationalProvider>
-        </ModulesProvider>
+          </ModulesProvider>
+        </GenerationalProvider>
       </AuthProvider>
     </AppAgeGate>
   </StrictMode>
