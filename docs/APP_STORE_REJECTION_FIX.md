@@ -6,6 +6,8 @@
 
 **Path for this resubmit:** Path B — true free informational reader on iOS (no IAP products; web subscriptions do not unlock exclusive iOS digital content).
 
+**Guideline 2.1 Information Needed (recording + 7 answers):** see [`APP_STORE_2_1_INFORMATION_NEEDED.md`](./APP_STORE_2_1_INFORMATION_NEEDED.md) and Desktop `APP_STORE_REVIEW_INFORMATION.txt`.
+
 ---
 
 ## What Apple cited (Aug 11, 2026)
