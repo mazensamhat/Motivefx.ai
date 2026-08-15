@@ -181,11 +181,22 @@ export function generateApiKeySecret(): { raw: string; prefix: string; hash: str
   return { raw, prefix, hash: hashKey(raw) };
 }
 
+/** Soft cap so desks don't accumulate unbounded secrets. */
+export const MAX_API_KEYS_PER_USER = 10;
+
 export async function createApiKey(opts: {
   userId: string;
   teamId?: string | null;
   name: string;
 }) {
+  const active = await prisma.apiKey.count({
+    where: { userId: opts.userId, revokedAt: null },
+  });
+  if (active >= MAX_API_KEYS_PER_USER) {
+    throw new Error(
+      `Maximum of ${MAX_API_KEYS_PER_USER} active API keys reached. Revoke an unused key first.`
+    );
+  }
   const { raw, prefix, hash } = generateApiKeySecret();
   const row = await prisma.apiKey.create({
     data: {

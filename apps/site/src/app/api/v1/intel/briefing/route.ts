@@ -1,7 +1,6 @@
 import { json, unauthorized } from "@/lib/api";
 import { resolveApiKeyBearer } from "@/lib/terminal/institutional";
-import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
-import { hasFeature } from "@/lib/terminal/plan";
+import { hasFeature, planForUser } from "@/lib/terminal/plan";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { enforceApiRateLimit, withRateLimitHeaders } from "@/lib/terminal/api-metering";
 
@@ -11,12 +10,15 @@ export const maxDuration = 15;
 /**
  * Phase 4 public intel API — Bearer mfx_… key (Ultra+ api_access).
  * GET /api/v1/intel/briefing
+ *
+ * Entitlement is based on the key owner's subscription (planForUser), not the
+ * caller's User-Agent — so iOS free-reader UA must not strip web Ultra+ API access.
  */
 export async function GET(request: Request) {
   const row = await resolveApiKeyBearer(request.headers.get("authorization"));
   if (!row?.user) return unauthorized("Invalid or revoked API key");
 
-  const plan = await entitlementsPlanForUser(row.user);
+  const plan = planForUser(row.user);
   if (!hasFeature(plan, "api_access")) {
     return unauthorized("API access requires Ultra+ or Elite");
   }

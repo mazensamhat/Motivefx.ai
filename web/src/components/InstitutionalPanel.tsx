@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Building2, Copy, Headphones, KeyRound, Plus, Sparkles, Users } from "lucide-react";
 import { apiGet, apiPost, apiDelete } from "../lib/api";
 import { useModules } from "../hooks/useModules";
+import { isNativeIosShell } from "../lib/nativeShell";
+import type { PricingTierId } from "../config/pricingTiers";
+
+/** Matches apps/site api-metering hourly caps for public intel API. */
+function apiHourlyQuotaLabel(tier: PricingTierId): string {
+  if (tier === "elite") return "Elite ≈ 2000 req/hr";
+  return "Ultra+ ≈ 600 req/hr";
+}
 
 type Dashboard = {
   team: { id: string; name: string; ownerId: string } | null;
@@ -41,8 +49,10 @@ type ApiKeyRow = {
 
 export function InstitutionalPanel() {
   const { hasFeature } = useModules();
-  const canTeam = hasFeature("team_workspace");
-  const canApi = hasFeature("api_access");
+  // API keys are a paid web/Android digital feature — never expose create/manage on iOS free reader.
+  const iosReader = isNativeIosShell();
+  const canTeam = !iosReader && hasFeature("team_workspace");
+  const canApi = !iosReader && hasFeature("api_access");
   const canConcierge = hasFeature("concierge_support");
   const canOnboarding = hasFeature("white_glove_onboarding");
 
@@ -56,8 +66,9 @@ export function InstitutionalPanel() {
           <span className="home-section-sub">Ultra+ / Elite</span>
         </div>
         <p className="phase2-muted">
-          Team workspaces, shared research notes, API keys, concierge support, and custom scenario
-          templates unlock on Ultra+. Elite adds white-glove onboarding.
+          {iosReader
+            ? "Team workspaces and API keys are available on the web (Ultra+ / Elite). This iOS app is a free informational reader."
+            : "Team workspaces, shared research notes, API keys, concierge support, and custom scenario templates unlock on Ultra+. Elite adds white-glove onboarding."}
         </p>
       </section>
     );
@@ -370,10 +381,12 @@ function TeamWorkspaceSection() {
 }
 
 function ApiKeysSection() {
+  const { tier } = useModules();
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [secret, setSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const quotaLabel = apiHourlyQuotaLabel(tier);
 
   const load = useCallback(async () => {
     try {
@@ -392,6 +405,7 @@ function ApiKeysSection() {
   async function createKey() {
     setBusy(true);
     setSecret(null);
+    setError(null);
     try {
       const res = await apiPost<{ secret: string }>("/institutional/keys", {
         name: `Key ${new Date().toLocaleDateString()}`,
@@ -407,6 +421,7 @@ function ApiKeysSection() {
 
   async function revoke(id: string) {
     setBusy(true);
+    setError(null);
     try {
       await apiDelete(`/institutional/keys?id=${encodeURIComponent(id)}`);
       await load();
@@ -423,12 +438,16 @@ function ApiKeysSection() {
         <h2>
           <KeyRound size={18} /> API access
         </h2>
-        <span className="home-section-sub">Bearer mfx_… · rate-limited · /api/v1/intel/*</span>
+        <span className="home-section-sub">Bearer mfx_… · /api/v1/intel/*</span>
       </div>
       {error && <p className="phase2-muted">{error}</p>}
       <p className="phase2-muted">
         Example: <code>GET /api/v1/intel/briefing</code> with header{" "}
-        <code>Authorization: Bearer mfx_…</code>. Ultra+ ≈ 600 req/hr · Elite ≈ 2000 req/hr.
+        <code>Authorization: Bearer mfx_…</code>.
+      </p>
+      <p className="phase2-muted">
+        Your plan quota: <strong>{quotaLabel}</strong> (Ultra+ ≈ 600/hr · Elite ≈ 2000/hr). This is a
+        usage cap, not an account block — exceeding it returns HTTP 429 until the hour window resets.
       </p>
       <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void createKey()}>
         <Plus size={14} /> Create API key
@@ -447,12 +466,20 @@ function ApiKeysSection() {
         </div>
       )}
       <ul className="phase2-watch-list" style={{ marginTop: "0.75rem" }}>
+        {keys.length === 0 && !error && (
+          <li>
+            <div>
+              <span className="phase2-muted">No active keys yet — create one to call the intel API.</span>
+            </div>
+          </li>
+        )}
         {keys.map((k) => (
           <li key={k.id}>
             <div>
               <strong>{k.name}</strong>
               <span className="phase2-muted">
                 {k.keyPrefix}… · created {new Date(k.createdAt).toLocaleDateString()}
+                {k.lastUsedAt ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString()}` : ""}
               </span>
             </div>
             <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void revoke(k.id)}>

@@ -1,4 +1,4 @@
-import { badRequest, json } from "@/lib/api";
+import { badRequest, json, notFound } from "@/lib/api";
 import { requireTerminalSession, accessErrorResponse } from "@/lib/terminal/auth";
 import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { requireFeature } from "@/lib/terminal/access";
@@ -6,6 +6,7 @@ import {
   createApiKey,
   getUserTeam,
   listApiKeys,
+  MAX_API_KEYS_PER_USER,
   revokeApiKey,
 } from "@/lib/terminal/institutional";
 
@@ -18,7 +19,7 @@ export async function GET() {
     const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "api_access");
     const keys = await listApiKeys(auth.session.user.id);
-    return json({ keys });
+    return json({ keys, maxKeys: MAX_API_KEYS_PER_USER });
   } catch (err) {
     return accessErrorResponse(err);
   }
@@ -67,7 +68,8 @@ export async function DELETE(request: Request) {
     const id = url.searchParams.get("id");
     if (!id) return badRequest("id required");
     const ok = await revokeApiKey(auth.session.user.id, id);
-    return json({ revoked: ok });
+    if (!ok) return notFound("API key not found or already revoked");
+    return json({ revoked: true });
   } catch (err) {
     return accessErrorResponse(err);
   }

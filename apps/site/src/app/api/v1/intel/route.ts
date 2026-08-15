@@ -1,7 +1,6 @@
 import { json, unauthorized, badRequest } from "@/lib/api";
-import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { resolveApiKeyBearer } from "@/lib/terminal/institutional";
-import { hasFeature } from "@/lib/terminal/plan";
+import { hasFeature, planForUser } from "@/lib/terminal/plan";
 import {
   buildProbabilityViews,
   detectConsensusBreaks,
@@ -18,7 +17,8 @@ export const maxDuration = 15;
 async function requireApiUser(request: Request, endpoint: string) {
   const row = await resolveApiKeyBearer(request.headers.get("authorization"));
   if (!row?.user) return { error: unauthorized("Invalid or revoked API key") as Response };
-  const plan = await entitlementsPlanForUser(row.user);
+  // Key owner subscription — not request UA (iOS free-reader must not strip Ultra+ API).
+  const plan = planForUser(row.user);
   if (!hasFeature(plan, "api_access")) {
     return { error: unauthorized("API access requires Ultra+ or Elite") as Response };
   }

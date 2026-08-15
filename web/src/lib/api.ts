@@ -199,10 +199,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
     headers: usesSiteCookieAuth(path) ? { "Content-Type": "application/json" } : buildHeaders(),
     credentials: "same-origin",
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Request failed: ${res.status}`);
-  }
+  if (!res.ok) throw new Error(await parseApiError(res));
   return res.json();
 }
 
