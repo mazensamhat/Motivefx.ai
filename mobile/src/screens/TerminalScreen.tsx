@@ -41,6 +41,8 @@ type NativeMsg = {
 const VIEWPORT_LOCK_SCRIPT = `
   (function () {
     try {
+      // Native AgeGateScreen already passed — skip duplicate WebView age gate.
+      localStorage.setItem("motivefx_age_verified", "1");
       document.documentElement.classList.add("motivefx-native-shell");
       window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
       window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
@@ -70,7 +72,7 @@ const VIEWPORT_LOCK_SCRIPT = `
           // iOS free reader (2.1b / 3.1.1): hide purchase / subscription UI in WebView.
           ${
             Platform.OS === "ios"
-              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell .btn-annual-cta{display:none!important;}",`
+              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell .btn-annual-cta:not(.btn-age-gate-continue){display:none!important;}",`
               : ""
           }
         ].join("");
@@ -129,6 +131,8 @@ function buildAuthInjectionScript(
         if (accessToken) localStorage.setItem("motivefx_access_token", accessToken);
         if (refreshToken) localStorage.setItem("motivefx_refresh_token", refreshToken);
         if (userId) localStorage.setItem("motivefx_user_id", userId);
+        // Native age gate already passed — skip duplicate WebView age gate (AppAgeGate localStorage key).
+        localStorage.setItem("motivefx_age_verified", "1");
         window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
         window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
       } catch (e) {}

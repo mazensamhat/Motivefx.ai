@@ -110,7 +110,7 @@ export function AgeGateModal({ moduleLabel, onVerified }: Props) {
         <div className="age-gate-actions">
           <button
             type="button"
-            className="btn btn-annual-cta"
+            className="btn btn-age-gate-continue"
             onClick={accept}
             disabled={!canContinue}
           >

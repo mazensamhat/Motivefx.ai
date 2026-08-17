@@ -30,7 +30,9 @@ const MODULE_DEFAULT_TIER: Record<string, string> = {
 export function ModuleGate({ module, moduleLabel, children }: Props) {
   const { isAuthenticated, openAuth } = useAuth();
   const { hasModule, loading, subscribeModule, simulation } = useModules();
-  const [ageOk, setAgeOk] = useState(() => isAgeVerified() || !AGE_GATED.has(module));
+  const [ageOk, setAgeOk] = useState(
+    () => isAgeVerified() || !AGE_GATED.has(module) || isNativeIosShell()
+  );
   const [nativeIap, setNativeIap] = useState(false);
   const native = isNativeShell();
   const simEligible = AGE_GATED.has(module);

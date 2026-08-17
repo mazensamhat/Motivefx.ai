@@ -7115,7 +7115,9 @@ html[data-gen="boomer"] .gen-setup-preview {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+    max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+  pointer-events: auto;
 }
 
 .age-gate-modal {
@@ -7133,6 +7135,33 @@ html[data-gen="boomer"] .gen-setup-preview {
 .age-gate-actions .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Age gate Continue — NOT .btn-annual-cta (iOS native shell hides that class for billing CTAs). */
+.btn-age-gate-continue {
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent, #00e5ff), var(--brand-purple, #7b2ff7));
+  color: #080a0c;
+  font-family: var(--heading);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border: none;
+  min-height: 48px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-age-gate-continue:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+html.motivefx-native-shell .age-gate-overlay .btn-age-gate-continue {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .age-gate-year-field {

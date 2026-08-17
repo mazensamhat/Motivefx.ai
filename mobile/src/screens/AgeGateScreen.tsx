@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LEGAL } from "../config";
 import { colors } from "../theme";
 
@@ -51,7 +52,7 @@ export function AgeGateScreen({ onAccepted }: Props) {
 
   if (declined || tooYoung) {
     return (
-      <View style={[styles.flex, styles.container]}>
+      <SafeAreaView style={[styles.flex, styles.container]}>
         <Text style={styles.title}>Access restricted</Text>
         <Text style={styles.body}>
           MotiveFX.AI includes sports and event-market intelligence modules. You must be{" "}
@@ -68,11 +69,12 @@ export function AgeGateScreen({ onAccepted }: Props) {
             <Text style={styles.buttonText}>Go back</Text>
           </Pressable>
         )}
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={styles.flex}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -112,7 +114,9 @@ export function AgeGateScreen({ onAccepted }: Props) {
       <Pressable
         style={[styles.button, !canContinue && styles.buttonDisabled]}
         onPress={tryContinue}
-        disabled={!canContinue}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canContinue }}
+        hitSlop={8}
       >
         <Text style={[styles.buttonText, !canContinue && styles.buttonTextDisabled]}>Continue</Text>
       </Pressable>
@@ -132,6 +136,7 @@ export function AgeGateScreen({ onAccepted }: Props) {
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -190,7 +195,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderRadius: 10,
     padding: 14,
+    minHeight: 48,
     alignItems: "center",
+    justifyContent: "center",
   },
   buttonDisabled: {
     opacity: 0.4,
