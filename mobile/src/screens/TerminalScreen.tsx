@@ -69,14 +69,19 @@ const VIEWPORT_LOCK_SCRIPT = `
           "html.motivefx-native-shell .workspace-header{padding-top:0!important;margin-top:0!important;}",
           "html.motivefx-native-shell.motivefx-native-doc-scroll,html.motivefx-native-shell.motivefx-native-doc-scroll body{height:auto!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior-y:auto;}",
           "html.motivefx-native-shell.motivefx-native-doc-scroll .admin-shell,html.motivefx-native-shell.motivefx-native-doc-scroll .legal-page,html.motivefx-native-shell.motivefx-native-doc-scroll .app-layout{touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}",
-          // iOS free reader (2.1b / 3.1.1): hide purchase / subscription UI in WebView.
+          // iOS free reader (2.1b / 3.1.1): hide purchase / subscription UI + ModuleGate padlocks.
           ${
             Platform.OS === "ios"
-              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell .btn-annual-cta:not(.btn-age-gate-continue){display:none!important;}",`
+              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell .module-gate-overlay,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell .btn-annual-cta:not(.btn-age-gate-continue){display:none!important;}","html.motivefx-native-shell .module-gate-preview{filter:none!important;pointer-events:auto!important;user-select:auto!important;max-height:none!important;overflow:visible!important;}",`
               : ""
           }
         ].join("");
         (document.head || document.documentElement).appendChild(style);
+      }
+      ${
+        Platform.OS === "ios"
+          ? `try { document.documentElement.classList.add("motivefx-ios-reader"); } catch (iosReaderErr) {}`
+          : ""
       }
       function syncNativeScrollMode() {
         var nested = document.querySelector(".app-content");

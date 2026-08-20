@@ -442,6 +442,20 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   display: none !important;
 }
 
+/* App Store Path B free reader: never obscure market desks with ModuleGate padlocks */
+html.motivefx-ios-reader .module-gate-overlay,
+html.motivefx-native-shell.motivefx-ios-reader .module-gate-overlay {
+  display: none !important;
+}
+html.motivefx-ios-reader .module-gate-preview,
+html.motivefx-native-shell.motivefx-ios-reader .module-gate-preview {
+  filter: none !important;
+  pointer-events: auto !important;
+  user-select: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 .gen-optional-tag {
   font-style: normal;
   font-weight: 500;

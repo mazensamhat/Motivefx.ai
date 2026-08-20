@@ -1,5 +1,11 @@
-/** Detect Expo WebView shell (see mobile TerminalScreen userAgent). */
+/** Detect Expo WebView shell (see mobile TerminalScreen userAgent + injected flags). */
 export function isNativeShell(): boolean {
+  if (typeof window !== "undefined") {
+    if (window.__MOTIVEFX_NATIVE_PLATFORM__) return true;
+    if (typeof document !== "undefined" && document.documentElement.classList.contains("motivefx-native-shell")) {
+      return true;
+    }
+  }
   if (typeof navigator === "undefined") return false;
   return /MotiveFXNative/i.test(navigator.userAgent);
 }
@@ -13,13 +19,38 @@ export function isNativeAndroidShell(): boolean {
   return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
-/** True only for the Expo iOS WebView shell used for App Store builds. */
+/**
+ * True for the Expo iOS WebView shell used for App Store builds (Path B free reader).
+ *
+ * Important: do not require MotiveFXNative in the UA *and* platform===ios only.
+ * Some WebViews strip or rewrite custom UA; the native shell always injects
+ * __MOTIVEFX_NATIVE_PLATFORM__ and/or the motivefx-native-shell class.
+ * Any native shell that is not Android is treated as the iOS free reader.
+ */
 export function isNativeIosShell(): boolean {
   if (!isNativeShell()) return false;
+  if (isNativeAndroidShell()) return false;
   if (typeof window !== "undefined" && window.__MOTIVEFX_NATIVE_PLATFORM__) {
-    return window.__MOTIVEFX_NATIVE_PLATFORM__ === "ios";
+    if (window.__MOTIVEFX_NATIVE_PLATFORM__ === "android") return false;
+    if (window.__MOTIVEFX_NATIVE_PLATFORM__ === "ios") return true;
   }
-  return typeof navigator !== "undefined" && /iPhone|iPad|iPod|iOS/i.test(navigator.userAgent);
+  if (typeof navigator !== "undefined") {
+    if (/Android/i.test(navigator.userAgent)) return false;
+    if (/iPhone|iPad|iPod|\(iOS/i.test(navigator.userAgent)) return true;
+  }
+  // MotiveFXNative / injected shell without Android → App Store free reader.
+  return true;
+}
+
+/** Mark <html> for CSS belt-and-suspenders (hide ModuleGate padlocks on iOS). */
+export function syncNativeShellDocumentClass(): void {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (isNativeShell()) root.classList.add("motivefx-native-shell");
+  if (isNativeIosShell()) root.classList.add("motivefx-ios-reader");
+  else root.classList.remove("motivefx-ios-reader");
+  if (isNativeAndroidShell()) root.classList.add("motivefx-android-shell");
+  else root.classList.remove("motivefx-android-shell");
 }
 
 /** True when the native shell injected RevenueCat / store billing availability. */

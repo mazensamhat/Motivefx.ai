@@ -11,7 +11,10 @@ import { AssetDeepDiveProvider } from "./hooks/useAssetDeepDive";
 import { SignalDetailHost, SignalDetailProvider } from "./hooks/useSignalDetail";
 import { IntelToastProvider } from "./hooks/useIntelToast";
 import { AccountSettingsHost } from "./components/AccountSettingsHost";
+import { syncNativeShellDocumentClass } from "./lib/nativeShell";
 import "./styles/global.css";
+
+syncNativeShellDocumentClass();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

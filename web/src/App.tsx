@@ -22,7 +22,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
 import { useModuleUsageTracker } from "./hooks/useModuleUsageTracker";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
-import { isNativeAndroidShell, isNativeIosShell, isNativeShell } from "./lib/nativeShell";
+import { isNativeAndroidShell, isNativeIosShell, isNativeShell, syncNativeShellDocumentClass } from "./lib/nativeShell";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { DataDeletionPage } from "./pages/DataDeletionPage";
@@ -104,6 +104,10 @@ export default function App() {
     window.addEventListener("motivefx:entitlements-changed", onEntitlements);
     return () => window.removeEventListener("motivefx:entitlements-changed", onEntitlements);
   }, [activeTab, active.module, hasModule]);
+
+  useEffect(() => {
+    syncNativeShellDocumentClass();
+  }, []);
 
   const statusLabel =
     preferredRemaining != null && Number.isFinite(preferredRemaining)

@@ -8,6 +8,7 @@ import {
   isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
+  syncNativeShellDocumentClass,
 } from "../lib/nativeShell";
 import { SITE_EMBED } from "../lib/siteSession";
 import {
@@ -329,6 +330,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
     async function init() {
       if (authLoading) return;
 
+      syncNativeShellDocumentClass();
       setLoading(true);
       const iosReader = isNativeIosShell();
       // Auth boot already warmed /api/auth/me via shared cache — just read plan.
@@ -420,7 +422,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   const hasModule = useCallback(
     (module: string) => {
       // iOS App Store free informational reader: always allow viewing market tabs
-      // (monitor-only). Do not require paid unlock or an active simulation trial.
+      // (monitor-only). Guest, signed-in, and expired-simulation must NOT be blocked.
       if (isNativeIosShell()) return true;
       if (typeof window !== "undefined") {
         const demo =

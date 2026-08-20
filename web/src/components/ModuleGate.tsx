@@ -9,6 +9,7 @@ import {
   isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
+  syncNativeShellDocumentClass,
 } from "../lib/nativeShell";
 
 interface Props {
@@ -27,25 +28,34 @@ const MODULE_DEFAULT_TIER: Record<string, string> = {
   predictions: "lite",
 };
 
+/** App Store Path B — desks must stay fully usable (no padlock) for guest or signed-in. */
+function isIosFreeReaderShell(): boolean {
+  return isNativeIosShell();
+}
+
 export function ModuleGate({ module, moduleLabel, children }: Props) {
   const { isAuthenticated, openAuth } = useAuth();
   const { hasModule, loading, subscribeModule, simulation } = useModules();
   const [ageOk, setAgeOk] = useState(
-    () => isAgeVerified() || !AGE_GATED.has(module) || isNativeIosShell()
+    () => isAgeVerified() || !AGE_GATED.has(module) || isIosFreeReaderShell()
   );
   const [nativeIap, setNativeIap] = useState(false);
   const native = isNativeShell();
+  const iosReader = isIosFreeReaderShell();
   const simEligible = AGE_GATED.has(module);
-  const simExpired = simEligible && isAuthenticated && simulation && !simulation.active;
+  // Never treat expired simulation as a lock reason on iOS free reader.
+  const simExpired =
+    !iosReader && simEligible && isAuthenticated && simulation && !simulation.active;
 
   useEffect(() => {
+    syncNativeShellDocumentClass();
     setNativeIap(isNativeIapAvailable());
   }, []);
 
   if (loading) {
     return (
       <div className="loading" style={{ padding: "3rem" }}>
-        {isNativeIosShell() ? "Loading…" : "Checking subscription…"}
+        {iosReader ? "Loading…" : "Checking subscription…"}
       </div>
     );
   }
@@ -55,8 +65,9 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
   }
 
   // iOS App Store free reader: never show a lock wall — market tabs are viewable
-  // (monitor-only). Age gate above still applies for betting / predictions.
-  if (isNativeIosShell()) {
+  // (monitor-only). Guest, signed-in, and expired-simulation users all see content.
+  // Age gate above still applies once for betting / predictions when needed.
+  if (iosReader) {
     return <>{children}</>;
   }
 
@@ -94,11 +105,6 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
           <p>
             Subscribe with in-app store billing to unlock this market. Plans start at Lite ($29.99/mo).
           </p>
-        ) : isNativeIosShell() ? (
-          <p>
-            This iOS app is a free informational reader. Open Home or use demo market insights — no purchase
-            is required. Sign-in is optional for saved preferences.
-          </p>
         ) : native ? (
           <p>
             New purchases are not offered in this app build. Sign in with an account that already includes
@@ -118,16 +124,14 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
         {simExpired && (
           <p className="module-gate-sim-hint">
             Your simulation period has ended.{" "}
-            {isNativeIosShell()
-              ? "Continue with free / demo insights in this build."
-              : native && !nativeIap
-                ? "In-app store billing is not configured in this build yet."
-                : native && nativeIap
-                  ? "Subscribe in the app to keep live signals."
-                  : "Subscribe to keep tracking live signals and AI research."}
+            {native && !nativeIap
+              ? "In-app store billing is not configured in this build yet."
+              : native && nativeIap
+                ? "Subscribe in the app to keep live signals."
+                : "Subscribe to keep tracking live signals and AI research."}
           </p>
         )}
-        {!(native && !nativeIap) && !isNativeIosShell() && (
+        {!(native && !nativeIap) && (
           <button className="btn btn-primary" onClick={onUnlock}>
             {native && nativeIap
               ? "Subscribe in app"
