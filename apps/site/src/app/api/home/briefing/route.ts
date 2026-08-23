@@ -89,11 +89,9 @@ async function withTimeout<T>(promise: Promise<T>, fallback: T, ms: number): Pro
  * so Prisma pool stalls cannot blank the Home desk.
  */
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const queryUserId = url.searchParams.get("user_id");
-
   let displayName: string | null = null;
-  let effectiveId = queryUserId && queryUserId !== "demo" ? queryUserId : "demo";
+  /** G3: never trust anonymous ?user_id= for account context — session only. */
+  let effectiveId = "demo";
   let plan = null as TerminalPlan | null;
   let userIdForAlerts: string | null = null;
 

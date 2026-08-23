@@ -8,15 +8,51 @@ const HOURLY_LIMIT: Record<string, number> = {
   elite: 2000,
 };
 
+/** G3: when metering DB is unavailable, never fail open to unlimited. */
+const EMERGENCY_PER_MINUTE = 10;
+const emergencyHits = new Map<string, { count: number; windowStart: number }>();
+
 const WINDOW_MS = 60 * 60 * 1000;
 
 export function apiHourlyLimit(tier: PricingTierId | string): number {
   return HOURLY_LIMIT[tier] ?? HOURLY_LIMIT.ultra_plus;
 }
 
+function emergencyCeiling(
+  key: string
+): { ok: true; remaining: number; limit: number } | { ok: false; response: Response } {
+  const now = Date.now();
+  const row = emergencyHits.get(key);
+  if (!row || now - row.windowStart >= 60_000) {
+    emergencyHits.set(key, { count: 1, windowStart: now });
+    return { ok: true, remaining: EMERGENCY_PER_MINUTE - 1, limit: EMERGENCY_PER_MINUTE };
+  }
+  if (row.count >= EMERGENCY_PER_MINUTE) {
+    const body = {
+      error: `API metering unavailable — emergency ceiling ${EMERGENCY_PER_MINUTE} req/min. Retry shortly.`,
+      limit: EMERGENCY_PER_MINUTE,
+      used: row.count,
+      mode: "emergency",
+    };
+    const res = NextResponse.json(body, { status: 429 });
+    res.headers.set("X-RateLimit-Limit", String(EMERGENCY_PER_MINUTE));
+    res.headers.set("X-RateLimit-Remaining", "0");
+    res.headers.set("Retry-After", "60");
+    res.headers.set("X-MotiveFX-Metering", "emergency");
+    return { ok: false, response: res };
+  }
+  row.count += 1;
+  return {
+    ok: true,
+    remaining: Math.max(0, EMERGENCY_PER_MINUTE - row.count),
+    limit: EMERGENCY_PER_MINUTE,
+  };
+}
+
 /**
  * Count recent API usage and enforce hourly quota.
  * Records a UsageEvent on every successful check (call after auth).
+ * Metering DB failure → conservative emergency ceiling (never unlimited).
  */
 export async function enforceApiRateLimit(opts: {
   userId: string;
@@ -37,8 +73,7 @@ export async function enforceApiRateLimit(opts: {
       },
     });
   } catch {
-    /* metering table hiccup — fail open */
-    return { ok: true, remaining: limit, limit };
+    return emergencyCeiling(`${opts.userId}:${opts.apiKeyId}`);
   }
 
   if (used >= limit) {

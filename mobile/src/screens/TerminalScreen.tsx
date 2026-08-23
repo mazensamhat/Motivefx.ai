@@ -125,7 +125,8 @@ function jsStringLiteral(value: string | null): string {
 function buildAuthInjectionScript(
   accessToken: string | null,
   refreshToken: string | null,
-  userId: string | null
+  userId: string | null,
+  nativeReaderToken: string | null = null
 ): string {
   return `
     (function () {
@@ -133,6 +134,7 @@ function buildAuthInjectionScript(
         var accessToken = ${jsStringLiteral(accessToken)};
         var refreshToken = ${jsStringLiteral(refreshToken)};
         var userId = ${jsStringLiteral(userId)};
+        var nativeReaderToken = ${jsStringLiteral(nativeReaderToken)};
         if (accessToken) localStorage.setItem("motivefx_access_token", accessToken);
         if (refreshToken) localStorage.setItem("motivefx_refresh_token", refreshToken);
         if (userId) localStorage.setItem("motivefx_user_id", userId);
@@ -140,6 +142,24 @@ function buildAuthInjectionScript(
         localStorage.setItem("motivefx_age_verified", "1");
         window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
         window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
+        if (nativeReaderToken) {
+          window.__MOTIVEFX_NATIVE_READER_TOKEN__ = nativeReaderToken;
+          localStorage.setItem("motivefx_native_reader_token", nativeReaderToken);
+          if (!window.__MOTIVEFX_NATIVE_READER_FETCH_PATCH__) {
+            window.__MOTIVEFX_NATIVE_READER_FETCH_PATCH__ = true;
+            var _fetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+              init = init || {};
+              var headers = new Headers(init.headers || (input && input.headers) || undefined);
+              var tok = window.__MOTIVEFX_NATIVE_READER_TOKEN__ || localStorage.getItem("motivefx_native_reader_token");
+              if (tok && !headers.has("X-MotiveFX-Native-Reader")) {
+                headers.set("X-MotiveFX-Native-Reader", tok);
+              }
+              init.headers = headers;
+              return _fetch(input, init);
+            };
+          }
+        }
       } catch (e) {}
       true;
     })();
@@ -285,8 +305,35 @@ export function TerminalScreen({
         appUserIdRef.current = userId;
         // Defer IAP — never await billing SDK during first paint.
       }
+
+      let nativeReaderToken: string | null = null;
+      try {
+        const tokRes = await fetch(`${API_BASE}/native/reader-token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-MotiveFX-Shell": Platform.OS === "ios" ? "ios" : "android",
+            "User-Agent":
+              Platform.OS === "ios"
+                ? "MotiveFXNative/1.0 (iOS; AppStore)"
+                : "MotiveFXNative/1.0 (AndroidScrollFix)",
+          },
+          body: JSON.stringify({
+            platform: Platform.OS === "ios" ? "ios" : "android",
+            channel: Platform.OS === "ios" ? "app_store" : "play_store",
+            appVersion: "1.0.0",
+          }),
+        });
+        if (tokRes.ok) {
+          const tokJson = (await tokRes.json()) as { token?: string };
+          nativeReaderToken = tokJson.token ?? null;
+        }
+      } catch (e) {
+        console.warn("native reader token skipped", e);
+      }
+
       setInjection(
-        `${buildAuthInjectionScript(accessToken, refreshToken, userId)}\n${VIEWPORT_LOCK_SCRIPT}`
+        `${buildAuthInjectionScript(accessToken, refreshToken, userId, nativeReaderToken)}\n${VIEWPORT_LOCK_SCRIPT}`
       );
 
       // Prefer cookie handoff URL so middleware does not force ?demo=1 (which unlocks

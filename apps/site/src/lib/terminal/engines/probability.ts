@@ -1,3 +1,8 @@
+import { allowsDemoFeeds } from "@/lib/terminal/market-truth";
+import {
+  classifyMotiveStance,
+  formatMotiveSignalLabel,
+} from "@/lib/terminal/market-truth";
 import { OPPORTUNITY_RADAR_DEMO } from "@/lib/marketing-copy";
 import type { Direction, ProbabilityFactor, ProbabilityView } from "./types";
 
@@ -12,11 +17,11 @@ type FeedOpp = {
   riskLevel?: string;
 };
 
-/** In-memory prior probabilities for calibration delta (TTL ~1h process cache). */
+/** In-memory prior Motive Signal scores for delta (TTL ~1h process cache). */
 const priorCache = new Map<string, { probability: number; at: number }>();
 const PRIOR_TTL_MS = 60 * 60 * 1000;
 
-function directionFromConfidence(c: number): Direction {
+function directionFromScore(c: number): Direction {
   if (c >= 68) return "up";
   if (c <= 42) return "down";
   return "neutral";
@@ -59,7 +64,8 @@ function signalDiversity(signals?: string[]): number {
 }
 
 /**
- * Phase 3 Probability Engine — multi-factor live scoring with prior calibration deltas.
+ * Motive Signal views — score is evidence-alignment strength (0–100), NOT a calibrated probability.
+ * G2: OPPORTUNITY_RADAR_DEMO priors are excluded from PRODUCTION scoring.
  */
 export function buildProbabilityViews(
   opportunities: FeedOpp[],
@@ -80,77 +86,74 @@ export function buildProbabilityViews(
         ? -3
         : 0;
 
-  for (const [i, theme] of OPPORTUNITY_RADAR_DEMO.entries()) {
-    const deskHit = opportunities[i] ?? opportunities[0];
-    const factors: ProbabilityFactor[] = [
-      { key: "prior", label: "Theme prior", score: theme.probability, weight: 0.35 },
-      { key: "desk_density", label: "Desk signal density", score: clamp(62 + densityNudge), weight: 0.25 },
-      {
-        key: "corroboration",
-        label: "Radar corroboration",
-        score: Number(deskHit?.confidence ?? 55),
-        weight: 0.2,
-      },
-      {
-        key: "sentiment",
-        label: "Narrative alignment",
-        score: clamp(50 + sentimentNudge * 5),
-        weight: 0.1,
-      },
-      {
-        key: "module_flow",
-        label: "Module flow boost",
-        score: clamp(50 + moduleFlowBoost(deskHit?.module) * 4),
-        weight: 0.1,
-      },
-    ];
-    const probability = clamp(
-      factors.reduce((s, f) => s + f.score * f.weight, 0)
-    );
-    const confidence = clamp(
-      probability * 0.7 +
-        Number(deskHit?.confidence ?? 55) * 0.2 +
-        signalDiversity(deskHit?.signals) * 2
-    );
-    const id = `theme-${i}`;
-    const prior = priorCache.get(id);
-    const priorProbability =
-      prior && now - prior.at < PRIOR_TTL_MS ? prior.probability : undefined;
-    priorCache.set(id, { probability, at: now });
-
-    views.push({
-      id,
-      theme: theme.theme,
-      direction: directionFromConfidence(probability),
-      probability,
-      confidence,
-      timing:
-        i === 0
-          ? "3–9 months"
-          : i === 1
-            ? "6–18 months"
-            : i === 2
-              ? "6–24 months"
-              : i === 3
-                ? "1–6 months"
-                : "2–8 months",
-      beneficiaries: [...theme.beneficiaries],
-      supportingFactors: factors
-        .sort((a, b) => b.score * b.weight - a.score * a.weight)
-        .slice(0, 3)
-        .map((f) => `${f.label}: ${f.score}`),
-      alternatives: [
-        "Macro shock could delay the theme.",
-        "Crowded positioning may compress forward edge.",
-      ],
-      analogues: ["Prior mid-cycle theme rotations*", "Supply-chain reallocation windows*"],
-      relatedSymbols: opportunities.slice(0, 3).map((o) => String(o.symbol ?? "")).filter(Boolean),
-      module: deskHit?.module,
-      factors,
-      calibrationNote: "Multi-factor blend — informational, not a forecast.",
-      priorProbability,
-      deltaVsPrior: priorProbability != null ? probability - priorProbability : undefined,
-    });
+  /* Demo/marketing theme cards only outside PRODUCTION — never as live Motive Signal priors. */
+  if (allowsDemoFeeds()) {
+    for (const [i, theme] of OPPORTUNITY_RADAR_DEMO.entries()) {
+      const deskHit = opportunities[i] ?? opportunities[0];
+      const factors: ProbabilityFactor[] = [
+        { key: "prior", label: "Theme prior (demo)", score: theme.probability, weight: 0.35 },
+        { key: "desk_density", label: "Desk signal density", score: clamp(62 + densityNudge), weight: 0.25 },
+        {
+          key: "corroboration",
+          label: "Radar corroboration",
+          score: Number(deskHit?.confidence ?? 55),
+          weight: 0.2,
+        },
+        {
+          key: "sentiment",
+          label: "Narrative alignment",
+          score: clamp(50 + sentimentNudge * 5),
+          weight: 0.1,
+        },
+        {
+          key: "module_flow",
+          label: "Module flow boost",
+          score: clamp(50 + moduleFlowBoost(deskHit?.module) * 4),
+          weight: 0.1,
+        },
+      ];
+      const probability = clamp(factors.reduce((s, f) => s + f.score * f.weight, 0));
+      const confidence = clamp(
+        probability * 0.7 +
+          Number(deskHit?.confidence ?? 55) * 0.2 +
+          signalDiversity(deskHit?.signals) * 2
+      );
+      const id = `theme-demo-${i}`;
+      views.push({
+        id,
+        theme: theme.theme,
+        direction: directionFromScore(probability),
+        probability,
+        confidence,
+        timing:
+          i === 0
+            ? "3–9 months"
+            : i === 1
+              ? "6–18 months"
+              : i === 2
+                ? "6–24 months"
+                : i === 3
+                  ? "1–6 months"
+                  : "2–8 months",
+        beneficiaries: [...theme.beneficiaries],
+        supportingFactors: factors
+          .sort((a, b) => b.score * b.weight - a.score * a.weight)
+          .slice(0, 3)
+          .map((f) => `${f.label}: ${f.score}`),
+        alternatives: [
+          "Macro shock could delay the theme.",
+          "Crowded positioning may compress forward edge.",
+        ],
+        analogues: ["Prior mid-cycle theme rotations*", "Supply-chain reallocation windows*"],
+        relatedSymbols: opportunities
+          .slice(0, 3)
+          .map((o) => String(o.symbol ?? ""))
+          .filter(Boolean),
+        module: deskHit?.module,
+        factors,
+        calibrationNote: `DEMO MODE — ${formatMotiveSignalLabel(probability)}. Not a statistical probability.`,
+      });
+    }
   }
 
   for (const o of opportunities.slice(0, 6)) {
@@ -188,11 +191,12 @@ export function buildProbabilityViews(
     const priorProbability =
       prior && now - prior.at < PRIOR_TTL_MS ? prior.probability : undefined;
     priorCache.set(id, { probability, at: now });
+    const stance = classifyMotiveStance(probability);
 
     views.push({
       id,
       theme: `${o.symbol}: ${o.title ?? "signal"}`,
-      direction: directionFromConfidence(conf),
+      direction: directionFromScore(conf),
       probability,
       confidence: conf,
       timing: "near-term desk window",
@@ -205,7 +209,7 @@ export function buildProbabilityViews(
       relatedSymbols: [String(o.symbol ?? "")].filter(Boolean),
       module: o.module,
       factors,
-      calibrationNote: "Desk-weighted multi-factor score — educational only.",
+      calibrationNote: `${formatMotiveSignalLabel(probability)} (${stance}). Evidence alignment — not a forecast probability.`,
       priorProbability,
       deltaVsPrior: priorProbability != null ? probability - priorProbability : undefined,
     });
@@ -216,7 +220,11 @@ export function buildProbabilityViews(
 
 export function probabilityEnrichment(view: ProbabilityView) {
   return {
+    /** @deprecated name retained for API compat — value is Motive Signal /100 */
     probability: view.probability,
+    motiveSignal: view.probability,
+    stance: classifyMotiveStance(view.probability),
+    label: formatMotiveSignalLabel(view.probability),
     modelConfidence: view.confidence,
     direction: view.direction,
     beneficiaries: view.beneficiaries,

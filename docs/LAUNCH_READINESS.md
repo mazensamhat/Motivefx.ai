@@ -2,6 +2,9 @@
 
 > Living document for production launch across web, iOS, Android, Canada, US, and global markets.  
 > **Status:** In progress — auth, 2FA, and legal drafts implemented; store submission and counsel review pending.
+>
+> **Pre-launch master plan (truth, signal, security, AI, CI):**  
+> [`docs/PRODUCTION_HARDENING_MASTER_PLAN.md`](./PRODUCTION_HARDENING_MASTER_PLAN.md) — **G1–G7 gates are authoritative.** Do not ship major features until G1–G4 pass.
 
 ---
 

@@ -574,7 +574,7 @@ export async function buildHomeBriefing(opts: {
   const topRisk = top8.find((o) => o.riskLevel === "high" || o.riskLevel === "extreme");
   const topOpportunitySummary = opportunitySummary(top);
   const themeLine = topTheme
-    ? `${topTheme.theme} is the main theme to watch, with ${topTheme.probability}% probability in the current model view.`
+    ? `${topTheme.theme} is the main theme to watch (Motive Signal ${topTheme.probability}/100 — evidence alignment, not a probability).`
     : null;
   const riskLine = topBreak
     ? `Watch ${trimSentence(topBreak.claim, 90)} because ${trimSentence(topBreak.breakReason, 130)}`

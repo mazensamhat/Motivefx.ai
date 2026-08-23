@@ -60,7 +60,7 @@ export function suggestThemes(
       reason:
         v.deltaVsPrior != null && v.deltaVsPrior > 0
           ? `Probability rising (${v.deltaVsPrior > 0 ? "+" : ""}${v.deltaVsPrior} vs prior)`
-          : `Multi-factor probability ${v.probability}% · confidence ${v.confidence}%`,
+          : `Motive Signal ${v.probability}/100 · confidence ${v.confidence}`,
       beneficiaries: v.beneficiaries.slice(0, 3),
     }));
 }
@@ -95,7 +95,7 @@ export function evaluateSignalAlertRules(
             module: t.module,
             symbol: t.relatedSymbols[0],
             title: `Probability alert: ${t.theme.slice(0, 64)}`,
-            body: `${t.probability}% ≥ ${rule.threshold}% (confidence ${t.confidence}%). Informational only.`,
+            body: `Motive Signal ${t.probability}/100 ≥ ${rule.threshold} (confidence ${t.confidence}). Informational only.`,
             confidence: t.probability,
             alertKey: `prob-${t.id}-${rule.threshold}`,
           });

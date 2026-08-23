@@ -1,3 +1,7 @@
+import { allowsDemoFeeds } from "../market-truth";
+import type { LiveFeedResult } from "../market-truth";
+import { isProviderEnabled } from "../provider-switches";
+
 const now = () => new Date().toISOString();
 
 function futureExpiryIso(daysAhead: number): string {
@@ -10,7 +14,51 @@ function futureExpiryIso(daysAhead: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function demoUnusualOptions() {
+export type UnusualOptionRow = {
+  symbol: string;
+  type: string;
+  strike: number;
+  expiry: string;
+  volume: number;
+  openInterest: number;
+  premium: number;
+  volOiRatio: number;
+  sentiment: string;
+  note: string;
+  timestamp: string;
+  /** G1 provenance — DEMO rows are never production-signal eligible. */
+  sourceType?: "LIVE" | "DEMO" | "SYNTHETIC";
+  simulation?: boolean;
+};
+
+export type PennyMoverRow = {
+  symbol: string;
+  price: number;
+  changePct: number;
+  volume: number;
+  volRatio: number;
+  sentiment: string;
+  note: string;
+  timestamp: string;
+  sourceType?: "LIVE" | "DEMO" | "SYNTHETIC";
+  simulation?: boolean;
+};
+
+export type WhaleAlertRow = {
+  asset: string;
+  amountUsd: number;
+  from: string;
+  to: string;
+  direction: string;
+  note: string;
+  timestamp: string;
+  price?: number;
+  sourceType?: "LIVE" | "DERIVED" | "DEMO" | "SYNTHETIC";
+  simulation?: boolean;
+};
+
+/** Demo/sample only — never call from PRODUCTION signal paths. */
+export function scanUnusualOptionsDemo(): UnusualOptionRow[] {
   return [
     {
       symbol: "NVDA",
@@ -24,6 +72,8 @@ export function demoUnusualOptions() {
       sentiment: "bullish",
       note: "Vol/OI 15.1x — block flow (sample)",
       timestamp: now(),
+      sourceType: "DEMO",
+      simulation: true,
     },
     {
       symbol: "TSLA",
@@ -37,6 +87,8 @@ export function demoUnusualOptions() {
       sentiment: "bearish",
       note: "Vol/OI 4.2x — defensive flow (sample)",
       timestamp: now(),
+      sourceType: "DEMO",
+      simulation: true,
     },
     {
       symbol: "AAPL",
@@ -50,39 +102,128 @@ export function demoUnusualOptions() {
       sentiment: "bullish",
       note: "Vol/OI 3.2x — unusual activity (sample)",
       timestamp: now(),
+      sourceType: "DEMO",
+      simulation: true,
     },
   ];
 }
 
-export function scanUnusualOptions() {
-  return demoUnusualOptions();
+/** @deprecated Use scanUnusualOptionsDemo — kept for explicit demo UIs. */
+export function demoUnusualOptions() {
+  return scanUnusualOptionsDemo();
 }
 
-export function demoPennyMovers() {
+/**
+ * Live unusual-options path. Until a live options provider is wired,
+ * PRODUCTION returns empty + LIVE_DATA_UNAVAILABLE (never demo).
+ */
+export function scanUnusualOptionsLive(): LiveFeedResult<UnusualOptionRow> {
+  if (!isProviderEnabled("OPTIONS_FLOW") || !isProviderEnabled("FINNHUB")) {
+    return {
+      items: [],
+      status: "PROVIDER_DISABLED",
+      sourceType: "NONE",
+      updatedAt: now(),
+      error: "OPTIONS_FLOW_ENABLED=false or FINNHUB disabled",
+    };
+  }
+  return {
+    items: [],
+    status: "OPTIONS_FEED_UNAVAILABLE",
+    sourceType: "NONE",
+    updatedAt: now(),
+    error: "LIVE_DATA_UNAVAILABLE",
+  };
+}
+
+/**
+ * Mode-aware scanner. PRODUCTION never returns demo options.
+ * DEMO / TEST / APP_REVIEW may return labeled sample rows.
+ */
+export function scanUnusualOptions(): UnusualOptionRow[] {
+  if (allowsDemoFeeds()) {
+    return scanUnusualOptionsDemo();
+  }
+  return scanUnusualOptionsLive().items;
+}
+
+export function scanUnusualOptionsWithMeta(): LiveFeedResult<UnusualOptionRow> {
+  if (allowsDemoFeeds()) {
+    const items = scanUnusualOptionsDemo();
+    return {
+      items,
+      status: "OK",
+      sourceType: "DEMO",
+      provider: "demo",
+      updatedAt: now(),
+    };
+  }
+  return scanUnusualOptionsLive();
+}
+
+/** Demo/sample only — never call from PRODUCTION signal paths. */
+export function scanPennyMoversDemo(): PennyMoverRow[] {
   return [
-    { symbol: "SNDL", price: 0.42, changePct: 12.4, volume: 48200000, volRatio: 4.2, sentiment: "bullish", note: "Vol 4.2x avg — breakout on cannabis sector news", timestamp: now() },
-    { symbol: "AMC", price: 4.85, changePct: 8.1, volume: 22100000, volRatio: 3.1, sentiment: "bullish", note: "Vol 3.1x avg — meme momentum returning", timestamp: now() },
-    { symbol: "OPEN", price: 2.15, changePct: 9.6, volume: 18400000, volRatio: 3.4, sentiment: "bullish", note: "Vol 3.4x avg — housing beta play active", timestamp: now() },
-    { symbol: "BBAI", price: 1.82, changePct: 14.2, volume: 31200000, volRatio: 5.1, sentiment: "bullish", note: "Vol 5.1x avg — AI penny momentum", timestamp: now() },
-    { symbol: "BNGO", price: 1.24, changePct: 15.3, volume: 12300000, volRatio: 3.9, sentiment: "bullish", note: "Vol 3.9x avg — biotech catalyst watch", timestamp: now() },
+    { symbol: "SNDL", price: 0.42, changePct: 12.4, volume: 48200000, volRatio: 4.2, sentiment: "bullish", note: "Vol 4.2x avg — breakout on cannabis sector news", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { symbol: "AMC", price: 4.85, changePct: 8.1, volume: 22100000, volRatio: 3.1, sentiment: "bullish", note: "Vol 3.1x avg — meme momentum returning", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { symbol: "OPEN", price: 2.15, changePct: 9.6, volume: 18400000, volRatio: 3.4, sentiment: "bullish", note: "Vol 3.4x avg — housing beta play active", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { symbol: "BBAI", price: 1.82, changePct: 14.2, volume: 31200000, volRatio: 5.1, sentiment: "bullish", note: "Vol 5.1x avg — AI penny momentum", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { symbol: "BNGO", price: 1.24, changePct: 15.3, volume: 12300000, volRatio: 3.9, sentiment: "bullish", note: "Vol 3.9x avg — biotech catalyst watch", timestamp: now(), sourceType: "DEMO", simulation: true },
   ];
 }
 
-export function scanPennyMovers() {
-  return demoPennyMovers();
+/** @deprecated Use scanPennyMoversDemo */
+export function demoPennyMovers() {
+  return scanPennyMoversDemo();
+}
+
+/** Live penny movers — empty until live scanner wired (fail closed in PRODUCTION). */
+export function scanPennyMoversLive(): LiveFeedResult<PennyMoverRow> {
+  return {
+    items: [],
+    status: "PENNY_FEED_UNAVAILABLE",
+    sourceType: "NONE",
+    updatedAt: now(),
+    error: "LIVE_DATA_UNAVAILABLE",
+  };
+}
+
+export function scanPennyMovers(): PennyMoverRow[] {
+  if (allowsDemoFeeds()) {
+    return scanPennyMoversDemo();
+  }
+  return scanPennyMoversLive().items;
+}
+
+export function scanPennyMoversWithMeta(): LiveFeedResult<PennyMoverRow> {
+  if (allowsDemoFeeds()) {
+    return {
+      items: scanPennyMoversDemo(),
+      status: "OK",
+      sourceType: "DEMO",
+      provider: "demo",
+      updatedAt: now(),
+    };
+  }
+  return scanPennyMoversLive();
 }
 
 export function scanVolumeSpikes() {
-  return demoPennyMovers().filter((m) => (m.volRatio ?? 0) >= 2);
+  return scanPennyMovers().filter((m) => (m.volRatio ?? 0) >= 2);
 }
 
-export function demoWhaleAlerts() {
+export function scanWhaleAlertsDemo(): WhaleAlertRow[] {
   return [
-    { asset: "BTC", amountUsd: 42000000, from: "bc1q…whale", to: "Coinbase", direction: "deposit", note: "Exchange inflow — $42M", timestamp: now() },
-    { asset: "ETH", amountUsd: 18500000, from: "0x7a…whale", to: "Binance", direction: "deposit", note: "Large transfer flagged", timestamp: now() },
-    { asset: "SOL", amountUsd: 9200000, from: "Binance", to: "0x9f…cold", direction: "withdrawal", note: "Exchange outflow", timestamp: now() },
-    { asset: "BTC", amountUsd: 67000000, from: "Kraken", to: "bc1q…custody", direction: "withdrawal", note: "Cold storage move", timestamp: now() },
+    { asset: "BTC", amountUsd: 42000000, from: "bc1q…whale", to: "Coinbase", direction: "deposit", note: "Exchange inflow — $42M", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { asset: "ETH", amountUsd: 18500000, from: "0x7a…whale", to: "Binance", direction: "deposit", note: "Large transfer flagged", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { asset: "SOL", amountUsd: 9200000, from: "Binance", to: "0x9f…cold", direction: "withdrawal", note: "Exchange outflow", timestamp: now(), sourceType: "DEMO", simulation: true },
+    { asset: "BTC", amountUsd: 67000000, from: "Kraken", to: "bc1q…custody", direction: "withdrawal", note: "Cold storage move", timestamp: now(), sourceType: "DEMO", simulation: true },
   ];
+}
+
+/** @deprecated Use scanWhaleAlertsDemo */
+export function demoWhaleAlerts() {
+  return scanWhaleAlertsDemo();
 }
 
 type CoinGeckoMarket = {
@@ -136,53 +277,126 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null
   }
 }
 
-export async function fetchWhaleAlerts() {
+/**
+ * Whale / large-flow panel.
+ * PRODUCTION: CoinGecko / CoinStats only — never synthetic demo on failure (WHALE_FEED_UNAVAILABLE).
+ * DEMO/TEST/APP_REVIEW: may fall back to labeled demo rows.
+ */
+export async function fetchWhaleAlertsWithMeta(): Promise<LiveFeedResult<WhaleAlertRow>> {
   const key = process.env.COINSTATS_API_KEY?.trim();
-  const demo = demoWhaleAlerts();
+  const allowDemo = allowsDemoFeeds();
 
-  /* Cap total wait so activity panels never sit empty on CoinGecko cold starts. */
-  const live = (async () => {
+  const tagDerived = (rows: WhaleAlertRow[]): WhaleAlertRow[] =>
+    rows.map((r) => ({
+      ...r,
+      sourceType: (r.sourceType ?? "DERIVED") as WhaleAlertRow["sourceType"],
+      simulation: false,
+    }));
+
+  const live = (async (): Promise<LiveFeedResult<WhaleAlertRow>> => {
     const gecko = await withTimeout(fetchCoinGeckoWhaleLike(), 2200);
-    if (gecko?.length) return gecko;
-
-    if (!key) return demo;
-
-    try {
-      const res = await withTimeout(
-        fetch("https://openapiv1.coinstats.app/coins?limit=12", {
-          headers: { "X-API-KEY": key },
-          next: { revalidate: 120 },
-        }),
-        2000
-      );
-      if (res?.ok) {
-        const raw = (await res.json()) as { result?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
-        const rows = Array.isArray(raw) ? raw : raw.result ?? [];
-        const items = rows.slice(0, 12).map((r) => {
-          const amountUsd = Number(r.volume ?? r.marketCap ?? 0);
-          const change = Number(r.priceChange1d ?? 0);
-          const bullish = change >= 0;
-          return {
-            asset: String(r.symbol ?? r.coin ?? "—").toUpperCase(),
-            amountUsd,
-            from: "24h volume proxy",
-            to: bullish ? "spot bid (net)" : "spot offer (net)",
-            direction: bullish ? "deposit" : "withdrawal",
-            note: `${String(r.name ?? r.symbol ?? "Market")} · 24h vol proxy (not a single whale tx)`,
-            price: Number(r.price ?? 0) || undefined,
-            timestamp: now(),
-          };
-        });
-        if (items.length) return items;
-      }
-    } catch {
-      /* fall through */
+    if (gecko?.length) {
+      return {
+        items: tagDerived(gecko as WhaleAlertRow[]),
+        status: "OK",
+        sourceType: "DERIVED",
+        provider: "coingecko",
+        updatedAt: now(),
+      };
     }
-    return demo;
+
+    if (key) {
+      try {
+        const res = await withTimeout(
+          fetch("https://openapiv1.coinstats.app/coins?limit=12", {
+            headers: { "X-API-KEY": key },
+            next: { revalidate: 120 },
+          }),
+          2000
+        );
+        if (res?.ok) {
+          const raw = (await res.json()) as
+            | { result?: Array<Record<string, unknown>> }
+            | Array<Record<string, unknown>>;
+          const rows = Array.isArray(raw) ? raw : raw.result ?? [];
+          const items = rows.slice(0, 12).map((r) => {
+            const amountUsd = Number(r.volume ?? r.marketCap ?? 0);
+            const change = Number(r.priceChange1d ?? 0);
+            const bullish = change >= 0;
+            return {
+              asset: String(r.symbol ?? r.coin ?? "—").toUpperCase(),
+              amountUsd,
+              from: "24h volume proxy",
+              to: bullish ? "spot bid (net)" : "spot offer (net)",
+              direction: bullish ? "deposit" : "withdrawal",
+              note: `${String(r.name ?? r.symbol ?? "Market")} · 24h vol proxy (not a single whale tx)`,
+              price: Number(r.price ?? 0) || undefined,
+              timestamp: now(),
+              sourceType: "DERIVED" as const,
+              simulation: false,
+            };
+          });
+          if (items.length) {
+            return {
+              items,
+              status: "OK",
+              sourceType: "DERIVED",
+              provider: "coinstats",
+              updatedAt: now(),
+            };
+          }
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+
+    if (allowDemo) {
+      return {
+        items: scanWhaleAlertsDemo(),
+        status: "OK",
+        sourceType: "DEMO",
+        provider: "demo",
+        updatedAt: now(),
+        error: "WHALE_FEED_UNAVAILABLE — showing labeled demo sample",
+      };
+    }
+
+    return {
+      items: [],
+      status: "WHALE_FEED_UNAVAILABLE",
+      sourceType: "NONE",
+      updatedAt: now(),
+      error: "WHALE_FEED_UNAVAILABLE",
+    };
   })();
 
   const raced = await withTimeout(live, 2800);
-  return raced?.length ? raced : demo;
+  if (raced) return raced;
+
+  if (allowDemo) {
+    return {
+      items: scanWhaleAlertsDemo(),
+      status: "OK",
+      sourceType: "DEMO",
+      provider: "demo",
+      updatedAt: now(),
+      error: "WHALE_FEED_UNAVAILABLE — showing labeled demo sample",
+    };
+  }
+
+  return {
+    items: [],
+    status: "WHALE_FEED_UNAVAILABLE",
+    sourceType: "NONE",
+    updatedAt: now(),
+    error: "WHALE_FEED_UNAVAILABLE",
+  };
+}
+
+export async function fetchWhaleAlerts(): Promise<WhaleAlertRow[]> {
+  const result = await fetchWhaleAlertsWithMeta();
+  return result.items;
 }
 
 export type FeedMeta = {
@@ -1826,9 +2040,12 @@ function mapInsiderToActivity(rows: InsiderRow[], symbol: string, startId = 0) {
 
 export async function fetchStockActivity() {
   const finnhubKey = process.env.FINNHUB_API_KEY?.trim();
-  /* Seed with demo options so the panel never waits on Finnhub cold starts. */
+  /* G1: never seed PRODUCTION with demo options. Demo modes may include labeled samples. */
+  const optionsRows = allowsDemoFeeds()
+    ? scanUnusualOptionsDemo()
+    : scanUnusualOptionsLive().items;
   const items: ReturnType<typeof mapOptionsToActivity> = [
-    ...mapOptionsToActivity(scanUnusualOptions()),
+    ...mapOptionsToActivity(optionsRows),
   ];
 
   if (finnhubKey) {
