@@ -54,6 +54,11 @@ export function getLatestLedgerEntry(symbol: string): LedgerEntry | undefined {
   return getLedgerForSymbol(symbol, 1)[0];
 }
 
+/** Recent ledger entries for Truth Console (newest first). */
+export function getRecentLedgerEntries(limit = 50): LedgerEntry[] {
+  return ledger.slice(0, Math.max(0, limit));
+}
+
 /** Truth Console metric: DEMO/SYNTHETIC count inside production signal bags. */
 export function ledgerContaminationStats(): {
   entries: number;
