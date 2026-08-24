@@ -5,6 +5,7 @@ import {
   Brain,
   DollarSign,
   ExternalLink,
+  FileText,
   Gauge,
   Layers,
   Lock,
@@ -17,7 +18,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { MOTIVELIFE_OPS_URL } from "@/lib/ops-links";
+import { MOTIVELIFE_OPS_URL, MOTIVEPULSE_OPS_URL } from "@/lib/ops-links";
 
 export type OpsNavItem = {
   id: string;
@@ -27,6 +28,7 @@ export type OpsNavItem = {
   description?: string;
   external?: boolean;
   stub?: boolean;
+  badge?: string;
 };
 
 export const OPS_NAV: OpsNavItem[] = [
@@ -86,6 +88,7 @@ export const OPS_NAV: OpsNavItem[] = [
     icon: Megaphone,
     description: "Motive Life Marketing Studio",
     external: true,
+    badge: "New",
   },
   {
     id: "security",
@@ -124,7 +127,7 @@ export const OPS_NAV: OpsNavItem[] = [
   },
 ];
 
-export const OPS_SECONDARY_NAV: OpsNavItem[] = [
+export const OPS_QUICK_LINKS: OpsNavItem[] = [
   {
     id: "legacy",
     label: "Classic dashboard",
@@ -139,4 +142,23 @@ export const OPS_SECONDARY_NAV: OpsNavItem[] = [
     icon: Activity,
     description: "Back to trading desk",
   },
+  {
+    id: "motivepulse",
+    label: "MotivePulse Ops",
+    href: MOTIVEPULSE_OPS_URL,
+    icon: ExternalLink,
+    description: "MotivePulse operations",
+    external: true,
+  },
+  {
+    id: "docs",
+    label: "Documentation",
+    href: "https://docs.motivefxai.com",
+    icon: FileText,
+    description: "Product documentation",
+    external: true,
+  },
 ];
+
+/** @deprecated Use OPS_QUICK_LINKS */
+export const OPS_SECONDARY_NAV = OPS_QUICK_LINKS;

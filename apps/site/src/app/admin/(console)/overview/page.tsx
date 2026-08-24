@@ -1,3 +1,4 @@
+import { getSession } from "@/lib/session";
 import { OpsOverview } from "@/components/admin/ops-overview";
 
 export const metadata = {
@@ -5,6 +6,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function OpsOverviewPage() {
-  return <OpsOverview />;
+export default async function OpsOverviewPage() {
+  const session = await getSession();
+  return <OpsOverview adminEmail={session?.email} />;
 }
