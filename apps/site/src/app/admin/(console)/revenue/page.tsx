@@ -1,13 +1,10 @@
-import { OPS_NAV } from "@/components/admin/ops-nav";
-import { OpsStubPage } from "@/components/admin/ops-stub-page";
-
-const item = OPS_NAV.find((n) => n.id === "revenue")!;
+import { OpsRevenue } from "@/components/admin/ops-revenue";
 
 export const metadata = {
-  title: `${item.label} — MotiveFX Ops`,
+  title: "Revenue — MotiveFX Ops",
   robots: { index: false, follow: false },
 };
 
 export default function OpsRevenuePage() {
-  return <OpsStubPage item={item} />;
+  return <OpsRevenue />;
 }
