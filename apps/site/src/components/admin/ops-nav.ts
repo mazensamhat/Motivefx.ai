@@ -50,7 +50,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/signals",
     icon: Zap,
     description: "Motive Signal ops",
-    stub: true,
   },
   {
     id: "providers",
@@ -65,7 +64,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/users",
     icon: Users,
     description: "Accounts & signups",
-    stub: true,
   },
   {
     id: "revenue",
@@ -73,7 +71,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/revenue",
     icon: DollarSign,
     description: "Financial analytics",
-    stub: true,
   },
   {
     id: "product",
@@ -81,7 +78,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/product",
     icon: Layers,
     description: "Modules & utilization",
-    stub: true,
   },
   {
     id: "growth",
@@ -97,7 +93,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/security",
     icon: Lock,
     description: "Auth & entitlements",
-    stub: true,
   },
   {
     id: "ai-costs",
@@ -105,7 +100,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/ai-costs",
     icon: Brain,
     description: "Token economics",
-    stub: true,
   },
   {
     id: "feedback",
@@ -113,7 +107,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/feedback",
     icon: MessageSquare,
     description: "User feedback inbox",
-    stub: true,
   },
   {
     id: "releases",
@@ -121,7 +114,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/releases",
     icon: Rocket,
     description: "G1–G7 gate tracker",
-    stub: true,
   },
   {
     id: "settings",
@@ -129,7 +121,6 @@ export const OPS_NAV: OpsNavItem[] = [
     href: "/admin/settings",
     icon: Settings,
     description: "Ops configuration",
-    stub: true,
   },
 ];
 
