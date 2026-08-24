@@ -9,7 +9,7 @@ import {
   type PlatformPref,
 } from "../config/tradingPlatforms";
 import { MODULE_BRAND, type BrandModuleId } from "../brand/moduleBrand";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 
 const PLATFORM_TO_BRAND: Record<PlatformModuleKey, BrandModuleId> = {
   trades: "trades",
@@ -30,7 +30,7 @@ const CUSTOM_ID = "custom";
 
 export function PlatformSetupModal({ catalog, prefs, onSave, onClose }: Props) {
   const { active, allowedMarkets } = useModules();
-  const androidPlaySafe = isNativeAndroidShell();
+  const androidPlaySafe = isNativeShell();
   const subscribed =
     allowedMarkets.length > 0
       ? (allowedMarkets.map((m) => APP_MODULE_TO_PLATFORM[m]).filter(Boolean) as PlatformModuleKey[])

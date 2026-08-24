@@ -1,18 +1,20 @@
 import { json } from "@/lib/api";
 import { moduleAccessResponse, resolveAccess } from "@/lib/terminal/request-access";
 import { scanUnusualOptionsWithMeta } from "@/lib/terminal/feeds";
-import { getDataMode } from "@/lib/terminal/market-truth";
+import { getDataMode, resolveFeedDataMode } from "@/lib/terminal/market-truth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     await resolveAccess(request, "trades");
-    const result = scanUnusualOptionsWithMeta();
+    const feedMode = await resolveFeedDataMode(request);
+    const result = scanUnusualOptionsWithMeta(feedMode);
     return json({
       items: result.items,
       meta: {
-        dataMode: getDataMode(),
+        dataMode: feedMode,
+        signalDataMode: getDataMode(),
         status: result.status,
         sourceType: result.sourceType,
         provider: result.provider,

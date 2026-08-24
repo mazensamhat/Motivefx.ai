@@ -1,5 +1,9 @@
-import { allowsDemoFeeds } from "../market-truth";
+import { allowsDemoFeeds, getDataMode, type DataMode } from "../market-truth";
 import type { LiveFeedResult } from "../market-truth";
+
+function demoFeedsAllowed(dataMode: DataMode = getDataMode()): boolean {
+  return allowsDemoFeeds(dataMode);
+}
 import { isProviderEnabled } from "../provider-switches";
 
 const now = () => new Date().toISOString();
@@ -140,15 +144,17 @@ export function scanUnusualOptionsLive(): LiveFeedResult<UnusualOptionRow> {
  * Mode-aware scanner. PRODUCTION never returns demo options.
  * DEMO / TEST / APP_REVIEW may return labeled sample rows.
  */
-export function scanUnusualOptions(): UnusualOptionRow[] {
-  if (allowsDemoFeeds()) {
+export function scanUnusualOptions(dataMode: DataMode = getDataMode()): UnusualOptionRow[] {
+  if (demoFeedsAllowed(dataMode)) {
     return scanUnusualOptionsDemo();
   }
   return scanUnusualOptionsLive().items;
 }
 
-export function scanUnusualOptionsWithMeta(): LiveFeedResult<UnusualOptionRow> {
-  if (allowsDemoFeeds()) {
+export function scanUnusualOptionsWithMeta(
+  dataMode: DataMode = getDataMode()
+): LiveFeedResult<UnusualOptionRow> {
+  if (demoFeedsAllowed(dataMode)) {
     const items = scanUnusualOptionsDemo();
     return {
       items,
@@ -188,15 +194,17 @@ export function scanPennyMoversLive(): LiveFeedResult<PennyMoverRow> {
   };
 }
 
-export function scanPennyMovers(): PennyMoverRow[] {
-  if (allowsDemoFeeds()) {
+export function scanPennyMovers(dataMode: DataMode = getDataMode()): PennyMoverRow[] {
+  if (demoFeedsAllowed(dataMode)) {
     return scanPennyMoversDemo();
   }
   return scanPennyMoversLive().items;
 }
 
-export function scanPennyMoversWithMeta(): LiveFeedResult<PennyMoverRow> {
-  if (allowsDemoFeeds()) {
+export function scanPennyMoversWithMeta(
+  dataMode: DataMode = getDataMode()
+): LiveFeedResult<PennyMoverRow> {
+  if (demoFeedsAllowed(dataMode)) {
     return {
       items: scanPennyMoversDemo(),
       status: "OK",
@@ -208,8 +216,8 @@ export function scanPennyMoversWithMeta(): LiveFeedResult<PennyMoverRow> {
   return scanPennyMoversLive();
 }
 
-export function scanVolumeSpikes() {
-  return scanPennyMovers().filter((m) => (m.volRatio ?? 0) >= 2);
+export function scanVolumeSpikes(dataMode: DataMode = getDataMode()) {
+  return scanPennyMovers(dataMode).filter((m) => (m.volRatio ?? 0) >= 2);
 }
 
 export function scanWhaleAlertsDemo(): WhaleAlertRow[] {
@@ -282,9 +290,11 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null
  * PRODUCTION: CoinGecko / CoinStats only — never synthetic demo on failure (WHALE_FEED_UNAVAILABLE).
  * DEMO/TEST/APP_REVIEW: may fall back to labeled demo rows.
  */
-export async function fetchWhaleAlertsWithMeta(): Promise<LiveFeedResult<WhaleAlertRow>> {
+export async function fetchWhaleAlertsWithMeta(
+  dataMode: DataMode = getDataMode()
+): Promise<LiveFeedResult<WhaleAlertRow>> {
   const key = process.env.COINSTATS_API_KEY?.trim();
-  const allowDemo = allowsDemoFeeds();
+  const allowDemo = demoFeedsAllowed(dataMode);
 
   const tagDerived = (rows: WhaleAlertRow[]): WhaleAlertRow[] =>
     rows.map((r) => ({
@@ -394,8 +404,10 @@ export async function fetchWhaleAlertsWithMeta(): Promise<LiveFeedResult<WhaleAl
   };
 }
 
-export async function fetchWhaleAlerts(): Promise<WhaleAlertRow[]> {
-  const result = await fetchWhaleAlertsWithMeta();
+export async function fetchWhaleAlerts(
+  dataMode: DataMode = getDataMode()
+): Promise<WhaleAlertRow[]> {
+  const result = await fetchWhaleAlertsWithMeta(dataMode);
   return result.items;
 }
 
@@ -2038,10 +2050,10 @@ function mapInsiderToActivity(rows: InsiderRow[], symbol: string, startId = 0) {
   });
 }
 
-export async function fetchStockActivity() {
+export async function fetchStockActivity(dataMode: DataMode = getDataMode()) {
   const finnhubKey = process.env.FINNHUB_API_KEY?.trim();
   /* G1: never seed PRODUCTION with demo options. Demo modes may include labeled samples. */
-  const optionsRows = allowsDemoFeeds()
+  const optionsRows = demoFeedsAllowed(dataMode)
     ? scanUnusualOptionsDemo()
     : scanUnusualOptionsLive().items;
   const items: ReturnType<typeof mapOptionsToActivity> = [

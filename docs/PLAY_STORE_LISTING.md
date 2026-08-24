@@ -35,10 +35,10 @@ Do **not** put the public `/pricing` page in Play listing text as a purchase pat
 ## Short description (≤80 chars)
 
 ```
-AI market intelligence for stocks, crypto, options & event markets. Monitor only.
+AI market intelligence for stocks, crypto, options & events. Monitor only.
 ```
 
-(Character check: keep ≤80; trim if Console rejects.)
+(74 chars; Play limit ≤80.)
 
 ## Full description (draft)
 

@@ -5,15 +5,17 @@ import {
   scanUnusualOptions,
   scanPennyMovers,
 } from "@/lib/terminal/feeds";
+import { getDataMode, resolveFeedDataMode } from "@/lib/terminal/market-truth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const feedMode = await resolveFeedDataMode(request);
   const [whales, options, lines, penny] = await Promise.all([
-    fetchWhaleAlerts(),
-    Promise.resolve(scanUnusualOptions()),
+    fetchWhaleAlerts(feedMode),
+    Promise.resolve(scanUnusualOptions(feedMode)),
     fetchLineMoves(),
-    Promise.resolve(scanPennyMovers()),
+    Promise.resolve(scanPennyMovers(feedMode)),
   ]);
 
   const events: Array<Record<string, unknown>> = [];
@@ -60,5 +62,11 @@ export async function GET() {
     });
   }
 
-  return json({ events });
+  return json({
+    events,
+    meta: {
+      dataMode: feedMode,
+      signalDataMode: getDataMode(),
+    },
+  });
 }

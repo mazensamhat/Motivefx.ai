@@ -16,7 +16,7 @@ import { SimulationBanner } from "./SimulationBanner";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 
 const MARKET_CATEGORY_FILTERS = [
   { value: "", label: "Top markets" },
@@ -32,7 +32,7 @@ const MARKET_CATEGORY_FILTERS = [
 export function TabPredictions() {
   const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
-  const androidPlaySafe = isNativeAndroidShell();
+  const androidPlaySafe = isNativeShell();
   const enabled = !modulesLoading && hasModule("predictions");
   const simMode = isSimulationOnly("predictions");
   const [category, setCategory] = useState("");

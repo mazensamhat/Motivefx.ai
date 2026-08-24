@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Filter, RefreshCw, X } from "lucide-react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { apiGet, getUserId } from "../lib/api";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { AssetDeepDiveModal } from "./AssetDeepDiveModal";
 import { formatTime, formatUsd } from "./ActivityPanel";
@@ -55,7 +55,7 @@ function displayCount(v: unknown): string {
 
 export function BetMarketActivityPanel() {
   const isMobile = useMediaQuery("(max-width: 900px)");
-  const androidPlaySafe = isNativeAndroidShell();
+  const androidPlaySafe = isNativeShell();
   const [sport, setSport] = useState("");
   const [matchup, setMatchup] = useState("");
   const [minBets, setMinBets] = useState("");

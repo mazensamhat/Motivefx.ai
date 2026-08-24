@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { API_BASE, TERMINAL_URL, WEB_BASE } from "../config";
+import { API_BASE, APP_VERSION, IOS_BUILD_NUMBER, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
@@ -72,7 +72,7 @@ const VIEWPORT_LOCK_SCRIPT = `
           // iOS free reader (2.1b / 3.1.1): hide purchase / subscription UI + ModuleGate padlocks.
           ${
             Platform.OS === "ios"
-              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell .module-gate-overlay,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell .btn-annual-cta:not(.btn-age-gate-continue){display:none!important;}","html.motivefx-native-shell .module-gate-preview{filter:none!important;pointer-events:auto!important;user-select:auto!important;max-height:none!important;overflow:visible!important;}",`
+              ? `"html.motivefx-native-shell .tier-pricing,html.motivefx-native-shell .pricing-terminal,html.motivefx-native-shell .native-companion-billing,html.motivefx-native-shell .billing-fine-print,html.motivefx-native-shell .simulation-banner-cta,html.motivefx-native-shell .win-hook-modal,html.motivefx-native-shell .win-hook-cta-v2,html.motivefx-native-shell .feature-gate,html.motivefx-native-shell .module-pricing,html.motivefx-native-shell .module-gate-overlay,html.motivefx-native-shell .pricing-page-header,html.motivefx-native-shell .pricing-tier-grid,html.motivefx-native-shell .pricing-tier-card,html.motivefx-native-shell .pricing-section,html.motivefx-native-shell .landing-pricing,html.motivefx-native-shell .pricing-preview-grid,html.motivefx-native-shell a[href*='/pricing'],html.motivefx-native-shell a[href*='checkout'],html.motivefx-native-shell a[href*='billing'],html.motivefx-native-shell .btn-annual-cta:not(.btn-age-gate-continue){display:none!important;}","html.motivefx-native-shell .module-gate-preview{filter:none!important;pointer-events:auto!important;user-select:auto!important;max-height:none!important;overflow:visible!important;}",`
               : ""
           }
         ].join("");
@@ -205,7 +205,7 @@ function isBillingOrCheckoutUrl(url: string): boolean {
 }
 
 /** Web routes that leave the terminal SPA and often render blank / wrong in the shell. */
-function isOffTerminalShellUrl(url: string): "auth" | "admin" | "app" | null {
+function isOffTerminalShellUrl(url: string): "auth" | "admin" | "app" | "pricing" | null {
   try {
     const u = new URL(url);
     if (!isAllowedOrigin(url)) return null;
@@ -215,6 +215,17 @@ function isOffTerminalShellUrl(url: string): "auth" | "admin" | "app" | null {
     }
     if (path === "/admin" || path.startsWith("/admin/")) return "admin";
     if (path === "/app" || path.startsWith("/app/")) return "app";
+    // App Store 3.1.1: never show marketing / Stripe pricing inside the WebView.
+    if (
+      path === "/pricing" ||
+      path.startsWith("/pricing/") ||
+      path === "/checkout" ||
+      path.startsWith("/checkout/") ||
+      path === "/billing" ||
+      path.startsWith("/billing/")
+    ) {
+      return "pricing";
+    }
     return null;
   } catch {
     return null;
@@ -321,7 +332,7 @@ export function TerminalScreen({
           body: JSON.stringify({
             platform: Platform.OS === "ios" ? "ios" : "android",
             channel: Platform.OS === "ios" ? "app_store" : "play_store",
-            appVersion: "1.0.0",
+            appVersion: Platform.OS === "ios" ? `${APP_VERSION} (${IOS_BUILD_NUMBER})` : APP_VERSION,
           }),
         });
         if (tokRes.ok) {
@@ -611,6 +622,15 @@ export function TerminalScreen({
         bounceToTerminal();
         return true;
       }
+      if (kind === "pricing") {
+        setIapBanner(
+          Platform.OS === "ios"
+            ? "This iOS app is a free informational reader. Purchases and subscriptions are not available in the app."
+            : "Web checkout is not available inside the app. Digital subscriptions use store billing when configured."
+        );
+        bounceToTerminal();
+        return true;
+      }
       // /app → keep reviewers inside /terminal (site /app just redirects anyway).
       bounceToTerminal();
       return true;
@@ -627,6 +647,7 @@ export function TerminalScreen({
         // Play / App Store payments: never open Stripe or web pricing/checkout from the app.
         if (isBillingOrCheckoutUrl(url)) {
           setIapBanner(freeReaderBillingMessage);
+          bounceToTerminal();
           return false;
         }
         if (handleOffTerminalNavigation(url)) return false;
@@ -637,7 +658,7 @@ export function TerminalScreen({
         return true;
       }
     },
-    [freeReaderBillingMessage, handleOffTerminalNavigation]
+    [bounceToTerminal, freeReaderBillingMessage, handleOffTerminalNavigation]
   );
 
   const remountWebView = useCallback(() => {

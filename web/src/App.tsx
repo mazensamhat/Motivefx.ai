@@ -22,7 +22,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useModulePulse } from "./hooks/useModulePulse";
 import { useModuleUsageTracker } from "./hooks/useModuleUsageTracker";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
-import { isNativeAndroidShell, isNativeIosShell, isNativeShell, syncNativeShellDocumentClass } from "./lib/nativeShell";
+import { isNativeIosShell, isNativeShell, syncNativeShellDocumentClass } from "./lib/nativeShell";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { DataDeletionPage } from "./pages/DataDeletionPage";
@@ -47,7 +47,7 @@ const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
 const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
 
 function playSafeModuleLabel(tab: { id: TabId; label: string }) {
-  if (!isNativeAndroidShell()) return tab.label;
+  if (!isNativeShell()) return tab.label;
   if (tab.id === "betting") return "Odds intel";
   if (tab.id === "predictions") return "Event intel";
   return tab.label;

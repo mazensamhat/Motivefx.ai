@@ -17,7 +17,7 @@ import { SimulationBanner } from "./SimulationBanner";
 import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 
 const BETTING_SPORT_FILTERS = [
   { value: "all", label: "All" },
@@ -34,7 +34,7 @@ export function TabBetting() {
   const { openDeepDive } = useAssetDeepDive();
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const [selectedSport, setSelectedSport] = useState("all");
-  const androidPlaySafe = isNativeAndroidShell();
+  const androidPlaySafe = isNativeShell();
   const enabled = !modulesLoading && hasModule("betting");
   const simMode = isSimulationOnly("betting");
   const sportQuery =

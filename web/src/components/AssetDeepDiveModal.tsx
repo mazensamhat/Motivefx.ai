@@ -17,7 +17,7 @@ import { MODULE_BRAND } from "../brand/moduleBrand";
 import { useApi } from "../hooks/useApi";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
 import { useSignalDetail } from "../hooks/useSignalDetail";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 import type { AssetDeepDivePayload } from "../utils/assetDeepDive";
 import { resolveSignalDetail } from "../utils/signalIntel";
 import type { HomeBriefing } from "../types";
@@ -52,7 +52,7 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
   const platformLabel = getPlatformLabel(module);
   const hasPlatform = Boolean(getPref(module)?.platformId);
   const androidPlaySafeActionBlocked =
-    isNativeAndroidShell() && (module === "betting" || module === "predictions");
+    isNativeShell() && (module === "betting" || module === "predictions");
 
   if (!payload) return null;
 
@@ -286,12 +286,12 @@ export function AssetDeepDiveModal({ payload, module, onClose }: Props) {
 
             <div className="asset-dive-sandbox">
               <span className="asset-dive-sandbox-label">
-                {androidPlaySafeActionBlocked ? "Monitor-only Android intel" : "Open in your connected app (optional)"}
+                {androidPlaySafeActionBlocked ? "Monitor-only native intel" : "Open in your connected app (optional)"}
               </span>
 
               {androidPlaySafeActionBlocked ? (
                 <p className="asset-dive-platform-hint">
-                  Odds and event-market scorecards stay informational in the Android app. MotiveFX does
+                  Odds and event-market scorecards stay informational in the native app. MotiveFX does
                   not open sportsbooks, prediction-market venues, or wagering workflows.
                 </p>
               ) : hasPlatform ? (

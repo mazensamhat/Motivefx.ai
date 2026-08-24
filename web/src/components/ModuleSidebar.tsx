@@ -2,7 +2,7 @@ import { BookOpen, Home, Lock, Settings2, Users } from "lucide-react";
 import { TAB_TO_BRAND, brandForTab } from "../brand/moduleBrand";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 import { MotiveFxBrandLogo, MotivFxLogo } from "./MotivFxLogo";
 import type { TabId } from "../types";
 
@@ -36,7 +36,7 @@ export function ModuleSidebar({
   const { profile, openSetup: openGenSetup } = useGenerationalProfile();
   const activeBrand = brandForTab(activeTab);
   const playSafeLabel = (tab: { id: TabId; label: string }) => {
-    if (!isNativeAndroidShell()) return tab.label;
+    if (!isNativeShell()) return tab.label;
     if (tab.id === "betting") return "Odds intel";
     if (tab.id === "predictions") return "Event intel";
     return tab.label;
@@ -53,7 +53,7 @@ export function ModuleSidebar({
         )}
       </div>
 
-      <div className="sidebar-label">{isNativeAndroidShell() ? "Market Monitors" : "Market Desks"}</div>
+      <div className="sidebar-label">{isNativeShell() ? "Market Monitors" : "Market Desks"}</div>
       <nav className="sidebar-nav">
         {NAV.map((t) => {
           const locked = t.module !== "home" && !hasModule(t.module);
@@ -100,7 +100,7 @@ export function ModuleSidebar({
         </div>
         <button type="button" className="sidebar-apps-btn" onClick={openSetup}>
           <Settings2 size={12} />
-          {isNativeAndroidShell() ? "Research Apps" : "My Apps & Brokers"}
+          {isNativeShell() ? "Research Apps" : "My Apps & Brokers"}
         </button>
         <button type="button" className="sidebar-apps-btn" onClick={onOpenGlossary}>
           <BookOpen size={12} />

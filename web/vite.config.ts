@@ -8,13 +8,22 @@ export default defineConfig({
     port: 5280,
     strictPort: true,
     proxy: {
-      "/api": {
-        target: "http://127.0.0.1:8001",
+      // Standalone web talks to /api/terminal-auth/*; production site exposes /api/auth/*
+      "/api/terminal-auth": {
+        target: process.env.VITE_API_PROXY || "http://127.0.0.1:8001",
         changeOrigin: true,
+        secure: true,
+        rewrite: (p) => p.replace(/^\/api\/terminal-auth/, "/api/auth"),
+      },
+      "/api": {
+        target: process.env.VITE_API_PROXY || "http://127.0.0.1:8001",
+        changeOrigin: true,
+        secure: true,
       },
       "/go": {
-        target: "http://127.0.0.1:8001",
+        target: process.env.VITE_API_PROXY || "http://127.0.0.1:8001",
         changeOrigin: true,
+        secure: true,
       },
     },
   },

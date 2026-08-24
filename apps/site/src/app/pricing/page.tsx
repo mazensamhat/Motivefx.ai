@@ -85,6 +85,13 @@ export default function PricingPage() {
   /** Start false so first paint shows static PRICING_TIERS — never "Loading plans…". */
   const [planReady, setPlanReady] = useState(false);
 
+  // App Store / Play: never show web subscription pricing inside MotiveFXNative WebView.
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    if (!/MotiveFXNative/i.test(navigator.userAgent)) return;
+    window.location.replace("/terminal");
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/me", { cache: "no-store" })

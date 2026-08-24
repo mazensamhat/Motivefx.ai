@@ -27,7 +27,7 @@ import { MotivFxLogo } from "./MotivFxLogo";
 import { TodaysSignalsCard, type TodaysSignalRow } from "./TodaysSignalsCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { useSignalDetail } from "../hooks/useSignalDetail";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 import { formatSignalStrength } from "../config/productCopy";
 import { homeScoreDetail, sentimentDetail, confidenceDetail, scenarioDetail } from "../utils/signalIntel";
 import {
@@ -92,7 +92,7 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
 
   const b = data;
   const playSafeTileLabel = (tile: { tab: TabId; label: string }) => {
-    if (!isNativeAndroidShell()) return tile.label;
+    if (!isNativeShell()) return tile.label;
     if (tile.tab === "betting") return "Odds intel";
     if (tile.tab === "predictions") return "Event intel";
     return tile.label;

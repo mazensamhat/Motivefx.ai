@@ -442,6 +442,28 @@ html.motivefx-native-shell .win-hook-modal .btn-annual-cta {
   display: none !important;
 }
 
+/* iOS free reader: never show tier / subscribe / marketing pricing surfaces */
+html.motivefx-ios-reader .tier-pricing,
+html.motivefx-ios-reader .pricing-terminal,
+html.motivefx-ios-reader .module-pricing,
+html.motivefx-ios-reader .native-companion-billing,
+html.motivefx-ios-reader .billing-fine-print,
+html.motivefx-ios-reader .simulation-banner-cta,
+html.motivefx-ios-reader .win-hook-modal,
+html.motivefx-ios-reader .win-hook-cta-v2,
+html.motivefx-ios-reader .feature-gate,
+html.motivefx-ios-reader .pricing-page-header,
+html.motivefx-ios-reader .pricing-tier-grid,
+html.motivefx-ios-reader .pricing-tier-card,
+html.motivefx-ios-reader .pricing-section,
+html.motivefx-ios-reader .landing-pricing,
+html.motivefx-ios-reader .pricing-preview-grid,
+html.motivefx-ios-reader a[href*="/pricing"],
+html.motivefx-ios-reader a[href*="checkout"],
+html.motivefx-ios-reader a[href*="billing"] {
+  display: none !important;
+}
+
 /* App Store Path B free reader: never obscure market desks with ModuleGate padlocks */
 html.motivefx-ios-reader .module-gate-overlay,
 html.motivefx-native-shell.motivefx-ios-reader .module-gate-overlay {

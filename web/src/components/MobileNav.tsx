@@ -1,6 +1,6 @@
 import { MotivFxLogo } from "./MotivFxLogo";
 import { TAB_TO_BRAND } from "../brand/moduleBrand";
-import { isNativeAndroidShell } from "../lib/nativeShell";
+import { isNativeShell } from "../lib/nativeShell";
 import type { TabId } from "../types";
 
 /** Trading modules only — workspace chrome lives in the mobile header toolbar. */
@@ -19,7 +19,7 @@ interface BottomNavProps {
 
 export function MobileBottomNav({ activeTab, onSelect }: BottomNavProps) {
   const playSafeLabel = (tab: { id: TabId; label: string }) => {
-    if (!isNativeAndroidShell()) return tab.label;
+    if (!isNativeShell()) return tab.label;
     if (tab.id === "betting") return "Odds intel";
     if (tab.id === "predictions") return "Event intel";
     return tab.label;

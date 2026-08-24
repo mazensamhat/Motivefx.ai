@@ -23,11 +23,36 @@ function isNativeAppShell(request: NextRequest): boolean {
   return /MotiveFXNative/i.test(ua);
 }
 
+function isNativeBillingPath(pathname: string): boolean {
+  const p = pathname.toLowerCase().replace(/\/+$/, "") || "/";
+  return (
+    p === "/pricing" ||
+    p.startsWith("/pricing/") ||
+    p === "/checkout" ||
+    p.startsWith("/checkout/") ||
+    p === "/billing" ||
+    p.startsWith("/billing/")
+  );
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // App Store 3.1.1 / Play Payments: native WebView must never land on web pricing.
+  if (isNativeAppShell(request) && isNativeBillingPath(pathname)) {
+    const terminal = request.nextUrl.clone();
+    terminal.pathname = "/terminal";
+    terminal.search = "";
+    return NextResponse.redirect(terminal);
+  }
+
   // Static terminal bundle (JS/CSS/images) must not bounce through login.
   if (isStaticTerminalAsset(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Only gate /terminal below — pricing redirect above already returned.
+  if (!pathname.startsWith("/terminal")) {
     return NextResponse.next();
   }
 
@@ -75,5 +100,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/terminal", "/terminal/:path*"],
+  matcher: [
+    "/terminal",
+    "/terminal/:path*",
+    "/pricing",
+    "/pricing/:path*",
+    "/checkout",
+    "/checkout/:path*",
+    "/billing",
+    "/billing/:path*",
+  ],
 };

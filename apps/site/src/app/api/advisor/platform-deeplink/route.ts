@@ -1,9 +1,17 @@
 import { badRequest, json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
+import { isTrustedNativeReaderRequest } from "@/lib/terminal/ios-reader";
 import { getPlatformPrefs } from "@/lib/terminal/platform-prefs";
 import { buildDeeplink, findPlatform } from "@/lib/terminal/trading-platforms";
 
 export const dynamic = "force-dynamic";
+
+function isNativeShellRequest(request: Request): boolean {
+  const ua = request.headers.get("user-agent") ?? "";
+  if (/MotiveFXNative/i.test(ua)) return true;
+  const shell = (request.headers.get("x-motivefx-shell") ?? "").trim().toLowerCase();
+  return shell === "ios" || shell === "android";
+}
 
 export async function POST(request: Request) {
   const auth = await requireTerminalSession();
@@ -18,6 +26,16 @@ export async function POST(request: Request) {
   if (!body.user_id || !body.module) return badRequest("Missing user_id or module.");
   try {
     assertUserMatch(auth.session, body.user_id);
+
+    // G4 App Review: native shells are monitor-only for odds / event markets.
+    if (body.module === "betting" || body.module === "predictions") {
+      if (isNativeShellRequest(request) || (await isTrustedNativeReaderRequest(request))) {
+        return badRequest(
+          "MotiveFX native apps are monitor-only for odds and event-market intel. Sportsbook and prediction-market app handoffs are disabled."
+        );
+      }
+    }
+
     const prefs = await getPlatformPrefs(body.user_id);
     const entry = prefs[body.module];
     if (!entry?.platformId) {

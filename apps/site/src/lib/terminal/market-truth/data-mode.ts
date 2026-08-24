@@ -32,3 +32,32 @@ export function allowsDemoFeeds(mode: DataMode = getDataMode()): boolean {
 export function isProductionBoundary(mode: DataMode = getDataMode()): boolean {
   return mode === "PRODUCTION";
 }
+
+/**
+ * Feed display mode for a request. Motive Signal scoring still uses PRODUCTION boundary
+ * unless env overrides — only panel feeds may use labeled APP_REVIEW samples.
+ */
+export async function resolveFeedDataMode(request?: Request | null): Promise<DataMode> {
+  const envMode = getDataMode();
+  if (envMode !== "PRODUCTION") return envMode;
+  if (!request) return "PRODUCTION";
+
+  try {
+    const { isTrustedNativeReaderRequest } = await import("../ios-reader");
+    if (await isTrustedNativeReaderRequest(request)) return "APP_REVIEW";
+  } catch {
+    /* ignore */
+  }
+
+  const ua = request.headers.get("user-agent") ?? "";
+  if (/MotiveFXNative/i.test(ua)) return "APP_REVIEW";
+
+  const token = request.headers.get("x-motivefx-native-reader")?.trim();
+  if (token) {
+    const { verifyNativeReaderToken } = await import("../native-reader-token");
+    const claims = await verifyNativeReaderToken(token);
+    if (claims?.readerMode) return "APP_REVIEW";
+  }
+
+  return "PRODUCTION";
+}
