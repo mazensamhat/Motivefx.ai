@@ -3,6 +3,7 @@ import {
   classifyMotiveStance,
   formatMotiveSignalLabel,
 } from "@/lib/terminal/market-truth";
+import { recordProbabilityViewsToLedger } from "@/lib/terminal/market-truth/record-from-views";
 import { OPPORTUNITY_RADAR_DEMO } from "@/lib/marketing-copy";
 import type { Direction, ProbabilityFactor, ProbabilityView } from "./types";
 
@@ -215,7 +216,9 @@ export function buildProbabilityViews(
     });
   }
 
-  return views.sort((a, b) => b.probability - a.probability);
+  const sorted = views.sort((a, b) => b.probability - a.probability);
+  recordProbabilityViewsToLedger(sorted, opportunities);
+  return sorted;
 }
 
 export function probabilityEnrichment(view: ProbabilityView) {
