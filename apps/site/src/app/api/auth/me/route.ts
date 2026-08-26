@@ -3,7 +3,7 @@ import { getSession } from "@/lib/session";
 import { isAdminEmail } from "@/lib/admin";
 import { findUserSafeCached } from "@/lib/load-user";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
-import { isNativeIosAppStoreRequest } from "@/lib/terminal/ios-reader";
+import { isTrustedNativeReaderRequest } from "@/lib/terminal/ios-reader";
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!user || user.disabledAt) return unauthorized();
 
   // iOS App Store free reader: never surface web/Stripe paid flags to the shell.
-  const iosReader = isNativeIosAppStoreRequest(request);
+  const iosReader = await isTrustedNativeReaderRequest(request);
 
   return json({
     user: {

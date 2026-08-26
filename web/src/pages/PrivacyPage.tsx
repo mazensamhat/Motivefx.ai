@@ -2,12 +2,22 @@ import { LegalPageLayout } from "../components/LegalPageLayout";
 import { FinancialDisclaimer } from "../components/FinancialDisclaimer";
 import { LEGAL_ENTITY, SERVICES_DEFINITION } from "../legal/entity";
 import { LegalEntityBlock } from "../legal/LegalEntityBlock";
+import { isNativeIosShell } from "../lib/nativeShell";
 
 export function PrivacyPage() {
+  const iosReader = isNativeIosShell();
+
   return (
     <LegalPageLayout title="Privacy Policy" activePage="privacy">
       <p><strong>Effective date:</strong> July 4, 2026</p>
       <LegalEntityBlock />
+      {iosReader && (
+        <p className="legal-def-block">
+          <strong>iOS app (free reader):</strong> The MotiveFX iOS app is a free informational market-insights reader
+          with no in-app purchases. This policy describes data we collect when you use the iOS app. Paid plans and web
+          checkout are not offered inside the iOS app.
+        </p>
+      )}
       <p className="legal-def-block">
         <strong>Data controller:</strong> {LEGAL_ENTITY.legalName} controls personal information processed through{" "}
         {SERVICES_DEFINITION}, except where a payment processor or other service provider acts as an independent
@@ -20,25 +30,28 @@ export function PrivacyPage() {
 
       <h2>1. Information we collect</h2>
       <ul>
-            <li><strong>Account data:</strong> email, display name, password (hashed). Optional experience cohort (not sex/gender).</li>
-            <li><strong>Usage data:</strong> modules accessed, sessions, acquisition channel, feature interactions.</li>
-            <li><strong>Holdings &amp; activity:</strong> positions you track, bets, predictions, platform preferences.</li>
-            <li><strong>Intel features:</strong> radar symbols, journal notes, alerts, signal saves/exports.</li>
-            <li><strong>Consent records:</strong> privacy, terms, and risk acknowledgement timestamps and document versions.</li>
-            <li><strong>Payment data:</strong> subscription metadata via Stripe (web) and/or Apple App Store / Google Play billing (mobile apps). We do not store full card numbers.</li>
-            <li><strong>Device &amp; logs:</strong> IP, browser, app version, crash logs when enabled.</li>
-          </ul>
-          <p>
-            <strong>Sensitive information.</strong> Holdings, betting, journal, and similar activity data may be
-            sensitive in some jurisdictions. Provide it only if you choose to use those features.
-          </p>
+        <li><strong>Account data:</strong> email, display name, password (hashed). Optional experience cohort (not sex/gender).</li>
+        <li><strong>Usage data:</strong> modules accessed, sessions, acquisition channel, feature interactions.</li>
+        <li><strong>Holdings &amp; activity:</strong> positions you track, bets, predictions, platform preferences.</li>
+        <li><strong>Intel features:</strong> radar symbols, journal notes, alerts, signal saves/exports.</li>
+        <li><strong>Consent records:</strong> privacy, terms, and risk acknowledgement timestamps and document versions.</li>
+        {!iosReader && (
+          <li><strong>Payment data:</strong> subscription metadata via Stripe (web) and/or Google Play billing (Android app). We do not store full card numbers.</li>
+        )}
+        <li><strong>Device &amp; logs:</strong> IP, browser, app version, crash logs when enabled.</li>
+      </ul>
+      <p>
+        <strong>Sensitive information.</strong> Holdings, betting, journal, and similar activity data may be
+        sensitive in some jurisdictions. Provide it only if you choose to use those features.
+      </p>
 
       <h2>2. How we use information</h2>
       <ul>
         <li>Provide, operate, secure, and improve the Services, including AI-generated intel (informational only).</li>
-        <li>Process subscriptions, billing, fraud prevention, and support.</li>
+        {!iosReader && <li>Process subscriptions, billing, fraud prevention, and support.</li>}
         <li>Record consent and risk acknowledgements for compliance.</li>
-        <li>Send service, security, and billing communications.</li>
+        {!iosReader && <li>Send service, security, and billing communications.</li>}
+        {iosReader && <li>Send service and security communications related to your account.</li>}
         <li>Send marketing emails only with your consent; you may unsubscribe anytime.</li>
         <li>Enforce Terms and comply with legal obligations.</li>
       </ul>
@@ -73,14 +86,14 @@ export function PrivacyPage() {
 
       <h2>6. Sharing &amp; subprocessors</h2>
       <p>We share data with service providers only as needed to operate the Services:</p>
-          <ul>
-            <li>Stripe (web payments and billing)</li>
-            <li>Apple and Google (in-app subscription billing when you purchase inside the iOS/Android apps)</li>
-            <li>OpenAI and other AI providers (AI insights features — see Section 4)</li>
-            <li>Cloud hosting, email, and notification providers</li>
-            <li>Market data and odds API partners (generally no personal data; may include request metadata)</li>
-            <li>Analytics and error monitoring (where enabled)</li>
-          </ul>
+      <ul>
+        {!iosReader && <li>Stripe (web payments and billing)</li>}
+        {!iosReader && <li>Google (in-app subscription billing when you purchase inside the Android app)</li>}
+        <li>OpenAI and other AI providers (AI insights features — see Section 4)</li>
+        <li>Cloud hosting, email, and notification providers</li>
+        <li>Market data and odds API partners (generally no personal data; may include request metadata)</li>
+        <li>Analytics and error monitoring (where enabled)</li>
+      </ul>
       <p>
         We do not sell personal information. We do not share personal information for cross-context behavioral advertising.
         We may disclose information if required by law or to protect rights and safety.
@@ -98,7 +111,7 @@ export function PrivacyPage() {
         <li>Account data: while active and as required afterward for legal, tax, or dispute purposes.</li>
         <li>Consent and risk acknowledgement records: retained as needed to demonstrate compliance — not deleted immediately on account closure.</li>
         <li>Telemetry: typically 90 days unless needed for security.</li>
-        <li>Payment records: up to 7 years for tax/accounting.</li>
+        {!iosReader && <li>Payment records: up to 7 years for tax/accounting.</li>}
       </ul>
 
       <h2>9. Your rights</h2>

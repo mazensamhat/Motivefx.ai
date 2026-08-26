@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { authPublicPost, type AuthUser } from "../lib/api";
+import { isNativeIosShell } from "../lib/nativeShell";
 import { LegalConsentCheckboxes } from "./LegalConsentCheckboxes";
 import { MotiveFxBrandLogo } from "./MotivFxLogo";
 
@@ -120,8 +121,12 @@ export function AuthModal({
           {pendingToken
             ? "Enter the 6-digit code from your authenticator app."
             : mode === "login"
-              ? "Secure your holdings, subscriptions, and preferences."
-              : "Sync holdings, alerts, and journal across your devices."}
+              ? isNativeIosShell()
+                ? "Sign in is optional — save preferences and sync your ledger."
+                : "Secure your holdings, subscriptions, and preferences."
+              : isNativeIosShell()
+                ? "Create an account to save preferences and sync across devices."
+                : "Sync holdings, alerts, and journal across your devices."}
         </p>
 
         <form className="auth-form" onSubmit={handleSubmit}>

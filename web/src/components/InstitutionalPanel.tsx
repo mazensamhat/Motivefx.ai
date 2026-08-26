@@ -67,7 +67,7 @@ export function InstitutionalPanel() {
         </div>
         <p className="phase2-muted">
           {iosReader
-            ? "Team workspaces and API keys are available on the web (Ultra+ / Elite). This iOS app is a free informational reader."
+            ? "Team workspaces and API keys are not available in this iOS reader app."
             : "Team workspaces, shared research notes, API keys, concierge support, and custom scenario templates unlock on Ultra+. Elite adds white-glove onboarding."}
         </p>
       </section>

@@ -6,9 +6,12 @@ import { LEGAL_ENTITY } from "../legal/entity";
 
 import { LegalEntityBlock } from "../legal/LegalEntityBlock";
 
+import { isNativeIosShell } from "../lib/nativeShell";
+
 
 
 export function DataDeletionPage() {
+  const iosReader = isNativeIosShell();
 
   return (
 
@@ -56,13 +59,15 @@ export function DataDeletionPage() {
 
         <li>In-app intel alert history</li>
 
-        <li>Subscription and module status metadata</li>
+        <li>{iosReader ? "Module access metadata" : "Subscription and module status metadata"}</li>
 
         <li>Consent and risk acknowledgment records (timestamps and document versions)</li>
 
       </ul>
 
-      <p>Payment card numbers are never stored by Motive — Stripe holds billing details.</p>
+      {!iosReader && (
+        <p>Payment card numbers are never stored by Motive — Stripe holds billing details.</p>
+      )}
 
 
 
@@ -111,7 +116,7 @@ export function DataDeletionPage() {
 
       <p>
 
-        <strong>Records we may retain:</strong> billing, security, fraud-prevention, tax, dispute, and consent/risk
+        <strong>Records we may retain:</strong> {iosReader ? "security, fraud-prevention, tax, dispute, and consent/risk" : "billing, security, fraud-prevention, tax, dispute, and consent/risk"}
 
         acknowledgment records may be retained where necessary for legal, compliance, security, or legitimate business
 
@@ -119,11 +124,11 @@ export function DataDeletionPage() {
 
       </p>
 
-      <p>
-
-        Stripe may retain billing records as required by law (typically up to 7 years).
-
-      </p>
+      {!iosReader && (
+        <p>
+          Stripe may retain billing records as required by law (typically up to 7 years).
+        </p>
+      )}
 
       <p>
 
