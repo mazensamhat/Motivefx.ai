@@ -210,13 +210,15 @@ export default function App() {
               {!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} compact />}
             </div>
             <div className="app-footer-links">
-              <a href="/legal-documents.html" target="_blank" rel="noreferrer">
-                Legal
-              </a>
+              {!isNativeIosShell() && (
+                <a href="/legal-documents.html" target="_blank" rel="noreferrer">
+                  Legal
+                </a>
+              )}
               <a href={legalHref("privacy")}>Privacy</a>
               <a href={legalHref("terms")}>Terms</a>
               <a href={legalHref("data-deletion")}>Data deletion</a>
-              <a href={legalHref("cookies")}>Cookies</a>
+              {!isNativeIosShell() && <a href={legalHref("cookies")}>Cookies</a>}
               <a href={legalHref("disclaimer")}>Disclaimer</a>
               {SITE_EMBED && !isNativeShell() && <a href="/app/settings">Site account</a>}
               {SITE_EMBED && isAdmin && !isNativeShell() && <a href="/admin">Ops Console</a>}

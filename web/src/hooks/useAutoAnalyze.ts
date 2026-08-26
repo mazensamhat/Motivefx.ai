@@ -1,9 +1,14 @@
 import { useCallback, useState } from "react";
 import { apiPost, getUserId } from "../lib/api";
+import { isNativeIosShell } from "../lib/nativeShell";
 import { useAuth } from "./useAuth";
 import type { AdvisorResult, DeepScan } from "../types";
 
-const MODULE_LOCK_MSG = "Subscribe to unlock this intelligence market";
+function moduleLockMessage(): string {
+  return isNativeIosShell()
+    ? "Analysis is unavailable right now. Try again later."
+    : "Subscribe to unlock this intelligence market";
+}
 
 function isModuleLockError(msg: string): boolean {
   return msg.includes("Subscribe to unlock") || msg.includes("not included in your plan");
@@ -57,7 +62,7 @@ export function useAutoAnalyze(module: "trades" | "crypto" | "betting" | "penny"
           return false;
         }
 
-        setAnalyzeError(isModuleLockError(msg) ? MODULE_LOCK_MSG : msg);
+        setAnalyzeError(isModuleLockError(msg) ? moduleLockMessage() : msg);
         return false;
       } finally {
         setLoading(false);

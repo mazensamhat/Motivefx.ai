@@ -118,13 +118,17 @@ export function AuthScreen({ onRequestDeleteAccount, onContinueWithoutAccount }:
         <Text style={styles.sub}>
           {pendingToken
             ? "Enter your 2FA code"
-            : onContinueWithoutAccount
+            : Platform.OS === "ios"
               ? mode === "login"
-                ? "Sign in is optional — or continue without an account"
-                : "Create an account — or continue without one"
-              : mode === "login"
-                ? "Sign in to your account"
-                : "Create your account"}
+                ? "Sign in is optional — save preferences and sync your ledger across devices"
+                : "Create an account to save preferences — or continue without one"
+              : onContinueWithoutAccount
+                ? mode === "login"
+                  ? "Sign in is optional — or continue without an account"
+                  : "Create an account — or continue without one"
+                : mode === "login"
+                  ? "Sign in to your account"
+                  : "Create your account"}
         </Text>
 
         {!pendingToken && (
@@ -297,7 +301,7 @@ export function AuthScreen({ onRequestDeleteAccount, onContinueWithoutAccount }:
 
         <Text style={styles.disclaimer}>
           {Platform.OS === "ios"
-            ? `Informational only. Not financial advice. ${APP_DISPLAY_NAME} is a free market-insights reader on iOS — no in-app purchases. Signing in with a web account does not unlock exclusive paid content. Odds/predictions desks are monitor-only intel (not wagering).`
+            ? `Informational only. Not financial advice. ${APP_DISPLAY_NAME} on iOS is a free market-insights reader with no in-app purchases. Sign-in is optional and only saves your preferences and tracked holdings. Odds and prediction desks are monitor-only intel — not wagering.`
             : `Informational only. Not financial advice. ${APP_DISPLAY_NAME} provides market research and analytics — not brokerage, sportsbook, or investment advice. This app does not direct you to purchase subscriptions on the website.`}
         </Text>
         <Text style={styles.buildTag}>

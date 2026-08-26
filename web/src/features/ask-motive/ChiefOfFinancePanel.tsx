@@ -132,36 +132,44 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate }: Pr
         </header>
 
         {loading ? (
-          <div className="chief-locked">Loading access…</div>
+          <div className="chief-locked">Loading…</div>
         ) : !isAuthenticated ? (
           <div className="chief-locked">
             <Lock size={22} />
-            <p>Sign in to talk with your A.I. Chief of Finance.</p>
+            <p>
+              {isNativeIosShell()
+                ? "Sign in (optional) to save preferences and sync your ledger with your Chief of Finance."
+                : "Sign in to talk with your A.I. Chief of Finance."}
+            </p>
             <button type="button" className="btn btn-accent-terminal btn-sm" onClick={() => openAuth("login")}>
-              Sign in
+              {isNativeIosShell() ? "Sign in (optional)" : "Sign in"}
             </button>
           </div>
         ) : !unlocked ? (
           <div className="chief-locked">
             <Lock size={22} />
-            <p>
-              Unlock <strong>A.I. Chief of Finance</strong> on {requiredTierLabel("ask_motive")} or higher
-              with an active plan.
-            </p>
             {isNativeIosShell() ? (
-              <p className="chief-locked-hint">
-                This iOS build is a free informational reader — market insights stay available without a
-                purchase or web subscription unlock.
-              </p>
-            ) : isNativeShell() ? (
-              <p className="chief-locked-hint">
-                Open Account → plans in the terminal when store billing is available, or sign in with an
-                account that already includes this feature.
+              <p>
+                Your A.I. Chief of Finance is part of this free informational reader. Market insights stay available
+                without any purchase.
               </p>
             ) : (
-              <a className="btn btn-accent-terminal btn-sm" href="/pricing">
-                View plans
-              </a>
+              <>
+                <p>
+                  Unlock <strong>A.I. Chief of Finance</strong> on {requiredTierLabel("ask_motive")} or higher
+                  with an active plan.
+                </p>
+                {isNativeShell() ? (
+                  <p className="chief-locked-hint">
+                    Open Account → plans in the terminal when store billing is available, or sign in with an
+                    account that already includes this feature.
+                  </p>
+                ) : (
+                  <a className="btn btn-accent-terminal btn-sm" href="/pricing">
+                    View plans
+                  </a>
+                )}
+              </>
             )}
           </div>
         ) : (

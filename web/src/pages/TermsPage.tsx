@@ -2,12 +2,22 @@ import { LegalPageLayout } from "../components/LegalPageLayout";
 import { LEGAL_ENTITY, SERVICES_DEFINITION } from "../legal/entity";
 import { PRODUCT_TAGLINE } from "../config/productCopy";
 import { LegalEntityBlock } from "../legal/LegalEntityBlock";
+import { isNativeIosShell } from "../lib/nativeShell";
 
 export function TermsPage() {
+  const iosReader = isNativeIosShell();
+
   return (
     <LegalPageLayout title="Terms of Service" activePage="terms">
       <p><strong>Effective date:</strong> July 4, 2026</p>
       <LegalEntityBlock />
+      {iosReader && (
+        <p className="legal-def-block">
+          <strong>iOS app (free reader):</strong> The MotiveFX iOS app is a free informational market-insights reader.
+          There are no in-app purchases, subscription purchase flows, or paid digital unlocks in the iOS app. Signing in
+          is optional and only saves your preferences and tracked holdings.
+        </p>
+      )}
       <p className="legal-def-block">
         <strong>Defined terms:</strong> {SERVICES_DEFINITION} are provided by {LEGAL_ENTITY.legalName} (&quot;Motive,&quot;
         &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). Product names are branding only; your contract is with{" "}
@@ -81,28 +91,32 @@ export function TermsPage() {
         </li>
       </ul>
 
-      <h2>5. Subscriptions, billing &amp; refunds</h2>
-      <ul>
-        <li>Prices are shown at checkout. Fees are exclusive of applicable taxes unless stated otherwise.</li>
-        <li>
-          You are responsible for applicable sales, use, GST/HST, VAT, or similar taxes except taxes based on our income.
-        </li>
-        <li>By subscribing, you consent to automatic renewal at the displayed rate until you cancel.</li>
-        <li>Free trials convert to paid subscriptions unless cancelled before the trial ends.</li>
-        <li>Cancellations take effect at the end of the current billing period unless required otherwise by law.</li>
-        <li>Manage billing and payment methods through Stripe&apos;s customer portal linked from Account settings.</li>
-        <li>Failed payments may suspend paid features until resolved.</li>
-        <li>
-          If you dispute a charge, contact{" "}
-          <a href={`mailto:${LEGAL_ENTITY.supportEmail}`}>{LEGAL_ENTITY.supportEmail}</a> first so we can investigate.
-          Chargebacks or payment disputes may lead to temporary suspension pending review. Nothing here limits lawful
-          consumer payment dispute rights.
-        </li>
-        <li>Refunds are provided where required by applicable law; otherwise at our discretion.</li>
-        <li>Nothing in these Terms limits non-waivable consumer rights under applicable law.</li>
-      </ul>
+      {!iosReader && (
+        <>
+          <h2>5. Subscriptions, billing &amp; refunds</h2>
+          <ul>
+            <li>Prices are shown at checkout. Fees are exclusive of applicable taxes unless stated otherwise.</li>
+            <li>
+              You are responsible for applicable sales, use, GST/HST, VAT, or similar taxes except taxes based on our income.
+            </li>
+            <li>By subscribing, you consent to automatic renewal at the displayed rate until you cancel.</li>
+            <li>Free trials convert to paid subscriptions unless cancelled before the trial ends.</li>
+            <li>Cancellations take effect at the end of the current billing period unless required otherwise by law.</li>
+            <li>Manage billing and payment methods through Stripe&apos;s customer portal linked from Account settings.</li>
+            <li>Failed payments may suspend paid features until resolved.</li>
+            <li>
+              If you dispute a charge, contact{" "}
+              <a href={`mailto:${LEGAL_ENTITY.supportEmail}`}>{LEGAL_ENTITY.supportEmail}</a> first so we can investigate.
+              Chargebacks or payment disputes may lead to temporary suspension pending review. Nothing here limits lawful
+              consumer payment dispute rights.
+            </li>
+            <li>Refunds are provided where required by applicable law; otherwise at our discretion.</li>
+            <li>Nothing in these Terms limits non-waivable consumer rights under applicable law.</li>
+          </ul>
+        </>
+      )}
 
-      <h2>6. Acceptable use, community &amp; copyright</h2>
+      <h2>{iosReader ? "5" : "6"}. Acceptable use, community &amp; copyright</h2>
       <p>You may not use the Services to:</p>
       <ul>
         <li>Engage in unlawful activity, market manipulation, fraud, or harassment.</li>
@@ -126,7 +140,7 @@ export function TermsPage() {
         the work and allegedly infringing material.
       </p>
 
-      <h2>7. Market data, availability &amp; geofencing</h2>
+      <h2>{iosReader ? "6" : "7"}. Market data, availability &amp; geofencing</h2>
       <p>
         Quotes, prices, news, odds, and market data may be delayed, incomplete, or unavailable. Verify information with
         official exchanges, sportsbooks, or data providers before acting.
@@ -138,7 +152,7 @@ export function TermsPage() {
         appropriate for your jurisdiction.
       </p>
 
-      <h2>8. API access (if enabled)</h2>
+      <h2>{iosReader ? "7" : "8"}. API access (if enabled)</h2>
       <p>If we provide API keys or programmatic access, you must:</p>
       <ul>
         <li>Keep API keys confidential and not share them.</li>
@@ -148,7 +162,7 @@ export function TermsPage() {
         <li>Accept that APIs may change, be rate-limited, or deprecated without SLA guarantees.</li>
       </ul>
 
-      <h2>9. AI, beta &amp; experimental features</h2>
+      <h2>{iosReader ? "8" : "9"}. AI, beta &amp; experimental features</h2>
       <p>
         When you use AI-enabled features, information you submit or select for analysis may be sent to third-party AI
         providers to generate outputs. We use reasonable measures to limit shared information to what is necessary for
@@ -165,14 +179,14 @@ export function TermsPage() {
         provided as-is with no warranty.
       </p>
 
-      <h2>10. No performance guarantees</h2>
+      <h2>{iosReader ? "9" : "10"}. No performance guarantees</h2>
       <p>
         Motive does not guarantee profits, successful trades, increased investment returns, successful betting outcomes,
         prediction accuracy, or any financial result. Past patterns shown in the Services are not forecasts of future
         performance.
       </p>
 
-      <h2>11. Intellectual property &amp; your data</h2>
+      <h2>{iosReader ? "10" : "11"}. Intellectual property &amp; your data</h2>
       <p>
         We own the Services, branding, software, and underlying technology. You retain ownership of data you input.
       </p>
@@ -184,14 +198,14 @@ export function TermsPage() {
       </p>
       <p>You may not copy, modify, or create derivative works of the Services except as permitted by law.</p>
 
-      <h2>12. Disclaimers</h2>
+      <h2>{iosReader ? "11" : "12"}. Disclaimers</h2>
       <p>
         THE SERVICES ARE PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND. WE
         DISCLAIM ALL IMPLIED WARRANTIES INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
         NON-INFRINGEMENT.
       </p>
 
-      <h2>13. Limitation of liability</h2>
+      <h2>{iosReader ? "12" : "13"}. Limitation of liability</h2>
       <p>
         TO THE MAXIMUM EXTENT PERMITTED BY LAW, MOTIVE AND ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS ARE NOT
         LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA, OR
@@ -199,26 +213,26 @@ export function TermsPage() {
         EXCEPT WHERE LIABILITY CANNOT BE LIMITED UNDER APPLICABLE CONSUMER LAW.
       </p>
 
-      <h2>14. Indemnification</h2>
+      <h2>{iosReader ? "13" : "14"}. Indemnification</h2>
       <p>
         You agree to indemnify us against claims arising from your misuse of the Services or violation of these Terms.
       </p>
 
-      <h2>15. Governing law &amp; disputes</h2>
+      <h2>{iosReader ? "14" : "15"}. Governing law &amp; disputes</h2>
       <p>
         These Terms are governed by the laws of the Province of Ontario and the federal laws of Canada applicable
         therein, without regard to conflict-of-law principles. Subject to non-waivable consumer rights, you agree that
         courts located in Ontario, Canada shall have exclusive jurisdiction over disputes arising from these Terms.
       </p>
 
-      <h2>16. Termination &amp; data</h2>
+      <h2>{iosReader ? "15" : "16"}. Termination &amp; data</h2>
       <p>
         You may close your account at any time via Account settings. See our{" "}
         <a href="/?page=data-deletion">Data Deletion &amp; Export</a> policy. We may suspend or terminate access for
-        breach, non-payment, risk, or legal requirement.
+        breach{iosReader ? ", risk," : ", non-payment, risk,"} or legal requirement.
       </p>
 
-      <h2>17. Contact</h2>
+      <h2>{iosReader ? "16" : "17"}. Contact</h2>
       <p>
         {LEGAL_ENTITY.legalName} —{" "}
         <a href={`mailto:${LEGAL_ENTITY.supportEmail}`}>{LEGAL_ENTITY.supportEmail}</a>

@@ -815,7 +815,7 @@ export function TerminalScreen({
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {onRequestSignIn ? (
         <View style={styles.guestBar}>
-          <Text style={styles.guestBarText}>Browsing as guest · market insights unlock without an account</Text>
+          <Text style={styles.guestBarText}>Browsing as guest · all market insights are free in this app</Text>
           <Pressable onPress={onRequestSignIn} accessibilityRole="button" accessibilityLabel="Sign in">
             <Text style={styles.guestBarLink}>Sign in</Text>
           </Pressable>
