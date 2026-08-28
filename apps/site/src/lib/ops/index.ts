@@ -13,3 +13,7 @@ export * from "./audit";
 export * from "./ai-model-registry";
 export * from "./attention";
 export * from "./market-truth-control";
+export * from "./impersonation";
+export * from "./incidents";
+export * from "./intelligence-quality";
+export * from "./jobs-pipelines";

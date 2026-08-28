@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   Ban,
+  Eye,
   KeyRound,
   PauseCircle,
   RefreshCw,
@@ -347,6 +349,9 @@ export function SiteUsersPanel() {
                   <td>{u.disabled ? <span className="text-red-300">Disabled</span> : <span className="text-emerald-300">Active</span>}</td>
                   <td>
                     <div className="flex flex-wrap gap-1">
+                      <Link href={`/admin/users/${u.id}`} className="admin-btn">
+                        <Eye className="h-3 w-3" /> 360
+                      </Link>
                       <button
                         type="button"
                         className="admin-btn"

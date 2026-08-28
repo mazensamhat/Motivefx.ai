@@ -1,6 +1,6 @@
 # MotiveFX Ops — Operations Master Plan v1.0
 
-> **Status:** Adopted source of truth (2026-08-28).  
+> **Status:** Adopted source of truth (2026-08-28). **Implementation:** P0–P3 surfaces shipped in Ops Console (registries, Command Center, truth room, provider health, User 360 + impersonation, incidents, intelligence pages, jobs/pipelines, debugger, calibration, replay UI, AI assistant). Durable metering/outcomes/replay execution remain iterative hardening.  
 > **Rule:** Keep the existing Ops foundation. Harden → standardize telemetry → market-truth observability → intelligence quality → user/commercial/platform ops.  
 > **Related:** [PRODUCTION_HARDENING_MASTER_PLAN.md](./PRODUCTION_HARDENING_MASTER_PLAN.md)  
 > **UI:** Light operational canvas (not the consumer terminal). See `/admin/overview`.

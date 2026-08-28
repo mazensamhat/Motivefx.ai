@@ -2,6 +2,8 @@ import { requireAdmin, getAdminApiKey } from "@/lib/admin";
 import { forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { getDataMode } from "@/lib/terminal/market-truth/data-mode";
 
+import { listAiModelRegistry } from "@/lib/ops/ai-model-registry";
+
 export async function GET() {
   const auth = await requireAdmin();
   if (!auth.ok) {
@@ -23,6 +25,7 @@ export async function GET() {
         askMotiveEnabled,
         adminApiKeyConfigured: Boolean(getAdminApiKey()),
       },
+      models: listAiModelRegistry(),
       economics: {
         principle:
           "Never spend an AI token calculating something deterministic code can calculate (G5).",

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ExternalLink, LogOut } from "lucide-react";
 import { OPS_NAV_GROUPS, OPS_QUICK_LINKS } from "@/components/admin/ops-nav";
 import { OpsCommandPalette } from "@/components/admin/ops-command-palette";
+import { OpsImpersonationBanner } from "@/components/admin/ops-impersonation-banner";
 import { clientLogout } from "@/lib/auth-client";
 import { displayNameFromEmail, initialsFromEmail } from "@/lib/ops-display-name";
 
@@ -53,7 +54,10 @@ export function OpsShell({
               <p className="ops-nav-group-label">{group.label}</p>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const active = !item.external && pathname === item.href;
+                const active =
+                  !item.external &&
+                  (pathname === item.href ||
+                    (item.href !== "/admin/overview" && pathname.startsWith(item.href + "/")));
                 const className = `ops-nav-link${active ? " active" : ""}${item.stub ? " stub" : ""}`;
 
                 if (item.external) {
@@ -130,6 +134,7 @@ export function OpsShell({
       </aside>
 
       <div className="ops-main">
+        <OpsImpersonationBanner />
         <main className="ops-content">{children}</main>
       </div>
     </div>
