@@ -75,10 +75,7 @@ async function stripeCard(): Promise<PlatformCard> {
 
 async function supabaseCard(): Promise<PlatformCard> {
   const ref = parseSupabaseProjectRef();
-  let status: PlatformCard["status"] = "unknown";
-  let summary = "Not configured";
   const checklist: PlatformCheck[] = [];
-  let userCount = "—";
 
   if (!process.env.DATABASE_URL?.trim()) {
     return {
@@ -93,30 +90,109 @@ async function supabaseCard(): Promise<PlatformCard> {
     };
   }
 
-  try {
-    userCount = String(await prisma.user.count());
-    checklist.push({ ok: true, label: "Database reachable" });
-    status = "healthy";
-    summary = `${userCount} site users`;
-  } catch (e) {
-    status = "error";
-    summary = e instanceof Error ? e.message.slice(0, 60) : "DB error";
-    checklist.push({ ok: false, label: "Database connection", detail: summary });
-  }
+  const urlHint = (() => {
+    try {
+      const u = new URL(process.env.DATABASE_URL!.trim());
+      const port = u.port || "5432";
+      const pooler = u.hostname.includes("pooler") || port === "6543";
+      return pooler ? `pooler :${port}` : `direct :${port}`;
+    } catch {
+      return "url unparseable";
+    }
+  })();
 
-  return {
-    id: "supabase",
-    name: "Supabase",
-    status,
-    summary,
-    metrics: [{ label: "Site users", value: userCount }],
-    checklist: [
-      ...checklist,
-      { ok: Boolean(ref), label: "Project ref detected", detail: ref ?? undefined },
-    ],
-    dashboardUrl: ref ? `https://supabase.com/dashboard/project/${ref}` : "https://supabase.com/dashboard",
-    billingUrl: null,
-  };
+  try {
+    const { pingDatabase, summarizePrismaConnectionError } = await import("@motivefx/database");
+    const ping = await pingDatabase(8_000);
+    if (!ping.ok) {
+      throw new Error(ping.message);
+    }
+
+    // Soft count — never fail the card if ping succeeded but count flakes.
+    let userCount = "—";
+    try {
+      userCount = String(await prisma.user.count());
+    } catch (e) {
+      const detail =
+        e instanceof Error ? summarizePrismaConnectionError(e.message) : "count failed";
+      checklist.push({ ok: false, label: "User count", detail });
+      return {
+        id: "supabase",
+        name: "Supabase",
+        status: "warn",
+        summary: `Reachable · count flaky (${detail.slice(0, 40)})`,
+        metrics: [
+          { label: "Site users", value: userCount },
+          { label: "Endpoint", value: urlHint },
+        ],
+        checklist: [
+          { ok: true, label: "Database reachable" },
+          ...checklist,
+          { ok: Boolean(ref), label: "Project ref detected", detail: ref ?? undefined },
+          { ok: Boolean(process.env.DIRECT_URL?.trim()), label: "DIRECT_URL set (migrations)" },
+        ],
+        dashboardUrl: ref
+          ? `https://supabase.com/dashboard/project/${ref}`
+          : "https://supabase.com/dashboard",
+        billingUrl: null,
+      };
+    }
+
+    checklist.push({ ok: true, label: "Database reachable" });
+    return {
+      id: "supabase",
+      name: "Supabase",
+      status: "healthy",
+      summary: `${userCount} site users`,
+      metrics: [
+        { label: "Site users", value: userCount },
+        { label: "Endpoint", value: urlHint },
+      ],
+      checklist: [
+        ...checklist,
+        { ok: Boolean(ref), label: "Project ref detected", detail: ref ?? undefined },
+        { ok: Boolean(process.env.DIRECT_URL?.trim()), label: "DIRECT_URL set (migrations)" },
+        {
+          ok: urlHint.startsWith("pooler"),
+          label: "Using transaction pooler (:6543)",
+          detail: urlHint.startsWith("pooler")
+            ? undefined
+            : "Prefer pooler.supabase.com:6543 for serverless",
+        },
+      ],
+      dashboardUrl: ref
+        ? `https://supabase.com/dashboard/project/${ref}`
+        : "https://supabase.com/dashboard",
+      billingUrl: null,
+    };
+  } catch (e) {
+    const { summarizePrismaConnectionError } = await import("@motivefx/database");
+    const summary =
+      e instanceof Error ? summarizePrismaConnectionError(e.message) : "DB error";
+    return {
+      id: "supabase",
+      name: "Supabase",
+      status: "error",
+      summary,
+      metrics: [{ label: "Endpoint", value: urlHint }],
+      checklist: [
+        { ok: false, label: "Database connection", detail: summary },
+        { ok: Boolean(ref), label: "Project ref detected", detail: ref ?? undefined },
+        { ok: Boolean(process.env.DIRECT_URL?.trim()), label: "DIRECT_URL set (migrations)" },
+        {
+          ok: urlHint.startsWith("pooler"),
+          label: "Using transaction pooler (:6543)",
+          detail: urlHint.startsWith("pooler")
+            ? undefined
+            : "DATABASE_URL should use pooler host + port 6543",
+        },
+      ],
+      dashboardUrl: ref
+        ? `https://supabase.com/dashboard/project/${ref}`
+        : "https://supabase.com/dashboard",
+      billingUrl: null,
+    };
+  }
 }
 
 async function terminalApiCard(): Promise<PlatformCard> {
