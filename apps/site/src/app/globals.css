@@ -4760,6 +4760,172 @@ html.motivefx-native-shell:not(:has(.app-content)) .app-layout {
   gap: 0.15rem;
 }
 
+.ops-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.55rem;
+}
+
+.ops-nav-group-label {
+  margin: 0.35rem 0.5rem 0.2rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.ops-nav-link.stub {
+  opacity: 0.78;
+}
+
+.ops-command-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ops-command-eyebrow {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.ops-command-overall {
+  margin: 0.25rem 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ops-command-overall.healthy {
+  color: #00c853;
+}
+
+.ops-command-overall.degraded {
+  color: #d97706;
+}
+
+.ops-command-overall.critical {
+  color: #ef4444;
+}
+
+.ops-command-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(0, 200, 83, 0.15);
+}
+
+.ops-attention-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .ops-attention-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ops-attention-list,
+.ops-intel-health {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ops-attention-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.8125rem;
+}
+
+.ops-attention-item a {
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ops-attention-item a:hover {
+  color: #00c853;
+}
+
+.ops-attention-mark {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ops-attention-item.ok .ops-attention-mark {
+  color: #00c853;
+}
+
+.ops-attention-item.warning .ops-attention-mark,
+.ops-attention-item.high .ops-attention-mark {
+  color: #d97706;
+}
+
+.ops-attention-item.critical .ops-attention-mark {
+  color: #ef4444;
+}
+
+.ops-attention-item.info .ops-attention-mark {
+  color: #3b82f6;
+}
+
+.ops-intel-health li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.ops-intel-health a {
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ops-intel-pill {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ops-intel-pill.healthy {
+  background: rgba(0, 200, 83, 0.12);
+  color: #00c853;
+}
+
+.ops-intel-pill.degraded {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.ops-intel-pill.critical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
 .ops-quick-links {
   margin-top: auto;
   padding-top: 0.75rem;

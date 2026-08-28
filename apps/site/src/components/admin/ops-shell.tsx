@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ExternalLink, LogOut } from "lucide-react";
-import { OPS_NAV, OPS_QUICK_LINKS } from "@/components/admin/ops-nav";
+import { OPS_NAV_GROUPS, OPS_QUICK_LINKS } from "@/components/admin/ops-nav";
 import { clientLogout } from "@/lib/auth-client";
 import { displayNameFromEmail, initialsFromEmail } from "@/lib/ops-display-name";
 
@@ -46,41 +46,47 @@ export function OpsShell({
         </div>
 
         <nav className="ops-nav" aria-label="Ops navigation">
-          {OPS_NAV.map((item) => {
-            const Icon = item.icon;
-            const active = !item.external && pathname === item.href;
-            const className = `ops-nav-link${active ? " active" : ""}`;
+          {OPS_NAV_GROUPS.map((group) => (
+            <div key={group.id} className="ops-nav-group">
+              <p className="ops-nav-group-label">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = !item.external && pathname === item.href;
+                const className = `ops-nav-link${active ? " active" : ""}${item.stub ? " stub" : ""}`;
 
-            if (item.external) {
-              return (
-                <a
-                  key={item.id}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={className}
-                  title={item.description}
-                >
-                  <Icon className="ops-nav-icon" />
-                  <span>{item.label}</span>
-                  {item.badge ? <span className="ops-nav-badge new">{item.badge}</span> : null}
-                  <ExternalLink className="ops-nav-external" />
-                </a>
-              );
-            }
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={className}
+                      title={item.description}
+                    >
+                      <Icon className="ops-nav-icon" />
+                      <span>{item.label}</span>
+                      {item.badge ? <span className="ops-nav-badge new">{item.badge}</span> : null}
+                      <ExternalLink className="ops-nav-external" />
+                    </a>
+                  );
+                }
 
-            return (
-              <Link key={item.id} href={item.href} className={className} title={item.description}>
-                <Icon className="ops-nav-icon" />
-                <span>{item.label}</span>
-                {item.badge ? <span className="ops-nav-badge new">{item.badge}</span> : null}
-              </Link>
-            );
-          })}
+                return (
+                  <Link key={item.id} href={item.href} className={className} title={item.description}>
+                    <Icon className="ops-nav-icon" />
+                    <span>{item.label}</span>
+                    {item.badge ? <span className="ops-nav-badge new">{item.badge}</span> : null}
+                    {item.stub ? <span className="ops-nav-badge">Soon</span> : null}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="ops-quick-links">
-          <p className="ops-quick-label">Quick Links</p>
+          <p className="ops-quick-label">Sister Consoles</p>
           {OPS_QUICK_LINKS.map((item) => {
             const Icon = item.icon;
             const active = !item.external && pathname === item.href;

@@ -1,188 +1,178 @@
-# MotiveFX Ops Console — Master Plan
+# MotiveFX Ops — Operations Master Plan v1.0
 
-> **Status:** Adopted product master plan (2026-08-24).  
-> **Current score:** ~7.9/10 · **Target:** 9.5+  
-> **Related:** [PRODUCTION_HARDENING_MASTER_PLAN.md](./PRODUCTION_HARDENING_MASTER_PLAN.md) — G1 Truth Console overlaps **Market Truth** page.
+> **Status:** Adopted source of truth (2026-08-28).  
+> **Rule:** Keep the existing Ops foundation. Harden → standardize telemetry → market-truth observability → intelligence quality → user/commercial/platform ops.  
+> **Related:** [PRODUCTION_HARDENING_MASTER_PLAN.md](./PRODUCTION_HARDENING_MASTER_PLAN.md)  
+> **UI:** Light operational canvas (not the consumer terminal). See `/admin/overview`.
 
-## Thesis
+## 1. Mission
 
-Backend capabilities (market truth, signal integrity, provider health, financial analytics, platform monitor) exceed what the Ops product surface presents today. MotiveFX Ops should revolve around **market truth, signals, provider health, customers, and revenue** — not one giant `/admin` scroll page.
+**MotiveFX Ops is the internal operating system for the entire MotiveFX platform.**
 
-**Do not rebuild marketing in MotiveFX.** Growth → shared [Motive Life Marketing Studio](https://www.mymotivelife.com/admin) (see `apps/site/src/lib/ops-links.ts`).
+It is not just an admin dashboard. The customer-facing product helps users understand developing market signals, themes, relationships, opportunities and evidence. Ops must tell us whether **the intelligence itself is healthy, accurate, fresh, explainable, commercially valuable and operationally reliable**.
 
-## Design principles
+At any moment Ops should answer:
 
-| Principle | Implementation |
-|-----------|----------------|
-| Bloomberg discipline | Dense KPIs, monospace IDs, status dots, no fluff |
-| Stripe clarity | Left nav, one job per page, progressive disclosure |
-| Dark terminal aesthetic | Slate/graphite base (`--bg-deep`), MotiveFX gold (`#00e676`) + cyan (`#00e5ff`) accents |
-| Reuse, don't rebuild | `FinancialPanel`, `PlatformMonitorPanel`, `SiteUsersPanel`, existing admin APIs |
-| Truth before features | Market Truth page wired to G1 ledger before Signal Ops depth |
+- Is MotiveFX healthy right now?
+- Are market-data providers working? Are any feeds delayed or stale?
+- Are Motive Signals being generated correctly? Are confidence scores calibrated?
+- Which signals are strengthening/weakening, or later proved correct/incorrect?
+- Are Opportunity Radar / Market DNA / Evidence Stack built from legitimate evidence?
+- What did AI generate vs what deterministic code calculated?
+- Are any simulated/demo signals appearing as live?
+- Users, conversions, retention drivers, AI/data cost per user?
+- Which provider caused a degradation? Can we impersonate to reproduce?
+- Who changed an intelligence configuration? What requires attention right now?
 
-## Score rubric
+**Long-term goal:** MotiveFX Ops becomes the operational truth layer for MotiveFX intelligence, customers, data, infrastructure and business performance.
 
-| Area | Today | Target | Notes |
-|------|------:|-------:|-------|
-| Information architecture | 5.5 | 9.5 | Single scroll → left-nav domains |
-| Market truth visibility | 6.0 | 9.5 | Ledger + contamination + golden checks (G1) |
-| Provider ops | 4.0 | 9.0 | Kill switches exist; need UI + latency/error rollups |
-| Revenue & financial | 8.5 | 9.5 | `FinancialPanel` strong; needs dedicated Revenue route |
-| User & growth ops | 7.0 | 9.0 | Site users + signup map exist; Growth = MotiveLife link |
-| Platform monitor | 8.0 | 9.0 | Cross-product tiles; keep on Overview + Product |
-| Security & compliance | 6.5 | 9.5 | G3/G4 gates; Security page stub → entitlements audit |
-| AI economics | 5.0 | 9.0 | Legacy Vite admin has AI analysis; site admin lacks |
-| Release readiness | 7.0 | 9.5 | Tie to hardening gates G1–G7 |
-| **Overall** | **7.9** | **9.5+** | Sprint 1 ships shell + Market Truth + Providers |
+## 2. Do Not Rebuild the Existing Foundation
 
-## Navigation architecture
+Keep:
 
-```
-/admin                          → redirect /admin/overview
-/admin/overview                 Executive cockpit (KPIs, platform pulse)
-/admin/market-truth             G1 Truth Console (ledger, contamination, golden)
-/admin/signals                  Signal ops (quality, confluence, outcomes) — Sprint 2
-/admin/providers                Provider kill switches + health — Sprint 1
-/admin/users                    Site users, signup map, demographics
-/admin/revenue                  FinancialPanel + Stripe status
-/admin/product                  Module health, utilization, heatmap
-/admin/growth                   External → Motive Life Marketing Studio
-/admin/security                 Entitlements, admin audit, native attestation — Sprint 3
-/admin/ai-costs                 Token budgets, model usage — Sprint 5
-/admin/feedback                 FeedbackInboxPanel
-/admin/releases                 Gate tracker (G1–G7), deploy history — Sprint 7
-/admin/settings                 Admin emails, env flags, ops links
-/admin/legacy                   Full scroll dashboard (backward compat)
+```text
+Overview · Users · Product · Signals · Market Truth · Providers
+AI Costs · Revenue · Feedback · Releases · Security · Settings
 ```
 
-## What exists today
+Plus session auth + admin-email gate before the Ops shell.
 
-### Site admin (`apps/site`)
-
-| Asset | Path | Route / API |
-|-------|------|-------------|
-| Admin page (session gate) | `src/app/admin/page.tsx` | `/admin` |
-| Admin layout (auth) | `src/app/admin/layout.tsx` | all `/admin/*` |
-| Monolithic dashboard | `src/components/admin/admin-dashboard.tsx` | legacy view |
-| Financial analytics | `src/components/admin/financial-panel.tsx` | `GET /api/admin/financial` |
-| Platform monitor | `src/components/admin/platform-monitor-panel.tsx` | `GET /api/admin/platforms` |
-| Site users | `src/components/admin/site-users-panel.tsx` | `GET /api/admin/site-users` |
-| Feedback inbox | `src/components/admin/feedback-inbox-panel.tsx` | `GET /api/admin/feedback` |
-| Signup map | `src/components/admin/signup-map.tsx` | via `GET /api/admin/site-dashboard` |
-| Terminal analytics | `src/lib/terminal-admin-analytics.ts` | `GET /api/admin/dashboard` |
-| Financial engine | `src/lib/admin-financial-analytics.ts` | `GET /api/admin/financial` |
-| Admin API client | `src/lib/admin-api.ts` | fetch wrapper |
-| Cross-product ops links | `src/lib/ops-links.ts` | MotiveLife, MotivePulse, MotiveIQ |
-
-### Legacy Vite terminal admin (`web/`)
-
-| Asset | Path | Notes |
-|-------|------|-------|
-| Embedded admin | `web/src/components/AdminDashboard.tsx` | API-key auth, AI analysis, social integrations |
-| Admin API | `web/src/lib/adminApi.ts` | Separate from site session admin |
-| Ops link in terminal | `web/src/App.tsx`, `web/src/components/AccountMenu.tsx` | `/admin` on site embed |
-
-### Market truth & providers (G1 / G3)
-
-| Asset | Path | Purpose |
-|-------|------|---------|
-| Canonical types | `src/lib/terminal/market-truth/` | Evidence, data mode, freshness |
-| Evidence ledger | `market-truth/evidence-ledger.ts` | In-process signal evidence log |
-| Golden checks | `market-truth/golden.ts` | Demo rejection / live pass invariants |
-| Data mode | `market-truth/data-mode.ts` | `MOTIVEFX_DATA_MODE` boundary |
-| Provider kill switches | `src/lib/terminal/provider-switches.ts` | `FINNHUB_ENABLED`, etc. |
-| Feed integration | `src/lib/terminal/feeds/index.ts` | Uses data mode + provider switches |
-
-### Admin API routes (site)
-
-- `GET /api/admin/dashboard` — terminal KPIs, heatmap, demographics
-- `GET /api/admin/site-dashboard` — signups, signup map
-- `GET /api/admin/financial` — revenue, costs, margins
-- `GET /api/admin/platforms` — cross-product platform monitor
-- `GET /api/admin/site-users`, `GET/PATCH /api/admin/site-users/[id]`
-- `GET /api/admin/feedback`, `GET /api/admin/email-status`, `GET /api/admin/stripe-status`
-
-### Gaps (Ops product)
-
-| Gap | Hardening gate | Sprint |
-|-----|----------------|--------|
-| Left-nav Ops shell | — | 1 ✅ started |
-| Market Truth API + page | G1 | 1 ✅ started |
-| Provider ops UI | G3 | 1 ✅ started |
-| Signal ops (confluence, quality) | G2 | 2 |
-| Security / entitlement audit UI | G3 | 3 |
-| AI cost dashboard | G5 | 5 |
-| Release gate tracker | G7 | 7 |
-| Durable evidence ledger (DB) | G6 | 6 |
-| Growth marketing | — | External MotiveLife only |
-
-## Five-sprint build priority
-
-Aligned with [PRODUCTION_HARDENING_MASTER_PLAN.md](./PRODUCTION_HARDENING_MASTER_PLAN.md) sprints.
-
-### Sprint 1 — Ops shell + Truth + Providers *(in flight)*
-
-- Left-nav `OpsShell` with dark terminal aesthetic
-- **Overview:** executive KPIs + platform pulse (reuse APIs)
-- **Market Truth:** data mode, contamination stats, golden checks, recent ledger
-- **Providers:** env kill-switch readout
-- `/admin/legacy` preserves monolithic dashboard
-- APIs: `GET /api/admin/market-truth`, `GET /api/admin/providers`
-
-### Sprint 2 — Signal Ops
-
-- Wire Motive Signal engine metrics (confluence /100, evidence groups)
-- Signal quality histogram, neutral-copy violations
-- Per-symbol evidence drill-down from ledger
-- Map to G2 release requirements
-
-### Sprint 3 — Users + Security
-
-- `/admin/users` — migrate `SiteUsersPanel` + signup map
-- `/admin/security` — admin roster, session audit, native reader tokens
-- Entitlement matrix (UA, anonymous user_id)
-
-### Sprint 4 — Revenue + Product + Feedback
-
-- `/admin/revenue` — `FinancialPanel` + Stripe status
-- `/admin/product` — module health, heatmap, utilization
-- `/admin/feedback` — inbox panel
-
-### Sprint 5 — AI Costs + Releases + Settings
-
-- `/admin/ai-costs` — token budgets, model breakdown (port from Vite admin where useful)
-- `/admin/releases` — G1–G7 gate tracker canvas
-- `/admin/settings` — ops links, data mode display, admin emails
-
-## Ops gate tracker canvas (optional)
-
-Path for a future Cursor canvas: `docs/canvas/motivefx-ops-gates.canvas.tsx` — live G1–G7 checklist fed by `/api/admin/releases` (Sprint 5). Not blocking Sprint 1.
-
-## Implementation file map (Sprint 1)
-
-```
-apps/site/src/
-  components/admin/
-    ops-shell.tsx
-    ops-nav.ts
-    ops-overview.tsx
-    ops-market-truth.tsx
-    ops-providers.tsx
-    ops-stub-page.tsx
-  app/admin/
-    (console)/layout.tsx
-    (console)/overview/page.tsx
-    (console)/market-truth/page.tsx
-    (console)/providers/page.tsx
-    (console)/signals/page.tsx          # stub
-    (console)/users/page.tsx            # stub
-    ...
-    legacy/page.tsx
-  app/api/admin/
-    market-truth/route.ts
-    providers/route.ts
+```text
+KEEP THE FOUNDATION
+        ↓
+HARDEN PERMISSIONS
+        ↓
+STANDARDIZE TELEMETRY
+        ↓
+BUILD MARKET-TRUTH OBSERVABILITY
+        ↓
+BUILD INTELLIGENCE QUALITY
+        ↓
+IMPROVE USER OPERATIONS
+        ↓
+IMPROVE COMMERCIAL INTELLIGENCE
+        ↓
+IMPROVE PLATFORM OPERATIONS
 ```
 
-## Authorization
+## 3. Core Rule: Market Truth Before AI
 
-All `/admin/*` and `/api/admin/*` routes require session + `ADMIN_EMAILS` (see `src/lib/admin.ts`). Provider kill switches remain env-only (read in Sprint 1; write via deploy in Sprint 3+).
+> **Data establishes truth. Code calculates. AI interprets and explains.**
+
+AI must never silently invent prices, volumes, signal scores, confidence, probability, historical performance, relationships, provider state, revenue, user activity, or portfolio values.
+
+```text
+RAW SOURCE → NORMALIZATION → VALIDATION → MARKET TRUTH
+  → FEATURE / SIGNAL CALCULATION → CONFLUENCE → MOTIVE SIGNAL
+  → CONFIDENCE → EVIDENCE STACK → AI EXPLANATION → UX
+```
+
+## 4. Canonical Registries (code)
+
+| Registry | Path |
+|----------|------|
+| Products & desks | `apps/site/src/lib/ops/product-registry.ts` |
+| Events | `apps/site/src/lib/ops/event-registry.ts` |
+| Telemetry envelope | `apps/site/src/lib/ops/telemetry-envelope.ts` |
+| Truth states | `apps/site/src/lib/ops/truth-state.ts` |
+| Provenance | `apps/site/src/lib/ops/provenance.ts` |
+| Source rights | `apps/site/src/lib/ops/source-rights.ts` |
+| RBAC | `apps/site/src/lib/ops/rbac.ts` |
+| Audit | `apps/site/src/lib/ops/audit.ts` |
+| AI model/prompt registry | `apps/site/src/lib/ops/ai-model-registry.ts` |
+
+Unknown product/desk/event values become `UNKNOWN` and are surfaced as instrumentation errors.
+
+## 5. Live vs Delayed vs Simulated
+
+Every data element has an explicit truth state:
+
+```text
+LIVE | DELAYED | CACHED | ESTIMATED | DERIVED
+SIMULATED | DEMO | UNAVAILABLE | STALE | UNKNOWN
+```
+
+`SIMULATED` / `DEMO` must never look operationally identical to `LIVE` — backend enforcement + Ops visibility.
+
+## 6. Navigation (target)
+
+```text
+COMMAND          Overview · Live Operations · Alerts & Incidents
+MARKET INTEL     Market Truth · Motive Signals · Opportunity Radar · Signal Graph
+                 Market DNA · Daily Brief · Evidence Quality
+MARKET DATA      Providers · Feed Health · Coverage · Freshness · Data Rights
+PRODUCT          Product Analytics · Users · Portfolios · Alerts · Feedback
+AI               AI Operations · Prompt/Model Registry · AI Costs · AI Quality
+BUSINESS         Subscriptions · Revenue · Growth · Costs
+PLATFORM         API Health · Jobs · Pipelines · Releases · Runtime Config
+GOVERNANCE       Security · Audit Log · Roles & Access · Compliance
+SYSTEM           Settings
+SISTER CONSOLES  MyMotiveLife Ops · MotivePulse Ops
+```
+
+Existing routes stay live; new sections ship as stubs until P1/P2.
+
+## 7. Command Center
+
+Default page answers: **What requires attention?**
+
+Then: attention list → business KPIs → intelligence health (Market Truth, Motive Signal, Radar, Graph, DNA, Daily Brief).
+
+## 8. Phased delivery
+
+### P0 (now)
+
+- Canonical product + event registries
+- Telemetry envelope
+- Market truth states + provenance
+- Live / delayed / simulated enforcement helpers
+- Provider freshness monitoring hooks
+- Signal explainability + confidence calibration contracts
+- RBAC redesign (capability model)
+- Audit engine types + recorder stub
+- Secure impersonation contract (types; UI later)
+- Prompt / model version registry
+- Source rights registry (fail-closed unknown)
+
+### P1
+
+- New navigation groups + Command Center
+- Global Search (Ctrl/Cmd+K)
+- Market Truth Control Room
+- Provider Health v2
+- Motive Signal / Opportunity Radar / Evidence Stack ops
+- User 360 v2 · Support Center · AI Operations · Alerts & Incidents
+
+### P2
+
+- Signal Graph · Market DNA · Daily Brief ops
+- Outcome tracking · cross-provider reconciliation
+- Revenue Control Room · funnels · retention
+- Portfolio / alert analytics · release intelligence
+- Background jobs · pipeline monitoring
+
+### P3
+
+- Historical replay · backtesting · calibration dashboards
+- Intelligence debugger · contradiction / anomaly detection
+- Provider failover automation · AI Ops Assistant
+- Advanced cost attribution · predictive incidents
+
+## 9. Visual design
+
+Light operational canvas · high density · strong typography · clear tables · subtle borders.
+
+| Color | Meaning |
+|-------|---------|
+| Green | Healthy / verified |
+| Amber | Warning / uncertainty |
+| Red | Critical / invalid |
+| Purple | AI / intelligence |
+| Blue | Market data |
+| Gray | Unknown / inactive |
+
+## 10. The 30-second standard
+
+When you open MotiveFX Ops you should know within ~30 seconds whether markets are feeding correctly, engines are healthy, evidence is fresh, demo is not masquerading as live, signals are calibrated, providers/AI/users/revenue are healthy — or **exactly what is wrong, who is affected, when it started, what caused it, and what we can safely do**.
+
+The critical difference from MyMotiveLife Ops: **MotiveFX Ops must monitor the truthfulness and quality of the intelligence itself**, not only the software.

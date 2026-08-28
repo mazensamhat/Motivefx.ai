@@ -11,6 +11,14 @@ export type SourceType =
   | "DEMO"
   | "SYNTHETIC";
 
+/** Ops Master Plan v1.0 truth states — re-exported for G1 consumers. */
+export type { TruthState } from "@/lib/ops/truth-state";
+export {
+  assertPromotableToMarketTruth,
+  isSimulatedOrDemo,
+  truthStateFromSourceType,
+} from "@/lib/ops/truth-state";
+
 export type DataMode = "PRODUCTION" | "DEMO" | "TEST" | "APP_REVIEW";
 
 export type Freshness = "FRESH" | "AGING" | "STALE" | "EXPIRED";

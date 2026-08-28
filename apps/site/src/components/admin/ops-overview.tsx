@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { OpsActivityFeed } from "@/components/admin/ops-activity-feed";
 import { OpsChartsRow } from "@/components/admin/ops-charts-row";
+import { OpsCommandAttention } from "@/components/admin/ops-command-attention";
 import { OpsKpiCard } from "@/components/admin/ops-kpi-card";
 import { OpsPageToolbar } from "@/components/admin/ops-page-toolbar";
 import { PlatformMonitorPanel } from "@/components/admin/platform-monitor-panel";
@@ -149,6 +150,8 @@ export function OpsOverview({ adminEmail }: { adminEmail?: string }) {
       </header>
 
       {error ? <p className="ops-error-banner">{error}</p> : null}
+
+      <OpsCommandAttention />
 
       <div className="ops-kpi-row">
         <OpsKpiCard

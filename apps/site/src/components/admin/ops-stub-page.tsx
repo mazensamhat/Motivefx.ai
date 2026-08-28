@@ -1,8 +1,19 @@
-import Link from "next/link";
-import type { OpsNavItem } from "@/components/admin/ops-nav";
+"use client";
 
-export function OpsStubPage({ item }: { item: OpsNavItem }) {
-  const Icon = item.icon;
+import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
+
+export function OpsStubPage({
+  title,
+  description,
+  icon: Icon,
+  phase = "P1",
+}: {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  phase?: string;
+}) {
   return (
     <section className="ops-page">
       <header className="ops-page-header">
@@ -10,34 +21,18 @@ export function OpsStubPage({ item }: { item: OpsNavItem }) {
           <Icon className="h-5 w-5" />
         </div>
         <div>
-          <h2>{item.label}</h2>
-          <p>{item.description ?? "Coming in a future sprint."}</p>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
       </header>
-      <div className="ops-stub-card app-panel">
-        <p className="text-sm text-slate-400">
-          This section is planned in the{" "}
-          <Link href="/admin/overview" className="ops-inline-link">
-            MotiveFX Ops master plan
-          </Link>
-          . Sprint 1 ships Overview, Market Truth, and Providers. Full content for{" "}
-          <strong className="text-white">{item.label}</strong> lands in upcoming sprints — reuse
-          existing admin components where possible.
+      <div className="ops-card">
+        <p className="ops-muted" style={{ marginBottom: "0.75rem" }}>
+          Scheduled for <strong>{phase}</strong> in the MotiveFX Ops Master Plan v1.0. The foundation
+          (registries, telemetry, truth states, RBAC, audit) is already in place.
         </p>
-        {item.external ? (
-          <a
-            href={item.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="admin-btn admin-btn-primary mt-4 inline-flex"
-          >
-            Open {item.label} (external)
-          </a>
-        ) : (
-          <Link href="/admin/legacy" className="admin-btn mt-4 inline-flex">
-            View related data in classic dashboard →
-          </Link>
-        )}
+        <Link href="/admin/overview" className="ops-toolbar-btn">
+          Back to Command Center
+        </Link>
       </div>
     </section>
   );
