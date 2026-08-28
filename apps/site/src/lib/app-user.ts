@@ -1,10 +1,10 @@
 import { prisma } from "@motivefx/database";
 import { parseUserMarkets } from "./entitlements";
-import { getSession } from "./session";
+import { getEffectiveSession } from "@/lib/ops/impersonation";
 import { userHasActiveSubscription } from "./subscription-access";
 
 export async function getAppUser() {
-  const session = await getSession();
+  const session = await getEffectiveSession();
   if (!session) return null;
 
   // Skip Apple IAP columns on the hot path — Stripe status + accessExpiresAt
@@ -36,5 +36,6 @@ export async function getAppUser() {
     hasSubscription: userHasActiveSubscription(user),
     hasBillingAccount: Boolean(user.stripeCustomerId),
     totpEnabled: Boolean(user.totpEnabled),
+    impersonating: Boolean(session.impersonating),
   };
 }

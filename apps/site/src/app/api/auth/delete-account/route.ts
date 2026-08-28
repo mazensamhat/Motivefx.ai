@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { prisma } from "@motivefx/database";
-import { badRequest, json, serverError, unauthorized } from "@/lib/api";
+import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { verifyPassword } from "@/lib/password";
 import { clearPasswordResetTokens } from "@/lib/password-reset";
 import { destroySession, getSession } from "@/lib/session";
 import { invalidateUserCache } from "@/lib/load-user";
+import { getActiveImpersonation } from "@/lib/ops/impersonation";
 
 const schema = z.object({
   password: z.string().min(1, "Password is required."),
@@ -23,6 +24,10 @@ export async function POST(request: Request) {
   try {
     const session = await getSession();
     if (!session) return unauthorized();
+
+    if (await getActiveImpersonation(session.id)) {
+      return forbidden("Account deletion is blocked while impersonating.");
+    }
 
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) {

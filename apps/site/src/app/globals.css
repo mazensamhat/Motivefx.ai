@@ -5415,6 +5415,79 @@ html.motivefx-native-shell:not(:has(.app-content)) .app-layout {
   justify-content: center;
 }
 
+.ops-notify-root {
+  position: relative;
+}
+
+.ops-notify-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 80;
+  width: min(360px, 90vw);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.ops-notify-panel-header,
+.ops-notify-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ops-notify-panel-footer {
+  border-bottom: 0;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+}
+
+.ops-notify-panel-footer a {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.ops-notify-empty {
+  padding: 1rem;
+  margin: 0;
+}
+
+.ops-notify-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.ops-notify-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.ops-notify-item a,
+.ops-notify-item > span {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.ops-notify-item p {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+}
+
+.ops-notify-item.critical a,
+.ops-notify-item.high a {
+  color: #b91c1c;
+}
+
 .ops-content {
   max-width: 1320px;
 }

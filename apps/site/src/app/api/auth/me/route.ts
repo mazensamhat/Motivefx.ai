@@ -1,12 +1,16 @@
 import { json, unauthorized } from "@/lib/api";
 import { getSession } from "@/lib/session";
+import { getEffectiveSession } from "@/lib/ops/impersonation";
 import { isAdminEmail } from "@/lib/admin";
 import { findUserSafeCached } from "@/lib/load-user";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
 import { isTrustedNativeReaderRequest } from "@/lib/terminal/ios-reader";
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  const actor = await getSession();
+  if (!actor) return unauthorized();
+
+  const session = await getEffectiveSession();
   if (!session) return unauthorized();
 
   // Cached legacy select — avoid Apple columns + pool thrash under parallel boot.
@@ -27,8 +31,10 @@ export async function GET(request: Request) {
       accessExpiresAt: iosReader ? null : user.accessExpiresAt,
       disabledAt: user.disabledAt,
       hasSubscription: iosReader ? false : userHasActiveSubscription(user),
-      isAdmin: isAdminEmail(user.email),
+      isAdmin: isAdminEmail(actor.email),
       totpEnabled: Boolean(user.totpEnabled),
+      impersonating: Boolean(session.impersonating),
+      operatorEmail: session.impersonating ? actor.email : undefined,
     },
   });
 }

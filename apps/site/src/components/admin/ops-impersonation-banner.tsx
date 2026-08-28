@@ -20,8 +20,9 @@ export function OpsImpersonationBanner() {
     try {
       const res = await fetch("/api/admin/impersonation", { cache: "no-store" });
       if (res.ok) setState((await res.json()) as ImpersonationState);
+      else setState(null);
     } catch {
-      /* ignore */
+      setState(null);
     }
   }, []);
 
@@ -37,7 +38,7 @@ export function OpsImpersonationBanner() {
   async function exitSession() {
     await fetch("/api/admin/impersonation", { method: "DELETE" });
     window.dispatchEvent(new Event("ops:impersonation-changed"));
-    await load();
+    window.location.href = "/admin/users";
   }
 
   return (

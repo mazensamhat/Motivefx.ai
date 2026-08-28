@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { prisma } from "@motivefx/database";
-import { badRequest, json, serverError, unauthorized } from "@/lib/api";
+import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { clearPasswordResetTokens } from "@/lib/password-reset";
 import { getSession } from "@/lib/session";
+import { getActiveImpersonation } from "@/lib/ops/impersonation";
 
 const schema = z.object({
   currentPassword: z.string().min(1),
@@ -14,6 +15,10 @@ export async function POST(request: Request) {
   try {
     const session = await getSession();
     if (!session) return unauthorized();
+
+    if (await getActiveImpersonation(session.id)) {
+      return forbidden("Credential changes are blocked while impersonating.");
+    }
 
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? "Invalid input.");

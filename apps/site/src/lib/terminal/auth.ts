@@ -1,11 +1,13 @@
 import { prisma } from "@motivefx/database";
 import { forbidden, unauthorized } from "../api";
 import { findUserSafe, findUserSafeCached } from "../load-user";
-import { getSession } from "../session";
+import { getEffectiveSession } from "@/lib/ops/impersonation";
 import type { User } from "@prisma/client";
 
 export type TerminalSession = {
   user: User;
+  impersonating?: boolean;
+  operatorId?: string;
 };
 
 const LAST_SEEN_TTL_MS = 15 * 60 * 1000;
@@ -31,7 +33,7 @@ function touchLastSeen(userId: string) {
 export async function requireTerminalSession(): Promise<
   { ok: true; session: TerminalSession } | { ok: false; response: Response }
 > {
-  const cookie = await getSession();
+  const cookie = await getEffectiveSession();
   if (!cookie) {
     return { ok: false, response: unauthorized() };
   }
@@ -41,9 +43,19 @@ export async function requireTerminalSession(): Promise<
     return { ok: false, response: unauthorized() };
   }
 
-  touchLastSeen(user.id);
+  // Don't pollute customer lastSeen while support is viewing as them
+  if (!cookie.impersonating) {
+    touchLastSeen(user.id);
+  }
 
-  return { ok: true, session: { user } };
+  return {
+    ok: true,
+    session: {
+      user,
+      impersonating: cookie.impersonating,
+      operatorId: cookie.operatorId,
+    },
+  };
 }
 
 export function assertUserMatch(session: TerminalSession, requestedUserId: string) {

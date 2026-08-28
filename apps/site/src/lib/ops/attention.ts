@@ -3,13 +3,28 @@
  * Aggregates provider / market-truth / signal health into actionable items.
  */
 
-import { ledgerContaminationStats } from "@/lib/terminal/market-truth/evidence-ledger";
+import { ledgerContaminationStats, getRecentLedgerEntries } from "@/lib/terminal/market-truth/evidence-ledger";
 import { runMarketTruthGoldenChecks } from "@/lib/terminal/market-truth/golden";
 import { getDataMode } from "@/lib/terminal/market-truth/data-mode";
 import { providerHealthFlags } from "@/lib/terminal/provider-switches";
 import { getPlatformMonitorSnapshot } from "@/lib/platform-monitor";
 import { listSourceRights } from "./source-rights";
 import { telemetryInstrumentationStats } from "./telemetry-envelope";
+import {
+  buildDailyBriefOps,
+  buildMarketDnaOps,
+  buildOpportunityRadarOps,
+  buildSignalGraphOps,
+} from "./intelligence-quality";
+
+function intelStatusFromActivity(opts: {
+  count: number;
+  hasContamination: boolean;
+}): IntelligenceHealth["status"] {
+  if (opts.hasContamination) return "critical";
+  if (opts.count <= 0) return "degraded";
+  return "healthy";
+}
 
 export type AttentionSeverity = "info" | "warning" | "high" | "critical" | "ok";
 
@@ -138,6 +153,22 @@ export async function buildCommandAttention(): Promise<CommandAttentionPayload> 
 
   const truthOk =
     golden.ok && contamination.demoInSignal === 0 && contamination.syntheticInSignal === 0;
+  const hasContamination =
+    contamination.demoInSignal > 0 || contamination.syntheticInSignal > 0;
+
+  const radar = buildOpportunityRadarOps();
+  const graph = buildSignalGraphOps();
+  const dna = buildMarketDnaOps();
+  const brief = buildDailyBriefOps();
+  const ledgerCount = getRecentLedgerEntries(20).length;
+  let durableSnapCount = 0;
+  try {
+    const { loadSignalSnapshots } = await import("./durable");
+    durableSnapCount = (await loadSignalSnapshots(20)).length;
+  } catch {
+    durableSnapCount = 0;
+  }
+  const activityCount = Math.max(ledgerCount, durableSnapCount, radar.totals.detected);
 
   const intelligence: IntelligenceHealth[] = [
     {
@@ -149,31 +180,44 @@ export async function buildCommandAttention(): Promise<CommandAttentionPayload> 
     {
       id: "motive-signal",
       label: "Motive Signal",
-      status: truthOk ? "healthy" : "degraded",
+      status: truthOk ? (activityCount > 0 ? "healthy" : "degraded") : "degraded",
       href: "/admin/signals",
     },
     {
       id: "opportunity-radar",
       label: "Opportunity Radar",
-      status: "unknown",
+      status: intelStatusFromActivity({
+        count: Math.max(radar.totals.detected, durableSnapCount),
+        hasContamination,
+      }),
       href: "/admin/opportunity-radar",
     },
     {
       id: "signal-graph",
       label: "Signal Graph",
-      status: "unknown",
+      status: intelStatusFromActivity({
+        count: Math.max(graph.totals.relationships, durableSnapCount > 1 ? durableSnapCount : 0),
+        hasContamination,
+      }),
       href: "/admin/signal-graph",
     },
     {
       id: "market-dna",
       label: "Market DNA",
-      status: "unknown",
+      status: intelStatusFromActivity({
+        count: Math.max(dna.totals.profiles, durableSnapCount),
+        hasContamination,
+      }),
       href: "/admin/market-dna",
     },
     {
       id: "daily-brief",
       label: "Daily Brief",
-      status: "unknown",
+      status: hasContamination
+        ? "critical"
+        : brief.latest.status === "ready" || durableSnapCount > 0
+          ? "healthy"
+          : "degraded",
       href: "/admin/daily-brief",
     },
   ];

@@ -16,19 +16,18 @@ export async function GET() {
     return forbidden(auth.error);
   }
 
-  const session = getActiveImpersonation(auth.session.id);
-  let effectiveUserEmail: string | null = null;
-  if (session) {
-    const u = await prisma.user.findUnique({
-      where: { id: session.effectiveUserId },
-      select: { email: true },
-    });
-    effectiveUserEmail = u?.email ?? null;
-  }
-
+  const session = await getActiveImpersonation(auth.session.id);
   return json({
-    active: session,
-    effectiveUserEmail,
+    active: session
+      ? {
+          effectiveUserId: session.effectiveUserId,
+          mode: session.mode,
+          reason: session.reason,
+          expiresAt: session.expiresAt,
+          impersonationSessionId: session.impersonationSessionId,
+        }
+      : null,
+    effectiveUserEmail: session?.effectiveUserEmail ?? null,
     blockedActions: IMPERSONATION_BLOCKED_ACTIONS,
   });
 }
@@ -55,8 +54,9 @@ export async function POST(request: Request) {
       select: { id: true, email: true },
     });
     if (!user) return badRequest("User not found");
+    if (user.id === auth.session.id) return badRequest("Cannot impersonate yourself");
 
-    const session = startImpersonation({
+    const session = await startImpersonation({
       operatorId: auth.session.id,
       operatorEmail: auth.session.email,
       effectiveUserId: user.id,
@@ -80,6 +80,6 @@ export async function DELETE() {
     return forbidden(auth.error);
   }
 
-  const ended = endImpersonation(auth.session.id, auth.session.email);
+  const ended = await endImpersonation(auth.session.id, auth.session.email);
   return json({ ok: true, ended });
 }

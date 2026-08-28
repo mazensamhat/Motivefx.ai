@@ -1,7 +1,8 @@
 import { prisma } from "@motivefx/database";
-import { badRequest, json, serverError, unauthorized } from "@/lib/api";
+import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getSession } from "@/lib/session";
+import { getActiveImpersonation } from "@/lib/ops/impersonation";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
     }
 
     const session = await getSession();
+    if (session && (await getActiveImpersonation(session.id))) {
+      return forbidden("Billing changes are blocked while impersonating.");
+    }
     const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
     const email = (session?.email ?? parsed.data?.email)?.trim().toLowerCase();
     if (!email) return unauthorized("Sign in to manage billing.");

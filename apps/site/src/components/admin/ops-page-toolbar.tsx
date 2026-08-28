@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, RefreshCw, Search, Terminal } from "lucide-react";
+import { RefreshCw, Search, Terminal } from "lucide-react";
+import { OpsNotificationsBell } from "@/components/admin/ops-notifications-bell";
 import { initialsFromEmail } from "@/lib/ops-display-name";
 
 export function OpsPageToolbar({ adminEmail }: { adminEmail?: string }) {
@@ -26,10 +27,7 @@ export function OpsPageToolbar({ adminEmail }: { adminEmail?: string }) {
       <button type="button" className="ops-toolbar-btn" onClick={() => window.location.reload()}>
         <RefreshCw className="h-4 w-4" /> Refresh
       </button>
-      <button type="button" className="ops-toolbar-btn icon-only" aria-label="Notifications">
-        <Bell className="h-4 w-4" />
-        <span className="ops-notify-badge">3</span>
-      </button>
+      <OpsNotificationsBell />
       <span className="ops-toolbar-avatar">{initials}</span>
     </div>
   );
