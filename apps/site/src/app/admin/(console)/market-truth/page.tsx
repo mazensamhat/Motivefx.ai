@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { OpsMarketTruth } from "@/components/admin/ops-market-truth";
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function OpsMarketTruthPage() {
-  return <OpsMarketTruth />;
+  return (
+    <Suspense fallback={<p className="ops-muted">Loading market truth…</p>}>
+      <OpsMarketTruth />
+    </Suspense>
+  );
 }

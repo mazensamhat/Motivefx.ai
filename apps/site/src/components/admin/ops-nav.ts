@@ -64,7 +64,6 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
         href: "/admin/live-ops",
         icon: Activity,
         description: "Live event feed",
-        stub: true,
       },
       {
         id: "incidents",
@@ -241,7 +240,6 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
         href: "/admin/audit",
         icon: ShieldCheck,
         description: "Operator audit trail",
-        stub: true,
       },
     ],
   },

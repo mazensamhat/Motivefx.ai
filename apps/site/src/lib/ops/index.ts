@@ -12,3 +12,4 @@ export * from "./rbac";
 export * from "./audit";
 export * from "./ai-model-registry";
 export * from "./attention";
+export * from "./market-truth-control";

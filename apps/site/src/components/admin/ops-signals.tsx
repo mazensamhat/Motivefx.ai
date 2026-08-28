@@ -69,8 +69,11 @@ export function OpsSignals() {
         </div>
         <div className="flex flex-1 flex-wrap items-start justify-between gap-3">
           <div>
-            <h2>Signals</h2>
-            <p>Motive Signal distribution · suppression · ledger cross-link (G2)</p>
+            <h2>Motive Signals</h2>
+            <p>
+              Lifecycle · stance distribution · suppression · score vs confidence (G2). Score ≠
+              confidence.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/admin/market-truth" className="admin-btn">
@@ -90,7 +93,7 @@ export function OpsSignals() {
         <>
           <div className="admin-kpi-grid ops-kpi-grid">
             <div className="admin-kpi app-panel">
-              <span className="admin-kpi-label">Ledger entries</span>
+              <span className="admin-kpi-label">Active (ledger)</span>
               <strong>{data.totals.ledgerEntries}</strong>
             </div>
             <div className="admin-kpi app-panel">
@@ -98,22 +101,43 @@ export function OpsSignals() {
               <strong>{data.totals.uniqueSymbols}</strong>
             </div>
             <div className="admin-kpi app-panel">
-              <span className="admin-kpi-label">High signal (≥70)</span>
+              <span className="admin-kpi-label">Strengthening (≥70)</span>
               <strong>{data.totals.highSignal}</strong>
             </div>
             <div className="admin-kpi app-panel">
-              <span className="admin-kpi-label">Low alignment (&lt;45)</span>
+              <span className="admin-kpi-label">Weak / low align</span>
               <strong>{data.totals.lowConfidence}</strong>
             </div>
             <div className="admin-kpi app-panel">
-              <span className="admin-kpi-label">Data mode</span>
-              <strong className="mono text-lg">{data.suppression.dataMode}</strong>
+              <span className="admin-kpi-label">Suppressed (demo/syn)</span>
+              <strong>
+                {data.suppression.demoInSignalBag + data.suppression.syntheticInSignalBag}
+              </strong>
             </div>
             <div className="admin-kpi app-panel">
               <span className="admin-kpi-label">Engine</span>
               <strong className="text-sm">{data.engineVersion}</strong>
             </div>
           </div>
+
+          <section className="ops-card" style={{ marginBottom: "1rem" }}>
+            <header className="ops-card-header">
+              <h3>Signal lifecycle (current process)</h3>
+            </header>
+            <div className="ops-gate-row">
+              <span className="ops-gate-pill ok">DETECTED → FORMING → ACTIVE</span>
+              <span className="ops-gate-pill ok">STRENGTHENING {data.totals.highSignal}</span>
+              <span className="ops-gate-pill fail">WEAKENING {data.totals.lowConfidence}</span>
+              <span className="ops-gate-pill">
+                SUPPRESSED{" "}
+                {data.suppression.demoInSignalBag + data.suppression.syntheticInSignalBag}
+              </span>
+            </div>
+            <p className="ops-muted" style={{ marginTop: "0.65rem" }}>
+              Full anatomy (inputs, counter-evidence, calculation version, confidence calibration)
+              expands with durable Signal Snapshots (G6 / P2).
+            </p>
+          </section>
 
           <div className="admin-grid-2">
             <section className="admin-panel app-panel">

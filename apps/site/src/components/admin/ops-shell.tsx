@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ExternalLink, LogOut } from "lucide-react";
 import { OPS_NAV_GROUPS, OPS_QUICK_LINKS } from "@/components/admin/ops-nav";
+import { OpsCommandPalette } from "@/components/admin/ops-command-palette";
 import { clientLogout } from "@/lib/auth-client";
 import { displayNameFromEmail, initialsFromEmail } from "@/lib/ops-display-name";
 
@@ -21,6 +22,7 @@ export function OpsShell({
 
   return (
     <div className="ops-layout">
+      <OpsCommandPalette />
       <aside className="ops-sidebar">
         <div className="ops-sidebar-brand">
           <Image

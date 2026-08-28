@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, RefreshCw, Terminal } from "lucide-react";
+import { Bell, RefreshCw, Search, Terminal } from "lucide-react";
 import { initialsFromEmail } from "@/lib/ops-display-name";
 
 export function OpsPageToolbar({ adminEmail }: { adminEmail?: string }) {
@@ -9,6 +9,14 @@ export function OpsPageToolbar({ adminEmail }: { adminEmail?: string }) {
 
   return (
     <div className="ops-toolbar-actions">
+      <button
+        type="button"
+        className="ops-toolbar-btn"
+        onClick={() => window.dispatchEvent(new Event("ops:open-palette"))}
+        title="Search (Ctrl/⌘+K)"
+      >
+        <Search className="h-4 w-4" /> Search
+      </button>
       <label className="ops-date-picker">
         <input type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
       </label>
