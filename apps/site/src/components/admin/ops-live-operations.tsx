@@ -70,7 +70,7 @@ export function OpsLiveOperations() {
           <div>
             <h2>Live Operations</h2>
             <p>
-              In-process event stream · {data?.telemetry.buffered ?? 0} buffered ·{" "}
+              In-process + durable event stream · {data?.telemetry.buffered ?? 0} buffered ·{" "}
               {data?.telemetry.withErrors ?? 0} with registry errors
             </p>
           </div>

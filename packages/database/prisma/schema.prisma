@@ -655,3 +655,196 @@ model PasswordResetToken {
 }
 
 
+
+/** MotiveFX Ops — durable operational stores (Master Plan P0–P3) */
+
+model OpsTelemetryEvent {
+  id                   String   @id @default(cuid())
+  eventId              String   @unique
+  eventName            String
+  version              Int      @default(1)
+  userId               String?
+  sessionId            String?
+  product              String?
+  desk                 String?
+  symbol               String?
+  themeId              String?
+  signalId             String?
+  opportunityId        String?
+  provider             String?
+  environment          String
+  platform             String?
+  appVersion           String?
+  observedAt           DateTime
+  ingestedAt           DateTime @default(now())
+  durationMs           Float?
+  status               String?
+  errorCode            String?
+  metadataJson         String   @default("{}")
+  sourceClass          String
+  privacyClass         String
+  truthState           String?
+  instrumentationJson  String   @default("[]")
+
+  @@index([eventName, observedAt])
+  @@index([observedAt])
+  @@index([symbol])
+  @@index([provider])
+}
+
+model OpsAuditEvent {
+  id           String   @id @default(cuid())
+  actorId      String
+  actorEmail   String
+  action       String
+  capability   String?
+  risk         String
+  targetType   String?
+  targetId     String?
+  reason       String?
+  beforeJson   String?
+  afterJson    String?
+  result       String
+  environment  String
+  requestId    String?
+  observedAt   DateTime @default(now())
+
+  @@index([observedAt])
+  @@index([actorId])
+  @@index([action])
+}
+
+model OpsIncidentRecord {
+  id            String   @id
+  severity      String
+  domain        String
+  title         String
+  description   String   @default("")
+  firstSeen     DateTime
+  lastSeen      DateTime
+  status        String   @default("open")
+  source        String
+  href          String?
+  runbook       String?
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedAt    DateTime?
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, severity])
+  @@index([lastSeen])
+}
+
+model OpsAiUsage {
+  id              String   @id @default(cuid())
+  userId          String?
+  feature         String
+  model           String
+  promptVersion   String?
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  totalTokens     Int      @default(0)
+  estimatedCostUsd Float   @default(0)
+  durationMs      Float?
+  status          String   @default("ok")
+  grounding       String?
+  errorCode       String?
+  metadataJson    String   @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([feature, createdAt])
+}
+
+model SignalSnapshot {
+  id                   String   @id @default(cuid())
+  ledgerId             String   @unique
+  symbol               String
+  motiveSignal         Float?
+  confidence           Float?
+  stance               String?
+  engineVersion        String
+  evidenceJson         String
+  signalEvidenceJson   String
+  evidenceCount        Int      @default(0)
+  signalEvidenceCount  Int      @default(0)
+  recordedAt           DateTime
+  createdAt            DateTime @default(now())
+
+  outcomes SignalOutcome[]
+
+  @@index([symbol, recordedAt])
+  @@index([recordedAt])
+}
+
+model SignalOutcome {
+  id              String   @id @default(cuid())
+  snapshotId      String
+  snapshot        SignalSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  symbol          String
+  claim           String
+  horizonDays     Int
+  predictedScore  Float?
+  predictedConf   Float?
+  outcome         String   // CONFIRMED | PARTIAL | REJECTED | INCONCLUSIVE | PENDING
+  evaluatedAt     DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([symbol, outcome])
+  @@index([outcome])
+}
+
+model OpsReplayJob {
+  id              String   @id @default(cuid())
+  periodKey       String
+  periodLabel     String
+  status          String   @default("queued") // queued | running | completed | failed
+  asOfTimestamp   DateTime
+  startedAt       DateTime?
+  completedAt     DateTime?
+  signalsEvaluated Int     @default(0)
+  directionAccuracy Float?
+  resultJson      String?
+  error           String?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+model MarketDnaSnapshot {
+  id                   String   @id @default(cuid())
+  asset                String
+  version              String
+  primaryDriversJson   String   @default("[]")
+  negativeJson         String   @default("[]")
+  currentRegime        String?
+  confidence           Float?
+  signal               Float?
+  payloadJson          String   @default("{}")
+  recordedAt           DateTime @default(now())
+
+  @@index([asset, recordedAt])
+}
+
+model SignalGraphEdge {
+  id              String   @id @default(cuid())
+  fromSymbol      String
+  toSymbol        String
+  strength        Float
+  direction       String   @default("positive")
+  lagDaysMin      Int      @default(0)
+  lagDaysMax      Int      @default(60)
+  evidenceCount   Int      @default(0)
+  stale           Boolean  @default(false)
+  modelVersion    String
+  payloadJson     String   @default("{}")
+  recordedAt      DateTime @default(now())
+
+  @@index([fromSymbol, toSymbol])
+  @@index([recordedAt])
+}
+
+

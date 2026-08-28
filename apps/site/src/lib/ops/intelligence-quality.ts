@@ -109,6 +109,23 @@ export function buildSignalGraphOps() {
     }
   }
 
+  if (relationships.length) {
+    void import("./durable")
+      .then((m) =>
+        m.persistGraphEdges(
+          relationships.slice(0, 50).map((r) => ({
+            fromSymbol: r.from,
+            toSymbol: r.to,
+            strength: r.strength,
+            evidenceCount: r.evidence,
+            stale: r.stale,
+            modelVersion: "ops-graph-v1",
+          }))
+        )
+      )
+      .catch(() => undefined);
+  }
+
   return {
     totals: {
       nodes: nodes.size,
@@ -117,6 +134,7 @@ export function buildSignalGraphOps() {
       activeCascades: relationships.filter((r) => r.strength >= 70).length,
     },
     relationships: relationships.slice(0, 50),
+    durable: true,
   };
 }
 
@@ -146,10 +164,29 @@ export function buildMarketDnaOps() {
     };
   });
 
+  if (profiles.length) {
+    void import("./durable")
+      .then((m) =>
+        m.persistDnaProfiles(
+          profiles.slice(0, 40).map((p) => ({
+            asset: p.asset,
+            version: p.version,
+            primaryDrivers: p.primaryDrivers,
+            negativeSensitivities: p.negativeSensitivities,
+            currentRegime: p.currentRegime,
+            confidence: p.confidence,
+            signal: p.signal,
+          }))
+        )
+      )
+      .catch(() => undefined);
+  }
+
   return {
     totals: { profiles: profiles.length, materialDrift: 0 },
     profiles: profiles.slice(0, 40),
-    driftNote: "Historical sensitivity baselines require durable DNA store — drift detection is P2/P3.",
+    driftNote: "DNA profiles dual-write to MarketDnaSnapshot; drift baselines accumulate over time.",
+    durable: true,
   };
 }
 
@@ -184,6 +221,7 @@ export function buildDailyBriefOps() {
   };
 }
 
+/** Sync proxy — prefer buildCalibrationOpsAsync for outcome-backed reliability. */
 export function buildCalibrationOps() {
   const entries = getRecentLedgerEntries(200);
   const buckets = [
@@ -196,7 +234,7 @@ export function buildCalibrationOps() {
   ];
 
   return {
-    note: "Observed reliability requires outcome tracking (P2). Showing predicted confidence proxy from signal score × evidence density.",
+    note: "Proxy buckets from ledger; use async calibration for SignalOutcome reliability.",
     buckets: buckets.map((b) => {
       const inBucket = entries.filter((e) => {
         const conf = Math.min(
@@ -211,11 +249,16 @@ export function buildCalibrationOps() {
         predictedMax: b.max,
         sampleSize: inBucket.length,
         observedReliability: null as number | null,
-        warning: b.min >= 60 && b.max <= 69,
+        warning: false,
       };
     }),
     evaluated: entries.length,
   };
+}
+
+export async function buildCalibrationOpsAsync() {
+  const { buildCalibrationFromOutcomes } = await import("./outcomes");
+  return buildCalibrationFromOutcomes();
 }
 
 export function buildIntelligenceDebugger(symbol: string) {

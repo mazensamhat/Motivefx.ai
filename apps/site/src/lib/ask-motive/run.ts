@@ -417,8 +417,44 @@ export async function runAskMotive(
     ]);
 
     const text = result.text?.trim() || "I'm here — try asking about opportunities or your portfolio.";
+
+    try {
+      const usage = result.usage as
+        | { inputTokens?: number; outputTokens?: number; promptTokens?: number; completionTokens?: number }
+        | undefined;
+      const inputTokens = usage?.inputTokens ?? usage?.promptTokens ?? 0;
+      const outputTokens = usage?.outputTokens ?? usage?.completionTokens ?? 0;
+      const { recordAiUsage } = await import("@/lib/ops/durable");
+      await recordAiUsage({
+        userId: ctx.userId,
+        feature: "ASK_MOTIVE",
+        model: modelId,
+        promptVersion: "ask-motive-v1",
+        inputTokens,
+        outputTokens,
+        status: "ok",
+        grounding: usedTools.length ? "GROUNDED" : "PARTIALLY_GROUNDED",
+        metadata: { tools: usedTools },
+      });
+    } catch {
+      /* metering must never break Ask Motive */
+    }
+
     return finish(text, usedTools, actions, ctx, false);
   } catch {
+    try {
+      const { recordAiUsage } = await import("@/lib/ops/durable");
+      await recordAiUsage({
+        userId: ctx.userId,
+        feature: "ASK_MOTIVE",
+        model: modelId,
+        promptVersion: "ask-motive-v1",
+        status: "error",
+        errorCode: "ask_motive_failed",
+      });
+    } catch {
+      /* ignore */
+    }
     return runAskMotiveFallback(messages, ctx);
   }
 }

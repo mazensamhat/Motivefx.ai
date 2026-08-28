@@ -77,6 +77,8 @@ export function recordAudit(input: AuditInput): AuditRecord {
   auditRing.unshift(record);
   if (auditRing.length > AUDIT_MAX) auditRing.length = AUDIT_MAX;
 
+  void import("./durable").then((m) => m.persistAudit(record)).catch(() => undefined);
+
   // Mirror into telemetry for Live Ops feed.
   const eventName =
     input.action.startsWith("ops.impersonation")
@@ -114,4 +116,11 @@ export function recordAudit(input: AuditInput): AuditRecord {
 
 export function getRecentAudit(limit = 50): AuditRecord[] {
   return auditRing.slice(0, Math.max(1, Math.min(limit, AUDIT_MAX)));
+}
+
+export async function getRecentAuditDurable(limit = 50): Promise<AuditRecord[]> {
+  const { loadRecentAudit } = await import("./durable");
+  const durable = await loadRecentAudit(limit);
+  if (durable.length) return durable;
+  return getRecentAudit(limit);
 }

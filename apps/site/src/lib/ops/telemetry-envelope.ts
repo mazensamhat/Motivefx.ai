@@ -145,7 +145,7 @@ export function buildTelemetryEnvelope(input: TelemetryInput): TelemetryEnvelope
   };
 }
 
-/** In-memory ring buffer for Ops live feed until durable store lands. */
+/** Dual-write: in-memory ring + durable Postgres. */
 const RING_MAX = 200;
 const ring: TelemetryEnvelope[] = [];
 
@@ -156,11 +156,20 @@ export function recordTelemetry(input: TelemetryInput): TelemetryEnvelope {
   if (envelope.instrumentationErrors.length > 0) {
     console.warn("[ops/telemetry] instrumentation", envelope.eventId, envelope.instrumentationErrors);
   }
+  void import("./durable").then((m) => m.persistTelemetry(envelope)).catch(() => undefined);
   return envelope;
 }
 
 export function getRecentTelemetry(limit = 50): TelemetryEnvelope[] {
   return ring.slice(0, Math.max(1, Math.min(limit, RING_MAX)));
+}
+
+/** Prefer durable store when available (async). */
+export async function getRecentTelemetryDurable(limit = 50): Promise<TelemetryEnvelope[]> {
+  const { loadRecentTelemetry } = await import("./durable");
+  const durable = await loadRecentTelemetry(limit);
+  if (durable.length) return durable;
+  return getRecentTelemetry(limit);
 }
 
 export function telemetryInstrumentationStats(): {

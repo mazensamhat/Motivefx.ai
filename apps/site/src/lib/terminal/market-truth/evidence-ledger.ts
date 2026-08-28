@@ -42,6 +42,21 @@ export function recordSignalEvidence(input: {
   };
   ledger.unshift(entry);
   if (ledger.length > MAX_ENTRIES) ledger.length = MAX_ENTRIES;
+
+  void import("@/lib/ops/durable")
+    .then((m) =>
+      m.persistSignalSnapshot({
+        ledgerId: entry.ledgerId,
+        symbol: entry.symbol,
+        motiveSignal: entry.motiveSignal,
+        engineVersion: entry.engineVersion,
+        evidence: entry.evidence,
+        signalEvidence: entry.signalEvidence,
+        recordedAt: entry.recordedAt,
+      })
+    )
+    .catch(() => undefined);
+
   return entry;
 }
 

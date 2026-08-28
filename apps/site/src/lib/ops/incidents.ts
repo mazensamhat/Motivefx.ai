@@ -1,9 +1,11 @@
 /**
  * Ops incidents desk — materializes Command attention into trackable incidents.
+ * Dual-writes to Postgres OpsIncidentRecord.
  */
 
 import { buildCommandAttention, type AttentionSeverity } from "./attention";
 import { recordAudit } from "./audit";
+import { loadIncidents, updateIncidentStatus, upsertIncident } from "./durable";
 
 export type IncidentSeverity = "INFO" | "WARNING" | "HIGH" | "CRITICAL";
 
@@ -25,8 +27,6 @@ export type OpsIncident = {
   runbook?: string;
 };
 
-const acknowledgements = new Map<string, { status: IncidentStatus; at: string; by: string }>();
-
 function mapSeverity(s: AttentionSeverity): IncidentSeverity {
   if (s === "critical") return "CRITICAL";
   if (s === "high") return "HIGH";
@@ -38,29 +38,78 @@ export async function listOpsIncidents(): Promise<OpsIncident[]> {
   const attention = await buildCommandAttention();
   const now = attention.generatedAt;
 
-  return attention.items
+  const live = attention.items
     .filter((i) => i.severity !== "ok")
     .map((item) => {
-      const ack = acknowledgements.get(item.id);
+      const severity = mapSeverity(item.severity);
+      const runbook =
+        item.domain === "providers"
+          ? "Check kill switch env · provider dashboard · failover"
+          : item.domain === "market-truth"
+            ? "Open Market Truth · inspect contamination · suppress demo"
+            : "Investigate via Live Ops and related Ops page";
+      void upsertIncident({
+        id: item.id,
+        severity,
+        domain: item.domain,
+        title: item.title,
+        description: item.detail ?? "",
+        href: item.href,
+        runbook,
+        source: "command-attention",
+      });
       return {
         id: item.id,
-        severity: mapSeverity(item.severity),
+        severity,
         domain: item.domain,
         title: item.title,
         description: item.detail ?? "",
         firstSeen: now,
         lastSeen: now,
-        status: ack?.status ?? "open",
+        status: "open" as IncidentStatus,
         source: "command-attention",
         href: item.href,
-        runbook:
-          item.domain === "providers"
-            ? "Check kill switch env · provider dashboard · failover"
-            : item.domain === "market-truth"
-              ? "Open Market Truth · inspect contamination · suppress demo"
-              : "Investigate via Live Ops and related Ops page",
+        runbook,
       };
     });
+
+  const durable = await loadIncidents(100);
+  const byId = new Map<string, OpsIncident>();
+
+  for (const row of durable) {
+    byId.set(row.id, {
+      id: row.id,
+      severity: row.severity as IncidentSeverity,
+      domain: row.domain,
+      title: row.title,
+      description: row.description,
+      firstSeen: row.firstSeen.toISOString(),
+      lastSeen: row.lastSeen.toISOString(),
+      status: row.status as IncidentStatus,
+      source: row.source,
+      href: row.href ?? undefined,
+      runbook: row.runbook ?? undefined,
+    });
+  }
+  for (const item of live) {
+    const existing = byId.get(item.id);
+    if (existing) {
+      byId.set(item.id, {
+        ...existing,
+        severity: item.severity,
+        title: item.title,
+        description: item.description,
+        lastSeen: item.lastSeen,
+        href: item.href,
+        runbook: item.runbook,
+        status: existing.status === "resolved" ? "open" : existing.status,
+      });
+    } else {
+      byId.set(item.id, item);
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
 }
 
 export function acknowledgeIncident(input: {
@@ -70,10 +119,10 @@ export function acknowledgeIncident(input: {
   status?: IncidentStatus;
 }): boolean {
   const status = input.status ?? "acknowledged";
-  acknowledgements.set(input.incidentId, {
+  void updateIncidentStatus({
+    id: input.incidentId,
     status,
-    at: new Date().toISOString(),
-    by: input.actorEmail,
+    actorEmail: input.actorEmail,
   });
   recordAudit({
     actorId: input.actorId,

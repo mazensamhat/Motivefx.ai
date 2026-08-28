@@ -17,3 +17,6 @@ export * from "./impersonation";
 export * from "./incidents";
 export * from "./intelligence-quality";
 export * from "./jobs-pipelines";
+export * from "./durable";
+export * from "./outcomes";
+export * from "./replay";

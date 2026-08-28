@@ -60,7 +60,7 @@ export function OpsAiCosts() {
         <div className="flex flex-1 flex-wrap items-start justify-between gap-3">
           <div>
             <h2>AI &amp; Costs</h2>
-            <p>Token economics · env flags · G5 hardening status (honest stub until metering API)</p>
+            <p>Token economics · Ask Motive metering · provider flags</p>
           </div>
           <button type="button" className="admin-btn" onClick={load} disabled={loading}>
             <RefreshCw className="h-3.5 w-3.5" /> {loading ? "Refreshing…" : "Refresh"}

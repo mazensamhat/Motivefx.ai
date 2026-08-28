@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import { forbidden, json, serverError, unauthorized } from "@/lib/api";
 import {
-  buildCalibrationOps,
+  buildCalibrationOpsAsync,
   buildDailyBriefOps,
   buildEvidenceQualityOps,
   buildIntelligenceDebugger,
@@ -11,7 +11,8 @@ import {
 } from "@/lib/ops/intelligence-quality";
 import { listAiModelRegistry } from "@/lib/ops/ai-model-registry";
 import { listOpsJobs, listPipelineStats } from "@/lib/ops/jobs-pipelines";
-import { getRecentTelemetry } from "@/lib/ops/telemetry-envelope";
+import { getRecentTelemetryDurable } from "@/lib/ops/telemetry-envelope";
+import { getAiUsageSummary } from "@/lib/ops/durable";
 
 export async function GET(request: Request) {
   const auth = await requireAdmin();
@@ -34,11 +35,18 @@ export async function GET(request: Request) {
     if (surface === "all" || surface === "graph") payload.graph = buildSignalGraphOps();
     if (surface === "all" || surface === "dna") payload.dna = buildMarketDnaOps();
     if (surface === "all" || surface === "brief") payload.brief = buildDailyBriefOps();
-    if (surface === "all" || surface === "calibration") payload.calibration = buildCalibrationOps();
+    if (surface === "all" || surface === "calibration") {
+      payload.calibration = await buildCalibrationOpsAsync();
+    }
     if (surface === "all" || surface === "ai") {
+      const [recent, usage] = await Promise.all([
+        getRecentTelemetryDurable(50),
+        getAiUsageSummary(7),
+      ]);
       payload.ai = {
         models: listAiModelRegistry(),
-        recentAiEvents: getRecentTelemetry(50).filter((e) => e.eventName.startsWith("ai.")),
+        recentAiEvents: recent.filter((e) => e.eventName.startsWith("ai.")),
+        usage7d: usage,
       };
     }
     if (surface === "all" || surface === "jobs") payload.jobs = listOpsJobs();
