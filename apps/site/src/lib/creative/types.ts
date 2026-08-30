@@ -185,6 +185,15 @@ export type CreativeBattleResult = {
   challenger: ScoredHook | null;
 };
 
+export type PlatformIntelSnapshot = {
+  aspectRatio: string;
+  maxCaptionChars: number;
+  videoMaxSec: number;
+  notes: string[];
+  safeZones: string;
+  ctaPlacement: string;
+};
+
 export type CreativePipelineResult = {
   generatedAt: string;
   doctrine: string;
@@ -193,6 +202,9 @@ export type CreativePipelineResult = {
   hooks: ScoredHook[];
   battle: CreativeBattleResult;
   marketStory: MarketStory;
+  marketTruthSource?: "ledger" | "durable" | "provided" | "none" | null;
+  platform?: PlatformIntelSnapshot;
+  runId?: string;
   hypotheses: CreativeHypothesis[];
   approvalReady: CreativeHypothesis[];
   blocked: CreativeHypothesis[];

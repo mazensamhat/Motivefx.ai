@@ -77,7 +77,7 @@ When mobile conversion justifies platform fees:
 | Financial content | Prominent disclaimer; no guaranteed returns |
 | Betting content | Geo-restrict modules; 17+ or 18+ rating; regional compliance |
 
-**Post-review launch checklist (iOS):** App Store listing live → smoke-test auth + WebView terminal → confirm no Safari/web pricing CTAs in the shell → only enable StoreKit / RevenueCat when products + keys are verified.
+**Post-review launch checklist (iOS):** App Store listing live ([MotiveFX.AI](https://apps.apple.com/ca/app/motivefx-ai/id6789334125)) → smoke-test auth + WebView terminal → confirm no Safari/web pricing CTAs in the shell → only enable StoreKit / RevenueCat when products + keys are verified. Website discovery: Smart App Banner + `/download` + schema.org SoftwareApplication (iOS + Android).
 
 ### Build & submit
 

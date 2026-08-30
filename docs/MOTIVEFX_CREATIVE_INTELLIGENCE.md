@@ -1,6 +1,6 @@
 # MotiveFX Creative Intelligence Engine
 
-> **Status:** Adopted (2026-08-29). First production milestone shipped in Ops Creative Lab.  
+> **Status:** Adopted (2026-08-29). Creative Intelligence v1 complete in Ops — hooks through learning.  
 > **Doctrine:** Don't advertise a prediction. Advertise the intelligence behind the decision.  
 > **Public product:** [MotiveFX.ai](https://www.motivefxai.com)  
 > **Related:** [MOTIVEFX_OPS_MASTER_PLAN.md](./MOTIVEFX_OPS_MASTER_PLAN.md)
@@ -78,10 +78,11 @@ Every MotiveFX campaign generates ≥10 competing hooks, scores finalists, build
 7. Creative Critic ✅  
 8. Creative Battles ✅  
 9. Creative Lab Ops UI ✅  
-10. Platform Intelligence (next)  
-11. Market Story Engine (evergreen + live wiring) ✅ / live deepen next  
-12. Market-aware / Live Market Truth integration (next)  
-13. Performance telemetry (next)  
-14. Creative Learning (next)  
+10. Platform Intelligence ✅  
+11. Market Story Engine ✅  
+12. Market-aware / Live Market Truth integration ✅ (ledger + durable snapshots)  
+13. Performance telemetry ✅ (`CreativePerformanceEvent`)  
+14. Creative Learning ✅  
 
-Ops surface: `/admin/creative` · API: `/api/admin/creative`
+Ops surface: `/admin/creative` · API: `/api/admin/creative`  
+Views: `?view=learning|runs|truth|platform`

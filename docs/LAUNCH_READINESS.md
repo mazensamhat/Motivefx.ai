@@ -60,7 +60,9 @@ See [MOBILE_STRATEGY.md](./MOBILE_STRATEGY.md) for full mobile plan.
 - [x] Mobile-first terminal CSS (`viewport-fit`, safe-area, `100dvh`, native-shell class)
 - [x] Mobile auth screen (login/register)
 - [x] **Billing model decision:** web-only subscribe (document in store listings); native IAP deferred
-- [ ] Apple Developer + Google Play Console accounts
+- [x] Apple Developer + Google Play Console accounts
+- [x] iOS App Store live — https://apps.apple.com/ca/app/motivefx-ai/id6789334125
+- [x] Google Play listing live (`com.motivefx.app`)
 - [ ] Privacy Nutrition Labels / Data safety form
 - [ ] Sign in with Apple (required if offering Google login on iOS)
 - [ ] App icons, screenshots, store descriptions

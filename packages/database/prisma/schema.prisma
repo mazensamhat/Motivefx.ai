@@ -847,4 +847,83 @@ model SignalGraphEdge {
   @@index([recordedAt])
 }
 
+/// MotiveFX Creative Intelligence — campaign run + learning store
+model CreativeCampaignRun {
+  id                String   @id @default(cuid())
+  objective         String
+  trader            String
+  angle             String
+  mode              String
+  platform          String
+  symbol            String?
+  briefJson         String   @default("{}")
+  recommendedHook   String?
+  recommendedScore  Float?
+  approvalReady     Int      @default(0)
+  blockedCount      Int      @default(0)
+  resultJson        String?
+  createdBy         String?
+  createdAt         DateTime @default(now())
+
+  hypotheses CreativeHypothesisRecord[]
+  events     CreativePerformanceEvent[]
+
+  @@index([createdAt])
+  @@index([platform, trader])
+  @@index([mode, angle])
+}
+
+model CreativeHypothesisRecord {
+  id              String   @id @default(cuid())
+  runId           String
+  run             CreativeCampaignRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  label           String
+  hookFamily      String
+  hookText        String
+  hookScore       Float
+  visualStrategy  String
+  videoOpening    String?
+  captionPreview  String?
+  publishBlocked  Boolean  @default(false)
+  approved        Boolean  @default(false)
+  payloadJson     String   @default("{}")
+  createdAt       DateTime @default(now())
+
+  events CreativePerformanceEvent[]
+
+  @@index([runId])
+  @@index([hookFamily, hookScore])
+}
+
+model CreativePerformanceEvent {
+  id              String   @id @default(cuid())
+  runId           String?
+  run             CreativeCampaignRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  hypothesisId    String?
+  hypothesis      CreativeHypothesisRecord? @relation(fields: [hypothesisId], references: [id], onDelete: SetNull)
+  platform        String
+  traderPersona   String?
+  hookFamily      String?
+  visualStrategy  String?
+  videoOpening    String?
+  captionStructure String?
+  productFeature  String?
+  cta             String?
+  impressions     Int      @default(0)
+  hold3s          Int      @default(0)
+  watchTimeSec    Float    @default(0)
+  clicks          Int      @default(0)
+  landings        Int      @default(0)
+  signups         Int      @default(0)
+  activations     Int      @default(0)
+  paid            Int      @default(0)
+  notes           String?
+  recordedAt      DateTime @default(now())
+  createdBy       String?
+
+  @@index([platform, recordedAt])
+  @@index([hookFamily, recordedAt])
+  @@index([recordedAt])
+}
+
 

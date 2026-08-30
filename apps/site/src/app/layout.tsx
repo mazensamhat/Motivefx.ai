@@ -1,7 +1,12 @@
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import type { Metadata } from "next";
 import { JsonLdScript } from "@/components/seo/json-ld";
-import { organizationJsonLd, softwareApplicationJsonLd, webSiteJsonLd } from "@/lib/seo";
+import {
+  appleItunesAppMeta,
+  organizationJsonLd,
+  softwareApplicationJsonLd,
+  webSiteJsonLd,
+} from "@/lib/seo";
 import { SITE } from "@/lib/site-config";
 import "./globals.css";
 
@@ -33,6 +38,10 @@ export const metadata: Metadata = {
     url: SITE.url,
     siteName: "MotiveFX.AI",
   },
+  /** Safari Smart App Banner → live App Store listing. */
+  other: {
+    "apple-itunes-app": appleItunesAppMeta(),
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -55,7 +64,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-        <JsonLdScript data={[organizationJsonLd(), webSiteJsonLd(), softwareApplicationJsonLd()]} />
+        <JsonLdScript
+          data={[organizationJsonLd(), webSiteJsonLd(), ...softwareApplicationJsonLd()]}
+        />
         {children}
       </body>
     </html>

@@ -51,7 +51,7 @@ export function SiteFooter() {
                 <Link href="/tools">Tools</Link>
               </li>
               <li>
-                <Link href="/#get-the-app">Get the app</Link>
+                <Link href="/download">Download the app</Link>
               </li>
             </ul>
           </div>

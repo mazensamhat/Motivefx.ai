@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { SITE } from "./site-config";
-import { PLAY_STORE_URL } from "./store-links";
+import {
+  ANDROID_PACKAGE_ID,
+  IOS_APP_STORE_ID,
+  IOS_APP_STORE_URL,
+  IOS_APP_STORE_URL_GLOBAL,
+  PLAY_STORE_URL,
+} from "./store-links";
 
 export function pageMetadata({
   title,
@@ -99,6 +105,7 @@ export function organizationJsonLd(): JsonLd {
     url: SITE.url,
     description: SITE.description,
     email: SITE.email,
+    sameAs: [PLAY_STORE_URL, IOS_APP_STORE_URL, IOS_APP_STORE_URL_GLOBAL],
   };
 }
 
@@ -116,19 +123,49 @@ export function webSiteJsonLd(): JsonLd {
   };
 }
 
-export function softwareApplicationJsonLd(): JsonLd {
-  return {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "MotiveFX",
-    applicationCategory: "FinanceApplication",
-    operatingSystem: "Web, Android",
-    downloadUrl: PLAY_STORE_URL,
-    installUrl: PLAY_STORE_URL,
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
+/** Android + iOS SoftwareApplication nodes for Google / store discovery. */
+export function softwareApplicationJsonLd(): JsonLd[] {
+  const sharedOffer = {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  } as const;
+
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "MotiveFX",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Android",
+      url: PLAY_STORE_URL,
+      downloadUrl: PLAY_STORE_URL,
+      installUrl: PLAY_STORE_URL,
+      applicationSuite: SITE.name,
+      identifier: ANDROID_PACKAGE_ID,
+      offers: sharedOffer,
+      publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },
     },
-  };
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "MotiveFX.AI",
+      alternateName: "MotiveFX",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "iOS",
+      url: IOS_APP_STORE_URL,
+      downloadUrl: IOS_APP_STORE_URL_GLOBAL,
+      installUrl: IOS_APP_STORE_URL,
+      applicationSuite: SITE.name,
+      identifier: IOS_APP_STORE_ID,
+      offers: sharedOffer,
+      publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },
+      sameAs: [IOS_APP_STORE_URL, IOS_APP_STORE_URL_GLOBAL],
+    },
+  ];
+}
+
+/** Safari Smart App Banner content value. */
+export function appleItunesAppMeta(): string {
+  return `app-id=${IOS_APP_STORE_ID}, app-argument=${SITE.url}`;
 }

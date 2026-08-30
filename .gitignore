@@ -51,3 +51,9 @@ npm-debug.log*
 # Local Google Play support ticket binary (keep on disk; do not commit)
 docs/play-support-ticket/*.aab
 
+# Local scratch / capture artifacts — never ship
+.tmp*/
+.tmp-*.json
+.tmp-recording-frames/
+app.json
+
