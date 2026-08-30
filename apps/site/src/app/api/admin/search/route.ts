@@ -18,6 +18,7 @@ const STATIC_PROVIDERS = [
   { id: "odds", title: "The Odds API", href: "/admin/providers" },
   { id: "openai", title: "OpenAI", href: "/admin/ai-costs" },
   { id: "stripe", title: "Stripe", href: "/admin/revenue" },
+  { id: "creative", title: "Creative Lab", href: "/admin/creative" },
   { id: "vercel", title: "Vercel", href: "/admin/overview" },
   { id: "supabase", title: "Supabase", href: "/admin/overview" },
 ];
