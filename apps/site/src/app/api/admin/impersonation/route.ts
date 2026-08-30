@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const auth = await requireAdmin();
+  const auth = await requireAdminCapability("impersonate_user_support");
   if (!auth.ok) {
     if (auth.status === 401) return unauthorized(auth.error);
     return forbidden(auth.error);
