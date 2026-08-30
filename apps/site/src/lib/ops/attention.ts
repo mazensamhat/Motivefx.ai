@@ -156,10 +156,12 @@ export async function buildCommandAttention(): Promise<CommandAttentionPayload> 
   const hasContamination =
     contamination.demoInSignal > 0 || contamination.syntheticInSignal > 0;
 
-  const radar = buildOpportunityRadarOps();
-  const graph = buildSignalGraphOps();
-  const dna = buildMarketDnaOps();
-  const brief = buildDailyBriefOps();
+  const [radar, graph, dna, brief] = await Promise.all([
+    buildOpportunityRadarOps(),
+    buildSignalGraphOps(),
+    buildMarketDnaOps(),
+    buildDailyBriefOps(),
+  ]);
   const ledgerCount = getRecentLedgerEntries(20).length;
   let durableSnapCount = 0;
   try {
