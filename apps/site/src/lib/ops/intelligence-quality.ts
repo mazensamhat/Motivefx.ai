@@ -1,14 +1,89 @@
 /**
  * Intelligence quality aggregations for Radar / Graph / DNA / Brief / Evidence.
- * Built from evidence ledger until dedicated stores land.
+ * Prefer in-process evidence ledger; fall back to durable SignalSnapshot / Graph / DNA
+ * so Ops survives cold starts.
  */
 
 import { getRecentLedgerEntries } from "@/lib/terminal/market-truth/evidence-ledger";
 import { truthStateFromSourceType } from "./truth-state";
 import { classifyMotiveStance } from "@/lib/terminal/market-truth/signal-confluence";
+import {
+  loadLatestDna,
+  loadLatestGraphEdges,
+  loadSignalSnapshots,
+} from "./durable";
 
-export function buildEvidenceQualityOps() {
-  const entries = getRecentLedgerEntries(100);
+type EvidenceRow = {
+  id?: string;
+  provider: string;
+  sourceType: string;
+  freshness?: string;
+  group?: string;
+  signalContribution?: number;
+  simulation?: boolean;
+};
+
+type IntelEntry = {
+  ledgerId: string;
+  symbol: string;
+  motiveSignal: number | null;
+  engineVersion: string;
+  recordedAt: string;
+  evidence: EvidenceRow[];
+  signalEvidence: EvidenceRow[];
+  source: "ledger" | "durable";
+};
+
+function parseEvidence(raw: string): EvidenceRow[] {
+  try {
+    const parsed = JSON.parse(raw || "[]") as EvidenceRow[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function resolveIntelEntries(limit = 100): Promise<{
+  entries: IntelEntry[];
+  source: "ledger" | "durable" | "empty";
+}> {
+  const ledger = getRecentLedgerEntries(limit);
+  if (ledger.length > 0) {
+    return {
+      source: "ledger",
+      entries: ledger.map((e) => ({
+        ledgerId: e.ledgerId,
+        symbol: e.symbol,
+        motiveSignal: e.motiveSignal ?? null,
+        engineVersion: e.engineVersion,
+        recordedAt: e.recordedAt,
+        evidence: e.evidence as EvidenceRow[],
+        signalEvidence: e.signalEvidence as EvidenceRow[],
+        source: "ledger" as const,
+      })),
+    };
+  }
+
+  const snaps = await loadSignalSnapshots(limit);
+  if (snaps.length === 0) return { entries: [], source: "empty" };
+
+  return {
+    source: "durable",
+    entries: snaps.map((s) => ({
+      ledgerId: s.ledgerId,
+      symbol: s.symbol,
+      motiveSignal: s.motiveSignal,
+      engineVersion: s.engineVersion,
+      recordedAt: s.recordedAt.toISOString(),
+      evidence: parseEvidence(s.evidenceJson),
+      signalEvidence: parseEvidence(s.signalEvidenceJson),
+      source: "durable" as const,
+    })),
+  };
+}
+
+export async function buildEvidenceQualityOps() {
+  const { entries, source } = await resolveIntelEntries(100);
   let supporting = 0;
   let counter = 0;
   let neutral = 0;
@@ -26,7 +101,7 @@ export function buildEvidenceQualityOps() {
       else neutral += 1;
       if (ev.simulation || ev.sourceType === "DEMO" || ev.sourceType === "SYNTHETIC") simulated += 1;
       else live += 1;
-      byProvider.set(ev.provider, (byProvider.get(ev.provider) ?? 0) + 1);
+      byProvider.set(ev.provider || "unknown", (byProvider.get(ev.provider || "unknown") ?? 0) + 1);
     }
     if (score >= 70 && entry.signalEvidence.length < 2) {
       contradictions.push({
@@ -37,21 +112,24 @@ export function buildEvidenceQualityOps() {
   }
 
   return {
+    source,
     totals: { supporting, counter, neutral, simulated, live, entries: entries.length },
     providers: [...byProvider.entries()]
       .map(([provider, count]) => ({ provider, count }))
       .sort((a, b) => b.count - a.count),
     contradictions: contradictions.slice(0, 20),
     independenceNote:
-      "Syndication clustering (sourceFamily) lands with durable evidence store — counts today are raw evidence rows.",
+      source === "durable"
+        ? "Serving durable SignalSnapshot store (process ledger empty)."
+        : "Syndication clustering (sourceFamily) lands with durable evidence store — counts today are raw evidence rows.",
   };
 }
 
-export function buildOpportunityRadarOps() {
-  const entries = getRecentLedgerEntries(100);
+export async function buildOpportunityRadarOps() {
+  const { entries, source } = await resolveIntelEntries(100);
   const opportunities = entries.map((e) => {
     const score = e.motiveSignal ?? 0;
-    const stance = score != null ? classifyMotiveStance(score) : "unknown";
+    const stance = classifyMotiveStance(score);
     return {
       id: e.ledgerId,
       symbol: e.symbol,
@@ -67,6 +145,7 @@ export function buildOpportunityRadarOps() {
   });
 
   return {
+    source,
     totals: {
       detected: opportunities.length,
       highConfidence: opportunities.filter((o) => o.confidence >= 70).length,
@@ -77,10 +156,10 @@ export function buildOpportunityRadarOps() {
   };
 }
 
-export function buildSignalGraphOps() {
-  const entries = getRecentLedgerEntries(100);
+export async function buildSignalGraphOps() {
+  const { entries, source } = await resolveIntelEntries(100);
   const nodes = new Set(entries.map((e) => e.symbol));
-  const relationships: {
+  let relationships: {
     from: string;
     to: string;
     strength: number;
@@ -88,7 +167,6 @@ export function buildSignalGraphOps() {
     stale: boolean;
   }[] = [];
 
-  // Derive pseudo-relationships from co-occurring evidence groups in recent window
   const recent = entries.slice(0, 30);
   for (let i = 0; i < recent.length; i++) {
     for (let j = i + 1; j < Math.min(i + 4, recent.length); j++) {
@@ -109,7 +187,20 @@ export function buildSignalGraphOps() {
     }
   }
 
-  if (relationships.length) {
+  if (relationships.length === 0) {
+    const durableEdges = await loadLatestGraphEdges(50);
+    relationships = durableEdges.map((e) => ({
+      from: e.fromSymbol,
+      to: e.toSymbol,
+      strength: e.strength,
+      evidence: e.evidenceCount,
+      stale: e.stale,
+    }));
+    for (const r of relationships) {
+      nodes.add(r.from);
+      nodes.add(r.to);
+    }
+  } else {
     void import("./durable")
       .then((m) =>
         m.persistGraphEdges(
@@ -127,6 +218,7 @@ export function buildSignalGraphOps() {
   }
 
   return {
+    source: relationships.length && source === "empty" ? "durable" : source,
     totals: {
       nodes: nodes.size,
       relationships: relationships.length,
@@ -138,14 +230,14 @@ export function buildSignalGraphOps() {
   };
 }
 
-export function buildMarketDnaOps() {
-  const entries = getRecentLedgerEntries(100);
-  const bySymbol = new Map<string, (typeof entries)[0]>();
+export async function buildMarketDnaOps() {
+  const { entries, source } = await resolveIntelEntries(100);
+  const bySymbol = new Map<string, IntelEntry>();
   for (const e of entries) {
     if (!bySymbol.has(e.symbol)) bySymbol.set(e.symbol, e);
   }
 
-  const profiles = [...bySymbol.values()].map((e) => {
+  let profiles = [...bySymbol.values()].map((e) => {
     const groups = new Map<string, number>();
     for (const ev of e.evidence) {
       const g = ev.group ?? "OTHER";
@@ -164,7 +256,33 @@ export function buildMarketDnaOps() {
     };
   });
 
-  if (profiles.length) {
+  if (profiles.length === 0) {
+    const durable = await loadLatestDna(40);
+    profiles = durable.map((p) => {
+      let primaryDrivers: string[] = [];
+      let negativeSensitivities: string[] = [];
+      try {
+        primaryDrivers = JSON.parse(p.primaryDriversJson || "[]") as string[];
+      } catch {
+        primaryDrivers = [];
+      }
+      try {
+        negativeSensitivities = JSON.parse(p.negativeJson || "[]") as string[];
+      } catch {
+        negativeSensitivities = [];
+      }
+      return {
+        asset: p.asset,
+        version: p.version,
+        lastUpdated: p.recordedAt.toISOString(),
+        primaryDrivers,
+        negativeSensitivities,
+        confidence: p.confidence,
+        currentRegime: p.currentRegime,
+        signal: p.signal,
+      };
+    });
+  } else {
     void import("./durable")
       .then((m) =>
         m.persistDnaProfiles(
@@ -183,20 +301,22 @@ export function buildMarketDnaOps() {
   }
 
   return {
+    source: profiles.length && source === "empty" ? "durable" : source,
     totals: { profiles: profiles.length, materialDrift: 0 },
     profiles: profiles.slice(0, 40),
-    driftNote: "DNA profiles dual-write to MarketDnaSnapshot; drift baselines accumulate over time.",
+    driftNote: "DNA profiles dual-write to MarketDnaSnapshot; reads fall back to durable store on cold start.",
     durable: true,
   };
 }
 
-export function buildDailyBriefOps() {
-  const entries = getRecentLedgerEntries(50);
+export async function buildDailyBriefOps() {
+  const { entries, source } = await resolveIntelEntries(50);
   const symbols = [...new Set(entries.map((e) => e.symbol))];
   const providers = new Set<string>();
   for (const e of entries) for (const ev of e.evidence) providers.add(ev.provider);
 
   return {
+    source,
     latest: {
       date: new Date().toISOString().slice(0, 10),
       generatedAt: entries[0]?.recordedAt ?? null,
@@ -261,9 +381,39 @@ export async function buildCalibrationOpsAsync() {
   return buildCalibrationFromOutcomes();
 }
 
-export function buildIntelligenceDebugger(symbol: string) {
-  const entries = getRecentLedgerEntries(100).filter((e) => e.symbol === symbol.toUpperCase());
-  const latest = entries[0];
+export async function buildIntelligenceDebugger(symbol: string) {
+  const target = symbol.toUpperCase();
+  const ledgerHit = getRecentLedgerEntries(100).find((e) => e.symbol === target);
+  let latest: IntelEntry | null = ledgerHit
+    ? {
+        ledgerId: ledgerHit.ledgerId,
+        symbol: ledgerHit.symbol,
+        motiveSignal: ledgerHit.motiveSignal ?? null,
+        engineVersion: ledgerHit.engineVersion,
+        recordedAt: ledgerHit.recordedAt,
+        evidence: ledgerHit.evidence as EvidenceRow[],
+        signalEvidence: ledgerHit.signalEvidence as EvidenceRow[],
+        source: "ledger",
+      }
+    : null;
+
+  if (!latest) {
+    const snaps = await loadSignalSnapshots(100);
+    const snap = snaps.find((s) => s.symbol.toUpperCase() === target);
+    if (snap) {
+      latest = {
+        ledgerId: snap.ledgerId,
+        symbol: snap.symbol,
+        motiveSignal: snap.motiveSignal,
+        engineVersion: snap.engineVersion,
+        recordedAt: snap.recordedAt.toISOString(),
+        evidence: parseEvidence(snap.evidenceJson),
+        signalEvidence: parseEvidence(snap.signalEvidenceJson),
+        source: "durable",
+      };
+    }
+  }
+
   if (!latest) return null;
 
   const stages = [
@@ -271,12 +421,12 @@ export function buildIntelligenceDebugger(symbol: string) {
       stage: "RAW INPUT",
       detail: `${latest.evidence.length} evidence items from ${[
         ...new Set(latest.evidence.map((e) => e.provider)),
-      ].join(", ") || "—"}`,
+      ].join(", ") || "—"} · source ${latest.source}`,
     },
     {
       stage: "NORMALIZATION",
       detail: latest.evidence
-        .map((e) => `${e.sourceType}/${e.freshness}`)
+        .map((e) => `${e.sourceType}/${e.freshness ?? "n/a"}`)
         .slice(0, 6)
         .join(", "),
     },
@@ -315,6 +465,7 @@ export function buildIntelligenceDebugger(symbol: string) {
     ledgerId: latest.ledgerId,
     engineVersion: latest.engineVersion,
     recordedAt: latest.recordedAt,
+    source: latest.source,
     stages,
     evidence: latest.evidence.map((e) => ({
       id: e.id,

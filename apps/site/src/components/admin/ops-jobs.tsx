@@ -51,9 +51,19 @@ export function OpsJobs() {
                       <td>{j.durationMs != null ? `${j.durationMs}ms` : "—"}</td>
                       <td>
                         <span
-                          className={`ops-intel-pill ${j.success ? "healthy" : "critical"}`}
+                          className={`ops-intel-pill ${
+                            j.success === true
+                              ? "healthy"
+                              : j.success === false
+                                ? "critical"
+                                : "unknown"
+                          }`}
                         >
-                          {j.success ? "ok" : j.failure ?? "fail"}
+                          {j.success === true
+                            ? "ok"
+                            : j.success === false
+                              ? j.failure ?? "fail"
+                              : "no data"}
                         </span>
                       </td>
                       <td>{j.retries}</td>

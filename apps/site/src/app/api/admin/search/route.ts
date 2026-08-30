@@ -19,6 +19,7 @@ const STATIC_PROVIDERS = [
   { id: "openai", title: "OpenAI", href: "/admin/ai-costs" },
   { id: "stripe", title: "Stripe", href: "/admin/revenue" },
   { id: "creative", title: "Creative Lab", href: "/admin/creative" },
+  { id: "roles", title: "Roles & Access", href: "/admin/roles" },
   { id: "vercel", title: "Vercel", href: "/admin/overview" },
   { id: "supabase", title: "Supabase", href: "/admin/overview" },
 ];
@@ -67,6 +68,27 @@ export async function GET(request: Request) {
       }
     }
 
+    if (hits.filter((h) => h.kind === "symbol").length < 8) {
+      try {
+        const { loadSignalSnapshots } = await import("@/lib/ops/durable");
+        const snaps = await loadSignalSnapshots(80);
+        for (const s of snaps) {
+          if (!s.symbol.toLowerCase().includes(q)) continue;
+          const existing = hits.find((h) => h.kind === "symbol" && h.title === s.symbol);
+          if (existing) continue;
+          hits.push({
+            id: `symbol-durable-${s.symbol}`,
+            kind: "symbol",
+            title: s.symbol,
+            subtitle: `Motive Signal ${s.motiveSignal ?? "—"} · durable`,
+            href: `/admin/market-truth?symbol=${encodeURIComponent(s.symbol)}`,
+          });
+          if (hits.filter((h) => h.kind === "symbol").length >= 8) break;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     try {
       const users = await prisma.user.findMany({
         where: {

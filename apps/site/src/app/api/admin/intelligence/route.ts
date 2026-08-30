@@ -30,11 +30,21 @@ export async function GET(request: Request) {
       generatedAt: new Date().toISOString(),
     };
 
-    if (surface === "all" || surface === "evidence") payload.evidence = buildEvidenceQualityOps();
-    if (surface === "all" || surface === "radar") payload.radar = buildOpportunityRadarOps();
-    if (surface === "all" || surface === "graph") payload.graph = buildSignalGraphOps();
-    if (surface === "all" || surface === "dna") payload.dna = buildMarketDnaOps();
-    if (surface === "all" || surface === "brief") payload.brief = buildDailyBriefOps();
+    if (surface === "all" || surface === "evidence") {
+      payload.evidence = await buildEvidenceQualityOps();
+    }
+    if (surface === "all" || surface === "radar") {
+      payload.radar = await buildOpportunityRadarOps();
+    }
+    if (surface === "all" || surface === "graph") {
+      payload.graph = await buildSignalGraphOps();
+    }
+    if (surface === "all" || surface === "dna") {
+      payload.dna = await buildMarketDnaOps();
+    }
+    if (surface === "all" || surface === "brief") {
+      payload.brief = await buildDailyBriefOps();
+    }
     if (surface === "all" || surface === "calibration") {
       payload.calibration = await buildCalibrationOpsAsync();
     }
@@ -49,10 +59,14 @@ export async function GET(request: Request) {
         usage7d: usage,
       };
     }
-    if (surface === "all" || surface === "jobs") payload.jobs = listOpsJobs();
-    if (surface === "all" || surface === "pipelines") payload.pipelines = listPipelineStats();
+    if (surface === "all" || surface === "jobs") {
+      payload.jobs = await listOpsJobs();
+    }
+    if (surface === "all" || surface === "pipelines") {
+      payload.pipelines = await listPipelineStats();
+    }
     if (surface === "debugger" && symbol) {
-      payload.debugger = buildIntelligenceDebugger(symbol);
+      payload.debugger = await buildIntelligenceDebugger(symbol);
     }
 
     return json(payload);

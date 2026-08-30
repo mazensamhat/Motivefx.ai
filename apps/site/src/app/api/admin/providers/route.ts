@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin, requireAdminCapability } from "@/lib/admin";
 import { forbidden, json, serverError, unauthorized } from "@/lib/api";
 import {
   providerHealthFlags,
@@ -7,6 +7,7 @@ import {
 import { getPlatformMonitorSnapshot } from "@/lib/platform-monitor";
 import { getSourceRights, listSourceRights } from "@/lib/ops/source-rights";
 import { recordTelemetry } from "@/lib/ops/telemetry-envelope";
+import { getProviderTelemetryStats } from "@/lib/ops/durable";
 
 const PROVIDER_META: Record<
   ProviderSwitch,
@@ -57,7 +58,7 @@ const PROVIDER_META: Record<
 };
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdminCapability("view_providers");
   if (!auth.ok) {
     if (auth.status === 401) return unauthorized(auth.error);
     return forbidden(auth.error);
@@ -65,19 +66,27 @@ export async function GET() {
 
   try {
     const flags = providerHealthFlags();
-    const platforms = await getPlatformMonitorSnapshot();
+    const [platforms, telemetry] = await Promise.all([
+      getPlatformMonitorSnapshot(),
+      getProviderTelemetryStats(24),
+    ]);
 
     const providers = (Object.keys(PROVIDER_META) as ProviderSwitch[]).map((id) => {
       const meta = PROVIDER_META[id];
       const rights = getSourceRights(meta.rightsId);
       const enabled = flags[id];
+      const stats = telemetry.get(id) ?? telemetry.get(meta.label.toUpperCase());
       return {
         id,
         label: meta.label,
         envKey: meta.envKey,
         enabled,
         markets: meta.markets,
-        status: enabled ? ("healthy" as const) : ("disabled" as const),
+        status: !enabled
+          ? ("disabled" as const)
+          : stats && (stats.successPct ?? 100) < 90
+            ? ("degraded" as const)
+            : ("healthy" as const),
         authentication: enabled ? "configured" : "kill-switched",
         rights: {
           known: rights.rightsKnown,
@@ -86,17 +95,35 @@ export async function GET() {
           ai: rights.aiProcessingAllowed,
           cacheSeconds: rights.cacheDurationSeconds,
         },
-        // Placeholders until durable provider metrics land
-        requestsToday: null as number | null,
-        successPct: enabled ? 99.9 : null,
-        p95Ms: enabled ? null : null,
+        requestsToday: stats?.requestsToday ?? 0,
+        successPct: stats?.successPct ?? (enabled ? null : null),
+        p95Ms: stats?.p95Ms ?? null,
         quotaUsedPct: null as number | null,
-        lastSuccessAt: enabled ? new Date().toISOString() : null,
-        lastFailureAt: null as string | null,
-        freshness: enabled ? "LIVE" : "UNAVAILABLE",
+        lastSuccessAt: stats?.lastSuccessAt ?? null,
+        lastFailureAt: stats?.lastFailureAt ?? null,
+        freshness: !enabled
+          ? "UNAVAILABLE"
+          : stats?.lastSuccessAt
+            ? "LIVE"
+            : "UNKNOWN",
+        metricsSource: stats ? ("telemetry" as const) : ("none" as const),
         primary: id === "FINNHUB" || id === "COINSTATS" || id === "POLYMARKET",
-        secondary: id === "OPTIONS_FLOW" || id === "SHARP_API" ? "pending" : null,
+        secondary: id === "OPTIONS_FLOW" || id === "SHARP_API" ? "backup" : null,
       };
+    });
+
+    const deskCoverage = [
+      { desk: "US Equities", provider: "FINNHUB" as ProviderSwitch },
+      { desk: "Crypto", provider: "COINSTATS" as ProviderSwitch },
+      { desk: "Options", provider: "OPTIONS_FLOW" as ProviderSwitch },
+      { desk: "Prediction", provider: "POLYMARKET" as ProviderSwitch },
+      { desk: "Sports", provider: "ODDS_API" as ProviderSwitch },
+    ].map(({ desk, provider }) => {
+      const enabled = flags[provider];
+      const stats = telemetry.get(provider);
+      const pct =
+        !enabled ? 0 : stats?.successPct != null ? stats.successPct : stats?.requestsToday ? 95 : null;
+      return { desk, pct, requests: stats?.requestsToday ?? 0, enabled };
     });
 
     recordTelemetry({
@@ -112,14 +139,8 @@ export async function GET() {
       providers,
       platforms: platforms.platforms,
       sourceRights: listSourceRights(),
-      coverage: [
-        { desk: "US Equities", pct: flags.FINNHUB ? 99.8 : 0 },
-        { desk: "Crypto", pct: flags.COINSTATS ? 98.7 : 0 },
-        { desk: "Options", pct: flags.OPTIONS_FLOW ? 61.2 : 0 },
-        { desk: "Prediction", pct: flags.POLYMARKET ? 97.4 : 0 },
-        { desk: "Sports", pct: flags.ODDS_API ? 93.1 : 0 },
-        { desk: "Pink Sheets", pct: 77.8 },
-      ],
+      coverage: deskCoverage,
+      note: "Success %, p95, and request counts are from OpsTelemetryEvent (24h). Null successPct means no samples yet — not a fake 99.9.",
     });
   } catch (error) {
     console.error("[admin/providers]", error);

@@ -463,3 +463,98 @@ export async function loadLatestDna(limit = 40) {
     return [];
   }
 }
+
+/** Aggregate provider telemetry for Provider Health v2 (last N hours). */
+export async function getProviderTelemetryStats(hours = 24) {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+  type Agg = {
+    requests: number;
+    ok: number;
+    err: number;
+    durations: number[];
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+  };
+  const byProvider = new Map<string, Agg>();
+
+  try {
+    const rows = await prisma.opsTelemetryEvent.findMany({
+      where: {
+        observedAt: { gte: since },
+        OR: [{ provider: { not: null } }, { eventName: { startsWith: "provider." } }],
+      },
+      select: {
+        provider: true,
+        status: true,
+        durationMs: true,
+        observedAt: true,
+        eventName: true,
+      },
+      take: 5000,
+      orderBy: { observedAt: "desc" },
+    });
+
+    for (const r of rows) {
+      const key = (r.provider || "unknown").toUpperCase();
+      const cur = byProvider.get(key) ?? {
+        requests: 0,
+        ok: 0,
+        err: 0,
+        durations: [],
+        lastSuccessAt: null,
+        lastFailureAt: null,
+      };
+      cur.requests += 1;
+      const failed = r.status === "error" || r.status === "fail";
+      if (failed) {
+        cur.err += 1;
+        if (!cur.lastFailureAt) cur.lastFailureAt = r.observedAt.toISOString();
+      } else {
+        cur.ok += 1;
+        if (!cur.lastSuccessAt) cur.lastSuccessAt = r.observedAt.toISOString();
+      }
+      if (typeof r.durationMs === "number") cur.durations.push(r.durationMs);
+      byProvider.set(key, cur);
+    }
+  } catch (e) {
+    console.warn("[ops/durable] provider telemetry failed", e);
+  }
+
+  const out = new Map<
+    string,
+    {
+      requestsToday: number;
+      successPct: number | null;
+      p95Ms: number | null;
+      lastSuccessAt: string | null;
+      lastFailureAt: string | null;
+    }
+  >();
+
+  for (const [key, agg] of byProvider) {
+    const sorted = [...agg.durations].sort((a, b) => a - b);
+    const p95 =
+      sorted.length > 0 ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]!) : null;
+    out.set(key, {
+      requestsToday: agg.requests,
+      successPct: agg.requests === 0 ? null : Math.round((agg.ok / agg.requests) * 1000) / 10,
+      p95Ms: p95,
+      lastSuccessAt: agg.lastSuccessAt,
+      lastFailureAt: agg.lastFailureAt,
+    });
+  }
+  return out;
+}
+
+export async function countSignalOutcomes() {
+  try {
+    const [total, pending, decided] = await Promise.all([
+      prisma.signalOutcome.count(),
+      prisma.signalOutcome.count({ where: { outcome: "PENDING" } }),
+      prisma.signalOutcome.count({ where: { outcome: { not: "PENDING" } } }),
+    ]);
+    return { total, pending, decided };
+  } catch {
+    return { total: 0, pending: 0, decided: 0 };
+  }
+}

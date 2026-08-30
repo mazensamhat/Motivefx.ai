@@ -1,4 +1,4 @@
-import { requireAdmin, getAdminEmails } from "@/lib/admin";
+import { requireAdminCapability, getAdminEmails } from "@/lib/admin";
 import { forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { getDataMode } from "@/lib/terminal/market-truth/data-mode";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/lib/ops-links";
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdminCapability("manage_runtime_config");
   if (!auth.ok) {
     if (auth.status === 401) return unauthorized(auth.error);
     return forbidden(auth.error);

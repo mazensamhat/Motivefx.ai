@@ -1,4 +1,4 @@
-import { requireAdmin, getAdminEmails } from "@/lib/admin";
+import { requireAdminCapability, getAdminEmails } from "@/lib/admin";
 import { forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { getDataMode } from "@/lib/terminal/market-truth/data-mode";
 import { ledgerContaminationStats } from "@/lib/terminal/market-truth/evidence-ledger";
@@ -6,7 +6,7 @@ import { runMarketTruthGoldenChecks } from "@/lib/terminal/market-truth/golden";
 import { nativeReaderSecretConfigured } from "@/lib/terminal/native-reader-token";
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdminCapability("view_security");
   if (!auth.ok) {
     if (auth.status === 401) return unauthorized(auth.error);
     return forbidden(auth.error);

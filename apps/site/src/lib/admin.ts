@@ -1,4 +1,9 @@
 import { getSession } from "@/lib/session";
+import {
+  adminActorFromSession,
+  actorHas,
+  type OpsCapability,
+} from "@/lib/ops/rbac";
 
 /** Comma-separated admin emails in ADMIN_EMAILS (case-insensitive). */
 export function getAdminEmails(): string[] {
@@ -22,6 +27,21 @@ export async function requireAdmin() {
     return { ok: false as const, status: 403 as const, error: "Forbidden" };
   }
   return { ok: true as const, session };
+}
+
+/** Admin email gate + capability check (full admin grant until multi-role lands). */
+export async function requireAdminCapability(capability: OpsCapability) {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth;
+  const actor = adminActorFromSession(auth.session);
+  if (!actorHas(actor, capability)) {
+    return {
+      ok: false as const,
+      status: 403 as const,
+      error: `Missing capability: ${capability}`,
+    };
+  }
+  return { ok: true as const, session: auth.session, actor };
 }
 
 export function getAdminApiKey(): string | null {

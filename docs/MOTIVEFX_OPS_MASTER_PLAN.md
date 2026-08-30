@@ -1,8 +1,8 @@
 # MotiveFX Ops — Operations Master Plan v1.0
 
-> **Status:** Adopted source of truth (2026-08-28). **Implementation:** P0–P3 surfaces + durable backend: Postgres telemetry/audit/incidents/AI usage, signal snapshots + outcomes + calibration, look-ahead-safe replay queue/runner, Graph/DNA dual-write.  
+> **Status:** Adopted source of truth (2026-08-28). **Implementation (2026-08-30):** P0–P3 Ops surfaces are live. Durable core includes Postgres telemetry/audit/incidents/AI usage, SignalSnapshot + outcomes + calibration, look-ahead-safe replay, Graph/DNA dual-write, Creative Lab. Market Intel reads fall back to durable stores on cold start. Provider Health / Jobs / Pipelines derive from telemetry (no fabricated 99.9% metrics). Admin routes enforce capability checks; Roles & Access UI lists grants. Remaining stretch: multi-role RBAC matrix, Support Center tickets, automated provider failover, predictive incidents.  
 > **Rule:** Keep the existing Ops foundation. Harden → standardize telemetry → market-truth observability → intelligence quality → user/commercial/platform ops.  
-> **Related:** [PRODUCTION_HARDENING_MASTER_PLAN.md](./PRODUCTION_HARDENING_MASTER_PLAN.md)  
+> **Related:** [PRODUCTION_HARDENING_MASTER_PLAN.md](./PRODUCTION_HARDENING_MASTER_PLAN.md) · [MOTIVEFX_CREATIVE_INTELLIGENCE.md](./MOTIVEFX_CREATIVE_INTELLIGENCE.md)  
 > **UI:** Light operational canvas (not the consumer terminal). See `/admin/overview`.
 
 ## 1. Mission
@@ -110,7 +110,7 @@ SYSTEM           Settings
 SISTER CONSOLES  MyMotiveLife Ops · MotivePulse Ops
 ```
 
-Existing routes stay live; new sections ship as stubs until P1/P2.
+Existing routes stay live. Market Intel / Jobs / Providers prefer durable telemetry and snapshots over process-local fiction.
 
 ## 7. Command Center
 

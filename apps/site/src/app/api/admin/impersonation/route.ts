@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/admin";
+import { requireAdminCapability } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { prisma } from "@motivefx/database";
 import {
@@ -10,7 +10,7 @@ import {
 import type { ImpersonationMode } from "@/lib/ops/rbac";
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAdminCapability("impersonate_user_readonly");
   if (!auth.ok) {
     if (auth.status === 401) return unauthorized(auth.error);
     return forbidden(auth.error);
@@ -33,7 +33,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdminCapability("impersonate_user_support");
   if (!auth.ok) {
     if (auth.status === 401) return unauthorized(auth.error);
     return forbidden(auth.error);

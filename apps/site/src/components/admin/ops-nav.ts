@@ -140,7 +140,8 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
     label: "Governance",
     items: [
       { id: "security", label: "Security", href: "/admin/security", icon: Lock, description: "Auth & entitlements" },
-      { id: "audit", label: "Audit Log", href: "/admin/audit", icon: ShieldCheck, description: "Operator audit" },
+      { id: "roles", label: "Roles & Access", href: "/admin/roles", icon: ShieldCheck, description: "Capability grants" },
+      { id: "audit", label: "Audit Log", href: "/admin/audit", icon: ScrollText, description: "Operator audit" },
     ],
   },
   {
