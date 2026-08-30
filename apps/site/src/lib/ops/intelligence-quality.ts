@@ -277,8 +277,9 @@ export async function buildMarketDnaOps() {
         lastUpdated: p.recordedAt.toISOString(),
         primaryDrivers,
         negativeSensitivities,
-        confidence: p.confidence,
-        currentRegime: p.currentRegime,
+        confidence: p.confidence ?? Math.min(99, 40 + (typeof p.signal === "number" ? 20 : 0)),
+        currentRegime: (p.currentRegime as ReturnType<typeof classifyMotiveStance>) ||
+          classifyMotiveStance(p.signal ?? 50),
         signal: p.signal,
       };
     });
