@@ -1,10 +1,17 @@
-import { json } from "@/lib/api";
+import { json, forbidden, unauthorized } from "@/lib/api";
+import { requireAdminCapability } from "@/lib/admin";
 import { isDatabaseConfigured } from "@/lib/db-check";
 import { checkAppleIapSchema } from "@/lib/load-user";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const auth = await requireAdminCapability("view_security");
+  if (!auth.ok) {
+    if (auth.status === 401) return unauthorized(auth.error);
+    return forbidden(auth.error);
+  }
+
   const checks = {
     authSecret: Boolean(process.env.AUTH_SECRET?.trim()),
     database: isDatabaseConfigured(),
