@@ -1,6 +1,7 @@
 import { prisma } from "@motivefx/database";
 import { getStripe } from "@/lib/stripe";
 import { json, serverError } from "@/lib/api";
+import { invalidateUserCache } from "@/lib/load-user";
 import type Stripe from "stripe";
 import type { PricingTierId } from "@/lib/tiers";
 
@@ -34,14 +35,24 @@ async function activateTier(
       ...(customerId ? { stripeCustomerId: customerId } : {}),
     },
   });
+  invalidateUserCache(userId);
 }
 
-async function deactivateTier(userId: string) {
+async function deactivateTier(userId: string, subscriptionId: string) {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
-    select: { subscriptionStatus: true },
+    select: {
+      subscriptionStatus: true,
+      billingProvider: true,
+      stripeSubscriptionId: true,
+    },
   });
   if (existing?.subscriptionStatus === "comp") return;
+
+  // Stripe can deliver events late or out of order. Never let cancellation of
+  // an old subscription erase access from a newer subscription (or Apple).
+  if (existing?.billingProvider !== "stripe") return;
+  if (existing.stripeSubscriptionId !== subscriptionId) return;
 
   await prisma.user.update({
     where: { id: userId },
@@ -52,6 +63,7 @@ async function deactivateTier(userId: string) {
       billingProvider: null,
     },
   });
+  invalidateUserCache(userId);
 }
 
 async function resolveUserIdFromSubscription(sub: Stripe.Subscription): Promise<string | null> {
@@ -146,14 +158,14 @@ export async function POST(request: Request) {
             await activateTier(userId, tier, selectedMarkets, sub.id, customerId);
           }
         } else if (sub.status === "canceled" || sub.status === "unpaid") {
-          await deactivateTier(userId);
+          await deactivateTier(userId, sub.id);
         }
         break;
       }
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
         const userId = await resolveUserIdFromSubscription(sub);
-        if (userId) await deactivateTier(userId);
+        if (userId) await deactivateTier(userId, sub.id);
         break;
       }
       default:
