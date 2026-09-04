@@ -3,28 +3,31 @@ import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/ap
 import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getSession } from "@/lib/session";
 import { getActiveImpersonation } from "@/lib/ops/impersonation";
-import { z } from "zod";
+import { findUserSafeCached } from "@/lib/load-user";
 
-const bodySchema = z.object({
-  email: z.string().email().optional(),
-});
-
-export async function POST(request: Request) {
+export async function POST() {
   try {
     if (!isStripeConfigured()) {
       return badRequest("Stripe is not configured.");
     }
 
+    // Billing portal access is credentialed account access. Never fall back to
+    // a caller-supplied email address: anyone who knows a customer's email could
+    // otherwise mint a Stripe portal session for that account.
     const session = await getSession();
-    if (session && (await getActiveImpersonation(session.id))) {
+    if (!session) return unauthorized("Sign in to manage billing.");
+
+    if (await getActiveImpersonation(session.id)) {
       return forbidden("Billing changes are blocked while impersonating.");
     }
-    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
-    const email = (session?.email ?? parsed.data?.email)?.trim().toLowerCase();
-    if (!email) return unauthorized("Sign in to manage billing.");
+
+    const currentUser = await findUserSafeCached({ id: session.id }, { timeoutMs: 5_000 });
+    if (!currentUser || currentUser.disabledAt) {
+      return unauthorized("Sign in to manage billing.");
+    }
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { id: currentUser.id },
       select: { stripeCustomerId: true },
     });
     if (!user?.stripeCustomerId) {
