@@ -45,8 +45,7 @@ export async function POST(request: Request) {
     return json({
       ok: true,
       authoritativeSource: "revenuecat_webhook",
-      pending: user.billingProvider !== "apple" && parsed.data.action === "activate",
-      billingProvider: user.billingProvider,
+      pending: parsed.data.action === "activate" && !active,
       subscriptionStatus: user.subscriptionStatus,
       tier: active ? user.intelligenceTier : "lite",
       plan: active ? user.intelligenceTier : "none",
