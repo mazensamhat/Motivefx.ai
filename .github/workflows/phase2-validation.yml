@@ -33,20 +33,6 @@ jobs:
         working-directory: web
         run: npm install --package-lock-only --ignore-scripts
 
-      - name: Validate terminal dependencies and production build
-        working-directory: web
-        run: |
-          npm ci --include=dev
-          npm audit --audit-level=high
-          npm run typecheck
-          npm run build
-
-      - name: Validate native application TypeScript
-        working-directory: mobile
-        run: |
-          npm ci --include=dev
-          npm run typecheck
-
       - name: Commit regenerated terminal lockfile
         if: github.event_name == 'push' && github.ref == 'refs/heads/audit/production-bug-sweep-2026-09-04'
         run: |
@@ -59,3 +45,57 @@ jobs:
           git add web/package-lock.json
           git commit -m "chore(web): synchronize patched terminal lockfile [skip ci]"
           git push origin HEAD:audit/production-bug-sweep-2026-09-04
+
+      - name: Install terminal dependencies
+        working-directory: web
+        run: npm ci --include=dev
+
+      - name: Audit terminal dependencies
+        id: terminal_audit
+        continue-on-error: true
+        working-directory: web
+        run: npm audit --audit-level=high
+
+      - name: Type-check terminal
+        id: terminal_typecheck
+        continue-on-error: true
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Build terminal
+        id: terminal_build
+        continue-on-error: true
+        working-directory: web
+        run: npm run build
+
+      - name: Install native dependencies
+        working-directory: mobile
+        run: npm ci --include=dev
+
+      - name: Type-check native application
+        id: mobile_typecheck
+        continue-on-error: true
+        working-directory: mobile
+        run: npm run typecheck
+
+      - name: Enforce validation results
+        if: always()
+        run: |
+          failed=0
+          if [ "${{ steps.terminal_audit.outcome }}" != "success" ]; then
+            echo "Terminal dependency audit failed."
+            failed=1
+          fi
+          if [ "${{ steps.terminal_typecheck.outcome }}" != "success" ]; then
+            echo "Terminal type-check failed."
+            failed=1
+          fi
+          if [ "${{ steps.terminal_build.outcome }}" != "success" ]; then
+            echo "Terminal build failed."
+            failed=1
+          fi
+          if [ "${{ steps.mobile_typecheck.outcome }}" != "success" ]; then
+            echo "Mobile type-check failed."
+            failed=1
+          fi
+          exit "$failed"
