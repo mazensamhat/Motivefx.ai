@@ -5,10 +5,7 @@ import { cookies, headers } from "next/headers";
 
 export const SESSION_COOKIE = "motivefx_session";
 export const REFRESH_COOKIE = "motivefx_refresh";
-
-/** Short bearer lifetime limits damage from a leaked mobile/WebView token. */
 export const SESSION_DURATION = 60 * 30;
-/** Refresh survives normal app use but is revalidated against the database. */
 export const REFRESH_DURATION = 60 * 60 * 24 * 30;
 
 export interface SessionUser {
@@ -27,9 +24,22 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-function credentialFingerprint(passwordHash: string | null): string {
+/**
+ * Security-sensitive account state is bound into refresh tokens. Changing the
+ * password or enabling/disabling/re-keying TOTP invalidates every old refresh
+ * token without a new session table or a DB lookup on every API request.
+ */
+function credentialFingerprint(
+  passwordHash: string | null,
+  totpSecret: string | null,
+  totpEnabled: boolean
+): string {
   return createHash("sha256")
     .update(passwordHash ?? "motivefx-passwordless-account")
+    .update("|")
+    .update(totpEnabled ? "totp:on" : "totp:off")
+    .update("|")
+    .update(totpSecret ?? "no-totp-secret")
     .digest("base64url")
     .slice(0, 32);
 }
@@ -88,19 +98,27 @@ async function loadRefreshUser(id: string) {
       passwordHash: true,
       disabledAt: true,
       updatedAt: true,
+      totpSecret: true,
+      totpEnabled: true,
     },
   });
 }
 
+function fingerprintForUser(user: {
+  passwordHash: string | null;
+  totpSecret: string | null;
+  totpEnabled: boolean;
+}): string {
+  return credentialFingerprint(user.passwordHash, user.totpSecret, user.totpEnabled);
+}
+
 /**
- * Validate a refresh credential against current account state. The password-hash
- * fingerprint means a password change/reset instantly invalidates every refresh
- * token without requiring a session table. Existing access tokens expire within
- * SESSION_DURATION (30 minutes).
+ * Validate a refresh credential against current account state. Password or TOTP
+ * changes immediately invalidate every refresh token. Already-issued access
+ * tokens have a maximum remaining lifetime of 30 minutes.
  *
- * A legacy pre-Phase-2 session JWT can be upgraded once if the account has not
- * changed since that JWT was issued. This avoids needlessly signing out unchanged
- * mobile users while still rejecting legacy tokens after a credential/account edit.
+ * A legacy pre-Phase-2 session JWT can be upgraded once if the account record
+ * has not changed since it was issued.
  */
 export async function refreshSessionTokens(
   token: string | undefined | null
@@ -117,9 +135,8 @@ export async function refreshSessionTokens(
 
     if (payload.type === "refresh") {
       const supplied = typeof payload.credential === "string" ? payload.credential : "";
-      if (!supplied || supplied !== credentialFingerprint(user.passwordHash)) return null;
+      if (!supplied || supplied !== fingerprintForUser(user)) return null;
     } else if (payload.type == null) {
-      // Migration path for the old 30-day token that was used as both access+refresh.
       const issuedAt = typeof payload.iat === "number" ? payload.iat * 1000 : 0;
       if (!issuedAt || user.updatedAt.getTime() > issuedAt + 5_000) return null;
     } else {
@@ -128,29 +145,21 @@ export async function refreshSessionTokens(
 
     const current = { id: user.id, email: user.email };
     const accessToken = await signAccessToken(current);
-    const refreshToken = await signRefreshToken(
-      current,
-      credentialFingerprint(user.passwordHash)
-    );
+    const refreshToken = await signRefreshToken(current, fingerprintForUser(user));
     return { accessToken, refreshToken, user: current };
   } catch {
     return null;
   }
 }
 
-async function createFreshSessionTokens(
-  user: SessionUser
-): Promise<SessionTokens> {
+async function createFreshSessionTokens(user: SessionUser): Promise<SessionTokens> {
   const current = await loadRefreshUser(user.id);
   if (!current || current.disabledAt) throw new Error("Account is not available");
 
   const canonical = { id: current.id, email: current.email };
   return {
     accessToken: await signAccessToken(canonical),
-    refreshToken: await signRefreshToken(
-      canonical,
-      credentialFingerprint(current.passwordHash)
-    ),
+    refreshToken: await signRefreshToken(canonical, fingerprintForUser(current)),
   };
 }
 
@@ -174,19 +183,16 @@ function applySessionCookies(
   });
 }
 
-/** Create a web + mobile token pair and set the browser cookies when possible. */
 export async function createSessionPair(user: SessionUser): Promise<SessionTokens> {
   const tokens = await createFreshSessionTokens(user);
   try {
     applySessionCookies(await cookies(), tokens);
   } catch {
-    // Some read-only render contexts do not permit setting cookies. Callers that
-    // need returned mobile tokens still receive a valid pair.
+    /* Read-only render contexts may not permit cookie mutation. */
   }
   return tokens;
 }
 
-/** Backward-compatible helper used by web-only flows. Returns the access JWT. */
 export async function createSession(user: SessionUser): Promise<string> {
   return (await createSessionPair(user)).accessToken;
 }
@@ -207,8 +213,7 @@ export async function destroySession() {
 /**
  * Cookie session, or Authorization: Bearer <short access JWT> for mobile/API.
  * Browser requests transparently rotate from the refresh cookie after access
- * expiry. That refresh path performs one DB validation only at the refresh
- * boundary, not on every terminal request.
+ * expiry. That refresh path performs one DB validation only at the boundary.
  */
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
@@ -221,19 +226,17 @@ export async function getSession(): Promise<SessionUser | null> {
   const fromBearer = await accessSessionFromToken(bearer);
   if (fromBearer) return fromBearer;
 
-  // Browser refresh, plus one-time migration from the old cookie format.
   const refreshCandidate = cookieStore.get(REFRESH_COOKIE)?.value || cookieAccess;
   const refreshed = await refreshSessionTokens(refreshCandidate);
   if (!refreshed) return null;
   try {
     applySessionCookies(cookieStore, refreshed);
   } catch {
-    /* Read-only rendering context; the validated session is still usable once. */
+    /* Read-only rendering context; validated session is still usable once. */
   }
   return refreshed.user;
 }
 
-/** Shape expected by the MotiveFX native app after login/register/refresh. */
 export function mobileSessionPayload(
   user: SessionUser,
   accessToken: string,
