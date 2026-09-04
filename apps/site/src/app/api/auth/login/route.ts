@@ -12,7 +12,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const parsed = schema.safeParse(await request.json());
+    const body = await request.json().catch(() => null);
+    const parsed = schema.safeParse(body);
     if (!parsed.success) return badRequest("Invalid email or password.");
 
     const email = parsed.data.email.trim().toLowerCase();
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     }
     if (!user.passwordHash) {
       return unauthorized(
-        "No password on this account yet. Use Create account on /register or complete checkout first."
+        "No password is set on this account yet. Use Forgot password to verify your email and create one."
       );
     }
 
