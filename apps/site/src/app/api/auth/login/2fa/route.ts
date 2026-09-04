@@ -3,7 +3,7 @@ import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
 import { verifyPending2faToken } from "@/lib/pending-2fa";
 import { verifyTotpCode } from "@/lib/totp";
-import { createSession, mobileSessionPayload } from "@/lib/session";
+import { createSessionPair, mobileSessionPayload } from "@/lib/session";
 
 const schema = z.object({
   pendingToken: z.string().min(1),
@@ -25,9 +25,11 @@ export async function POST(request: Request) {
 
     let userId: string;
     try {
+      // Durable token is consumed here before TOTP verification. A failed guess
+      // therefore requires the primary password again instead of allowing retries.
       userId = await verifyPending2faToken(parsed.data.pendingToken);
     } catch {
-      return unauthorized("Verification expired. Sign in again.");
+      return unauthorized("Verification expired or was already used. Sign in again.");
     }
 
     const user = await prisma.user.findUnique({
@@ -39,11 +41,17 @@ export async function POST(request: Request) {
       return badRequest("Two-factor authentication is not enabled.");
     }
     if (!verifyTotpCode(user.totpSecret, parsed.data.code)) {
-      return unauthorized("Invalid authentication code.");
+      return unauthorized("Invalid authentication code. Sign in again to retry.");
     }
 
-    const accessToken = await createSession({ id: user.id, email: user.email });
-    return json(mobileSessionPayload({ id: user.id, email: user.email }, accessToken));
+    const tokens = await createSessionPair({ id: user.id, email: user.email });
+    return json(
+      mobileSessionPayload(
+        { id: user.id, email: user.email },
+        tokens.accessToken,
+        tokens.refreshToken
+      )
+    );
   } catch (error) {
     console.error("[auth/login/2fa]", error);
     if (error instanceof Error && error.message.includes("AUTH_SECRET")) {
