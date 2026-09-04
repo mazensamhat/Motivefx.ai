@@ -2,6 +2,8 @@ import { prisma } from "@motivefx/database";
 import { getStripe } from "@/lib/stripe";
 import { json, serverError } from "@/lib/api";
 import { invalidateUserCache } from "@/lib/load-user";
+import { issuePasswordResetToken } from "@/lib/password-reset";
+import { sendAccountSetupEmail } from "@/lib/account-setup-email";
 import type Stripe from "stripe";
 import type { PricingTierId } from "@/lib/tiers";
 
@@ -18,7 +20,6 @@ async function activateTier(
     where: { id: userId },
     select: { subscriptionStatus: true },
   });
-  // Ops-granted comp access must not be overwritten by Stripe subscription events.
   if (existing?.subscriptionStatus === "comp") return;
 
   await prisma.user.update({
@@ -29,7 +30,6 @@ async function activateTier(
       stripeSubscriptionId: subscriptionId,
       subscriptionStatus: "active",
       billingProvider: "stripe",
-      // Clear Apple ids so we don't treat this as Apple-managed billing.
       appleOriginalTransactionId: null,
       appleProductId: null,
       ...(customerId ? { stripeCustomerId: customerId } : {}),
@@ -48,9 +48,6 @@ async function deactivateTier(userId: string, subscriptionId: string) {
     },
   });
   if (existing?.subscriptionStatus === "comp") return;
-
-  // Stripe can deliver events late or out of order. Never let cancellation of
-  // an old subscription erase access from a newer subscription (or Apple).
   if (existing?.billingProvider !== "stripe") return;
   if (existing.stripeSubscriptionId !== subscriptionId) return;
 
@@ -107,6 +104,50 @@ function tierFromMetadata(meta: Stripe.Metadata | null | undefined): PricingTier
   return null;
 }
 
+async function sendCheckoutAccountSetup(userId: string, checkoutSessionId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, passwordHash: true },
+  });
+  if (!user || user.passwordHash) return;
+
+  // Stripe retries webhook deliveries. Do not repeatedly invalidate the previous
+  // setup link or send duplicate mail for the same successful checkout session.
+  const alreadySent = await prisma.opsAuditEvent.findFirst({
+    where: {
+      action: "auth.account_setup.sent",
+      targetId: userId,
+      reason: checkoutSessionId,
+      result: "success",
+    },
+    select: { id: true },
+  });
+  if (alreadySent) return;
+
+  const token = await issuePasswordResetToken(userId);
+  const sent = await sendAccountSetupEmail(user.email, token);
+  await prisma.opsAuditEvent.create({
+    data: {
+      actorId: "stripe_webhook",
+      actorEmail: "stripe-webhook@motivefx.local",
+      action: "auth.account_setup.sent",
+      capability: null,
+      risk: "LOW",
+      targetType: "user",
+      targetId: userId,
+      reason: checkoutSessionId,
+      beforeJson: null,
+      afterJson: null,
+      result: sent ? "success" : "failed",
+      environment:
+        process.env.VERCEL_ENV?.trim() || process.env.NODE_ENV?.trim() || "unknown",
+    },
+  });
+  if (!sent) {
+    console.error(`[stripe webhook] Could not send account setup email to user ${userId}`);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const stripe = getStripe();
@@ -142,6 +183,7 @@ export async function POST(request: Request) {
         const selectedMarkets = checkoutSession.metadata?.selectedMarkets ?? null;
         if (userId && subId && tier) {
           await activateTier(userId, tier, selectedMarkets, subId, customerId);
+          await sendCheckoutAccountSetup(userId, checkoutSession.id);
         }
         break;
       }
