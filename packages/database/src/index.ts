@@ -2,9 +2,25 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
+const DEFAULT_SERVERLESS_POOL_LIMIT = 2;
+const MAX_SERVERLESS_POOL_LIMIT = 10;
+
+function configuredPoolLimit(): string | undefined {
+  const raw = process.env.PRISMA_CONNECTION_LIMIT?.trim();
+  if (!raw) return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > MAX_SERVERLESS_POOL_LIMIT) {
+    return undefined;
+  }
+  return String(parsed);
+}
+
 /**
- * Vercel/serverless: many concurrent isolates × Prisma's default pool exhausts
- * Supabase Supavisor. Prefer transaction pooler (port 6543) with connection_limit=1.
+ * Vercel/serverless: many concurrent isolates can exhaust Supabase if every
+ * Prisma client opens a large local pool. Keep the per-isolate pool small,
+ * but never allow a transaction-pooler isolate to be pinned to one connection:
+ * MotiveFX fans out several authenticated API requests and one busy connection
+ * was the direct cause of production P2024 timeouts.
  */
 function serverlessDatabaseUrl(raw: string | undefined): string | undefined {
   if (!raw?.trim()) return raw;
@@ -12,20 +28,29 @@ function serverlessDatabaseUrl(raw: string | undefined): string | undefined {
     const url = new URL(raw.trim());
     const host = url.hostname.toLowerCase();
     const port = url.port || (url.protocol === "postgresql:" ? "5432" : "");
-    const isSupabasePooler =
-      host.includes("pooler.supabase.com") || port === "6543";
+    const isSupabasePooler = host.includes("pooler.supabase.com") || port === "6543";
     const isSupabaseDirect =
       /^db\.[a-z0-9]+\.supabase\.co$/i.test(host) ||
       (host.includes("supabase.co") && port === "5432" && !host.includes("pooler"));
 
-    // Transaction-mode pooler requires this (disables prepared statements).
     if (isSupabasePooler || host.includes("supabase")) {
       url.searchParams.set("pgbouncer", "true");
     }
 
-    // One connection per isolate through the pooler; tiny pool on direct (risky).
-    if (!url.searchParams.has("connection_limit") || isSupabasePooler) {
-      url.searchParams.set("connection_limit", isSupabaseDirect ? "2" : "1");
+    const explicitPoolLimit = configuredPoolLimit();
+    if (explicitPoolLimit) {
+      url.searchParams.set("connection_limit", explicitPoolLimit);
+    } else if (isSupabasePooler) {
+      const embedded = Number.parseInt(url.searchParams.get("connection_limit") ?? "", 10);
+      // Heal the old production URL even if it still contains connection_limit=1.
+      if (!Number.isFinite(embedded) || embedded < DEFAULT_SERVERLESS_POOL_LIMIT) {
+        url.searchParams.set("connection_limit", String(DEFAULT_SERVERLESS_POOL_LIMIT));
+      }
+    } else if (!url.searchParams.has("connection_limit")) {
+      url.searchParams.set(
+        "connection_limit",
+        isSupabaseDirect ? "1" : String(DEFAULT_SERVERLESS_POOL_LIMIT)
+      );
     }
 
     if (!url.searchParams.has("connect_timeout")) {
@@ -54,8 +79,6 @@ function createPrismaClient() {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-// Always cache — production serverless reuses warm isolates; without this,
-// HMR/multi-import paths can open extra pools.
 globalForPrisma.prisma = prisma;
 
 /** Lightweight reachability probe used by Ops platform monitor. */
@@ -80,7 +103,7 @@ export function summarizePrismaConnectionError(raw: string): string {
     return "Can't reach Postgres — check DATABASE_URL (use pooler :6543) and network/IPv4";
   }
   if (/P2024|timed out fetching|pool_timeout|connection pool/i.test(msg)) {
-    return "Connection pool exhausted — use Supavisor :6543 with connection_limit=1";
+    return "Connection pool exhausted — use Supavisor :6543 and keep at least two connections per busy serverless isolate";
   }
   if (/P1017|Server has closed|connection reset|ECONNRESET/i.test(msg)) {
     return "Database closed the connection — transient; retry or lower pool pressure";
@@ -91,7 +114,6 @@ export function summarizePrismaConnectionError(raw: string): string {
   if (/Error in connector|Error in connec/i.test(msg)) {
     return "Prisma connector failed — usually pooler/URL/ssl; verify DATABASE_URL + DIRECT_URL";
   }
-  // Strip Prisma's verbose "Invalid `prisma.x()` invocation:" wrapper for Ops UI.
   const short = msg
     .replace(/^Invalid `[^`]+` invocation:\s*/i, "")
     .replace(/Error querying the database:\s*/i, "")

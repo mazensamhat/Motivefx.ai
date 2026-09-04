@@ -24,18 +24,38 @@ export async function issuePasswordResetToken(userId: string) {
   return token;
 }
 
-export async function findValidPasswordResetUserId(token: string) {
+/**
+ * Atomically claim a valid reset token.
+ *
+ * Looking a token up and deleting it later creates a race where two concurrent
+ * requests can both reset the same account. We first read the owner, then use a
+ * conditional delete as the compare-and-swap. Exactly one caller can delete the
+ * row and receive the user id; every concurrent/replayed caller gets null.
+ */
+export async function consumePasswordResetToken(token: string) {
   const tokenHash = hashToken(token);
+  const now = new Date();
   const record = await prisma.passwordResetToken.findUnique({
     where: { tokenHash },
-    select: { userId: true, expiresAt: true },
+    select: { id: true, userId: true, expiresAt: true },
   });
 
-  if (!record || record.expiresAt < new Date()) {
+  if (!record || record.expiresAt <= now) {
+    if (record) {
+      await prisma.passwordResetToken.deleteMany({ where: { id: record.id } });
+    }
     return null;
   }
 
-  return record.userId;
+  const claimed = await prisma.passwordResetToken.deleteMany({
+    where: {
+      id: record.id,
+      tokenHash,
+      expiresAt: { gt: now },
+    },
+  });
+
+  return claimed.count === 1 ? record.userId : null;
 }
 
 export async function clearPasswordResetTokens(userId: string) {

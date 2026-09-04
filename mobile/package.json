@@ -12,7 +12,8 @@
     "prebuild:android": "expo prebuild --platform android --clean",
     "build:android": "eas build --platform android --profile preview",
     "build:android:production": "eas build --platform android --profile production",
-    "build:ios:production": "eas build --platform ios --profile production"
+    "build:ios:production": "eas build --platform ios --profile production",
+    "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

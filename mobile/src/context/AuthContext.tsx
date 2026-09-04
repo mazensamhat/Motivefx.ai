@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAccessToken, getCachedUser, type AuthUser } from "../lib/auth";
+import { getStoredAccessToken, getCachedUser, type AuthUser } from "../lib/auth";
 import { ApiError, fetchProfile, logout as apiLogout } from "../lib/api";
 
 interface AuthState {
@@ -29,14 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const [token, cached] = await Promise.all([getAccessToken(), getCachedUser()]);
+          const [token, cached] = await Promise.all([getStoredAccessToken(), getCachedUser()]);
           if (!token) {
             if (!cancelled) setUser(null);
             return;
           }
 
-          // Boot from the cached profile instantly — never block the UI on a
-          // network roundtrip (Play "app not responding" policy).
           if (cached && !cancelled) {
             setUser(cached);
             setLoading(false);
@@ -46,8 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = await fetchProfile();
             if (!cancelled) setUser(profile);
           } catch (e) {
-            // Only a definitive auth rejection ends the session; network
-            // failures/timeouts keep the cached session so the app stays usable.
             const unauthorized = e instanceof ApiError && (e.status === 401 || e.status === 403);
             if (unauthorized) {
               try {

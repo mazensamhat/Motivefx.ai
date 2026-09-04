@@ -1,16 +1,19 @@
 import { API_BASE } from "../config";
-import { clearSession, getAccessToken, getRefreshToken, setSession, type AuthUser } from "./auth";
+import {
+  clearSession,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  setSession,
+  type AuthUser,
+} from "./auth";
 
-/** Default network timeout — a hung fetch must never freeze the UI (Play ANR policy). */
 const FETCH_TIMEOUT_MS = 15_000;
-/** Auth needs more headroom on slow review-device networks. */
 const AUTH_TIMEOUT_MS = 25_000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Map RN/Expo abort + network failures into actionable copy (never "canceled"). */
 export function mapNetworkError(e: unknown): Error {
   if (e instanceof ApiError) return e;
   const msg = e instanceof Error ? e.message : String(e ?? "Unknown error");
@@ -55,11 +58,6 @@ function isRetryableNetworkError(e: unknown): boolean {
   );
 }
 
-/**
- * Fetch with a soft timeout via Promise.race — do NOT AbortController.abort().
- * On React Native/Expo, abort surfaces as "Fetch request has been canceled",
- * which Play reviewers read as a broken Sign in button.
- */
 export async function fetchWithTimeout(
   url: string,
   init?: RequestInit,
@@ -88,11 +86,17 @@ export async function fetchWithTimeout(
   }
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = await getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+function headersWithToken(token: string | null, extra?: HeadersInit): Headers {
+  const headers = new Headers(extra);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   return headers;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getStoredAccessToken();
+  const headers = headersWithToken(token);
+  return Object.fromEntries(headers.entries());
 }
 
 export class ApiError extends Error {
@@ -126,9 +130,72 @@ function normalizeUser(raw: Record<string, unknown> | undefined): AuthUser | nul
   };
 }
 
+interface SessionResult {
+  requires2fa?: boolean;
+  pendingToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  user?: AuthUser | Record<string, unknown>;
+}
+
+export async function persistSession(session: SessionResult): Promise<AuthUser | null> {
+  const user = normalizeUser(session.user as Record<string, unknown> | undefined);
+  if (session.accessToken && session.refreshToken && user) {
+    await setSession(session.accessToken, session.refreshToken, user);
+    return user;
+  }
+  return null;
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = await getStoredRefreshToken();
+  if (!refreshToken) return null;
+
+  const res = await fetchWithTimeout(
+    `${API_BASE}/auth/refresh`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    },
+    AUTH_TIMEOUT_MS
+  );
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) await clearSession();
+    return null;
+  }
+
+  const session = (await res.json()) as SessionResult;
+  const user = await persistSession(session);
+  return user && session.accessToken ? session.accessToken : null;
+}
+
+export async function authenticatedFetch(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  let token = await getStoredAccessToken();
+  let res = await fetchWithTimeout(
+    url,
+    { ...init, headers: headersWithToken(token, init.headers) },
+    timeoutMs
+  );
+  if (res.status !== 401) return res;
+
+  token = await refreshAccessToken();
+  if (!token) return res;
+  res = await fetchWithTimeout(
+    url,
+    { ...init, headers: headersWithToken(token, init.headers) },
+    timeoutMs
+  );
+  return res;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE}${path}`, { headers: await authHeaders() });
+    const res = await authenticatedFetch(`${API_BASE}${path}`);
     if (!res.ok) throw new ApiError(await readError(res), res.status);
     return res.json();
   } catch (e) {
@@ -155,7 +222,6 @@ export async function authPublicPost<T>(path: string, body: unknown): Promise<T>
       return res.json();
     } catch (e) {
       lastError = e;
-      // Don't retry definitive auth/validation failures from the server.
       if (e instanceof Error && !isRetryableNetworkError(e) && !/timeout/i.test(e.message)) {
         throw mapNetworkError(e);
       }
@@ -168,14 +234,6 @@ export async function authPublicPost<T>(path: string, body: unknown): Promise<T>
   }
 
   throw mapNetworkError(lastError);
-}
-
-interface SessionResult {
-  requires2fa?: boolean;
-  pendingToken?: string;
-  accessToken?: string;
-  refreshToken?: string;
-  user?: AuthUser | Record<string, unknown>;
 }
 
 export async function login(email: string, password: string): Promise<SessionResult> {
@@ -200,13 +258,19 @@ export async function verify2fa(pendingToken: string, code: string): Promise<Ses
   return authPublicPost("/login/2fa", { pending_token: pendingToken, code });
 }
 
-export async function persistSession(session: SessionResult): Promise<AuthUser | null> {
-  const user = normalizeUser(session.user as Record<string, unknown> | undefined);
-  if (session.accessToken && session.refreshToken && user) {
-    await setSession(session.accessToken, session.refreshToken, user);
-    return user;
-  }
-  return null;
+export async function createNativeHandoffUrl(next = "/terminal"): Promise<string | null> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/auth/native-handoff`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ next }),
+    },
+    AUTH_TIMEOUT_MS
+  );
+  if (!res.ok) return null;
+  const body = (await res.json().catch(() => ({}))) as { url?: string };
+  return typeof body.url === "string" && body.url ? body.url : null;
 }
 
 export async function fetchProfile(): Promise<AuthUser> {
@@ -217,7 +281,7 @@ export async function fetchProfile(): Promise<AuthUser> {
 }
 
 export async function logout(): Promise<void> {
-  const refresh = await getRefreshToken();
+  const refresh = await getStoredRefreshToken();
   try {
     await fetchWithTimeout(
       `${API_BASE}/auth/logout`,

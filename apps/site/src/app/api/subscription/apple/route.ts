@@ -1,13 +1,7 @@
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
-import {
-  activateAppleSubscription,
-  deactivateAppleSubscription,
-  tierFromAppleProductId,
-  tierFromEntitlementId,
-} from "@/lib/apple-iap";
-import type { IntelligenceMarketId, PricingTierId } from "@/lib/tiers";
+import { findUserSafeCached } from "@/lib/load-user";
 
 export const runtime = "nodejs";
 
@@ -22,52 +16,40 @@ const schema = z.object({
 });
 
 /**
- * Sync Apple IAP / RevenueCat entitlement after a native purchase.
- * Auth: logged-in session cookie (or Bearer) from the WebView.
+ * Native Apple/RevenueCat sync acknowledgement.
+ *
+ * IMPORTANT: the client is not an entitlement authority. Product IDs,
+ * transaction IDs and `entitlementActive` values supplied by the app can be
+ * forged, so this route must never grant or revoke paid access from them.
+ * RevenueCat's authenticated server webhook is the only path that mutates
+ * Apple subscription state.
  */
 export async function POST(request: Request) {
   try {
-    const user = await getSession();
-    if (!user) return unauthorized();
+    const session = await getSession();
+    if (!session) return unauthorized();
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) return badRequest("Invalid Apple IAP payload.");
 
-    const {
-      action,
-      originalTransactionId,
-      productId,
-      entitlementId,
-      revenueCatAppUserId,
-      entitlementActive,
-      selectedMarkets,
-    } = parsed.data;
+    const user = await findUserSafeCached({ id: session.id }, { timeoutMs: 5_000 });
+    if (!user || user.disabledAt) return unauthorized();
 
-    if (action === "deactivate" || entitlementActive === false) {
-      await deactivateAppleSubscription(user.id);
-      return json({ ok: true, plan: "none" });
-    }
+    // Do not trust any entitlement fields from the device. The native app may
+    // call this immediately after a RevenueCat purchase to refresh its UI; the
+    // authoritative grant arrives through /api/webhooks/revenuecat.
+    const active =
+      user.subscriptionStatus === "active" || user.subscriptionStatus === "comp";
 
-    if (!originalTransactionId) {
-      return badRequest("originalTransactionId is required to activate.");
-    }
-
-    const tier: PricingTierId =
-      tierFromAppleProductId(productId) ??
-      tierFromEntitlementId(entitlementId) ??
-      "lite";
-
-    await activateAppleSubscription({
-      userId: user.id,
-      originalTransactionId,
-      productId,
-      entitlementId: entitlementId ?? tier,
-      revenueCatAppUserId: revenueCatAppUserId ?? user.id,
-      selectedMarkets: selectedMarkets as IntelligenceMarketId[] | undefined,
+    return json({
+      ok: true,
+      authoritativeSource: "revenuecat_webhook",
+      pending: parsed.data.action === "activate" && !active,
+      subscriptionStatus: user.subscriptionStatus,
+      tier: active ? user.intelligenceTier : "lite",
+      plan: active ? user.intelligenceTier : "none",
     });
-
-    return json({ ok: true, tier, plan: tier });
   } catch (error) {
     console.error("[api/subscription/apple]", error);
     return serverError("Could not sync Apple subscription.");

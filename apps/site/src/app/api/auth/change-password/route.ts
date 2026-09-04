@@ -3,7 +3,7 @@ import { prisma } from "@motivefx/database";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { clearPasswordResetTokens } from "@/lib/password-reset";
-import { getSession } from "@/lib/session";
+import { createSessionPair, getSession } from "@/lib/session";
 import { getActiveImpersonation } from "@/lib/ops/impersonation";
 
 const schema = z.object({
@@ -34,6 +34,10 @@ export async function POST(request: Request) {
       data: { passwordHash: await hashPassword(parsed.data.newPassword) },
     });
     await clearPasswordResetTokens(user.id);
+
+    // All old refresh tokens are now invalid by fingerprint. Rotate the current
+    // browser session immediately so the user who changed the password stays signed in.
+    await createSessionPair({ id: session.id, email: session.email });
 
     return json({ message: "Password updated successfully." });
   } catch (error) {

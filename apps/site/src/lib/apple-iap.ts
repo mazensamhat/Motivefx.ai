@@ -1,4 +1,5 @@
 import { prisma } from "@motivefx/database";
+import { invalidateUserCache } from "./load-user";
 import {
   INTELLIGENCE_MARKETS,
   type IntelligenceMarketId,
@@ -113,16 +114,34 @@ export async function activateAppleSubscription(params: {
       accessExpiresAt: null,
     },
   });
+  invalidateUserCache(params.userId);
 }
 
-export async function deactivateAppleSubscription(userId: string) {
+export async function deactivateAppleSubscription(
+  userId: string,
+  originalTransactionId?: string | null
+) {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
-    select: { subscriptionStatus: true, billingProvider: true },
+    select: {
+      subscriptionStatus: true,
+      billingProvider: true,
+      appleOriginalTransactionId: true,
+    },
   });
   if (existing?.subscriptionStatus === "comp") return;
   // Only clear Apple-managed rows (avoid wiping an active Stripe sub).
-  if (existing?.billingProvider && existing.billingProvider !== "apple") return;
+  if (existing?.billingProvider !== "apple") return;
+
+  // RevenueCat events can arrive late. An expiration from an older Apple
+  // subscription must not remove access that has since been attached to a new
+  // original transaction.
+  if (
+    originalTransactionId &&
+    existing.appleOriginalTransactionId !== originalTransactionId
+  ) {
+    return;
+  }
 
   await prisma.user.update({
     where: { id: userId },
@@ -134,6 +153,7 @@ export async function deactivateAppleSubscription(userId: string) {
       billingProvider: null,
     },
   });
+  invalidateUserCache(userId);
 }
 
 export async function findUserIdByAppleTransaction(

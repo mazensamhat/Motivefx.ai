@@ -6,6 +6,17 @@ import { findUserSafeCached } from "@/lib/load-user";
 import { userHasActiveSubscription } from "@/lib/subscription-access";
 import { isTrustedNativeReaderRequest } from "@/lib/terminal/ios-reader";
 
+function parseSelectedMarkets(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    // Legacy/manual rows should not make /auth/me fail and strand the entire app boot.
+    return [];
+  }
+}
+
 export async function GET(request: Request) {
   const actor = await getSession();
   if (!actor) return unauthorized();
@@ -25,7 +36,7 @@ export async function GET(request: Request) {
       id: user.id,
       email: user.email,
       intelligenceTier: iosReader ? "lite" : user.intelligenceTier,
-      selectedMarkets: user.selectedMarkets ? JSON.parse(user.selectedMarkets) : [],
+      selectedMarkets: parseSelectedMarkets(user.selectedMarkets),
       stripeSubscriptionId: iosReader ? null : user.stripeSubscriptionId,
       subscriptionStatus: iosReader ? "none" : user.subscriptionStatus,
       accessExpiresAt: iosReader ? null : user.accessExpiresAt,

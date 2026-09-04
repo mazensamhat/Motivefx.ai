@@ -1,0 +1,74 @@
+name: Code security and build validation
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  terminal-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install terminal dependencies from lockfile
+        working-directory: web
+        run: npm ci --include=dev
+      - name: Fail on high or critical terminal dependency findings
+        working-directory: web
+        run: |
+          npm audit --json > audit.json || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('audit.json', 'utf8'));
+          const v = report.metadata?.vulnerabilities ?? {};
+          const high = Number(v.high ?? 0);
+          const critical = Number(v.critical ?? 0);
+          console.log(`npm audit: high=${high} critical=${critical}`);
+          if (high > 0 || critical > 0) process.exit(1);
+          NODE
+
+  terminal-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install terminal dependencies from lockfile
+        working-directory: web
+        run: npm ci --include=dev
+      - name: Type-check terminal
+        working-directory: web
+        run: npm run typecheck
+      - name: Build terminal
+        working-directory: web
+        run: npm run build
+
+  mobile-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install native dependencies from lockfile
+        working-directory: mobile
+        run: npm ci --include=dev
+      - name: Strict TypeScript validation
+        working-directory: mobile
+        run: npm run typecheck
