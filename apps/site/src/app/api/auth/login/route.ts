@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
+import { consumeAuthRateLimit, requestIp } from "@/lib/auth-rate-limit";
 import { findUserSafe } from "@/lib/load-user";
 import { verifyPassword } from "@/lib/password";
 import { createPending2faToken } from "@/lib/pending-2fa";
@@ -17,6 +18,25 @@ export async function POST(request: Request) {
     if (!parsed.success) return badRequest("Invalid email or password.");
 
     const email = parsed.data.email.trim().toLowerCase();
+    const ip = requestIp(request);
+    const [accountAllowed, ipAllowed] = await Promise.all([
+      consumeAuthRateLimit({
+        scope: "login_account",
+        identifier: `${email}|${ip}`,
+        limit: 10,
+        windowMs: 15 * 60 * 1000,
+      }),
+      consumeAuthRateLimit({
+        scope: "login_ip",
+        identifier: ip,
+        limit: 40,
+        windowMs: 15 * 60 * 1000,
+      }),
+    ]);
+    if (!accountAllowed || !ipAllowed) {
+      return json({ error: "Too many sign-in attempts. Try again later." }, 429);
+    }
+
     const user = await findUserSafe({ email });
     if (!user) return unauthorized("Invalid email or password.");
     if (user.disabledAt) {
