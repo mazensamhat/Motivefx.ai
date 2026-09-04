@@ -9,93 +9,66 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  validate:
+  terminal-audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            web/package-lock.json
-            mobile/package-lock.json
-
-      - name: Resolve patched terminal lockfile
-        working-directory: web
-        run: npm install --package-lock-only --ignore-scripts
-
-      - name: Commit regenerated terminal lockfile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/audit/production-bug-sweep-2026-09-04'
-        run: |
-          if git diff --quiet -- web/package-lock.json; then
-            echo "Terminal lockfile already synchronized."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/package-lock.json
-          git commit -m "chore(web): synchronize patched terminal lockfile [skip ci]"
-          git push origin HEAD:audit/production-bug-sweep-2026-09-04
-
+          cache-dependency-path: web/package-lock.json
       - name: Install terminal dependencies
         working-directory: web
         run: npm ci --include=dev
-
-      - name: Audit terminal dependencies
-        id: terminal_audit
-        continue-on-error: true
+      - name: Fail on high or critical terminal dependency findings
         working-directory: web
-        run: npm audit --audit-level=high
+        run: |
+          npm audit --json > audit.json || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('audit.json', 'utf8'));
+          const v = report.metadata?.vulnerabilities ?? {};
+          const high = Number(v.high ?? 0);
+          const critical = Number(v.critical ?? 0);
+          console.log(`npm audit: high=${high} critical=${critical}`);
+          if (high > 0 || critical > 0) process.exit(1);
+          NODE
 
+  terminal-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install terminal dependencies
+        working-directory: web
+        run: npm ci --include=dev
       - name: Type-check terminal
-        id: terminal_typecheck
-        continue-on-error: true
         working-directory: web
         run: npm run typecheck
-
       - name: Build terminal
-        id: terminal_build
-        continue-on-error: true
         working-directory: web
         run: npm run build
 
+  mobile-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
       - name: Install native dependencies
         working-directory: mobile
         run: npm ci --include=dev
-
-      - name: Type-check native application
-        id: mobile_typecheck
-        continue-on-error: true
+      - name: Strict TypeScript validation
         working-directory: mobile
         run: npm run typecheck
-
-      - name: Enforce validation results
-        if: always()
-        run: |
-          failed=0
-          if [ "${{ steps.terminal_audit.outcome }}" != "success" ]; then
-            echo "Terminal dependency audit failed."
-            failed=1
-          fi
-          if [ "${{ steps.terminal_typecheck.outcome }}" != "success" ]; then
-            echo "Terminal type-check failed."
-            failed=1
-          fi
-          if [ "${{ steps.terminal_build.outcome }}" != "success" ]; then
-            echo "Terminal build failed."
-            failed=1
-          fi
-          if [ "${{ steps.mobile_typecheck.outcome }}" != "success" ]; then
-            echo "Mobile type-check failed."
-            failed=1
-          fi
-          exit "$failed"
