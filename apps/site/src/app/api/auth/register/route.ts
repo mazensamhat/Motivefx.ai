@@ -21,18 +21,38 @@ function normalizeRegisterBody(body: Record<string, unknown>) {
   };
 }
 
+function isUniqueConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
+}
+
 export async function POST(request: Request) {
   try {
-    const raw = (await request.json()) as Record<string, unknown>;
-    const parsed = schema.safeParse(normalizeRegisterBody(raw));
+    const raw = await request.json().catch(() => null);
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return badRequest("Invalid request body.");
+    }
+
+    const parsed = schema.safeParse(normalizeRegisterBody(raw as Record<string, unknown>));
     if (!parsed.success) {
       return badRequest(parsed.error.errors[0]?.message ?? "Invalid input.");
     }
 
     const email = parsed.data.email.trim().toLowerCase();
     const existing = await findUserSafe({ email });
-    if (existing?.passwordHash) {
-      return badRequest("An account with this email already exists. Sign in instead.");
+
+    // Never let registration claim an already-created user record. Some MotiveFX
+    // flows can create a user before a password exists; assigning a password here
+    // would let anyone who knows that email take over the account. Existing users
+    // must prove mailbox ownership through the forgot/reset-password flow instead.
+    if (existing) {
+      return badRequest(
+        "An account with this email already exists. Sign in or reset your password."
+      );
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
@@ -45,40 +65,32 @@ export async function POST(request: Request) {
     const signupLatitude = latRaw ? Number(latRaw) : null;
     const signupLongitude = lngRaw ? Number(lngRaw) : null;
 
-    const geoData = {
-      signupCountry: country,
-      signupCity: city,
-      signupRegion: region,
-      signupLatitude: Number.isFinite(signupLatitude) ? signupLatitude : null,
-      signupLongitude: Number.isFinite(signupLongitude) ? signupLongitude : null,
-    };
-
-    const authSelect = { id: true, email: true } as const;
-    const user = existing
-      ? await prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            passwordHash,
-            termsAcceptedAt: now,
-            privacyAcceptedAt: now,
-            ...(!existing.signupCountry && country ? geoData : {}),
-          },
-          select: authSelect,
-        })
-      : await prisma.user.create({
-          data: {
-            email,
-            passwordHash,
-            termsAcceptedAt: now,
-            privacyAcceptedAt: now,
-            ...geoData,
-          },
-          select: authSelect,
-        });
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        termsAcceptedAt: now,
+        privacyAcceptedAt: now,
+        signupCountry: country,
+        signupCity: city,
+        signupRegion: region,
+        signupLatitude: Number.isFinite(signupLatitude) ? signupLatitude : null,
+        signupLongitude: Number.isFinite(signupLongitude) ? signupLongitude : null,
+      },
+      select: { id: true, email: true },
+    });
 
     const accessToken = await createSession({ id: user.id, email: user.email });
     return json(mobileSessionPayload({ id: user.id, email: user.email }, accessToken));
   } catch (error) {
+    // A concurrent registration can win after the pre-check. Return the same safe
+    // response instead of leaking a Prisma P2002 as a 500.
+    if (isUniqueConstraintError(error)) {
+      return badRequest(
+        "An account with this email already exists. Sign in or reset your password."
+      );
+    }
+
     console.error("[auth/register]", error);
     if (error instanceof Error && error.message.includes("AUTH_SECRET")) {
       return serverError("Auth is not configured. Set AUTH_SECRET in environment variables.");
