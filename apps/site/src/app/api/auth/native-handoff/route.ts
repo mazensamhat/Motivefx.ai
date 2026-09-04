@@ -63,10 +63,10 @@ async function userById(userId: string): Promise<SessionUser | null> {
 }
 
 /**
- * Temporary compatibility for already-installed native builds that still put the
- * old access credential in this URL. New builds use `ticket` exclusively.
- * Refresh credentials are never accepted here. Phase-2 access tokens are only
- * 30 minutes, sharply bounding exposure until old app builds age out.
+ * Temporary compatibility for already-installed native builds that still put an
+ * access credential in this URL. Refresh credentials are never accepted here.
+ * New mobile code sends an opaque mfxhandoff_* ticket through the historical
+ * `token` query parameter, so TerminalScreen itself does not need a risky rewrite.
  */
 async function legacyUrlSession(token: string): Promise<{
   user: SessionUser;
@@ -90,15 +90,14 @@ async function legacyUrlSession(token: string): Promise<{
   }
 }
 
-/**
- * WebView navigation consumes a two-minute opaque ticket, sets fresh httpOnly
- * cookies, then redirects. Long-lived session credentials are never present in
- * the new native URL contract.
- */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const nextPath = safeTerminalNext(url.searchParams.get("next"));
-  const ticket = url.searchParams.get("ticket")?.trim();
+  const explicitTicket = url.searchParams.get("ticket")?.trim();
+  const historicalTokenParam = url.searchParams.get("token")?.trim();
+  const ticket =
+    explicitTicket ||
+    (historicalTokenParam?.startsWith("mfxhandoff_") ? historicalTokenParam : undefined);
 
   let user: SessionUser | null = null;
   let tokens: SessionTokens | null = null;
@@ -109,13 +108,10 @@ export async function GET(request: Request) {
       user = await userById(userId);
       if (user) tokens = await createSessionPair(user);
     }
-  } else {
-    const legacyToken = url.searchParams.get("token")?.trim();
-    if (legacyToken) {
-      const legacy = await legacyUrlSession(legacyToken);
-      user = legacy?.user ?? null;
-      tokens = legacy?.tokens ?? null;
-    }
+  } else if (historicalTokenParam) {
+    const legacy = await legacyUrlSession(historicalTokenParam);
+    user = legacy?.user ?? null;
+    tokens = legacy?.tokens ?? null;
   }
 
   if (!user || !tokens) {
