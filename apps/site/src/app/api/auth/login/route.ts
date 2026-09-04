@@ -3,7 +3,7 @@ import { badRequest, json, serverError, unauthorized } from "@/lib/api";
 import { findUserSafe } from "@/lib/load-user";
 import { verifyPassword } from "@/lib/password";
 import { createPending2faToken } from "@/lib/pending-2fa";
-import { createSession, mobileSessionPayload } from "@/lib/session";
+import { createSessionPair, mobileSessionPayload } from "@/lib/session";
 
 const schema = z.object({
   email: z.string().email(),
@@ -40,8 +40,14 @@ export async function POST(request: Request) {
       });
     }
 
-    const accessToken = await createSession({ id: user.id, email: user.email });
-    return json(mobileSessionPayload({ id: user.id, email: user.email }, accessToken));
+    const tokens = await createSessionPair({ id: user.id, email: user.email });
+    return json(
+      mobileSessionPayload(
+        { id: user.id, email: user.email },
+        tokens.accessToken,
+        tokens.refreshToken
+      )
+    );
   } catch (error) {
     console.error("[auth/login]", error);
     if (error instanceof Error && error.message.includes("AUTH_SECRET")) {
