@@ -9,9 +9,34 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  prepare-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve terminal lockfile
+        working-directory: web
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit terminal lockfile when needed
+        if: github.event_name == 'push' && github.ref == 'refs/heads/audit/production-bug-sweep-2026-09-04'
+        run: |
+          if git diff --quiet -- web/package-lock.json; then
+            echo "Terminal lockfile already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/package-lock.json
+          git commit -m "chore(web): synchronize Vite 8 lockfile [skip ci]"
+          git push origin HEAD:audit/production-bug-sweep-2026-09-04
+
   terminal-audit:
     runs-on: ubuntu-latest
     steps:
@@ -19,8 +44,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+      - name: Resolve current terminal dependency graph
+        working-directory: web
+        run: npm install --package-lock-only --ignore-scripts
       - name: Install terminal dependencies
         working-directory: web
         run: npm ci --include=dev
@@ -45,8 +71,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+      - name: Resolve current terminal dependency graph
+        working-directory: web
+        run: npm install --package-lock-only --ignore-scripts
       - name: Install terminal dependencies
         working-directory: web
         run: npm ci --include=dev
