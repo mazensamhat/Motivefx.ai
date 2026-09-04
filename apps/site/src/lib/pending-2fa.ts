@@ -1,25 +1,24 @@
-import { SignJWT, jwtVerify } from "jose";
+import {
+  consumeOneTimeAuthToken,
+  issueOneTimeAuthToken,
+} from "@/lib/one-time-auth";
 
 const PENDING_2FA_DURATION = 60 * 10;
 
-function getSecret() {
-  const secret = process.env.AUTH_SECRET?.trim();
-  if (!secret) throw new Error("AUTH_SECRET is not set");
-  return new TextEncoder().encode(secret);
-}
-
+/**
+ * Create a durable one-time challenge. Unlike the old signed-only token, this
+ * cannot be replayed and it does not permit unlimited TOTP guesses for 10 minutes.
+ */
 export async function createPending2faToken(userId: string): Promise<string> {
-  return new SignJWT({ sub: userId, type: "pending_2fa" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${PENDING_2FA_DURATION}s`)
-    .sign(getSecret());
+  return issueOneTimeAuthToken(userId, "pending_2fa", PENDING_2FA_DURATION);
 }
 
+/**
+ * Claim the challenge before checking TOTP. A wrong code therefore consumes the
+ * challenge and requires the primary password again, sharply limiting online guesses.
+ */
 export async function verifyPending2faToken(token: string): Promise<string> {
-  const { payload } = await jwtVerify(token, getSecret());
-  if (payload.type !== "pending_2fa" || typeof payload.sub !== "string") {
-    throw new Error("Invalid or expired verification token.");
-  }
-  return payload.sub;
+  const userId = await consumeOneTimeAuthToken(token, "pending_2fa");
+  if (!userId) throw new Error("Invalid or expired verification token.");
+  return userId;
 }
