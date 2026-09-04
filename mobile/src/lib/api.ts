@@ -88,11 +88,17 @@ export async function fetchWithTimeout(
   }
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = await getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+function headersWithToken(token: string | null, extra?: HeadersInit): Headers {
+  const headers = new Headers(extra);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   return headers;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getAccessToken();
+  const headers = headersWithToken(token);
+  return Object.fromEntries(headers.entries());
 }
 
 export class ApiError extends Error {
@@ -126,9 +132,78 @@ function normalizeUser(raw: Record<string, unknown> | undefined): AuthUser | nul
   };
 }
 
+interface SessionResult {
+  requires2fa?: boolean;
+  pendingToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  user?: AuthUser | Record<string, unknown>;
+}
+
+export async function persistSession(session: SessionResult): Promise<AuthUser | null> {
+  const user = normalizeUser(session.user as Record<string, unknown> | undefined);
+  if (session.accessToken && session.refreshToken && user) {
+    await setSession(session.accessToken, session.refreshToken, user);
+    return user;
+  }
+  return null;
+}
+
+/** Rotate the mobile session using the long-lived, DB-validated refresh credential. */
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return null;
+
+  const res = await fetchWithTimeout(
+    `${API_BASE}/auth/refresh`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    },
+    AUTH_TIMEOUT_MS
+  );
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) await clearSession();
+    return null;
+  }
+
+  const session = (await res.json()) as SessionResult;
+  const user = await persistSession(session);
+  return user && session.accessToken ? session.accessToken : null;
+}
+
+/**
+ * Authenticated fetch with one transparent refresh/retry on 401. This keeps the
+ * native app working with short access tokens without forcing users to sign in
+ * every 30 minutes.
+ */
+export async function authenticatedFetch(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  let token = await getAccessToken();
+  let res = await fetchWithTimeout(
+    url,
+    { ...init, headers: headersWithToken(token, init.headers) },
+    timeoutMs
+  );
+  if (res.status !== 401) return res;
+
+  token = await refreshAccessToken();
+  if (!token) return res;
+  res = await fetchWithTimeout(
+    url,
+    { ...init, headers: headersWithToken(token, init.headers) },
+    timeoutMs
+  );
+  return res;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE}${path}`, { headers: await authHeaders() });
+    const res = await authenticatedFetch(`${API_BASE}${path}`);
     if (!res.ok) throw new ApiError(await readError(res), res.status);
     return res.json();
   } catch (e) {
@@ -155,7 +230,6 @@ export async function authPublicPost<T>(path: string, body: unknown): Promise<T>
       return res.json();
     } catch (e) {
       lastError = e;
-      // Don't retry definitive auth/validation failures from the server.
       if (e instanceof Error && !isRetryableNetworkError(e) && !/timeout/i.test(e.message)) {
         throw mapNetworkError(e);
       }
@@ -168,14 +242,6 @@ export async function authPublicPost<T>(path: string, body: unknown): Promise<T>
   }
 
   throw mapNetworkError(lastError);
-}
-
-interface SessionResult {
-  requires2fa?: boolean;
-  pendingToken?: string;
-  accessToken?: string;
-  refreshToken?: string;
-  user?: AuthUser | Record<string, unknown>;
 }
 
 export async function login(email: string, password: string): Promise<SessionResult> {
@@ -200,13 +266,20 @@ export async function verify2fa(pendingToken: string, code: string): Promise<Ses
   return authPublicPost("/login/2fa", { pending_token: pendingToken, code });
 }
 
-export async function persistSession(session: SessionResult): Promise<AuthUser | null> {
-  const user = normalizeUser(session.user as Record<string, unknown> | undefined);
-  if (session.accessToken && session.refreshToken && user) {
-    await setSession(session.accessToken, session.refreshToken, user);
-    return user;
-  }
-  return null;
+/** Ask the server for a two-minute, one-time URL ticket for the WebView. */
+export async function createNativeHandoffUrl(next = "/terminal"): Promise<string | null> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/auth/native-handoff`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ next }),
+    },
+    AUTH_TIMEOUT_MS
+  );
+  if (!res.ok) return null;
+  const body = (await res.json().catch(() => ({}))) as { url?: string };
+  return typeof body.url === "string" && body.url ? body.url : null;
 }
 
 export async function fetchProfile(): Promise<AuthUser> {
