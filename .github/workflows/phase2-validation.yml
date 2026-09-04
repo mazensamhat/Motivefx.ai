@@ -1,42 +1,17 @@
-name: Phase 2 validation
+name: Code security and build validation
 
 on:
-  push:
-    branches:
-      - audit/production-bug-sweep-2026-09-04
   pull_request:
+    branches:
+      - main
+  push:
     branches:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  prepare-lockfile:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Resolve terminal lockfile
-        working-directory: web
-        run: npm install --package-lock-only --ignore-scripts
-      - name: Commit terminal lockfile when needed
-        if: github.event_name == 'push' && github.ref == 'refs/heads/audit/production-bug-sweep-2026-09-04'
-        run: |
-          if git diff --quiet -- web/package-lock.json; then
-            echo "Terminal lockfile already synchronized."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/package-lock.json
-          git commit -m "chore(web): synchronize Vite 8 lockfile [skip ci]"
-          git push origin HEAD:audit/production-bug-sweep-2026-09-04
-
   terminal-audit:
     runs-on: ubuntu-latest
     steps:
@@ -44,10 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Resolve current terminal dependency graph
-        working-directory: web
-        run: npm install --package-lock-only --ignore-scripts
-      - name: Install terminal dependencies
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install terminal dependencies from lockfile
         working-directory: web
         run: npm ci --include=dev
       - name: Fail on high or critical terminal dependency findings
@@ -71,10 +45,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Resolve current terminal dependency graph
-        working-directory: web
-        run: npm install --package-lock-only --ignore-scripts
-      - name: Install terminal dependencies
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install terminal dependencies from lockfile
         working-directory: web
         run: npm ci --include=dev
       - name: Type-check terminal
@@ -93,7 +66,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: mobile/package-lock.json
-      - name: Install native dependencies
+      - name: Install native dependencies from lockfile
         working-directory: mobile
         run: npm ci --include=dev
       - name: Strict TypeScript validation
