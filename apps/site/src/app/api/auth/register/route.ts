@@ -3,7 +3,7 @@ import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError } from "@/lib/api";
 import { findUserSafe } from "@/lib/load-user";
 import { hashPassword } from "@/lib/password";
-import { createSession, mobileSessionPayload } from "@/lib/session";
+import { createSessionPair, mobileSessionPayload } from "@/lib/session";
 
 const schema = z.object({
   email: z.string().email(),
@@ -44,11 +44,6 @@ export async function POST(request: Request) {
 
     const email = parsed.data.email.trim().toLowerCase();
     const existing = await findUserSafe({ email });
-
-    // Never let registration claim an already-created user record. Some MotiveFX
-    // flows can create a user before a password exists; assigning a password here
-    // would let anyone who knows that email take over the account. Existing users
-    // must prove mailbox ownership through the forgot/reset-password flow instead.
     if (existing) {
       return badRequest(
         "An account with this email already exists. Sign in or reset your password."
@@ -80,11 +75,15 @@ export async function POST(request: Request) {
       select: { id: true, email: true },
     });
 
-    const accessToken = await createSession({ id: user.id, email: user.email });
-    return json(mobileSessionPayload({ id: user.id, email: user.email }, accessToken));
+    const tokens = await createSessionPair({ id: user.id, email: user.email });
+    return json(
+      mobileSessionPayload(
+        { id: user.id, email: user.email },
+        tokens.accessToken,
+        tokens.refreshToken
+      )
+    );
   } catch (error) {
-    // A concurrent registration can win after the pre-check. Return the same safe
-    // response instead of leaking a Prisma P2002 as a 500.
     if (isUniqueConstraintError(error)) {
       return badRequest(
         "An account with this email already exists. Sign in or reset your password."
