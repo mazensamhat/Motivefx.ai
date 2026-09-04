@@ -5,6 +5,7 @@ import { isAdminEmail, requireAdmin } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { computeAccessExpiresAt, type CompAccessDuration } from "@/lib/comp-access";
 import { clearPasswordResetTokens } from "@/lib/password-reset";
+import { invalidateUserCache } from "@/lib/load-user";
 import type { PricingTierId } from "@/lib/tiers";
 
 const tierSchema = z.enum(["lite", "pro", "ultra", "ultra_plus", "elite"]);
@@ -28,7 +29,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 
   try {
     const { id } = await ctx.params;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) return badRequest("Invalid input.");
 
@@ -137,6 +138,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         stripeSubscriptionId: true,
       },
     });
+    invalidateUserCache(id);
 
     return json({
       ok: true,
@@ -172,7 +174,17 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
   }
 
   try {
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true },
+    });
+    if (!target) return badRequest("User not found.");
+    if (isAdminEmail(target.email)) {
+      return badRequest("Admin accounts cannot be deleted from the user console.");
+    }
+
     await prisma.user.delete({ where: { id } });
+    invalidateUserCache(id);
     return json({ ok: true, deleted: id });
   } catch (error) {
     console.error("[admin/site-users DELETE]", error);
