@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@motivefx/database";
 import { badRequest, json, serverError, unauthorized } from "@/lib/api";
 import { verifyTotpCode } from "@/lib/totp";
-import { getSession } from "@/lib/session";
+import { createSessionPair, getSession } from "@/lib/session";
 
 const schema = z.object({
   code: z.string().min(6).max(8),
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       where: { id: user.id },
       data: { totpEnabled: true },
     });
+    await createSessionPair({ id: session.id, email: session.email });
 
     return json({ ok: true, totpEnabled: true });
   } catch (error) {
