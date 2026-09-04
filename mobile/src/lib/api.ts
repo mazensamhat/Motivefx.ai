@@ -1,16 +1,19 @@
 import { API_BASE } from "../config";
-import { clearSession, getAccessToken, getRefreshToken, setSession, type AuthUser } from "./auth";
+import {
+  clearSession,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  setSession,
+  type AuthUser,
+} from "./auth";
 
-/** Default network timeout — a hung fetch must never freeze the UI (Play ANR policy). */
 const FETCH_TIMEOUT_MS = 15_000;
-/** Auth needs more headroom on slow review-device networks. */
 const AUTH_TIMEOUT_MS = 25_000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Map RN/Expo abort + network failures into actionable copy (never "canceled"). */
 export function mapNetworkError(e: unknown): Error {
   if (e instanceof ApiError) return e;
   const msg = e instanceof Error ? e.message : String(e ?? "Unknown error");
@@ -55,11 +58,6 @@ function isRetryableNetworkError(e: unknown): boolean {
   );
 }
 
-/**
- * Fetch with a soft timeout via Promise.race — do NOT AbortController.abort().
- * On React Native/Expo, abort surfaces as "Fetch request has been canceled",
- * which Play reviewers read as a broken Sign in button.
- */
 export async function fetchWithTimeout(
   url: string,
   init?: RequestInit,
@@ -96,7 +94,7 @@ function headersWithToken(token: string | null, extra?: HeadersInit): Headers {
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
-  const token = await getAccessToken();
+  const token = await getStoredAccessToken();
   const headers = headersWithToken(token);
   return Object.fromEntries(headers.entries());
 }
@@ -149,9 +147,8 @@ export async function persistSession(session: SessionResult): Promise<AuthUser |
   return null;
 }
 
-/** Rotate the mobile session using the long-lived, DB-validated refresh credential. */
 export async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = await getRefreshToken();
+  const refreshToken = await getStoredRefreshToken();
   if (!refreshToken) return null;
 
   const res = await fetchWithTimeout(
@@ -173,17 +170,12 @@ export async function refreshAccessToken(): Promise<string | null> {
   return user && session.accessToken ? session.accessToken : null;
 }
 
-/**
- * Authenticated fetch with one transparent refresh/retry on 401. This keeps the
- * native app working with short access tokens without forcing users to sign in
- * every 30 minutes.
- */
 export async function authenticatedFetch(
   url: string,
   init: RequestInit = {},
   timeoutMs = FETCH_TIMEOUT_MS
 ): Promise<Response> {
-  let token = await getAccessToken();
+  let token = await getStoredAccessToken();
   let res = await fetchWithTimeout(
     url,
     { ...init, headers: headersWithToken(token, init.headers) },
@@ -266,7 +258,6 @@ export async function verify2fa(pendingToken: string, code: string): Promise<Ses
   return authPublicPost("/login/2fa", { pending_token: pendingToken, code });
 }
 
-/** Ask the server for a two-minute, one-time URL ticket for the WebView. */
 export async function createNativeHandoffUrl(next = "/terminal"): Promise<string | null> {
   const res = await authenticatedFetch(
     `${API_BASE}/auth/native-handoff`,
@@ -290,7 +281,7 @@ export async function fetchProfile(): Promise<AuthUser> {
 }
 
 export async function logout(): Promise<void> {
-  const refresh = await getRefreshToken();
+  const refresh = await getStoredRefreshToken();
   try {
     await fetchWithTimeout(
       `${API_BASE}/auth/logout`,
