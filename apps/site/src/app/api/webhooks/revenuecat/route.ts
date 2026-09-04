@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     if (!event?.type) return json({ ok: true, ignored: true });
 
     const appUserId = event.app_user_id ?? event.original_app_user_id;
-    let userId =
+    const userId =
       (appUserId ? await findUserIdByRevenueCatAppUserId(appUserId) : null) ??
       (event.original_transaction_id
         ? await findUserIdByAppleTransaction(event.original_transaction_id)
@@ -88,8 +88,10 @@ export async function POST(request: Request) {
     ) {
       if (!userId) return json({ ok: true, skipped: "missing user" });
       // Cancellation still has access until period end — only expire on EXPIRATION.
+      // Pass the transaction id so a late expiration for an old purchase cannot
+      // remove a newer Apple entitlement attached to the same app user.
       if (type === "EXPIRATION") {
-        await deactivateAppleSubscription(userId);
+        await deactivateAppleSubscription(userId, event.original_transaction_id);
       }
       return json({ ok: true, handled: type });
     }
