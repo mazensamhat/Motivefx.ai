@@ -22,7 +22,7 @@ function configuredPoolLimit(): string | undefined {
  * MotiveFX fans out several authenticated API requests and one busy connection
  * was the direct cause of production P2024 timeouts.
  */
-function serverlessDatabaseUrl(raw: string | undefined): string | undefined {
+export function serverlessDatabaseUrl(raw: string | undefined): string | undefined {
   if (!raw?.trim()) return raw;
   try {
     const url = new URL(raw.trim());
