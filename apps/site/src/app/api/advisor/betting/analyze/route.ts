@@ -15,7 +15,12 @@ export async function POST(request: Request) {
   if (!userId) return json({ detail: "Missing user_id" }, 400);
   try {
     if (auth.session.user.id !== userId) throw new Error("Access denied");
-    requireModuleOrSimAllowingIosReader(request, await entitlementsPlanForUser(auth.session.user), auth.session.user, "betting");
+    await requireModuleOrSimAllowingIosReader(
+      request,
+      await entitlementsPlanForUser(auth.session.user),
+      auth.session.user,
+      "betting"
+    );
     const bets = await listBets(userId);
     const analyzed = await analyzeBets(bets);
     return json(
