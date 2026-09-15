@@ -15,7 +15,12 @@ export async function POST(request: Request) {
   if (!userId) return json({ detail: "Missing user_id" }, 400);
   try {
     if (auth.session.user.id !== userId) throw new Error("Access denied");
-    requireModuleOrSimAllowingIosReader(request, await entitlementsPlanForUser(auth.session.user), auth.session.user, "predictions");
+    await requireModuleOrSimAllowingIosReader(
+      request,
+      await entitlementsPlanForUser(auth.session.user),
+      auth.session.user,
+      "predictions"
+    );
     const positions = await listPredictions(userId);
     const analyzed = await analyzePredictions(positions);
     return json(await buildAdvisorResponse("predictions", analyzed.summary, analyzed.recs));

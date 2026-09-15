@@ -3,7 +3,7 @@ import type { TerminalPlan } from "./plan";
 import { hasFeature, hasModule, iosAppStoreReaderPlan } from "./plan";
 import type { TerminalFeature } from "./plan";
 import { FeatureLockedError, ModuleLockedError } from "./auth";
-import { isNativeIosAppStoreRequest } from "./ios-reader";
+import { isTrustedNativeReaderRequest } from "./ios-reader";
 import { simHasModule } from "./simulation";
 
 const FEATURE_LABELS: Partial<Record<TerminalFeature, string>> = {
@@ -37,23 +37,23 @@ export function requireModuleOrSim(plan: TerminalPlan, user: User, module: strin
  * Same as requireModuleOrSim, plus iOS App Store free-reader bypass
  * (monitor-only market views must not hard-lock after simulation ends).
  */
-export function requireModuleOrSimAllowingIosReader(
+export async function requireModuleOrSimAllowingIosReader(
   request: Request,
   plan: TerminalPlan,
   user: User,
   module: string
 ) {
-  if (isNativeIosAppStoreRequest(request)) return;
+  if (await isTrustedNativeReaderRequest(request)) return;
   requireModuleOrSim(plan, user, module);
 }
 
 /** Paid module check with iOS App Store free-reader bypass. */
-export function requireModuleAllowingIosReader(
+export async function requireModuleAllowingIosReader(
   request: Request,
   plan: TerminalPlan,
   module: string
 ) {
-  if (isNativeIosAppStoreRequest(request)) return;
+  if (await isTrustedNativeReaderRequest(request)) return;
   requireModule(plan, module);
 }
 
@@ -64,12 +64,12 @@ export function requireFeature(plan: TerminalPlan, feature: TerminalFeature) {
 }
 
 /** Feature check with iOS App Store free-reader bypass (same content for all iOS users). */
-export function requireFeatureAllowingIosReader(
+export async function requireFeatureAllowingIosReader(
   request: Request,
   plan: TerminalPlan,
   feature: TerminalFeature
 ) {
-  if (isNativeIosAppStoreRequest(request)) {
+  if (await isTrustedNativeReaderRequest(request)) {
     const readerOk = hasFeature(iosAppStoreReaderPlan(), feature);
     if (readerOk) return;
   }
