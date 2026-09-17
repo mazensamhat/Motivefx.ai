@@ -3,15 +3,17 @@ import { iosAppStoreReaderPlan, planForUser } from "./plan";
 import type { User } from "@prisma/client";
 import { headers } from "next/headers";
 import {
+  type NativeReaderClaims,
   readNativeReaderTokenFromRequest,
   verifyNativeReaderToken,
 } from "./native-reader-token";
 
 /**
  * MotiveFX iOS App Store shell.
- * G3: Prefer short-lived Native Reader Token. UA alone must not grant entitlements
- * when NATIVE_READER_REQUIRE_TOKEN=true (strict). Default: token OR legacy UA for
- * free-reader *plan clamp* only (never paid unlock).
+ * G3: Prefer short-lived iOS App Store Native Reader Token. UA alone must not
+ * grant entitlements when NATIVE_READER_REQUIRE_TOKEN=true (strict). Default:
+ * iOS App Store token OR legacy iOS UA for free-reader *plan clamp* only
+ * (never paid unlock).
  */
 export function isNativeIosAppStoreRequest(request: Request): boolean {
   const ua = request.headers.get("user-agent") ?? "";
@@ -23,10 +25,14 @@ export function isNativeIosAppStoreUserAgent(ua: string | null | undefined): boo
   return /MotiveFXNative/i.test(value) && /\(iOS/i.test(value);
 }
 
+function isIosAppStoreReaderClaims(claims: NativeReaderClaims | null): boolean {
+  return claims?.readerMode === true && claims.platform === "ios" && claims.channel === "app_store";
+}
+
 export async function isTrustedNativeReaderRequest(request: Request): Promise<boolean> {
   const token = readNativeReaderTokenFromRequest(request);
   const claims = await verifyNativeReaderToken(token);
-  if (claims?.readerMode) return true;
+  if (isIosAppStoreReaderClaims(claims)) return true;
 
   const requireToken =
     (process.env.NATIVE_READER_REQUIRE_TOKEN ?? "").trim().toLowerCase() === "true" ||
@@ -64,7 +70,7 @@ export async function entitlementsPlanForUser(user: User): Promise<TerminalPlan>
     const token = h.get("x-motivefx-native-reader");
     if (token) {
       const claims = await verifyNativeReaderToken(token);
-      if (claims?.readerMode && claims.platform === "ios") {
+      if (isIosAppStoreReaderClaims(claims)) {
         return iosAppStoreReaderPlan();
       }
     }
