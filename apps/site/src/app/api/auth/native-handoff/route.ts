@@ -16,6 +16,7 @@ import {
   consumeOneTimeAuthToken,
   issueOneTimeAuthToken,
 } from "@/lib/one-time-auth";
+import { safeTerminalNext } from "@/lib/native-handoff";
 
 const DEMO_COOKIE = "motivefx_demo";
 const HANDOFF_TTL_SEC = 120;
@@ -42,15 +43,6 @@ function applySessionCookies(res: NextResponse, tokens: SessionTokens) {
     path: "/",
   });
   res.cookies.set(DEMO_COOKIE, "", { path: "/", maxAge: 0 });
-}
-
-function safeTerminalNext(nextPath: string | null | undefined): string {
-  const raw = nextPath?.trim() || "/terminal";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/terminal";
-  if (raw === "/terminal/" || raw.startsWith("/terminal/?")) {
-    return raw.replace("/terminal/", "/terminal");
-  }
-  return raw;
 }
 
 async function userById(userId: string): Promise<SessionUser | null> {
