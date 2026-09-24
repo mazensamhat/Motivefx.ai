@@ -15,6 +15,7 @@ import { SiteNav } from "./site-nav";
 import { TrustBar } from "./trust-bar";
 import { UseCasesSection } from "./use-cases-section";
 import { WorldIntelligenceSection } from "./world-intelligence-section";
+import { MotiveOneSpotlight } from "./motiveone-spotlight";
 import { AudienceSection, WhyProfessionalsSection } from "./why-audience-section";
 
 export function LandingPage() {
@@ -35,6 +36,7 @@ export function LandingPage() {
       <WhyProfessionalsSection />
       <AudienceSection />
       <PricingPreview />
+      <MotiveOneSpotlight />
       <EcosystemSection />
       <MobileSection />
       <LandingFaq />
