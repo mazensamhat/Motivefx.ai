@@ -538,6 +538,7 @@ export const ECOSYSTEM = [
   { name: "Motive Corp", role: "Parent company", href: "https://www.motive-corp.com" },
   { name: "MotiveFX.AI", role: "Predictive Market Intelligence", href: "/", active: true },
   { name: "Motive Life", role: "Personal Intelligence", href: "https://www.mymotivelife.com" },
+  { name: "MotiveOne", role: "AI CRM & business operating system", href: "https://motive1crm.com" },
   { name: "My Motive Pulse", role: "Local business growth", href: "https://www.mymotivepulse.com" },
   { name: "Motive IQ", role: "Automotive Intelligence", href: "https://www.motiveiqs.com/gate" },
 ];

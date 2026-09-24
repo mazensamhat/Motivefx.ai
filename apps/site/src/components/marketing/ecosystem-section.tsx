@@ -12,7 +12,7 @@ export function EcosystemSection() {
           <p className="section-kicker">Ecosystem</p>
           <h2 className="section-title">The Motive Ecosystem</h2>
           <p className="section-desc mt-3">
-            Sister tools under Motive Corp — Life, Pulse, IQ, and FX.
+            Sister tools under Motive Corp — Life, One, Pulse, IQ, and FX.
           </p>
         </div>
         <ul className="ecosystem-grid">

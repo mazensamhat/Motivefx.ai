@@ -32,6 +32,12 @@ export const MOTIVE_FAMILY_LINKS: MotiveFamilyLink[] = [
     href: "https://www.mymotivelife.com",
   },
   {
+    id: "motiveone",
+    name: "MotiveOne",
+    tagline: "CRM for a Brighter Business",
+    href: "https://motive1crm.com",
+  },
+  {
     id: "motivepulse",
     name: "My Motive Pulse",
     tagline: "Insights. Automation. Growth.",
