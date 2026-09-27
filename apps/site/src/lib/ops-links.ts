@@ -13,3 +13,7 @@ export const MOTIVEIQ_OPS_URL =
 /** Motive Corp portfolio — opens in a new tab. */
 export const MOTIVE_CORP_URL =
   process.env.NEXT_PUBLIC_MOTIVE_CORP_URL ?? "https://www.motive-corp.com";
+
+/** MotiveOne CRM Ops Console — opens in a new tab. */
+export const MOTIVEONE_OPS_URL =
+  process.env.NEXT_PUBLIC_MOTIVEONE_OPS_URL ?? "https://www.motive1crm.com/ops";
