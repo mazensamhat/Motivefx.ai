@@ -32,7 +32,7 @@ import {
   Workflow,
   Zap,
 } from "lucide-react";
-import { MOTIVELIFE_OPS_URL, MOTIVEPULSE_OPS_URL } from "@/lib/ops-links";
+import { MOTIVELIFE_OPS_URL, MOTIVEONE_OPS_URL, MOTIVEPULSE_OPS_URL } from "@/lib/ops-links";
 
 export type OpsNavItem = {
   id: string;
@@ -159,6 +159,7 @@ export const OPS_QUICK_LINKS: OpsNavItem[] = [
   { id: "legacy", label: "Classic dashboard", href: "/admin/legacy", icon: BarChart3 },
   { id: "terminal", label: "Terminal", href: "/app", icon: Activity },
   { id: "motivelife", label: "MyMotiveLife Ops", href: MOTIVELIFE_OPS_URL, icon: Briefcase, external: true },
+  { id: "motiveone", label: "MotiveOne Ops", href: MOTIVEONE_OPS_URL, icon: ExternalLink, external: true },
   { id: "motivepulse", label: "MotivePulse Ops", href: MOTIVEPULSE_OPS_URL, icon: ExternalLink, external: true },
   { id: "docs", label: "Documentation", href: "https://docs.motivefxai.com", icon: FileText, external: true },
 ];
