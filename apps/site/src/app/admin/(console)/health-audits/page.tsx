@@ -1,17 +1,17 @@
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@motivefx/database";
 
 export const metadata={title:"Health & Security — MotiveFX Ops",robots:{index:false,follow:false}};
 
 type Run={id:string;cadence:string;period_start:string;period_end:string;checked_at:string;status:string;issue_count:number;open_count:number;fixed_count:number;summary:string;details:any[];deployment_id:string|null;deployment_state:string|null};
 
 async function runs():Promise<Run[]>{
-  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!url||!key)return [];
-  const db=createClient(url,key,{auth:{persistSession:false}});
-  const {data,error}=await db.from("OpsProductionWatchRun").select("id,cadence,period_start,period_end,checked_at,status,issue_count,open_count,fixed_count,summary,details,deployment_id,deployment_state").eq("product_key","motivefx").order("checked_at",{ascending:false}).limit(250);
-  if(error){console.error("[health-audits]",error);return []}
-  return (data||[]) as Run[];
+  try {
+    const rows=await prisma.$queryRawUnsafe<any[]>(`SELECT id,cadence,period_start,period_end,checked_at,status,issue_count,open_count,fixed_count,summary,details,deployment_id,deployment_state FROM public."OpsProductionWatchRun" WHERE product_key='motivefx' ORDER BY checked_at DESC LIMIT 250`);
+    return rows as Run[];
+  } catch(error) {
+    console.error("[health-audits]",error);
+    return [];
+  }
 }
 const stamp=(v:string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/Toronto",dateStyle:"medium",timeStyle:"short"}).format(new Date(v));
 export default async function HealthAuditsPage(){
