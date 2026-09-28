@@ -15,6 +15,7 @@ import {
   Gauge,
   GitBranch,
   History,
+  HeartPulse,
   Layers,
   Lock,
   Megaphone,
@@ -131,6 +132,7 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
     id: "platform",
     label: "Platform",
     items: [
+      { id: "health-audits", label: "Health & Security", href: "/admin/health-audits", icon: HeartPulse, description: "Hourly · daily · weekly · monthly audits" },
       { id: "jobs", label: "Jobs", href: "/admin/jobs", icon: Cpu, description: "Background jobs" },
       { id: "releases", label: "Releases", href: "/admin/releases", icon: Rocket, description: "G1–G7 gates" },
     ],
