@@ -18,7 +18,6 @@ export async function POST(request: Request) {
     kind?: AddableKind;
     symbol?: string;
     title?: string;
-    confidence?: number;
   };
   if (!body.user_id || !body.kind || !body.symbol) return badRequest("Missing required fields.");
 
@@ -32,7 +31,6 @@ export async function POST(request: Request) {
         market: body.symbol,
         category: "signal",
         pick: body.title || body.symbol,
-        yesPrice: body.confidence ? Math.min(1, Math.max(0, body.confidence / 100)) : undefined,
       });
       return json({ saved: true, id, kind: body.kind });
     }
