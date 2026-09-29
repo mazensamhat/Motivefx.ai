@@ -60,6 +60,21 @@ export function TabStocks() {
   }, [isAuthenticated, user?.userId]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    const reloadAddedState = () => {
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/trades/portfolio/${userId}`)
+        .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "trades") reloadAddedState();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId]);
+
+  useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
       analyze(false);
     }
