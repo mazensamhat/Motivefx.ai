@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Target, TrendingDown } from "lucide-react";
+import { Check, Plus, Target, TrendingDown } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -18,6 +18,8 @@ import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeShell } from "../lib/nativeShell";
+import { apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 const BETTING_SPORT_FILTERS = [
   { value: "all", label: "All" },
@@ -32,6 +34,10 @@ const BETTING_SPORT_FILTERS = [
 
 export function TabBetting() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingBet, setSavingBet] = useState<string | null>(null);
+  const [savedBets, setSavedBets] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const [selectedSport, setSelectedSport] = useState("all");
   const androidPlaySafe = isNativeShell();
@@ -59,6 +65,31 @@ export function TabBetting() {
     provider?: "sharp_api" | "the_odds_api" | null;
   }>(`/betting/sharp-action${sportQuery}`, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
+
+  async function saveLiveBet(input: { key: string; matchup: string; pick: string; odds?: string; sport?: string }) {
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
+    setSavingBet(input.key);
+    setSaveError(null);
+    try {
+      await apiPost("/advisor/betting/bets", {
+        user_id: user?.userId ?? getUserId(),
+        matchup: input.matchup,
+        pick: input.pick,
+        odds: input.odds || undefined,
+        stake: 0,
+        sport: input.sport || "other",
+      });
+      setSavedBets((prev) => new Set(prev).add(input.key));
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Could not add bet");
+    } finally {
+      setSavingBet(null);
+    }
+  }
 
   const linesUpdated =
     lines.data?.updatedAt != null
@@ -149,6 +180,7 @@ export function TabBetting() {
           ratingContext="betting"
         />
       </div>
+      {saveError && <div className="form-error" style={{ marginBottom: "0.75rem" }}>{saveError}</div>}
       <div className="grid-2">
         <div className="card">
           <div className="card-header">
@@ -223,6 +255,22 @@ export function TabBetting() {
                     }
                     changeLabel="Active"
                     change={1}
+                    actions={
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={savingBet === `line-${l.matchup}` || savedBets.has(`line-${l.matchup}`)}
+                        onClick={() => void saveLiveBet({
+                          key: `line-${l.matchup}`,
+                          matchup: l.matchup,
+                          pick: l.currentLine ?? l.openingLine ?? "Line watch",
+                          odds: l.currentLine ?? l.openingLine,
+                          sport: l.sport,
+                        })}
+                      >
+                        {savedBets.has(`line-${l.matchup}`) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                      </button>
+                    }
                   />
                 )}
               />
@@ -294,6 +342,21 @@ export function TabBetting() {
                     price={s.signal.replace(/_/g, " ")}
                     changeLabel={s.confidence}
                     change={s.confidence === "high" || s.confidence === "medium" ? 1 : 0}
+                    actions={
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={savingBet === `sharp-${s.matchup}` || savedBets.has(`sharp-${s.matchup}`)}
+                        onClick={() => void saveLiveBet({
+                          key: `sharp-${s.matchup}`,
+                          matchup: s.matchup,
+                          pick: s.sharpSide,
+                          sport: selectedSport === "all" ? "other" : selectedSport,
+                        })}
+                      >
+                        {savedBets.has(`sharp-${s.matchup}`) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                      </button>
+                    }
                   />
                 )}
               />
