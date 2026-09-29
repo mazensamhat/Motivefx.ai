@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Globe } from "lucide-react";
+import { Check, Globe, Plus } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -17,6 +17,8 @@ import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeShell } from "../lib/nativeShell";
+import { apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 const MARKET_CATEGORY_FILTERS = [
   { value: "", label: "Top markets" },
@@ -31,6 +33,10 @@ const MARKET_CATEGORY_FILTERS = [
 
 export function TabPredictions() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingMarket, setSavingMarket] = useState<string | null>(null);
+  const [savedMarkets, setSavedMarkets] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const androidPlaySafe = isNativeShell();
   const enabled = !modulesLoading && hasModule("predictions");
@@ -50,6 +56,28 @@ export function TabPredictions() {
     bitquery?: { enabled?: boolean; count?: number; error?: string | null };
   }>(marketsQuery, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("predictions", enabled);
+
+  async function saveMarket(m: PredictionMarket) {
+    if (!isAuthenticated) { openAuth("login"); return; }
+    setSavingMarket(m.market);
+    setSaveError(null);
+    try {
+      await apiPost("/advisor/predictions/positions", {
+        user_id: user?.userId ?? getUserId(),
+        market: m.market,
+        category: m.category,
+        pick: "Yes",
+        stake: 0,
+        yes_price: m.yes,
+      });
+      setSavedMarkets((prev) => new Set(prev).add(m.market));
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Could not add prediction");
+    } finally {
+      setSavingMarket(null);
+    }
+  }
 
   const marketsUpdated =
     markets.data?.updatedAt != null
@@ -117,6 +145,7 @@ export function TabPredictions() {
           Polymarket Gamma · volume-sorted open markets · Monitor only
         </p>
       </div>
+      {saveError && <div className="form-error" style={{ marginBottom: "0.75rem" }}>{saveError}</div>}
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="card-header">
           <h2 className="card-title"><Globe size={18} /> Top markets</h2>
@@ -167,6 +196,11 @@ export function TabPredictions() {
                   price={`${(m.yes * 100).toFixed(0)}¢ YES`}
                   change={(m.yes - 0.5) * 100}
                   changeLabel={`Vol ${m.volume24h}`}
+                  actions={
+                    <button type="button" className="btn btn-sm btn-ghost" disabled={savingMarket === m.market || savedMarkets.has(m.market)} onClick={() => void saveMarket(m)}>
+                      {savedMarkets.has(m.market) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add YES</>}
+                    </button>
+                  }
                 >
                   <div className="mf-yesno-row">
                     <span className="mf-yesno yes">YES {(m.yes * 100).toFixed(0)}¢</span>
