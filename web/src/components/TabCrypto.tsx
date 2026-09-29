@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bitcoin } from "lucide-react";
+import { Bitcoin, Check, Plus } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -16,6 +16,8 @@ import { CryptoActivityPanel } from "./CryptoActivityPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
+import { apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 function formatUsd(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -25,11 +27,28 @@ function formatUsd(n: number) {
 
 export function TabCrypto() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
+  const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("crypto");
   const whales = useApi<{ items: WhaleAlert[] }>("/crypto/whale-alerts");
   const { result, loading, analyzeError, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("crypto", enabled);
   const [holdingsCount, setHoldingsCount] = useState(0);
+
+  async function addSymbol(symbol: string) {
+    if (!isAuthenticated) { openAuth("login"); return; }
+    const key = symbol.toUpperCase();
+    setSavingSymbol(key);
+    try {
+      await apiPost("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "crypto", symbol: key });
+      setSavedSymbols((prev) => new Set(prev).add(key));
+      setHoldingsCount((n) => n + (savedSymbols.has(key) ? 0 : 1));
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } finally {
+      setSavingSymbol(null);
+    }
+  }
 
   useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
@@ -121,6 +140,7 @@ export function TabCrypto() {
                   price={formatUsd(w.amountUsd)}
                   changeLabel={w.direction}
                   change={w.direction === "deposit" ? -1 : 1}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === w.asset.toUpperCase() || savedSymbols.has(w.asset.toUpperCase())} onClick={() => void addSymbol(w.asset)}>{savedSymbols.has(w.asset.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                 />
               )}
             />
