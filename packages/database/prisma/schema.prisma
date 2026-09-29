@@ -787,6 +787,10 @@ model SignalOutcome {
   horizonDays     Int
   predictedScore  Float?
   predictedConf   Float?
+  entryPrice      Float?
+  outcomePrice    Float?
+  realizedReturnPct Float?
+  evaluatorVersion String   @default("LEGACY_SIGNAL_V1")
   outcome         String   // CONFIRMED | PARTIAL | REJECTED | INCONCLUSIVE | PENDING
   evaluatedAt     DateTime?
   notes           String?
