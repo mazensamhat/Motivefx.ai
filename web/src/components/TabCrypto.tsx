@@ -16,7 +16,7 @@ import { CryptoActivityPanel } from "./CryptoActivityPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
-import { apiPost, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 function formatUsd(n: number) {
@@ -49,6 +49,14 @@ export function TabCrypto() {
       setSavingSymbol(null);
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedSymbols(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/crypto/portfolio/${userId}`)
+      .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+      .catch(() => setSavedSymbols(new Set()));
+  }, [isAuthenticated, user?.userId]);
 
   useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
