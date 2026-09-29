@@ -57,6 +57,8 @@ export function TabPredictions() {
   }>(marketsQuery, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("predictions", enabled);
 
+  const predictionKey = (market: string, pick: string) => `${market.trim().toLowerCase()}::${pick.trim().toLowerCase()}`;
+
   async function saveMarket(m: PredictionMarket) {
     if (!isAuthenticated) { openAuth("login"); return; }
     setSavingMarket(m.market);
@@ -70,7 +72,7 @@ export function TabPredictions() {
         stake: 0,
         yes_price: m.yes,
       });
-      setSavedMarkets((prev) => new Set(prev).add(m.market));
+      setSavedMarkets((prev) => new Set(prev).add(predictionKey(m.market, "Yes")));
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not add prediction");
@@ -82,8 +84,8 @@ export function TabPredictions() {
   useEffect(() => {
     if (!isAuthenticated) { setSavedMarkets(new Set()); return; }
     const userId = user?.userId ?? getUserId();
-    apiGet<{ positions: Array<{ market: string }> }>(`/advisor/predictions/positions/${userId}`)
-      .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => p.market))))
+    apiGet<{ positions: Array<{ market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
+      .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => predictionKey(p.market, p.pick)))))
       .catch(() => setSavedMarkets(new Set()));
   }, [isAuthenticated, user?.userId]);
 
@@ -92,8 +94,8 @@ export function TabPredictions() {
     const onPortfolioChanged = (event: Event) => {
       if ((event as CustomEvent<{ kind?: string }>).detail?.kind !== "predictions") return;
       const userId = user?.userId ?? getUserId();
-      apiGet<{ positions: Array<{ market: string }> }>(`/advisor/predictions/positions/${userId}`)
-        .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => p.market)))).catch(() => {});
+      apiGet<{ positions: Array<{ market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
+        .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => predictionKey(p.market, p.pick))))).catch(() => {});
     };
     window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
     return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
@@ -217,8 +219,8 @@ export function TabPredictions() {
                   change={(m.yes - 0.5) * 100}
                   changeLabel={`Vol ${m.volume24h}`}
                   actions={
-                    <button type="button" className="btn btn-sm btn-ghost" disabled={savingMarket === m.market || savedMarkets.has(m.market)} onClick={() => void saveMarket(m)}>
-                      {savedMarkets.has(m.market) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add YES</>}
+                    <button type="button" className="btn btn-sm btn-ghost" disabled={savingMarket === m.market || savedMarkets.has(predictionKey(m.market, "Yes"))} onClick={() => void saveMarket(m)}>
+                      {savedMarkets.has(predictionKey(m.market, "Yes")) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add YES</>}
                     </button>
                   }
                 >
