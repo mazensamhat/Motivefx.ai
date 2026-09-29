@@ -106,6 +106,21 @@ export function TabBetting() {
       .catch(() => setSavedBets(new Set()));
   }, [isAuthenticated, user?.userId]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind !== "betting") return;
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ bets: Array<{ matchup: string }> }>(`/advisor/betting/bets/${userId}`).then((d) => {
+        const keys = new Set<string>();
+        for (const b of d.bets ?? []) { keys.add(`line-${b.matchup}`); keys.add(`sharp-${b.matchup}`); }
+        setSavedBets(keys);
+      }).catch(() => {});
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId]);
+
   const linesUpdated =
     lines.data?.updatedAt != null
       ? new Date(lines.data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
