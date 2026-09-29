@@ -101,6 +101,7 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
       setMarket("");
       setStake("");
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Could not save position");
     } finally {
@@ -117,6 +118,7 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
     try {
       await apiDelete(`/advisor/predictions/positions/${encodeURIComponent(userId)}/${encodeURIComponent(String(id))}`);
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
     } catch (e) {
       setPositions(previous);
       setFormError(e instanceof Error ? e.message : "Could not remove prediction");
