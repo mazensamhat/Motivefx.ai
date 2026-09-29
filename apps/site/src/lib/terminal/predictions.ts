@@ -64,6 +64,18 @@ export async function addPrediction(
     isSimulation?: boolean;
   }
 ): Promise<string> {
+  const existing = await prisma.userPrediction.findFirst({
+    where: {
+      userId,
+      market: { equals: data.market.trim(), mode: "insensitive" },
+      pick: { equals: data.pick.trim(), mode: "insensitive" },
+      status: "open",
+      isSimulation: Boolean(data.isSimulation),
+    },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
   const row = await prisma.userPrediction.create({
     data: {
       userId,
