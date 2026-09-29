@@ -95,8 +95,8 @@ export function evaluateSignalAlertRules(
             module: t.module,
             symbol: t.relatedSymbols[0],
             title: `Probability alert: ${t.theme.slice(0, 64)}`,
-            body: `Motive Signal ${t.probability}/100 ≥ ${rule.threshold} (confidence ${t.confidence}). Informational only.`,
-            confidence: t.probability,
+            body: `Motive Signal ${t.motiveSignal ?? t.probability}/100 ≥ ${rule.threshold} (evidence confidence ${t.confidence}). This is not a calibrated outcome probability.`,
+            confidence: t.confidence,
             alertKey: `prob-${t.id}-${rule.threshold}`,
           });
         }
