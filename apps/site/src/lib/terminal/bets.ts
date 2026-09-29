@@ -93,3 +93,8 @@ export async function updateBetSettlement(
 export async function countBets(userId: string): Promise<number> {
   return prisma.userBet.count({ where: { userId } });
 }
+
+export async function deleteBet(userId: string, betId: string): Promise<boolean> {
+  const result = await prisma.userBet.deleteMany({ where: { id: betId, userId } });
+  return result.count > 0;
+}
