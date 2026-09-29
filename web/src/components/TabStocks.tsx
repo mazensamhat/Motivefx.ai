@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Landmark } from "lucide-react";
+import { Activity, Landmark, Check, Plus } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -16,9 +16,14 @@ import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { StockActivityPanel } from "./StockActivityPanel";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
+import { apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 export function TabStocks() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
+  const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("trades");
   const options = useApi<{ items: UnusualOption[] }>(
@@ -31,6 +36,20 @@ export function TabStocks() {
   );
   const { result, loading, analyzeError, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("trades", enabled);
   const [holdingsCount, setHoldingsCount] = useState(0);
+
+  async function addSymbol(symbol: string) {
+    if (!isAuthenticated) { openAuth("login"); return; }
+    const key = symbol.toUpperCase();
+    setSavingSymbol(key);
+    try {
+      await apiPost("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "trades", symbol: key });
+      setSavedSymbols((prev) => new Set(prev).add(key));
+      setHoldingsCount((n) => n + (savedSymbols.has(key) ? 0 : 1));
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } finally {
+      setSavingSymbol(null);
+    }
+  }
 
   useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
@@ -135,6 +154,7 @@ export function TabStocks() {
                     price={`$${(o.premium ?? 0).toLocaleString()}`}
                     changeLabel={o.sentiment}
                     change={o.sentiment === "bullish" ? 1 : o.sentiment === "bearish" ? -1 : 0}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === o.symbol.toUpperCase() || savedSymbols.has(o.symbol.toUpperCase())} onClick={() => void addSymbol(o.symbol)}>{savedSymbols.has(o.symbol.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                   />
                 )}
               />
@@ -180,6 +200,7 @@ export function TabStocks() {
                     price={t.filedAt}
                     changeLabel={t.transaction}
                     change={String(t.transaction).toLowerCase().includes("sale") ? -1 : 1}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === t.symbol.toUpperCase() || savedSymbols.has(t.symbol.toUpperCase())} onClick={() => void addSymbol(t.symbol)}>{savedSymbols.has(t.symbol.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                   />
                 )}
               />
