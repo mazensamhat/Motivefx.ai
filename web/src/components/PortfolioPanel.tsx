@@ -76,6 +76,7 @@ export function PortfolioPanel({ module, onAnalyzed, analyzing, setAnalyzing, on
     try {
       await apiPost(savePaths[module], { user_id: user?.userId ?? getUserId(), holdings: next });
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: module } }));
     } catch (e) {
       localWriteEpoch.current++;
       const restore = rollback ?? next;
