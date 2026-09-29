@@ -17,7 +17,7 @@ import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeShell } from "../lib/nativeShell";
-import { apiPost, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 const MARKET_CATEGORY_FILTERS = [
@@ -78,6 +78,14 @@ export function TabPredictions() {
       setSavingMarket(null);
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedMarkets(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ positions: Array<{ market: string }> }>(`/advisor/predictions/positions/${userId}`)
+      .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => p.market))))
+      .catch(() => setSavedMarkets(new Set()));
+  }, [isAuthenticated, user?.userId]);
 
   const marketsUpdated =
     markets.data?.updatedAt != null
