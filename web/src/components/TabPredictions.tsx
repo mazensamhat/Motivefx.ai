@@ -87,6 +87,18 @@ export function TabPredictions() {
       .catch(() => setSavedMarkets(new Set()));
   }, [isAuthenticated, user?.userId]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind !== "predictions") return;
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ positions: Array<{ market: string }> }>(`/advisor/predictions/positions/${userId}`)
+        .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => p.market)))).catch(() => {});
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId]);
+
   const marketsUpdated =
     markets.data?.updatedAt != null
       ? new Date(markets.data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
