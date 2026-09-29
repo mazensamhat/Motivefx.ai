@@ -82,6 +82,7 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
       setOdds("");
       setStake("");
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Could not save bet");
     } finally {
@@ -98,6 +99,7 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
     try {
       await apiDelete(`/advisor/betting/bets/${encodeURIComponent(userId)}/${encodeURIComponent(String(id))}`);
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
     } catch (e) {
       setBets(previous);
       setFormError(e instanceof Error ? e.message : "Could not remove bet");
