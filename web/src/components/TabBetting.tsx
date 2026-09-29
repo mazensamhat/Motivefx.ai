@@ -18,7 +18,7 @@ import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeShell } from "../lib/nativeShell";
-import { apiPost, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 const BETTING_SPORT_FILTERS = [
@@ -90,6 +90,21 @@ export function TabBetting() {
       setSavingBet(null);
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedBets(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ bets: Array<{ matchup: string; pick: string }> }>(`/advisor/betting/bets/${userId}`)
+      .then((d) => {
+        const keys = new Set<string>();
+        for (const b of d.bets ?? []) {
+          keys.add(`line-${b.matchup}`);
+          keys.add(`sharp-${b.matchup}`);
+        }
+        setSavedBets(keys);
+      })
+      .catch(() => setSavedBets(new Set()));
+  }, [isAuthenticated, user?.userId]);
 
   const linesUpdated =
     lines.data?.updatedAt != null
