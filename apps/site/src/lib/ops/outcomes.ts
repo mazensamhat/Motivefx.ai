@@ -16,7 +16,11 @@ const BUCKETS = [
 
 type CandleResponse = { s?: string; t?: number[]; c?: number[] };
 
-async function fetchFinnhubClose(symbol: string, atMs: number): Promise<number | null> {
+async function fetchObservedClose(symbol: string, atMs: number): Promise<number | null> {
+  // Historical candles are a provider capability, not an assumption. Finnhub documents
+  // /stock/candle as Premium; disable unless the deployment explicitly enables it.
+  if (process.env.FINNHUB_HISTORICAL_ENABLED !== "true") return null;
+
   const key = process.env.FINNHUB_API_KEY?.trim();
   if (!key) return null;
   const from = Math.floor((atMs - 4 * 86400000) / 1000);
@@ -88,8 +92,8 @@ export async function evaluatePendingOutcomes(limit = 50): Promise<{ evaluated: 
 
       const entryAt = row.snapshot.recordedAt.getTime();
       const [entryPrice, outcomePrice] = await Promise.all([
-        fetchFinnhubClose(row.symbol, entryAt),
-        fetchFinnhubClose(row.symbol, dueAt),
+        fetchObservedClose(row.symbol, entryAt),
+        fetchObservedClose(row.symbol, dueAt),
       ]);
       if (!(entryPrice && entryPrice > 0 && outcomePrice && outcomePrice > 0)) {
         await prisma.signalOutcome.update({
@@ -99,7 +103,7 @@ export async function evaluatePendingOutcomes(limit = 50): Promise<{ evaluated: 
             evaluatedAt: new Date(),
             entryPrice: entryPrice ?? undefined,
             outcomePrice: outcomePrice ?? undefined,
-            notes: "Observed market price unavailable; excluded from calibration",
+            notes: "Observed historical market price unavailable or provider capability disabled; excluded from calibration",
           },
         });
         inconclusive += 1;
