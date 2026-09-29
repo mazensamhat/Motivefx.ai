@@ -11,6 +11,7 @@ interface ItemCardProps {
   meta?: ReactNode;
   children?: ReactNode;
   className?: string;
+  actions?: ReactNode;
 }
 
 function pctClass(change: number | null | undefined) {
@@ -39,6 +40,7 @@ export function ModuleItemCard({
   meta,
   children,
   className = "",
+  actions,
 }: ItemCardProps) {
   const body = (
     <>
@@ -55,6 +57,7 @@ export function ModuleItemCard({
           </span>
         )}
         {meta != null && <div className="mf-item-name">{meta}</div>}
+        {actions != null && <div className="mf-item-actions" onClick={(e) => e.stopPropagation()}>{actions}</div>}
       </div>
     </>
   );
