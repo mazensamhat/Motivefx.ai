@@ -16,7 +16,7 @@ import { NewsPanel } from "./NewsPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard, ModuleSummaryCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
-import { apiPost, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 export function TabPenny() {
@@ -44,6 +44,14 @@ export function TabPenny() {
       setSavingSymbol(null);
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedSymbols(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/penny/portfolio/${userId}`)
+      .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+      .catch(() => setSavedSymbols(new Set()));
+  }, [isAuthenticated, user?.userId]);
 
   useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
