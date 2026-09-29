@@ -66,6 +66,8 @@ export function TabBetting() {
   }>(`/betting/sharp-action${sportQuery}`, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
 
+  const betKey = (matchup: string, pick: string) => `${matchup.trim().toLowerCase()}::${pick.trim().toLowerCase()}`;
+
   async function saveLiveBet(input: { key: string; matchup: string; pick: string; odds?: string; sport?: string }) {
     if (!isAuthenticated) {
       openAuth("login");
@@ -82,7 +84,7 @@ export function TabBetting() {
         stake: 0,
         sport: input.sport || "other",
       });
-      setSavedBets((prev) => new Set(prev).add(input.key));
+      setSavedBets((prev) => new Set(prev).add(betKey(input.matchup, input.pick)));
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not add bet");
@@ -98,8 +100,7 @@ export function TabBetting() {
       .then((d) => {
         const keys = new Set<string>();
         for (const b of d.bets ?? []) {
-          keys.add(`line-${b.matchup}`);
-          keys.add(`sharp-${b.matchup}`);
+          keys.add(betKey(b.matchup, b.pick));
         }
         setSavedBets(keys);
       })
@@ -111,9 +112,9 @@ export function TabBetting() {
     const onPortfolioChanged = (event: Event) => {
       if ((event as CustomEvent<{ kind?: string }>).detail?.kind !== "betting") return;
       const userId = user?.userId ?? getUserId();
-      apiGet<{ bets: Array<{ matchup: string }> }>(`/advisor/betting/bets/${userId}`).then((d) => {
+      apiGet<{ bets: Array<{ matchup: string; pick: string }> }>(`/advisor/betting/bets/${userId}`).then((d) => {
         const keys = new Set<string>();
-        for (const b of d.bets ?? []) { keys.add(`line-${b.matchup}`); keys.add(`sharp-${b.matchup}`); }
+        for (const b of d.bets ?? []) { keys.add(betKey(b.matchup, b.pick)); }
         setSavedBets(keys);
       }).catch(() => {});
     };
@@ -289,16 +290,16 @@ export function TabBetting() {
                       <button
                         type="button"
                         className="btn btn-sm btn-ghost"
-                        disabled={savingBet === `line-${l.matchup}` || savedBets.has(`line-${l.matchup}`)}
+                        disabled={savingBet === betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch") || savedBets.has(betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch"))}
                         onClick={() => void saveLiveBet({
-                          key: `line-${l.matchup}`,
+                          key: betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch"),
                           matchup: l.matchup,
                           pick: l.currentLine ?? l.openingLine ?? "Line watch",
                           odds: l.currentLine ?? l.openingLine,
                           sport: l.sport,
                         })}
                       >
-                        {savedBets.has(`line-${l.matchup}`) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                        {savedBets.has(betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch")) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
                       </button>
                     }
                   />
@@ -376,15 +377,15 @@ export function TabBetting() {
                       <button
                         type="button"
                         className="btn btn-sm btn-ghost"
-                        disabled={savingBet === `sharp-${s.matchup}` || savedBets.has(`sharp-${s.matchup}`)}
+                        disabled={savingBet === betKey(s.matchup, s.sharpSide) || savedBets.has(betKey(s.matchup, s.sharpSide))}
                         onClick={() => void saveLiveBet({
-                          key: `sharp-${s.matchup}`,
+                          key: betKey(s.matchup, s.sharpSide),
                           matchup: s.matchup,
                           pick: s.sharpSide,
                           sport: selectedSport === "all" ? "other" : selectedSport,
                         })}
                       >
-                        {savedBets.has(`sharp-${s.matchup}`) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                        {savedBets.has(betKey(s.matchup, s.sharpSide)) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
                       </button>
                     }
                   />
