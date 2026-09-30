@@ -112,7 +112,7 @@ export function ActivityPanel({
   const { isAuthenticated, user, openAuth } = useAuth();
   const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
   const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
-  const portfolioKind = module === "trades" || module === "crypto" || module === "penny" ? module : null;
+  const portfolioKind = module === "pinkslips" ? "penny" : module === "trades" || module === "crypto" ? module : null;
   const [values, setValues] = useState<Record<string, string>>({});
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [count, setCount] = useState(0);
