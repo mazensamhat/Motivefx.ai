@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Filter, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Filter, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { apiDelete, apiGet, apiPost, getUserId } from "../lib/api";
 import { isNativeShell } from "../lib/nativeShell";
@@ -57,8 +57,8 @@ function displayCount(v: unknown): string {
 export function BetMarketActivityPanel() {
   const { isAuthenticated, user, openAuth } = useAuth();
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
-  const betKey = (matchup: unknown, pick: unknown) => `${String(matchup ?? "").trim().toLowerCase()}::${String(pick ?? "").trim().toLowerCase()}`;
+  const [savedBets, setSavedBets] = useState<Map<string, string>>(new Map());
+  const betKey = (matchup: unknown, pick: unknown, sportsbook?: unknown) => `${String(matchup ?? "").trim().toLowerCase()}::${String(pick ?? "").trim().toLowerCase()}::${String(sportsbook ?? "").trim().toLowerCase()}`;
 
   async function addQuote(row: Record<string, unknown>) {
     if (!isAuthenticated) { openAuth("login"); return; }
@@ -371,8 +371,8 @@ export function BetMarketActivityPanel() {
                   label: "",
                   width: "6rem",
                   render: (r: Record<string, unknown>) => {
-                    const key = betKey(r.matchup, r.pick);
-                    const saved = savedKeys.has(key);
+                    const key = betKey(r.matchup, r.pick, r.sportsbook ?? r.book ?? r.bettor);
+                    const betId = savedBets.get(key);\n                    const saved = Boolean(betId);
                     return (
                       <button
                         type="button"
