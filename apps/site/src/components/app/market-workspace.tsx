@@ -155,11 +155,7 @@ export function MarketWorkspace({
       ? "crypto"
       : slug === "pink-slips"
         ? "penny"
-        : slug === "sports"
-          ? "betting"
-          : slug === "predictions"
-            ? "predictions"
-            : null;
+        : null;
 
   const savedKey = (symbol: string) => symbol.trim().toUpperCase();
 
@@ -192,10 +188,6 @@ export function MarketWorkspace({
 
   useEffect(() => {
     if (!userId || !portfolioKind || !live) {
-      setSavedKeys(new Set());
-      return;
-    }
-    if (portfolioKind === "betting" || portfolioKind === "predictions") {
       setSavedKeys(new Set());
       return;
     }
