@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { BarChart3, Filter, HelpCircle, RefreshCw, X } from "lucide-react";
+import { BarChart3, Check, Filter, HelpCircle, Plus, RefreshCw, X } from "lucide-react";
 import type { BrandModuleId } from "../brand/moduleBrand";
 import { brandToPlatformModule } from "../config/tradingPlatforms";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { apiGet, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { activityWhyToDetail } from "../utils/signalIntel";
 import { formatTime, formatUsd, formatShares, formatPrice } from "../utils/formatActivity";
@@ -108,6 +109,10 @@ export function ActivityPanel({
   buildWhy,
 }: Props) {
   const isMobile = useMediaQuery("(max-width: 900px)");
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
+  const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
+  const portfolioKind = module === "trades" || module === "crypto" || module === "penny" ? module : null;
   const [values, setValues] = useState<Record<string, string>>({});
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [count, setCount] = useState(0);
@@ -123,6 +128,35 @@ export function ActivityPanel({
     () => filters.reduce((n, f) => (values[f.key]?.trim() ? n + 1 : n), 0),
     [filters, values]
   );
+
+  const normalizeSymbol = (value: unknown) => String(value ?? "").trim().toUpperCase();
+
+  useEffect(() => {
+    if (!isAuthenticated || !portfolioKind) { setSavedSymbols(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    const loadSaved = () => apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/${portfolioKind}/portfolio/${userId}`)
+      .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => normalizeSymbol(h.symbol)))))
+      .catch(() => {});
+    loadSaved();
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === portfolioKind) loadSaved();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, portfolioKind, user?.userId]);
+
+  async function addActivityAsset(row: Record<string, unknown>) {
+    const symbol = normalizeSymbol(row.symbol);
+    if (!portfolioKind || !symbol) return;
+    if (!isAuthenticated) { openAuth("login"); return; }
+    setSavingSymbol(symbol);
+    try {
+      await apiPost("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: portfolioKind, symbol });
+      setSavedSymbols((prev) => new Set(prev).add(symbol));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: portfolioKind } }));
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+    } finally { setSavingSymbol(null); }
+  }
 
   const tableColumns = useMemo(() => {
     const cols = [...columns];
@@ -165,8 +199,17 @@ export function ActivityPanel({
       ),
     };
     cols.push(diveCol);
+    if (portfolioKind) cols.push({
+      key: "_portfolio", label: "", width: "6rem",
+      render: (row) => {
+        const symbol = normalizeSymbol(row.symbol);
+        if (!symbol) return null;
+        const saved = savedSymbols.has(symbol);
+        return <button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === symbol || saved} onClick={(e) => { e.stopPropagation(); void addActivityAsset(row); }}>{saved ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>;
+      },
+    });
     return cols;
-  }, [columns, buildWhy]);
+  }, [columns, buildWhy, portfolioKind, savedSymbols, savingSymbol]);
 
   function handleRowClick(row: Record<string, unknown>) {
     if (buildWhy) {
