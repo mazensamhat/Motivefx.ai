@@ -1,6 +1,6 @@
 import { badRequest, json } from "@/lib/api";
 import { accessErrorResponse, assertUserMatch, requireTerminalSession } from "@/lib/terminal/auth";
-import { requireFeature, requireModule } from "@/lib/terminal/access";
+import { requireFeature, requireModule, requireModuleOrSim } from "@/lib/terminal/access";
 import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { loadPortfolio, savePortfolio, type Holding, type PortfolioModule } from "@/lib/terminal/portfolio";
 import { addPrediction } from "@/lib/terminal/predictions";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const plan = await entitlementsPlanForUser(auth.session.user);
 
     if (body.kind === "predictions") {
-      requireModule(plan, "predictions");
+      requireModuleOrSim(plan, auth.session.user, "predictions");
       const id = await addPrediction(body.user_id, {
         market: body.symbol,
         category: "signal",
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     if (body.kind === "betting") {
-      requireModule(plan, "betting");
+      requireModuleOrSim(plan, auth.session.user, "betting");
       const id = await addBet(body.user_id, {
         matchup: body.symbol,
         pick: body.title || body.symbol,
