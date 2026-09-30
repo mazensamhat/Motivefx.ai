@@ -379,8 +379,18 @@ export function BetMarketActivityPanel() {
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm"
-                        disabled={savingKey === key || saved}
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); void addQuote(r); }}
+                        disabled={savingKey === key}
+                        onClick={(e) => {
+                          e.preventDefault(); e.stopPropagation();
+                          if (!betId) { void addQuote(r); return; }
+                          setSavingKey(key);
+                          void apiDelete(`/advisor/betting/bets/${user?.userId ?? getUserId()}/${betId}`)
+                            .then(() => {
+                              setSavedBets((prev) => { const next = new Map(prev); next.delete(key); return next; });
+                              window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
+                            })
+                            .finally(() => setSavingKey(null));
+                        }}
                       >
                         {saved ? <><Trash2 size={12} /> Remove</> : <><Plus size={12} /> Add</>}
                       </button>
