@@ -62,6 +62,26 @@ export function ModuleItemCard({
     </>
   );
 
+  if (onClick && actions != null) {
+    return (
+      <div
+        className={`mf-item-card ${className}`.trim()}
+        title={title}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onClick();
+          }
+        }}
+      >
+        {body}
+      </div>
+    );
+  }
+
   if (onClick) {
     return (
       <button
