@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Filter, Plus, RefreshCw, X } from "lucide-react";
+import { Filter, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { apiGet, apiPost, getUserId } from "../lib/api";
+import { apiDelete, apiGet, apiPost, getUserId } from "../lib/api";
 import { isNativeShell } from "../lib/nativeShell";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { AssetDeepDiveModal } from "./AssetDeepDiveModal";
@@ -57,23 +57,23 @@ function displayCount(v: unknown): string {
 export function BetMarketActivityPanel() {
   const { isAuthenticated, user, openAuth } = useAuth();
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
-  const betKey = (matchup: unknown, pick: unknown) => `${String(matchup ?? "").trim().toLowerCase()}::${String(pick ?? "").trim().toLowerCase()}`;
+  const [savedBets, setSavedBets] = useState<Map<string, string>>(new Map());
+  const betKey = (matchup: unknown, pick: unknown, sportsbook?: unknown) => `${String(matchup ?? "").trim().toLowerCase()}::${String(pick ?? "").trim().toLowerCase()}::${String(sportsbook ?? "").trim().toLowerCase()}`;
 
   async function addQuote(row: Record<string, unknown>) {
     if (!isAuthenticated) { openAuth("login"); return; }
-    const key = betKey(row.matchup, row.pick);
+    const key = betKey(row.matchup, row.pick, row.sportsbook ?? row.book ?? row.bettor);
     setSavingKey(key);
     try {
-      await apiPost("/advisor/betting/bets", {
+      const saved = await apiPost<{ id: string }>("/advisor/betting/bets", {
         user_id: user?.userId ?? getUserId(),
         matchup: String(row.matchup ?? ""),
         pick: String(row.pick ?? ""),
-        odds: row.odds == null ? undefined : String(row.odds),
+        odds: row.odds == null ? undefined : String(row.odds),\n        sportsbook: String(row.sportsbook ?? row.book ?? row.bettor ?? "").trim() || undefined,
         stake: 0,
         sport: String(row.sport ?? "other"),
       });
-      setSavedKeys((prev) => new Set(prev).add(key));
+      setSavedBets((prev) => new Map(prev).set(key, saved.id));
       window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
     } finally {
       setSavingKey(null);
@@ -119,11 +119,11 @@ export function BetMarketActivityPanel() {
   }, [fetchData]);
 
   useEffect(() => {
-    if (!isAuthenticated || androidPlaySafe) { setSavedKeys(new Set()); return; }
+    if (!isAuthenticated || androidPlaySafe) { setSavedBets(new Map()); return; }
     const loadSaved = () => {
       const userId = user?.userId ?? getUserId();
-      apiGet<{ bets: Array<{ matchup: string; pick: string }> }>(`/advisor/betting/bets/${userId}`)
-        .then((d) => setSavedKeys(new Set((d.bets ?? []).map((b) => betKey(b.matchup, b.pick)))))
+      apiGet<{ bets: Array<{ id: string; matchup: string; pick: string; sportsbook?: string | null }> }>(`/advisor/betting/bets/${userId}`)
+        .then((d) => setSavedBets(new Map((d.bets ?? []).map((b) => [betKey(b.matchup, b.pick, b.sportsbook), b.id]))))
         .catch(() => {});
     };
     loadSaved();
@@ -371,8 +371,8 @@ export function BetMarketActivityPanel() {
                   label: "",
                   width: "6rem",
                   render: (r: Record<string, unknown>) => {
-                    const key = betKey(r.matchup, r.pick);
-                    const saved = savedKeys.has(key);
+                    const key = betKey(r.matchup, r.pick, r.sportsbook ?? r.book ?? r.bettor);
+                    const betId = savedBets.get(key);\n                    const saved = Boolean(betId);
                     return (
                       <button
                         type="button"
@@ -380,7 +380,7 @@ export function BetMarketActivityPanel() {
                         disabled={savingKey === key || saved}
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); void addQuote(r); }}
                       >
-                        {saved ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                        {saved ? <><Trash2 size={12} /> Remove</> : <><Plus size={12} /> Add</>}
                       </button>
                     );
                   },
