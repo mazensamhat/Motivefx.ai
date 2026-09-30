@@ -51,6 +51,20 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
       .catch(() => setBets([]));
   }, [isAuthenticated, userId]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const reload = () => {
+      apiGet<{ bets: BetRow[] }>(`/advisor/betting/bets/${userId}`)
+        .then((d) => setBets(d.bets ?? []))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "betting") reload();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, userId]);
+
   async function addBet() {
     if (!isAuthenticated) {
       openAuth("login");
