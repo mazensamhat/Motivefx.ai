@@ -86,6 +86,7 @@ export function TabBetting() {
       });
       setSavedBets((prev) => new Set(prev).add(betKey(input.matchup, input.pick)));
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not add bet");
     } finally {
