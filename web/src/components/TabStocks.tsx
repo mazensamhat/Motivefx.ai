@@ -24,6 +24,7 @@ export function TabStocks() {
   const { isAuthenticated, user, openAuth } = useAuth();
   const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
   const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
+  const [portfolioActionError, setPortfolioActionError] = useState<string | null>(null);
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("trades");
   const options = useApi<{ items: UnusualOption[] }>(
@@ -41,11 +42,15 @@ export function TabStocks() {
     if (!isAuthenticated) { openAuth("login"); return; }
     const key = symbol.toUpperCase();
     setSavingSymbol(key);
+    setPortfolioActionError(null);
     try {
-      await apiPost("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "trades", symbol: key });
+      const res = await apiPost<{ count: number }>("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "trades", symbol: key });
       setSavedSymbols((prev) => new Set(prev).add(key));
-      setHoldingsCount((n) => n + (savedSymbols.has(key) ? 0 : 1));
+      setHoldingsCount(res.count);
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "trades" } }));
+    } catch (e) {
+      setPortfolioActionError(e instanceof Error ? e.message : "Could not add to portfolio");
     } finally {
       setSavingSymbol(null);
     }
@@ -83,6 +88,7 @@ export function TabStocks() {
   return (
     <>
       <DeepScanModal scan={deepScan} onDismiss={dismissScan} />
+      {portfolioActionError ? <div className="error">{portfolioActionError}</div> : null}
       <ModuleIntelStrip tab="stocks" />
       <FeatureGate feature="portfolio_intelligence">
         <PortfolioOverview
