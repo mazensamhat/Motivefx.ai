@@ -66,6 +66,20 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
       .catch(() => setPositions([]));
   }, [isAuthenticated, userId]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const reload = () => {
+      apiGet<{ positions: PositionRow[] }>(`/advisor/predictions/positions/${userId}`)
+        .then((d) => setPositions(d.positions ?? []))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "predictions") reload();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, userId]);
+
   async function addPosition() {
     if (!isAuthenticated) {
       openAuth("login");
