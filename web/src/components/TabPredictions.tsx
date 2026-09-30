@@ -87,7 +87,7 @@ export function TabPredictions() {
     const userId = user?.userId ?? getUserId();
     apiGet<{ positions: Array<{ id: string; market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
       .then((d) => setSavedMarkets(new Map((d.positions ?? []).map((p) => [predictionKey(p.market, p.pick), p.id]))))
-      .catch(() => setSavedMarkets(new Set()));
+      .catch(() => setSavedMarkets(new Map()));
   }, [isAuthenticated, user?.userId]);
 
   useEffect(() => {
