@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Filter, RefreshCw, X } from "lucide-react";
+import { Check, Filter, Plus, RefreshCw, X } from "lucide-react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { apiGet, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
 import { isNativeShell } from "../lib/nativeShell";
 import { buildAssetDeepDive } from "../utils/assetDeepDive";
 import { AssetDeepDiveModal } from "./AssetDeepDiveModal";
 import { formatTime, formatUsd } from "./ActivityPanel";
 import { VirtualizedTable } from "./VirtualizedTable";
+import { useAuth } from "../hooks/useAuth";
 
 const SPORT_OPTIONS = [
   { value: "football", label: "Football (NFL)" },
@@ -54,6 +55,31 @@ function displayCount(v: unknown): string {
 }
 
 export function BetMarketActivityPanel() {
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
+  const betKey = (matchup: unknown, pick: unknown) => `${String(matchup ?? "").trim().toLowerCase()}::${String(pick ?? "").trim().toLowerCase()}`;
+
+  async function addQuote(row: Record<string, unknown>) {
+    if (!isAuthenticated) { openAuth("login"); return; }
+    const key = betKey(row.matchup, row.pick);
+    setSavingKey(key);
+    try {
+      await apiPost("/advisor/betting/bets", {
+        user_id: user?.userId ?? getUserId(),
+        matchup: String(row.matchup ?? ""),
+        pick: String(row.pick ?? ""),
+        odds: row.odds == null ? undefined : String(row.odds),
+        stake: 0,
+        sport: String(row.sport ?? "other"),
+      });
+      setSavedKeys((prev) => new Set(prev).add(key));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
   const isMobile = useMediaQuery("(max-width: 900px)");
   const androidPlaySafe = isNativeShell();
   const [sport, setSport] = useState("");
@@ -91,6 +117,22 @@ export function BetMarketActivityPanel() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!isAuthenticated || androidPlaySafe) { setSavedKeys(new Set()); return; }
+    const loadSaved = () => {
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ bets: Array<{ matchup: string; pick: string }> }>(`/advisor/betting/bets/${userId}`)
+        .then((d) => setSavedKeys(new Set((d.bets ?? []).map((b) => betKey(b.matchup, b.pick)))))
+        .catch(() => {});
+    };
+    loadSaved();
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "betting") loadSaved();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId, androidPlaySafe]);
 
   function clearFilters() {
     setSport("");
@@ -324,6 +366,25 @@ export function BetMarketActivityPanel() {
                   className: "cell-mono",
                   render: (r) => displayOdds(r.odds),
                 },
+                ...(!androidPlaySafe ? [{
+                  key: "portfolio",
+                  label: "",
+                  width: "6rem",
+                  render: (r: Record<string, unknown>) => {
+                    const key = betKey(r.matchup, r.pick);
+                    const saved = savedKeys.has(key);
+                    return (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        disabled={savingKey === key || saved}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); void addQuote(r); }}
+                      >
+                        {saved ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                      </button>
+                    );
+                  },
+                }] : []),
                 {
                   key: "gameBetCount",
                   label: "Sides",

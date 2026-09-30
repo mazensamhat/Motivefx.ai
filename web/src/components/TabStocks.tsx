@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Landmark } from "lucide-react";
+import { Activity, Landmark, Check, Plus } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -16,9 +16,15 @@ import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { StockActivityPanel } from "./StockActivityPanel";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 export function TabStocks() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
+  const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
+  const [portfolioActionError, setPortfolioActionError] = useState<string | null>(null);
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("trades");
   const options = useApi<{ items: UnusualOption[] }>(
@@ -32,6 +38,47 @@ export function TabStocks() {
   const { result, loading, analyzeError, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("trades", enabled);
   const [holdingsCount, setHoldingsCount] = useState(0);
 
+  async function addSymbol(symbol: string) {
+    if (!isAuthenticated) { openAuth("login"); return; }
+    const key = symbol.toUpperCase();
+    setSavingSymbol(key);
+    setPortfolioActionError(null);
+    try {
+      const res = await apiPost<{ count: number }>("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "trades", symbol: key });
+      setSavedSymbols((prev) => new Set(prev).add(key));
+      setHoldingsCount(res.count);
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "trades" } }));
+    } catch (e) {
+      setPortfolioActionError(e instanceof Error ? e.message : "Could not add to portfolio");
+    } finally {
+      setSavingSymbol(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedSymbols(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/trades/portfolio/${userId}`)
+      .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+      .catch(() => setSavedSymbols(new Set()));
+  }, [isAuthenticated, user?.userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const reloadAddedState = () => {
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/trades/portfolio/${userId}`)
+        .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "trades") reloadAddedState();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId]);
+
   useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
       analyze(false);
@@ -41,6 +88,7 @@ export function TabStocks() {
   return (
     <>
       <DeepScanModal scan={deepScan} onDismiss={dismissScan} />
+      {portfolioActionError ? <div className="error">{portfolioActionError}</div> : null}
       <ModuleIntelStrip tab="stocks" />
       <FeatureGate feature="portfolio_intelligence">
         <PortfolioOverview
@@ -89,7 +137,7 @@ export function TabStocks() {
               <Activity size={18} /> Unusual Options Flow
             </h2>
           </div>
-          <p className="desk-tap-hint">Tap a ticker for the full scorecard — plain English, health, and what to watch.</p>
+          <p className="desk-tap-hint">Tap a ticker for the full scorecard — plain English, health, and what to watch. “Watch stock” adds the underlying ticker, not the option contract.</p>
           <div className="card-body flush">
             {options.loading ? (
               <div className="loading">Scanning options flow…</div>
@@ -135,6 +183,7 @@ export function TabStocks() {
                     price={`$${(o.premium ?? 0).toLocaleString()}`}
                     changeLabel={o.sentiment}
                     change={o.sentiment === "bullish" ? 1 : o.sentiment === "bearish" ? -1 : 0}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === o.symbol.toUpperCase() || savedSymbols.has(o.symbol.toUpperCase())} onClick={() => void addSymbol(o.symbol)} title="Adds the underlying stock to your portfolio, not the option contract">{savedSymbols.has(o.symbol.toUpperCase()) ? <><Check size={12} /> Watching stock</> : <><Plus size={12} /> Watch stock</>}</button>}
                   />
                 )}
               />
@@ -180,6 +229,7 @@ export function TabStocks() {
                     price={t.filedAt}
                     changeLabel={t.transaction}
                     change={String(t.transaction).toLowerCase().includes("sale") ? -1 : 1}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === t.symbol.toUpperCase() || savedSymbols.has(t.symbol.toUpperCase())} onClick={() => void addSymbol(t.symbol)}>{savedSymbols.has(t.symbol.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                   />
                 )}
               />

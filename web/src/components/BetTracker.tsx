@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Ticket, Wand2 } from "lucide-react";
-import { apiGet, apiPost, getUserId } from "../lib/api";
+import { Ticket, Trash2, Wand2 } from "lucide-react";
+import { apiDelete, apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
 import type { AdvisorResult } from "../types";
@@ -36,6 +36,7 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
   const [bets, setBets] = useState<BetRow[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState<string | number | null>(null);
   const [lastResult, setLastResult] = useState<{ won: boolean; pnl: number } | null>(null);
 
   const userId = user?.userId ?? getUserId();
@@ -48,6 +49,20 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
     apiGet<{ bets: BetRow[] }>(`/advisor/betting/bets/${userId}`)
       .then((d) => setBets(d.bets ?? []))
       .catch(() => setBets([]));
+  }, [isAuthenticated, userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const reload = () => {
+      apiGet<{ bets: BetRow[] }>(`/advisor/betting/bets/${userId}`)
+        .then((d) => setBets(d.bets ?? []))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "betting") reload();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
   }, [isAuthenticated, userId]);
 
   async function addBet() {
@@ -81,10 +96,29 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
       setOdds("");
       setStake("");
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Could not save bet");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeBet(id: string | number) {
+    if (!isAuthenticated) return;
+    setRemovingId(id);
+    setFormError(null);
+    const previous = bets;
+    setBets((rows) => rows.filter((b) => b.id !== id));
+    try {
+      await apiDelete(`/advisor/betting/bets/${encodeURIComponent(userId)}/${encodeURIComponent(String(id))}`);
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
+    } catch (e) {
+      setBets(previous);
+      setFormError(e instanceof Error ? e.message : "Could not remove bet");
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -193,6 +227,17 @@ export function BetTracker({ onAnalyzed, analyzing, setAnalyzing, simulationMode
               }}
               primary={b.matchup}
               secondary={`${b.pick} · ${b.odds} · $${b.stake}${b.is_simulation ? " · SIM" : ""}`}
+              actions={
+                <button
+                  type="button"
+                  className="btn-icon btn-icon-danger"
+                  aria-label={`Remove ${b.matchup}`}
+                  disabled={removingId === b.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); void removeBet(b.id); }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              }
               meta={
                 b.pnl != null ? (
                   <span className={b.pnl >= 0 ? "pnl-positive" : "pnl-negative"}>

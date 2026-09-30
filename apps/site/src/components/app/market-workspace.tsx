@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { useEffect, useState } from "react";
 
-import { Lock, Unlock } from "lucide-react";
+import { Check, Loader2, Lock, Plus, Unlock } from "lucide-react";
 
 import type { IntelligenceMarketId } from "@/lib/tiers";
 
@@ -83,6 +83,9 @@ export function MarketWorkspace({
   const [feed, setFeed] = useState<{ symbol?: string; title?: string; confidence?: number }[]>([]);
 
   const [feedError, setFeedError] = useState("");
+  const [savingKey, setSavingKey] = useState("");
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
+  const [saveError, setSaveError] = useState("");
 
 
 
@@ -145,6 +148,65 @@ export function MarketWorkspace({
   }, [slug, userId, live]);
 
 
+
+  const portfolioKind = slug === "stocks" || slug === "options"
+    ? "trades"
+    : slug === "crypto"
+      ? "crypto"
+      : slug === "pink-slips"
+        ? "penny"
+        : null;
+
+  const savedKey = (symbol: string) => symbol.trim().toUpperCase();
+
+  async function addToPortfolio(row: { symbol: string; signal: number; note: string }) {
+    if (!userId || !portfolioKind || !live) return;
+    const key = savedKey(row.symbol);
+    setSavingKey(key);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/terminal/portfolio/add", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          kind: portfolioKind,
+          symbol: row.symbol,
+          title: row.note,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: string };
+      if (!res.ok) throw new Error(data.detail ?? `Unable to add (${res.status})`);
+      setSavedKeys((prev) => new Set(prev).add(key));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: portfolioKind } }));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Unable to add to portfolio.");
+    } finally {
+      setSavingKey("");
+    }
+  }
+
+  useEffect(() => {
+    if (!userId || !portfolioKind || !live) {
+      setSavedKeys(new Set());
+      return;
+    }
+    const modulePath = portfolioKind === "penny" ? "penny" : portfolioKind;
+    const loadSaved = () => {
+      fetch(`/api/advisor/${modulePath}/portfolio/${encodeURIComponent(userId)}?user_id=${encodeURIComponent(userId)}`)
+        .then((res) => res.ok ? res.json() : Promise.reject(new Error("Portfolio unavailable")))
+        .then((data: { holdings?: Array<{ symbol: string }> }) =>
+          setSavedKeys(new Set((data.holdings ?? []).map((h) => savedKey(h.symbol))))
+        )
+        .catch(() => {});
+    };
+    loadSaved();
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === portfolioKind) loadSaved();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [userId, portfolioKind, live]);
 
   const signals =
 
@@ -252,6 +314,7 @@ export function MarketWorkspace({
 
         </p>
 
+        {saveError && <p className="mt-3 text-sm text-red-300">{saveError}</p>}
         <ul className="mt-4 space-y-3">
 
           {signals.map((row, i) => (
@@ -266,7 +329,26 @@ export function MarketWorkspace({
 
               </div>
 
-              <span className="app-signal-pill text-base">{row.signal}</span>
+              <div className="flex items-center gap-2">
+                <span className="app-signal-pill text-base">{row.signal}</span>
+                {portfolioKind && userId && live && (() => {
+                  const key = savedKey(row.symbol);
+                  const saved = savedKeys.has(key);
+                  const saving = savingKey === key;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => addToPortfolio(row)}
+                      disabled={saving || saved}
+                      className="app-cta-btn inline-flex items-center gap-1.5 disabled:cursor-default disabled:opacity-70"
+                      aria-label={saved ? `${row.symbol} added to portfolio` : `Add ${row.symbol} to portfolio`}
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      {saved ? "Added" : "Add"}
+                    </button>
+                  );
+                })()}
+              </div>
 
             </li>
 

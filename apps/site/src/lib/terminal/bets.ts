@@ -64,6 +64,18 @@ export async function addBet(
     isSimulation?: boolean;
   }
 ): Promise<string> {
+  const existing = await prisma.userBet.findFirst({
+    where: {
+      userId,
+      matchup: { equals: data.matchup.trim(), mode: "insensitive" },
+      pick: { equals: data.pick.trim(), mode: "insensitive" },
+      status: "open",
+      isSimulation: Boolean(data.isSimulation),
+    },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
   const row = await prisma.userBet.create({
     data: {
       userId,
@@ -92,4 +104,9 @@ export async function updateBetSettlement(
 
 export async function countBets(userId: string): Promise<number> {
   return prisma.userBet.count({ where: { userId } });
+}
+
+export async function deleteBet(userId: string, betId: string): Promise<boolean> {
+  const result = await prisma.userBet.deleteMany({ where: { id: betId, userId } });
+  return result.count > 0;
 }

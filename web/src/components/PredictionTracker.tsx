@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Globe, Wand2 } from "lucide-react";
-import { apiGet, apiPost, getUserId } from "../lib/api";
+import { Globe, Trash2, Wand2 } from "lucide-react";
+import { apiDelete, apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useModules } from "../hooks/useModules";
 import type { AdvisorResult, PredictionMarket } from "../types";
@@ -45,6 +45,7 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
   const [markets, setMarkets] = useState<PredictionMarket[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState<string | number | null>(null);
   const [lastResult, setLastResult] = useState<{ won: boolean; pnl: number } | null>(null);
 
   const userId = user?.userId ?? getUserId();
@@ -63,6 +64,20 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
     apiGet<{ positions: PositionRow[] }>(`/advisor/predictions/positions/${userId}`)
       .then((d) => setPositions(d.positions ?? []))
       .catch(() => setPositions([]));
+  }, [isAuthenticated, userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const reload = () => {
+      apiGet<{ positions: PositionRow[] }>(`/advisor/predictions/positions/${userId}`)
+        .then((d) => setPositions(d.positions ?? []))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "predictions") reload();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
   }, [isAuthenticated, userId]);
 
   async function addPosition() {
@@ -100,10 +115,29 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
       setMarket("");
       setStake("");
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Could not save position");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removePosition(id: string | number) {
+    if (!isAuthenticated) return;
+    setRemovingId(id);
+    setFormError(null);
+    const previous = positions;
+    setPositions((rows) => rows.filter((p) => p.id !== id));
+    try {
+      await apiDelete(`/advisor/predictions/positions/${encodeURIComponent(userId)}/${encodeURIComponent(String(id))}`);
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
+    } catch (e) {
+      setPositions(previous);
+      setFormError(e instanceof Error ? e.message : "Could not remove prediction");
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -215,6 +249,11 @@ export function PredictionTracker({ onAnalyzed, analyzing, setAnalyzing, simulat
                   {p.yes_price != null ? ` · YES ${(p.yes_price * 100).toFixed(0)}%` : ""}
                   {p.is_simulation ? " · SIM" : ""}
                 </>
+              }
+              actions={
+                <button type="button" className="btn-icon btn-icon-danger" aria-label={`Remove ${p.market}`} disabled={removingId === p.id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); void removePosition(p.id); }}>
+                  <Trash2 size={14} />
+                </button>
               }
               meta={
                 p.pnl != null ? (

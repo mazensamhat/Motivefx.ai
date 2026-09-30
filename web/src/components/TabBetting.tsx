@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Target, TrendingDown } from "lucide-react";
+import { Check, Plus, Target, TrendingDown } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -18,6 +18,8 @@ import { calcWinRate } from "../utils/winRate";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeShell } from "../lib/nativeShell";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 const BETTING_SPORT_FILTERS = [
   { value: "all", label: "All" },
@@ -32,6 +34,10 @@ const BETTING_SPORT_FILTERS = [
 
 export function TabBetting() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingBet, setSavingBet] = useState<string | null>(null);
+  const [savedBets, setSavedBets] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const [selectedSport, setSelectedSport] = useState("all");
   const androidPlaySafe = isNativeShell();
@@ -59,6 +65,63 @@ export function TabBetting() {
     provider?: "sharp_api" | "the_odds_api" | null;
   }>(`/betting/sharp-action${sportQuery}`, 300_000);
   const { result, loading, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("betting", enabled);
+
+  const betKey = (matchup: string, pick: string) => `${matchup.trim().toLowerCase()}::${pick.trim().toLowerCase()}`;
+
+  async function saveLiveBet(input: { key: string; matchup: string; pick: string; odds?: string; sport?: string }) {
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
+    setSavingBet(input.key);
+    setSaveError(null);
+    try {
+      await apiPost("/advisor/betting/bets", {
+        user_id: user?.userId ?? getUserId(),
+        matchup: input.matchup,
+        pick: input.pick,
+        odds: input.odds || undefined,
+        stake: 0,
+        sport: input.sport || "other",
+      });
+      setSavedBets((prev) => new Set(prev).add(betKey(input.matchup, input.pick)));
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "betting" } }));
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Could not add bet");
+    } finally {
+      setSavingBet(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedBets(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ bets: Array<{ matchup: string; pick: string }> }>(`/advisor/betting/bets/${userId}`)
+      .then((d) => {
+        const keys = new Set<string>();
+        for (const b of d.bets ?? []) {
+          keys.add(betKey(b.matchup, b.pick));
+        }
+        setSavedBets(keys);
+      })
+      .catch(() => setSavedBets(new Set()));
+  }, [isAuthenticated, user?.userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind !== "betting") return;
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ bets: Array<{ matchup: string; pick: string }> }>(`/advisor/betting/bets/${userId}`).then((d) => {
+        const keys = new Set<string>();
+        for (const b of d.bets ?? []) { keys.add(betKey(b.matchup, b.pick)); }
+        setSavedBets(keys);
+      }).catch(() => {});
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId]);
 
   const linesUpdated =
     lines.data?.updatedAt != null
@@ -149,6 +212,7 @@ export function TabBetting() {
           ratingContext="betting"
         />
       </div>
+      {saveError && <div className="form-error" style={{ marginBottom: "0.75rem" }}>{saveError}</div>}
       <div className="grid-2">
         <div className="card">
           <div className="card-header">
@@ -223,6 +287,22 @@ export function TabBetting() {
                     }
                     changeLabel="Active"
                     change={1}
+                    actions={
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={savingBet === betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch") || savedBets.has(betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch"))}
+                        onClick={() => void saveLiveBet({
+                          key: betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch"),
+                          matchup: l.matchup,
+                          pick: l.currentLine ?? l.openingLine ?? "Line watch",
+                          odds: l.currentLine ?? l.openingLine,
+                          sport: l.sport,
+                        })}
+                      >
+                        {savedBets.has(betKey(l.matchup, l.currentLine ?? l.openingLine ?? "Line watch")) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                      </button>
+                    }
                   />
                 )}
               />
@@ -294,6 +374,21 @@ export function TabBetting() {
                     price={s.signal.replace(/_/g, " ")}
                     changeLabel={s.confidence}
                     change={s.confidence === "high" || s.confidence === "medium" ? 1 : 0}
+                    actions={
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={savingBet === betKey(s.matchup, s.sharpSide) || savedBets.has(betKey(s.matchup, s.sharpSide))}
+                        onClick={() => void saveLiveBet({
+                          key: betKey(s.matchup, s.sharpSide),
+                          matchup: s.matchup,
+                          pick: s.sharpSide,
+                          sport: selectedSport === "all" ? "other" : selectedSport,
+                        })}
+                      >
+                        {savedBets.has(betKey(s.matchup, s.sharpSide)) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
+                      </button>
+                    }
                   />
                 )}
               />

@@ -64,6 +64,18 @@ export async function addPrediction(
     isSimulation?: boolean;
   }
 ): Promise<string> {
+  const existing = await prisma.userPrediction.findFirst({
+    where: {
+      userId,
+      market: { equals: data.market.trim(), mode: "insensitive" },
+      pick: { equals: data.pick.trim(), mode: "insensitive" },
+      status: "open",
+      isSimulation: Boolean(data.isSimulation),
+    },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
   const row = await prisma.userPrediction.create({
     data: {
       userId,
@@ -92,4 +104,9 @@ export async function updatePredictionSettlement(
 
 export async function countPredictions(userId: string): Promise<number> {
   return prisma.userPrediction.count({ where: { userId } });
+}
+
+export async function deletePrediction(userId: string, positionId: string): Promise<boolean> {
+  const result = await prisma.userPrediction.deleteMany({ where: { id: positionId, userId } });
+  return result.count > 0;
 }

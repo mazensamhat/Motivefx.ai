@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, Zap } from "lucide-react";
+import { TrendingUp, Zap, Check, Plus } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -16,15 +16,62 @@ import { NewsPanel } from "./NewsPanel";
 import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard, ModuleSummaryCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
+import { apiGet, apiPost, getUserId } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 
 export function TabPenny() {
   const { openDeepDive } = useAssetDeepDive();
+  const { isAuthenticated, user, openAuth } = useAuth();
+  const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
+  const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
+  const [portfolioActionError, setPortfolioActionError] = useState<string | null>(null);
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("penny");
   const movers = useApi<{ items: PennyMover[] }>(enabled ? "/penny/movers" : "", 30_000);
   const spikes = useApi<{ items: PennyMover[] }>(enabled ? "/penny/volume-spikes" : "", 30_000);
   const { result, loading, analyzeError, deepScan, analyze, applyResult, dismissScan } = useAutoAnalyze("penny", enabled);
   const [holdingsCount, setHoldingsCount] = useState(0);
+
+  async function addSymbol(symbol: string) {
+    if (!isAuthenticated) { openAuth("login"); return; }
+    const key = symbol.toUpperCase();
+    setSavingSymbol(key);
+    setPortfolioActionError(null);
+    try {
+      const res = await apiPost<{ count: number }>("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "penny", symbol: key });
+      setSavedSymbols((prev) => new Set(prev).add(key));
+      setHoldingsCount(res.count);
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "penny" } }));
+    } catch (e) {
+      setPortfolioActionError(e instanceof Error ? e.message : "Could not add to portfolio");
+    } finally {
+      setSavingSymbol(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated) { setSavedSymbols(new Set()); return; }
+    const userId = user?.userId ?? getUserId();
+    apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/penny/portfolio/${userId}`)
+      .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+      .catch(() => setSavedSymbols(new Set()));
+  }, [isAuthenticated, user?.userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const reloadAddedState = () => {
+      const userId = user?.userId ?? getUserId();
+      apiGet<{ holdings: Array<{ symbol: string }> }>(`/advisor/penny/portfolio/${userId}`)
+        .then((d) => setSavedSymbols(new Set((d.holdings ?? []).map((h) => h.symbol.toUpperCase()))))
+        .catch(() => {});
+    };
+    const onPortfolioChanged = (event: Event) => {
+      if ((event as CustomEvent<{ kind?: string }>).detail?.kind === "penny") reloadAddedState();
+    };
+    window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+    return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
+  }, [isAuthenticated, user?.userId]);
 
   useEffect(() => {
     if (enabled && holdingsCount > 0 && !result && !loading && !analyzeError) {
@@ -39,6 +86,7 @@ export function TabPenny() {
   return (
     <>
       <DeepScanModal scan={deepScan} onDismiss={dismissScan} />
+      {portfolioActionError ? <div className="error">{portfolioActionError}</div> : null}
       <ModuleIntelStrip tab="penny" />
       <FeatureGate feature="portfolio_intelligence">
         {inventory != null ? (
@@ -135,6 +183,7 @@ export function TabPenny() {
                     name={`$${m.price?.toFixed(2)} · Vol ${m.volRatio}x avg${m.note ? ` · ${m.note}` : ""} · Tap for scorecard`}
                     price={m.volume?.toLocaleString()}
                     change={m.changePct}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === m.symbol.toUpperCase() || savedSymbols.has(m.symbol.toUpperCase())} onClick={() => void addSymbol(m.symbol)}>{savedSymbols.has(m.symbol.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                   />
                 )}
               />
@@ -177,6 +226,7 @@ export function TabPenny() {
                     name={`${m.note ?? "Volume spike"} · Tap for scorecard`}
                     price={`${m.volRatio}x`}
                     change={m.changePct}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === m.symbol.toUpperCase() || savedSymbols.has(m.symbol.toUpperCase())} onClick={() => void addSymbol(m.symbol)}>{savedSymbols.has(m.symbol.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                   />
                 )}
               />
