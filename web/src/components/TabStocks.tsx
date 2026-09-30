@@ -131,7 +131,7 @@ export function TabStocks() {
               <Activity size={18} /> Unusual Options Flow
             </h2>
           </div>
-          <p className="desk-tap-hint">Tap a ticker for the full scorecard — plain English, health, and what to watch.</p>
+          <p className="desk-tap-hint">Tap a ticker for the full scorecard — plain English, health, and what to watch. “Watch stock” adds the underlying ticker, not the option contract.</p>
           <div className="card-body flush">
             {options.loading ? (
               <div className="loading">Scanning options flow…</div>
@@ -177,7 +177,7 @@ export function TabStocks() {
                     price={`$${(o.premium ?? 0).toLocaleString()}`}
                     changeLabel={o.sentiment}
                     change={o.sentiment === "bullish" ? 1 : o.sentiment === "bearish" ? -1 : 0}
-                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === o.symbol.toUpperCase() || savedSymbols.has(o.symbol.toUpperCase())} onClick={() => void addSymbol(o.symbol)}>{savedSymbols.has(o.symbol.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
+                    actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === o.symbol.toUpperCase() || savedSymbols.has(o.symbol.toUpperCase())} onClick={() => void addSymbol(o.symbol)} title="Adds the underlying stock to your portfolio, not the option contract">{savedSymbols.has(o.symbol.toUpperCase()) ? <><Check size={12} /> Watching stock</> : <><Plus size={12} /> Watch stock</>}</button>}
                   />
                 )}
               />
