@@ -74,6 +74,7 @@ export function TabPredictions() {
       });
       setSavedMarkets((prev) => new Set(prev).add(predictionKey(m.market, "Yes")));
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not add prediction");
     } finally {
