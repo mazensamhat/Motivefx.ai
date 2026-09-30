@@ -159,6 +159,7 @@ model UserBet {
 
   odds         String?
 
+  sportsbook   String?
   stake        Float?
 
   sport        String    @default("other")

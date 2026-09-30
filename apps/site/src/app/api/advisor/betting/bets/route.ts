@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     matchup?: string;
     pick?: string;
     odds?: string;
+    sportsbook?: string;
     stake?: number;
     sport?: string;
   };
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       matchup: body.matchup,
       pick: body.pick,
       odds: body.odds,
+      sportsbook: body.sportsbook,
       stake: body.stake,
       sport: body.sport,
       isSimulation: isSim,

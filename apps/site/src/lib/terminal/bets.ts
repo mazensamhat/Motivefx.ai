@@ -5,6 +5,7 @@ export type BetRow = {
   matchup: string;
   pick: string;
   odds: string | null;
+  sportsbook: string | null;
   stake: number | null;
   sport: string;
   status: string;
@@ -20,6 +21,7 @@ function toBetRow(b: {
   matchup: string;
   pick: string;
   odds: string | null;
+  sportsbook: string | null;
   stake: number | null;
   sport: string;
   status: string;
@@ -34,6 +36,7 @@ function toBetRow(b: {
     matchup: b.matchup,
     pick: b.pick,
     odds: b.odds,
+    sportsbook: b.sportsbook,
     stake: b.stake,
     sport: b.sport,
     status: b.status,
@@ -59,6 +62,7 @@ export async function addBet(
     matchup: string;
     pick: string;
     odds?: string;
+    sportsbook?: string;
     stake?: number;
     sport?: string;
     isSimulation?: boolean;
@@ -69,6 +73,7 @@ export async function addBet(
       userId,
       matchup: { equals: data.matchup.trim(), mode: "insensitive" },
       pick: { equals: data.pick.trim(), mode: "insensitive" },
+      sportsbook: data.sportsbook?.trim() ? { equals: data.sportsbook.trim(), mode: "insensitive" } : null,
       status: "open",
       isSimulation: Boolean(data.isSimulation),
     },
@@ -82,6 +87,7 @@ export async function addBet(
       matchup: data.matchup,
       pick: data.pick,
       odds: data.odds ?? null,
+      sportsbook: data.sportsbook?.trim() || null,
       stake: data.stake ?? null,
       sport: data.sport ?? "other",
       isSimulation: Boolean(data.isSimulation),
