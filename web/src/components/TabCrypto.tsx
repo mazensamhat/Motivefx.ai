@@ -30,6 +30,7 @@ export function TabCrypto() {
   const { isAuthenticated, user, openAuth } = useAuth();
   const [savingSymbol, setSavingSymbol] = useState<string | null>(null);
   const [savedSymbols, setSavedSymbols] = useState<Set<string>>(new Set());
+  const [portfolioActionError, setPortfolioActionError] = useState<string | null>(null);
   const { hasModule, hasFeature, loading: modulesLoading } = useModules();
   const enabled = !modulesLoading && hasModule("crypto");
   const whales = useApi<{ items: WhaleAlert[] }>("/crypto/whale-alerts");
@@ -40,11 +41,15 @@ export function TabCrypto() {
     if (!isAuthenticated) { openAuth("login"); return; }
     const key = symbol.toUpperCase();
     setSavingSymbol(key);
+    setPortfolioActionError(null);
     try {
-      await apiPost("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "crypto", symbol: key });
+      const res = await apiPost<{ count: number }>("/terminal/portfolio/add", { user_id: user?.userId ?? getUserId(), kind: "crypto", symbol: key });
       setSavedSymbols((prev) => new Set(prev).add(key));
-      setHoldingsCount((n) => n + (savedSymbols.has(key) ? 0 : 1));
+      setHoldingsCount(res.count);
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+      window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "crypto" } }));
+    } catch (e) {
+      setPortfolioActionError(e instanceof Error ? e.message : "Could not add to portfolio");
     } finally {
       setSavingSymbol(null);
     }
@@ -82,6 +87,7 @@ export function TabCrypto() {
   return (
     <>
       <DeepScanModal scan={deepScan} onDismiss={dismissScan} />
+      {portfolioActionError ? <div className="error">{portfolioActionError}</div> : null}
       <ModuleIntelStrip tab="crypto" />
       <FeatureGate feature="portfolio_intelligence">
         <PortfolioOverview
