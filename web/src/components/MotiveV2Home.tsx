@@ -81,6 +81,33 @@ export function MotiveV2Home({ onNavigate }: Props) {
         </button>
       </section>
 
+      <section className="v2-section" id="v2-signals">
+        <header className="v2-section-head">
+          <div><span className="v2-eyebrow">SIGNALS</span><h2>Today&apos;s Signals</h2></div>
+          <button type="button" onClick={() => ask("Explain today's strongest signals")}>Explain signals <ArrowRight size={14}/></button>
+        </header>
+        <div className="v2-signal-summary">
+          <div><span>Motive Score</span><strong>{Math.round(b.motivfxScore)}</strong><em>/100</em></div>
+          <div><span>New signals</span><strong>{b.opportunityCount}</strong></div>
+          <div><span>Growing risks</span><strong>{b.highRiskAlerts}</strong></div>
+          <div><span>Market confidence</span><strong>{b.marketConfidence}</strong></div>
+        </div>
+        <div className="v2-signal-list">
+          {(b.probabilityViews ?? []).filter((v) => v.id.startsWith("theme-")).slice(0, 4).map((v) => (
+            <button type="button" key={v.id} onClick={() => ask(`Explain the ${v.theme} signal`)}>
+              <span>{v.theme}</span>
+              <strong>{Math.round(v.probability)}</strong>
+              <em>{v.direction === "up" ? "↑ Rising" : v.direction === "down" ? "↓ Cooling" : "→ Stable"}</em>
+            </button>
+          ))}
+          {!(b.probabilityViews ?? []).some((v) => v.id.startsWith("theme-")) && (
+            <button type="button" onClick={() => ask("Explain today's Motive Signal")}>
+              <span>Composite Motive Signal</span><strong>{Math.round(b.motivfxScore)}</strong><em>{b.marketConfidence}</em>
+            </button>
+          )}
+        </div>
+      </section>
+
       <section className="v2-section" id="v2-picks">
         <header className="v2-section-head">
           <div><span className="v2-eyebrow">FOR YOU</span><h2>Motive AI likes today</h2></div>
