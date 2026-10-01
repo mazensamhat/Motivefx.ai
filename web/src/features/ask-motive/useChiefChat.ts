@@ -1,99 +1,81 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getAccessToken } from "../../lib/api";
 import type { TabId } from "../../types";
+import { requestChief } from "./chief-transport";
 
 export type ChiefChatRole = "user" | "assistant";
-
-export type ChiefChatMessage = {
-  id: string;
-  role: ChiefChatRole;
-  content: string;
-};
-
+export type ChiefChatMessage = { id: string; role: ChiefChatRole; content: string };
 export type ChiefAction = { type: "navigate"; tab: TabId };
+const TABS = new Set<string>(["home", "stocks", "crypto", "penny", "betting", "predictions"]);
+const newId = () => `m_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-type AskResponse = {
-  reply: string;
-  actions?: ChiefAction[];
-  usedTools?: string[];
-  followUps?: string[];
-  degraded?: boolean;
-  disclaimer?: string;
-  detail?: { message?: string; code?: string };
-  error?: string;
-};
-
-function newId() {
-  return `m_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-export function useChiefChat(opts: {
-  activeTab: TabId;
-  onNavigate: (tab: TabId) => void;
-}) {
-  const { activeTab, onNavigate } = opts;
+export function useChiefChat(opts: { activeTab: TabId; onNavigate: (tab: TabId) => void; userId?: string }) {
   const [messages, setMessages] = useState<ChiefChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [followUps, setFollowUps] = useState<string[]>([]);
-
-  const send = useCallback(
-    async (text: string) => {
-      const content = text.trim();
-      if (!content || sending) return;
-
-      const userMsg: ChiefChatMessage = { id: newId(), role: "user", content };
-      const nextMessages = [...messages, userMsg];
-      setMessages(nextMessages);
-      setSending(true);
-      setError(null);
-      setFollowUps([]);
-
-      const tickerGuess = content.match(/\$([A-Za-z]{1,10})\b/)?.[1]?.toUpperCase();
-
-      try {
-        const res = await fetch("/api/ask-motive", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({
-            messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
-            context: { tab: activeTab, symbol: tickerGuess },
-          }),
-        });
-        const data = (await res.json().catch(() => ({}))) as AskResponse;
-        if (!res.ok) {
-          const detail =
-            (typeof data.detail === "object" && data.detail?.message) ||
-            data.error ||
-            `Request failed (${res.status})`;
-          throw new Error(String(detail));
-        }
-
-        setMessages((prev) => [
-          ...prev,
-          { id: newId(), role: "assistant", content: data.reply || "…" },
-        ]);
-        setFollowUps(data.followUps ?? []);
-
-        for (const action of data.actions ?? []) {
-          if (action.type === "navigate" && action.tab) {
-            onNavigate(action.tab);
-          }
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not reach Chief of Finance");
-      } finally {
-        setSending(false);
-      }
-    },
-    [messages, sending, activeTab, onNavigate]
-  );
+  const [degraded, setDegraded] = useState(false);
+  const history = useRef<ChiefChatMessage[]>([]);
+  const controller = useRef<AbortController | null>(null);
+  const pending = useRef<ChiefChatMessage[] | null>(null);
+  const sequence = useRef(0);
 
   const reset = useCallback(() => {
-    setMessages([]);
-    setError(null);
-    setFollowUps([]);
+    sequence.current += 1;
+    controller.current?.abort();
+    controller.current = null;
+    history.current = [];
+    pending.current = null;
+    setMessages([]); setSending(false); setError(null); setFollowUps([]); setDegraded(false);
   }, []);
 
-  return { messages, sending, error, followUps, send, reset };
+  useEffect(() => {
+    reset();
+    return () => { sequence.current += 1; controller.current?.abort(); controller.current = null; };
+  }, [opts.userId, reset]);
+
+  const perform = useCallback(async (next: ChiefChatMessage[]) => {
+    if (controller.current) return false;
+    const ctrl = new AbortController();
+    controller.current = ctrl;
+    const seq = ++sequence.current;
+    pending.current = next;
+    setSending(true); setError(null); setFollowUps([]); setDegraded(false);
+    const lastQuestion = next[next.length - 1]?.content ?? "";
+    try {
+      let token: string | null = null;
+      try { token = getAccessToken(); } catch { /* Cookie session still works without storage. */ }
+      const result = await requestChief(next.map(({ role, content }) => ({ role, content })), {
+        tab: opts.activeTab, symbol: lastQuestion.match(/\$([A-Za-z]{1,10})\b/)?.[1]?.toUpperCase(),
+      }, { signal: ctrl.signal, token });
+      if (seq !== sequence.current) return false;
+      const complete = [...next, { id: newId(), role: "assistant" as const, content: result.reply }];
+      history.current = complete;
+      pending.current = null;
+      setMessages(complete); setFollowUps(result.followUps ?? []); setDegraded(result.degraded === true);
+      for (const action of result.actions ?? []) {
+        if (action.type === "navigate" && typeof action.tab === "string" && TABS.has(action.tab)) opts.onNavigate(action.tab as TabId);
+      }
+      return true;
+    } catch (e) {
+      if (seq === sequence.current) setError(e instanceof Error ? e.message : "Could not reach Ask Motive. Please retry.");
+      return false;
+    } finally {
+      if (seq === sequence.current) { controller.current = null; setSending(false); }
+    }
+  }, [opts.activeTab, opts.onNavigate]);
+
+  const send = useCallback(async (text: string) => {
+    const content = text.trim();
+    if (!content || controller.current) return false;
+    // Re-submitting a failed question reuses its turn rather than duplicating it.
+    if (pending.current?.[pending.current.length - 1]?.content === content) return perform(pending.current);
+    const next = [...history.current, { id: newId(), role: "user" as const, content }];
+    history.current = next;
+    setMessages(next);
+    return perform(next);
+  }, [perform]);
+  const retry = useCallback(() => pending.current ? perform(pending.current) : Promise.resolve(false), [perform]);
+  const cancel = useCallback(() => controller.current?.abort(), []);
+  return { messages, sending, error, followUps, degraded, send, retry, cancel, reset };
 }
