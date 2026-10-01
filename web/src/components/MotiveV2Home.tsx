@@ -3,6 +3,13 @@ import { useMemo } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import type { HomeOpportunity, TabId } from "../types";
 import { AudioBriefingButton } from "./AudioBriefingButton";
+import { Phase2IntelPanels } from "./Phase2IntelPanels";
+import { InstitutionalPanel } from "./InstitutionalPanel";
+import { WatchlistRadar } from "./WatchlistRadar";
+import { IntelJournalPanel } from "./IntelJournalPanel";
+import { HomeAlertsSection } from "./HomeAlertsSection";
+import { CompareLensSection } from "./CompareLensSection";
+import { FeatureGate } from "./FeatureGate";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 interface Props { onNavigate: (tab: TabId) => void; }
@@ -81,6 +88,33 @@ export function MotiveV2Home({ onNavigate }: Props) {
         </button>
       </section>
 
+      <section className="v2-section" id="v2-signals">
+        <header className="v2-section-head">
+          <div><span className="v2-eyebrow">SIGNALS</span><h2>Today&apos;s Signals</h2></div>
+          <button type="button" onClick={() => ask("Explain today's strongest signals")}>Explain signals <ArrowRight size={14}/></button>
+        </header>
+        <div className="v2-signal-summary">
+          <div><span>Motive Score</span><strong>{Math.round(b.motivfxScore)}</strong><em>/100</em></div>
+          <div><span>New signals</span><strong>{b.opportunityCount}</strong></div>
+          <div><span>Growing risks</span><strong>{b.highRiskAlerts}</strong></div>
+          <div><span>Market confidence</span><strong>{b.marketConfidence}</strong></div>
+        </div>
+        <div className="v2-signal-list">
+          {(b.probabilityViews ?? []).filter((v) => v.id.startsWith("theme-")).slice(0, 4).map((v) => (
+            <button type="button" key={v.id} onClick={() => ask(`Explain the ${v.theme} signal`)}>
+              <span>{v.theme}</span>
+              <strong>{Math.round(v.probability)}</strong>
+              <em>{v.direction === "up" ? "↑ Rising" : v.direction === "down" ? "↓ Cooling" : "→ Stable"}</em>
+            </button>
+          ))}
+          {!(b.probabilityViews ?? []).some((v) => v.id.startsWith("theme-")) && (
+            <button type="button" onClick={() => ask("Explain today's Motive Signal")}>
+              <span>Composite Motive Signal</span><strong>{Math.round(b.motivfxScore)}</strong><em>{b.marketConfidence}</em>
+            </button>
+          )}
+        </div>
+      </section>
+
       <section className="v2-section" id="v2-picks">
         <header className="v2-section-head">
           <div><span className="v2-eyebrow">FOR YOU</span><h2>Motive AI likes today</h2></div>
@@ -127,6 +161,18 @@ export function MotiveV2Home({ onNavigate }: Props) {
         subtitle="Developing situations ranked by Motive signal strength"
         onCardClick={(card) => ask(`Explain the Opportunity Radar signal for ${card.title}`)}
       />
+
+      <section className="v2-pro-legacy" id="v2-pro-intelligence">
+        <header className="v2-section-head">
+          <div><span className="v2-eyebrow">PRO INTELLIGENCE</span><h2>Deep intelligence</h2></div>
+        </header>
+        <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
+        <InstitutionalPanel />
+        <WatchlistRadar personalized={b.personalized} onNavigateModule={(tab) => onNavigate(tab as TabId)} />
+        <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
+        <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
+        {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
+      </section>
 
       <section className="v2-ask-strip">
         <div className="v2-ask-icon"><Bot size={24}/></div>
