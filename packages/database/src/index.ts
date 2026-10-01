@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-const DEFAULT_SERVERLESS_POOL_LIMIT = 2;
+const DEFAULT_SERVERLESS_POOL_LIMIT = 3;
 const MAX_SERVERLESS_POOL_LIMIT = 10;
 
 function configuredPoolLimit(): string | undefined {
@@ -18,9 +18,9 @@ function configuredPoolLimit(): string | undefined {
 /**
  * Vercel/serverless: many concurrent isolates can exhaust Supabase if every
  * Prisma client opens a large local pool. Keep the per-isolate pool small,
- * but never allow a transaction-pooler isolate to be pinned to one connection:
- * MotiveFX fans out several authenticated API requests and one busy connection
- * was the direct cause of production P2024 timeouts.
+ * but keep enough local concurrency for MotiveFX's parallel authenticated market feeds.
+ * Production P2024 telemetry on 2026-10-01 showed the two-connection isolate pool
+ * queuing auth reads, so the default is three unless PRISMA_CONNECTION_LIMIT overrides it.
  */
 function serverlessDatabaseUrl(raw: string | undefined): string | undefined {
   if (!raw?.trim()) return raw;
