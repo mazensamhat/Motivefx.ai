@@ -12,7 +12,7 @@ import { MobileBottomNav } from "./components/MobileNav";
 import { WorkspaceHeader } from "./components/WorkspaceHeader";
 import { TabBetting } from "./components/TabBetting";
 import { TabCrypto } from "./components/TabCrypto";
-import { TabHome } from "./components/TabHome";
+import { MotiveV2Home } from "./components/MotiveV2Home";
 import { TabPenny } from "./components/TabPenny";
 import { TabPredictions } from "./components/TabPredictions";
 import { TabStocks } from "./components/TabStocks";
@@ -186,7 +186,7 @@ export default function App() {
 
           <main className="main terminal-main">
             {activeTab === "home" ? (
-              <TabHome onNavigate={setActiveTab} onOpenGlossary={() => setGlossaryOpen(true)} />
+              <MotiveV2Home onNavigate={setActiveTab} />
             ) : (
               <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
                 {activeTab === "stocks" && <TabStocks />}
