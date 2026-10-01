@@ -293,6 +293,7 @@ export async function persistSignalSnapshot(input: {
             horizonDays: 30,
             predictedScore: input.motiveSignal,
             predictedConf: conf,
+            evaluatorVersion: "MARKET_OUTCOME_V2",
             outcome: "PENDING",
           },
         });
