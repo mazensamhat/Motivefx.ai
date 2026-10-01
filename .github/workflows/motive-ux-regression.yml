@@ -43,3 +43,16 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motive-frontend-audit-source
+          path: |
+            web/src/
+            web/index.html
+            web/package.json
+            web/package-lock.json
+            web/vite.config.ts
+            web/tsconfig*.json
+            packages/shared/src/
+          if-no-files-found: error
+          retention-days: 1
