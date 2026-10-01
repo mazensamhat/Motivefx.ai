@@ -34,9 +34,15 @@ export async function requestChief(
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (options.token) headers.Authorization = `Bearer ${options.token}`;
+    const windowMessages = messages.slice(-24).map((m) => ({ ...m, content: m.content.slice(0, 4000) }));
+    let body = JSON.stringify({ messages: windowMessages, context });
+    while (body.length > 60_000 && windowMessages.length > 1) {
+      windowMessages.shift();
+      body = JSON.stringify({ messages: windowMessages, context });
+    }
     const response = await (options.fetcher ?? fetch)("/api/ask-motive", {
       method: "POST", credentials: "same-origin", headers, signal: ctrl.signal,
-      body: JSON.stringify({ messages: messages.slice(-24), context }),
+      body,
     });
     const data: unknown = await response.json().catch(() => null);
     if (!response.ok) throw new Error(errorMessage(data, response.status));

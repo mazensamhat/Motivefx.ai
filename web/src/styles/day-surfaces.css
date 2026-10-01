@@ -22,7 +22,6 @@
   --day-inset: #f5f3f9;
   --day-skeleton: #ddd8e8;
 }
-:root[data-color-theme="dark"] { color-scheme: dark; }
 
 /* Shared shells used by all five market desks, menus and modal hosts. */
 :root[data-color-theme="light"] :is(.card, .glass-card, .glass-panel,

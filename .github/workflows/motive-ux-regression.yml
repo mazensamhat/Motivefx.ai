@@ -1,0 +1,45 @@
+name: Motive UX regression checks
+on:
+  pull_request:
+    paths:
+      - 'web/src/**'
+      - 'apps/site/src/lib/ask-motive/**'
+      - 'apps/site/src/app/api/ask-motive/**'
+      - 'tests/motive-reliability.test.mjs'
+      - 'tests/theme-surfaces.py'
+      - '.github/workflows/motive-ux-regression.yml'
+permissions:
+  contents: read
+jobs:
+  assistant-request-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix web ci
+      - run: node --test tests/motive-reliability.test.mjs
+  day-night-component-contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright==1.57.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/theme-surfaces.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: motive-theme-component-fixtures
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

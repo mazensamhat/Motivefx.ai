@@ -22,6 +22,7 @@ export async function runAskMotiveBounded(messages: AskMessage[], ctx: Context, 
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return withDeadline(() => runAskMotiveFallback(messages, ctx), 8_000, "fallback", signal);
   }
+  let partialData = false;
   const usedTools: string[] = [];
   const actions: AskAction[] = [];
   const modelId = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
@@ -36,6 +37,7 @@ export async function runAskMotiveBounded(messages: AskMessage[], ctx: Context, 
     try { return await withDeadline(work, 7_000, name, controller.signal); }
     catch {
       if (controller.signal.aborted) throw new Error("ask_motive_cancelled");
+      partialData = true;
       return { unavailable: true, message: "This data source could not respond. Do not treat missing data as an empty portfolio or invent values." };
     }
   };
@@ -76,7 +78,7 @@ export async function runAskMotiveBounded(messages: AskMessage[], ctx: Context, 
     });
     return { reply: /not financial advice/i.test(text) ? text : `${text}\n\n${CHIEF_DISCLAIMER}`,
       actions, usedTools: [...new Set(usedTools)],
-      followUps: suggestFollowUps(usedTools, ctx.context?.tab, ctx.context?.symbol), degraded: false };
+      followUps: suggestFollowUps(usedTools, ctx.context?.tab, ctx.context?.symbol), degraded: partialData };
   } finally {
     clearTimeout(timer); controller.abort(); signal.removeEventListener("abort", onAbort);
   }
