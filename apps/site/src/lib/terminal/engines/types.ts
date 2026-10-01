@@ -36,8 +36,16 @@ export interface ProbabilityView {
   id: string;
   theme: string;
   direction: Direction;
+  /** Legacy field name retained for API compatibility. This is a Motive Signal score, not a calibrated probability. */
   probability: number;
+  /** Explicit Motive Signal score (0–100). Prefer this in new UI/API code. */
+  motiveSignal?: number;
+  /** Evidence/model quality (0–100), not outcome likelihood. */
   confidence: number;
+  /** Calibrated outcome probability only when backed by sufficient resolved outcomes. */
+  forecastProbability?: number;
+  /** Why forecastProbability is absent or how it was calibrated. */
+  forecastStatus?: "UNAVAILABLE" | "INSUFFICIENT_OUTCOMES" | "CALIBRATED";
   timing?: string;
   beneficiaries: string[];
   supportingFactors: string[];

@@ -125,7 +125,9 @@ export function buildProbabilityViews(
         theme: theme.theme,
         direction: directionFromScore(probability),
         probability,
+        motiveSignal: probability,
         confidence,
+        forecastStatus: "UNAVAILABLE",
         timing:
           i === 0
             ? "3–9 months"
@@ -199,7 +201,9 @@ export function buildProbabilityViews(
       theme: `${o.symbol}: ${o.title ?? "signal"}`,
       direction: directionFromScore(conf),
       probability,
+      motiveSignal: probability,
       confidence: conf,
+      forecastStatus: "INSUFFICIENT_OUTCOMES",
       timing: "near-term desk window",
       beneficiaries: (o.signals ?? []).slice(0, 3),
       supportingFactors: (o.reasons ?? []).slice(0, 3),
@@ -229,6 +233,8 @@ export function probabilityEnrichment(view: ProbabilityView) {
     stance: classifyMotiveStance(view.probability),
     label: formatMotiveSignalLabel(view.probability),
     modelConfidence: view.confidence,
+    forecastProbability: view.forecastProbability ?? null,
+    forecastStatus: view.forecastStatus ?? "UNAVAILABLE",
     direction: view.direction,
     beneficiaries: view.beneficiaries,
     supportingFactors: view.supportingFactors,

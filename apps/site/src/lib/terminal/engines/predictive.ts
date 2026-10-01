@@ -16,7 +16,7 @@ export const DEFAULT_INTEL_PREFS: IntelPrefs = {
       kind: "probability_above",
       threshold: 75,
       enabled: true,
-      label: "Theme probability ≥ 75%",
+      label: "Motive Signal ≥ 75",
     },
     {
       id: "default-div-70",
@@ -41,7 +41,7 @@ export function normalizePrefs(raw: unknown): IntelPrefs {
   };
 }
 
-/** Suggest themes for personalized watchlist from Probability Engine. */
+/** Suggest themes for personalized watchlist from Motive Signal. */
 export function suggestThemes(
   views: ProbabilityView[],
   existing: ThemeWatchItem[]
@@ -59,7 +59,7 @@ export function suggestThemes(
       confidence: v.confidence,
       reason:
         v.deltaVsPrior != null && v.deltaVsPrior > 0
-          ? `Probability rising (${v.deltaVsPrior > 0 ? "+" : ""}${v.deltaVsPrior} vs prior)`
+          ? `Motive Signal rising (${v.deltaVsPrior > 0 ? "+" : ""}${v.deltaVsPrior} vs prior)`
           : `Motive Signal ${v.probability}/100 · confidence ${v.confidence}`,
       beneficiaries: v.beneficiaries.slice(0, 3),
     }));
@@ -94,9 +94,9 @@ export function evaluateSignalAlertRules(
           out.push({
             module: t.module,
             symbol: t.relatedSymbols[0],
-            title: `Probability alert: ${t.theme.slice(0, 64)}`,
-            body: `Motive Signal ${t.probability}/100 ≥ ${rule.threshold} (confidence ${t.confidence}). Informational only.`,
-            confidence: t.probability,
+            title: `Motive Signal alert: ${t.theme.slice(0, 64)}`,
+            body: `Motive Signal ${t.motiveSignal ?? t.probability}/100 ≥ ${rule.threshold} (evidence confidence ${t.confidence}). This is not a calibrated outcome probability.`,
+            confidence: t.confidence,
             alertKey: `prob-${t.id}-${rule.threshold}`,
           });
         }
