@@ -1,4 +1,4 @@
-import { BookOpen, Home, Lock, Radar, Settings2, Sparkles, Users } from "lucide-react";
+import { Activity, BookOpen, Home, Lock, Radar, Settings2, Sparkles, Users } from "lucide-react";
 import { TAB_TO_BRAND, brandForTab } from "../brand/moduleBrand";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
@@ -57,7 +57,22 @@ export function ModuleSidebar({
         )}
       </div>
 
-      <nav className="sidebar-nav sidebar-v2-primary" aria-label="Motive intelligence">\n        <button type="button" className="sidebar-item" onClick={() => goHomeSection("v2-picks")}><Sparkles size={20} className="sidebar-item-logo" /><span className="sidebar-item-text">AI Picks</span></button>\n        <button type="button" className="sidebar-item" onClick={() => goHomeSection("opportunity-radar")}><Radar size={20} className="sidebar-item-logo" /><span className="sidebar-item-text">Opportunity Radar</span></button>\n      </nav>\n\n      <div className="sidebar-label">{isNativeShell() ? "Market Monitors" : "Market Desks"}</div>
+      <nav className="sidebar-nav sidebar-v2-primary" aria-label="Motive intelligence">
+        <button type="button" className="sidebar-item" onClick={() => goHomeSection("v2-picks")}>
+          <Sparkles size={20} className="sidebar-item-logo" />
+          <span className="sidebar-item-text">AI Picks</span>
+        </button>
+        <button type="button" className="sidebar-item" onClick={() => goHomeSection("v2-signals")}>
+          <Activity size={20} className="sidebar-item-logo" />
+          <span className="sidebar-item-text">Signals</span>
+        </button>
+        <button type="button" className="sidebar-item" onClick={() => goHomeSection("opportunity-radar")}>
+          <Radar size={20} className="sidebar-item-logo" />
+          <span className="sidebar-item-text">Opportunity Radar</span>
+        </button>
+      </nav>
+
+      <div className="sidebar-label">{isNativeShell() ? "Market Monitors" : "Market Desks"}</div>
       <nav className="sidebar-nav">
         {NAV.map((t) => {
           const locked = t.module !== "home" && !hasModule(t.module);
