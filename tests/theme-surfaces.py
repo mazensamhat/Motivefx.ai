@@ -1,4 +1,4 @@
-"""Browser CSS regression tests with actual stylesheet and isolated component markup.
+"""Browser CSS tests using the real stylesheets and isolated component markup.
 These do not claim authenticated end-to-end coverage of the entire app.
 """
 from pathlib import Path
@@ -6,7 +6,7 @@ import os, json, re
 from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 legacy = (ROOT / 'web/src/styles/global.css').read_text()
-patch = (ROOT / 'web/src/styles/day-surfaces.css').read_text()
+patch = '\n'.join((ROOT / 'web/src/styles' / name).read_text() for name in ['day-surfaces.css','day-legacy-surfaces.css'])
 fixture = '''<main class="app app-terminal" data-theme="crypto">
 <section class="or-board terminal-or">
 <h2 class="or-title">Opportunity Radar · QA fixture</h2>
@@ -24,7 +24,34 @@ fixture = '''<main class="app app-terminal" data-theme="crypto">
 </main>
 <aside class="chief-panel glass-panel"><h2>Ask Motive · body portal</h2><p class="chief-sub">Context preserved</p><div class="chief-bubble chief-bubble-assistant"><p>Example assistant response.</p></div><button class="chief-chip">Suggested question</button><form class="chief-composer"><input placeholder="Message" value="Explain this signal"></form></aside>'''
 checks = [('.or-stat','.or-stat span'),('.or-legend','.or-legend li'),('.or-card','.or-desc'),('.or-card','.or-gauge strong'),('.or-how-panel','.or-how-panel'),('.or-nav','.or-nav'),('.card','.card-title'),('.card-body','.loading'),('.glossary-card','.glossary-card'),('.chief-panel','.chief-sub'),('.chief-bubble-assistant','.chief-bubble-assistant'),('.chief-chip','.chief-chip'),('.chief-composer input','.chief-composer input')]
-layout = '''*{transition:none!important;animation:none!important}body{margin:0;padding:20px;font:16px/1.5 Arial}main{display:block!important}.or-board{padding:16px}.or-stat,.or-legend,.or-card,.card,.glossary-modal,.chief-panel{padding:16px!important;margin:12px 0!important;border:1px solid #ddd;border-radius:10px} .or-card{min-height:120px}.or-gauge strong{position:static!important}.glossary-modal,.chief-panel{position:static!important;width:auto!important;height:auto!important;max-height:none!important;animation:none!important}.chief-panel{display:block!important}.activity-skeleton-card{height:60px;padding:16px}.activity-skeleton-line{height:16px;width:80%}.or-nav{position:static!important;display:block!important}'''
+
+# Real selectors inventoried from hard-coded terminal surface rules.
+# Backdrop overlays and decorative artwork intentionally remain dark/translucent.
+SURFACE_CLASSES = [
+  'header', 'hero-growth-chart', 'advisor-diagnostic-strip', 'advisor-narrative-block',
+  'portfolio-form-terminal', 'tier-pricing-card', 'annual-banner-bold', 'bundle-banner-bold',
+  'module-card-terminal', 'deep-scan-modal', 'vtable-card-row', 'win-hook-modal',
+  'win-hook-compare-col', 'terminal-detail-panel', 'asset-dive-kpi', 'asset-dive-chart-panel',
+  'asset-dive-ai-block', 'asset-dive-signal-chip', 'motive-scorecard', 'msc-ind',
+  'asset-dive-sandbox', 'action-toast', 'platform-setup-row', 'gen-setup-preview',
+  'signal-detail-watch-btn', 'mf-summary-card', 'home-overview-card', 'home-snapshot-card',
+  'home-insight-card', 'home-module-tile', 'home-activity-item', 'mobile-more-module-card',
+  'phase2-theme', 'phase2-genome', 'phase2-branch', 'phase2-break', 'activity-filter-sheet',
+  'signal-graph-info', 'todays-signals-card', 'chief-fab',
+]
+extra_markup = ''.join(f'<div id="audit-{i}" class="audit-surface {name}"><span class="audit-copy">{name}</span></div>' for i,name in enumerate(SURFACE_CLASSES))
+fixture = fixture.replace('</main>', extra_markup + '</main>')
+checks += [(f'#audit-{i}', f'#audit-{i} .audit-copy') for i in range(len(SURFACE_CLASSES))]
+TEXT_CASES = [
+  ('signal-graph-info','sg-info-blurb'), ('todays-signals-card','ts-label'),
+  ('todays-signals-card','ts-blurb'), ('todays-signals-card','ts-gauge-label'),
+  ('motive-scorecard','msc-ind-label'), ('motive-scorecard','msc-ind-value'),
+  ('motive-scorecard','is-mixed'), ('motive-scorecard','is-cautious'),
+]
+for i,(parent,child) in enumerate(TEXT_CASES):
+    fixture = fixture.replace('</main>', f'<div class="audit-surface {parent}" id="audit-text-{i}"><span class="{child}">Label contrast</span></div></main>')
+    checks.append((f'#audit-text-{i}',f'#audit-text-{i} span'))
+layout = '''*{transition:none!important;animation:none!important}.audit-surface{position:static!important;min-height:0!important;min-width:0!important;max-width:none!important;width:auto!important;height:auto!important;display:block!important;margin:8px 0!important;padding:12px!important}.audit-copy{color:inherit}body{margin:0;padding:20px;font:16px/1.5 Arial}main{display:block!important}.or-board{padding:16px}.or-stat,.or-legend,.or-card,.card,.glossary-modal,.chief-panel{padding:16px!important;margin:12px 0!important;border:1px solid #ddd;border-radius:10px} .or-card{min-height:120px}.or-gauge strong{position:static!important}.glossary-modal,.chief-panel{position:static!important;width:auto!important;height:auto!important;max-height:none!important;animation:none!important}.chief-panel{display:block!important}.activity-skeleton-card{height:60px;padding:16px}.activity-skeleton-line{height:16px;width:80%}.or-nav{position:static!important;display:block!important}'''
 def rgba(s):
     nums=[float(n) for n in re.findall(r'[\d.]+',s)]
     return nums[:3]+[nums[3] if len(nums)>3 else 1]
@@ -46,7 +73,7 @@ with sync_playwright() as p:
         after=capture()
         assert before==after, f'Night colors changed at {width}px'
         page.evaluate('document.documentElement.dataset.colorTheme="light"')
-        for module in ['home','trades','penny','crypto','betting','predictions']:
+        for module in ['home','trades','pinkslips','crypto','betting','predictions']:
             page.evaluate('(v)=>document.querySelector(".app").dataset.theme=v',module)
             for row in capture():
                 bg,fg=rgba(row['bg']),rgba(row['fg'])
