@@ -11,35 +11,25 @@ import { AssetDeepDiveProvider } from "./hooks/useAssetDeepDive";
 import { SignalDetailHost, SignalDetailProvider } from "./hooks/useSignalDetail";
 import { IntelToastProvider } from "./hooks/useIntelToast";
 import { AccountSettingsHost } from "./components/AccountSettingsHost";
+import { ThemeBrandAssets } from "./components/ThemeToggle";
+import { initializeAppearance } from "./lib/appearance";
 import { syncNativeShellDocumentClass } from "./lib/nativeShell";
 import "./styles/global.css";
 import "./styles/day-surfaces.css";
 import "./styles/day-legacy-surfaces.css";
+import "./styles/workspace-v2.css";
 
+initializeAppearance();
 syncNativeShellDocumentClass();
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppAgeGate>
-      <AuthProvider>
-        <NativeIapSessionBridge />
-        {/* GenerationalProvider must wrap ModulesProvider: WinHookModal uses useGenerationalProfile */}
-        <GenerationalProvider>
-          <ModulesProvider>
-            <PlatformPrefsProvider>
-              <IntelToastProvider>
-                <SignalDetailProvider>
-                  <AssetDeepDiveProvider>
-                    <App />
-                    <AccountSettingsHost />
-                    <SignalDetailHost />
-                  </AssetDeepDiveProvider>
-                </SignalDetailProvider>
-              </IntelToastProvider>
-            </PlatformPrefsProvider>
-          </ModulesProvider>
-        </GenerationalProvider>
-      </AuthProvider>
-    </AppAgeGate>
+    <ThemeBrandAssets />
+    <AppAgeGate><AuthProvider><NativeIapSessionBridge />
+      <GenerationalProvider><ModulesProvider><PlatformPrefsProvider>
+        <IntelToastProvider><SignalDetailProvider><AssetDeepDiveProvider>
+          <App /><AccountSettingsHost /><SignalDetailHost />
+        </AssetDeepDiveProvider></SignalDetailProvider></IntelToastProvider>
+      </PlatformPrefsProvider></ModulesProvider></GenerationalProvider>
+    </AuthProvider></AppAgeGate>
   </StrictMode>
 );

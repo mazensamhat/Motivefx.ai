@@ -1,35 +1,24 @@
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
-
-type ThemeMode = "dark" | "light";
-const STORAGE_KEY = "motivefx_theme";
-
-function preferredTheme(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  if (saved === "dark" || saved === "light") return saved;
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
-}
+import { useSyncExternalStore } from "react";
+import { appearanceSnapshot, applyAppearance, subscribeAppearance } from "../lib/appearance";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeMode>(preferredTheme);
-
-  useEffect(() => {
-    document.documentElement.dataset.colorTheme = theme;
-    window.localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
-
+  const theme = useSyncExternalStore(subscribeAppearance, appearanceSnapshot, () => "dark" as const);
   const next = theme === "dark" ? "light" : "dark";
-  return (
-    <button
-      type="button"
-      className="theme-toggle"
-      onClick={() => setTheme(next)}
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
-    >
-      {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-      <span className="theme-toggle-label">{theme === "dark" ? "Day" : "Night"}</span>
-    </button>
-  );
+  return <button type="button" className="theme-toggle" onClick={() => applyAppearance(next, true)}
+    aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`}>
+    {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+    <span className="theme-toggle-label">{theme === "dark" ? "Day" : "Night"}</span>
+  </button>;
+}
+
+/** Remove the near-black matte from the existing purple brand raster, without
+ * changing its RGB artwork. The page surface is visible through the alpha mask.
+ * This is a rendering filter, not a replacement logo or a blend-mode illusion. */
+export function ThemeBrandAssets() {
+  return <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: "absolute", pointerEvents: "none" }}>
+    <defs><filter id="motive-brand-transparent" colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%">
+      <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 5 0 -0.5" />
+    </filter></defs>
+  </svg>;
 }

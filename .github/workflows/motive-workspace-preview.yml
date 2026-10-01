@@ -1,0 +1,27 @@
+name: Motive complete workspace preview artifact
+on:
+  pull_request:
+    paths: ['web/**', 'packages/shared/**', '.github/workflows/motive-workspace-preview.yml']
+permissions:
+  contents: read
+jobs:
+  build-qa-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix web ci
+      - run: VITE_BASE=/terminal/ npm --prefix web run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motive-workspace-build
+          path: |
+            web/dist/
+            web/src/
+          retention-days: 2
+          if-no-files-found: error
