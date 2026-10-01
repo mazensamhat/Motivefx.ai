@@ -11390,3 +11390,171 @@ html.motivefx-native-shell .age-gate-overlay .btn-age-gate-continue {
 :root[data-color-theme="light"] .v2-hero{background:linear-gradient(120deg,#fff 35%,#f1edff)}:root[data-color-theme="light"] .v2-hero:before{background:radial-gradient(circle,rgba(124,58,237,.15),transparent 63%)}:root[data-color-theme="light"] .v2-hero-orb{background:radial-gradient(circle at 45% 42%,#fff 0 2%,#8b5cf6 6%,rgba(96,165,250,.45) 30%,rgba(219,234,254,.25) 58%,transparent 70%)}:root[data-color-theme="light"] .v2-command{box-shadow:0 8px 24px rgba(74,58,120,.09)}
 @media(max-width:1100px){.v2-picks-grid{grid-template-columns:repeat(2,1fr)}.v2-kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.v2-home{padding:10px;gap:12px}.v2-hero{min-height:auto;grid-template-columns:1fr;padding:22px 18px}.v2-hero-orb{display:none}.v2-hero h1{font-size:2.05rem}.v2-quick{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.v2-quick button{white-space:nowrap}.v2-kpis{gap:7px}.v2-kpis button{min-height:68px;padding:10px;gap:8px}.v2-kpis strong{display:block;font-size:1.05rem}.v2-picks-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}.v2-pick-card{min-width:78vw;scroll-snap-align:start}.v2-split{grid-template-columns:1fr}.v2-ask-strip{grid-template-columns:auto 1fr}.v2-ask-strip .v2-primary{grid-column:1/-1}.v2-brief-row{grid-template-columns:18px 90px 1fr}.v2-market-list button{grid-template-columns:1fr auto}.v2-market-list em{display:none}}
+
+
+/* ===== V2 light-mode compatibility pass for legacy terminal surfaces ===== */
+:root[data-color-theme="light"] .app-terminal,
+:root[data-color-theme="light"] .app-content,
+:root[data-color-theme="light"] .terminal-main {
+  color: var(--text);
+}
+
+:root[data-color-theme="light"] .module-sidebar {
+  background: #ffffff !important;
+  border-color: #e3e0eb !important;
+  box-shadow: 8px 0 24px rgba(45,35,70,.05);
+}
+
+:root[data-color-theme="light"] .sidebar-label,
+:root[data-color-theme="light"] .sidebar-profile-meta,
+:root[data-color-theme="light"] .sidebar-footer-label,
+:root[data-color-theme="light"] .sidebar-item:not(.active),
+:root[data-color-theme="light"] .sidebar-item:not(.active) .sidebar-item-text,
+:root[data-color-theme="light"] .sidebar-apps-btn {
+  color: #615b6d !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] .sidebar-item:hover {
+  background: #f5f2ff !important;
+  color: #241b34 !important;
+}
+
+:root[data-color-theme="light"] .sidebar-item.active {
+  color: #16121d !important;
+}
+
+:root[data-color-theme="light"] .motivfx-logo-icon-dim {
+  opacity: .72 !important;
+  filter: none !important;
+}
+
+:root[data-color-theme="light"] .workspace-header {
+  background: rgba(255,255,255,.96) !important;
+  border-color: #e3e0eb !important;
+  color: #17131f !important;
+}
+
+:root[data-color-theme="light"] .workspace-subheader,
+:root[data-color-theme="light"] .workspace-status,
+:root[data-color-theme="light"] .workspace-header-dot {
+  color: #696273 !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] .monitor-only-pill,
+:root[data-color-theme="light"] .monitor-only-pill-compact {
+  background: #f2edff !important;
+  border-color: #c7b5f5 !important;
+  color: #5b3a8f !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] .live-feed,
+:root[data-color-theme="light"] .ticker,
+:root[data-color-theme="light"] .ticker-track {
+  background: #ffffff !important;
+  color: #3f3949 !important;
+  border-color: #e4e1e9 !important;
+}
+
+:root[data-color-theme="light"] .glass-card,
+:root[data-color-theme="light"] .hero-metric-panel,
+:root[data-color-theme="light"] .activity-card,
+:root[data-color-theme="light"] .portfolio-card,
+:root[data-color-theme="light"] .ledger-card,
+:root[data-color-theme="light"] .ai-insights-card,
+:root[data-color-theme="light"] .ai-panel,
+:root[data-color-theme="light"] .terminal-card {
+  background: #ffffff !important;
+  color: #17131f !important;
+  border-color: #ded9e7 !important;
+  box-shadow: 0 5px 18px rgba(47,36,73,.07) !important;
+}
+
+:root[data-color-theme="light"] input,
+:root[data-color-theme="light"] select,
+:root[data-color-theme="light"] textarea {
+  background: #fbfbfd !important;
+  color: #17131f !important;
+  border-color: #cbc6d3 !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] input::placeholder,
+:root[data-color-theme="light"] textarea::placeholder {
+  color: #777080 !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] button:disabled,
+:root[data-color-theme="light"] input:disabled,
+:root[data-color-theme="light"] select:disabled {
+  opacity: .58;
+}
+
+:root[data-color-theme="light"] .row-primary,
+:root[data-color-theme="light"] .vtable-card-title,
+:root[data-color-theme="light"] .hero-metric-value,
+:root[data-color-theme="light"] .opportunity-symbol,
+:root[data-color-theme="light"] .opportunity-title,
+:root[data-color-theme="light"] h1,
+:root[data-color-theme="light"] h2,
+:root[data-color-theme="light"] h3,
+:root[data-color-theme="light"] strong {
+  color: #17131f;
+}
+
+:root[data-color-theme="light"] .row-secondary,
+:root[data-color-theme="light"] .row-meta,
+:root[data-color-theme="light"] .vtable-card-field-label,
+:root[data-color-theme="light"] .hero-metric-label,
+:root[data-color-theme="light"] .hero-metric-sub,
+:root[data-color-theme="light"] .mf-summary-sub,
+:root[data-color-theme="light"] .home-section-sub,
+:root[data-color-theme="light"] .opportunity-metric-label {
+  color: #686171 !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] .terminal-tag,
+:root[data-color-theme="light"] .risk-badge,
+:root[data-color-theme="light"] .signal-chip {
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] .btn-ghost,
+:root[data-color-theme="light"] .sidebar-apps-btn {
+  background: #ffffff;
+  border-color: #cfc9d8;
+}
+
+:root[data-color-theme="light"] .btn-ghost:hover,
+:root[data-color-theme="light"] .sidebar-apps-btn:hover {
+  background: #f4f0ff;
+  color: #251a35 !important;
+}
+
+/* Legacy AI Insight/scorecard surfaces used translucent dark overlays. */
+:root[data-color-theme="light"] [class*="ai-insight"],
+:root[data-color-theme="light"] [class*="advisor-card"],
+:root[data-color-theme="light"] [class*="scorecard"] {
+  color: #1a1522;
+}
+
+:root[data-color-theme="light"] [class*="ai-insight"] p,
+:root[data-color-theme="light"] [class*="ai-insight"] li,
+:root[data-color-theme="light"] [class*="advisor-card"] p,
+:root[data-color-theme="light"] [class*="advisor-card"] li,
+:root[data-color-theme="light"] [class*="scorecard"] p,
+:root[data-color-theme="light"] [class*="scorecard"] li {
+  color: #57505f !important;
+  opacity: 1 !important;
+}
+
+/* Keep semantic states saturated enough to read on white. */
+:root[data-color-theme="light"] {
+  --green: #008f4c;
+  --red: #d51f3f;
+  --amber: #a76500;
+}
