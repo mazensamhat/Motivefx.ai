@@ -15,6 +15,7 @@ import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
 import { AccountMenu } from "./AccountMenu";
 import { AlertCenterBell } from "./AlertCenterBell";
 import { MotiveFxBrandLogo } from "./MotivFxLogo";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface Props {
   activeTab: TabId;
@@ -52,6 +53,7 @@ export function WorkspaceHeader({ activeTab, statusLabel, onSelectTab, onOpenGlo
           <span className="mobile-header-monitor monitor-only-pill-compact" role="note">
             Monitor only — no trading
           </span>
+          <ThemeToggle />
           <AlertCenterBell />
           <div className="workspace-header-desktop-chrome">
             <AccountMenu />
