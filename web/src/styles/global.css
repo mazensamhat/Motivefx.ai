@@ -11265,3 +11265,98 @@ html.motivefx-native-shell .age-gate-overlay .btn-age-gate-continue {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* MotiveFX V2 Day / Night theme system */
+:root[data-color-theme="light"] {
+  --bg-deep: #f6f7fb;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f2efff;
+  --border: #dfe3ee;
+  --border-soft: rgba(43, 35, 77, 0.10);
+  --border-glow: #cfc5ff;
+  --text: #14111f;
+  --text-muted: #625d72;
+  --text-dim: #898399;
+  --accent: #7c3aed;
+  --accent-dim: #6d28d9;
+  --purple: #7c3aed;
+  --brand-purple: #6d28d9;
+  --brand-magenta: #9333ea;
+  --shadow: 0 10px 30px rgba(50, 38, 88, 0.10);
+  --card-shadow: 0 4px 18px rgba(50, 38, 88, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+:root[data-color-theme="light"] body {
+  background: var(--bg-deep);
+  color: var(--text);
+  scrollbar-color: #c8c4d4 #f6f7fb;
+}
+
+:root[data-color-theme="light"] .app {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% -15%, rgba(124, 58, 237, 0.09), transparent),
+    radial-gradient(ellipse 45% 35% at 100% 100%, rgba(147, 51, 234, 0.05), transparent),
+    var(--bg-deep);
+}
+
+:root[data-color-theme="light"] .glass-panel,
+:root[data-color-theme="light"] .glass-card,
+:root[data-color-theme="light"] .workspace-header,
+:root[data-color-theme="light"] .module-sidebar,
+:root[data-color-theme="light"] .mobile-bottom-nav {
+  color: var(--text);
+}
+
+.theme-toggle {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  padding: 0.42rem 0.68rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand-purple) 45%, var(--border));
+  transform: translateY(-1px);
+}
+
+:root[data-color-theme="light"] .theme-toggle {
+  background: #ffffff;
+  color: #5b526d;
+  box-shadow: 0 3px 12px rgba(50, 38, 88, 0.08);
+}
+
+@media (max-width: 900px) {
+  :root[data-color-theme="light"] {
+    --bg-deep: #f7f8fc;
+    --bg-panel: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f4f1ff;
+    --text: #14111f;
+    --text-muted: #5f596e;
+    --text-dim: #817a90;
+  }
+
+  .theme-toggle {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+  }
+
+  .theme-toggle-label {
+    display: none;
+  }
+}
