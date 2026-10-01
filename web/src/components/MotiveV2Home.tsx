@@ -1,4 +1,4 @@
-import { ArrowRight, Bot, CalendarDays, Radar, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, Bot, CalendarDays, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import type { HomeOpportunity, TabId } from "../types";
