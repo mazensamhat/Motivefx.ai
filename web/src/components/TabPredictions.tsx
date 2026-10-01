@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Globe, Plus } from "lucide-react";
+import { Globe, Plus, Trash2 } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
@@ -17,7 +17,7 @@ import { VirtualizedScoopList } from "./VirtualizedScoopList";
 import { ModuleItemCard } from "./ModuleItemCard";
 import { useAssetDeepDive } from "../hooks/useAssetDeepDive";
 import { isNativeShell } from "../lib/nativeShell";
-import { apiGet, apiPost, getUserId } from "../lib/api";
+import { apiDelete, apiGet, apiPost, getUserId } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 const MARKET_CATEGORY_FILTERS = [
@@ -35,7 +35,7 @@ export function TabPredictions() {
   const { openDeepDive } = useAssetDeepDive();
   const { isAuthenticated, user, openAuth } = useAuth();
   const [savingMarket, setSavingMarket] = useState<string | null>(null);
-  const [savedMarkets, setSavedMarkets] = useState<Set<string>>(new Set());
+  const [savedMarkets, setSavedMarkets] = useState<Map<string, string>>(new Map());
   const [saveError, setSaveError] = useState<string | null>(null);
   const { hasModule, isSimulationOnly, simulation, loading: modulesLoading } = useModules();
   const androidPlaySafe = isNativeShell();
@@ -64,7 +64,7 @@ export function TabPredictions() {
     setSavingMarket(m.market);
     setSaveError(null);
     try {
-      await apiPost("/advisor/predictions/positions", {
+      const saved = await apiPost<{ id: string }>("/advisor/predictions/positions", {
         user_id: user?.userId ?? getUserId(),
         market: m.market,
         category: m.category,
@@ -72,7 +72,7 @@ export function TabPredictions() {
         stake: 0,
         yes_price: m.yes,
       });
-      setSavedMarkets((prev) => new Set(prev).add(predictionKey(m.market, "Yes")));
+      setSavedMarkets((prev) => new Map(prev).set(predictionKey(m.market, "Yes"), saved.id));
       window.dispatchEvent(new Event("motivefx:briefing-refresh"));
       window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
     } catch (e) {
@@ -83,11 +83,11 @@ export function TabPredictions() {
   }
 
   useEffect(() => {
-    if (!isAuthenticated) { setSavedMarkets(new Set()); return; }
+    if (!isAuthenticated) { setSavedMarkets(new Map()); return; }
     const userId = user?.userId ?? getUserId();
-    apiGet<{ positions: Array<{ market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
-      .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => predictionKey(p.market, p.pick)))))
-      .catch(() => setSavedMarkets(new Set()));
+    apiGet<{ positions: Array<{ id: string; market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
+      .then((d) => setSavedMarkets(new Map((d.positions ?? []).map((p) => [predictionKey(p.market, p.pick), p.id]))))
+      .catch(() => setSavedMarkets(new Map()));
   }, [isAuthenticated, user?.userId]);
 
   useEffect(() => {
@@ -95,8 +95,8 @@ export function TabPredictions() {
     const onPortfolioChanged = (event: Event) => {
       if ((event as CustomEvent<{ kind?: string }>).detail?.kind !== "predictions") return;
       const userId = user?.userId ?? getUserId();
-      apiGet<{ positions: Array<{ market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
-        .then((d) => setSavedMarkets(new Set((d.positions ?? []).map((p) => predictionKey(p.market, p.pick))))).catch(() => {});
+      apiGet<{ positions: Array<{ id: string; market: string; pick: string }> }>(`/advisor/predictions/positions/${userId}`)
+        .then((d) => setSavedMarkets(new Map((d.positions ?? []).map((p) => [predictionKey(p.market, p.pick), p.id])))).catch(() => {});
     };
     window.addEventListener("motivefx:portfolio-changed", onPortfolioChanged);
     return () => window.removeEventListener("motivefx:portfolio-changed", onPortfolioChanged);
@@ -219,11 +219,24 @@ export function TabPredictions() {
                   price={`${(m.yes * 100).toFixed(0)}¢ YES`}
                   change={(m.yes - 0.5) * 100}
                   changeLabel={`Vol ${m.volume24h}`}
-                  actions={
-                    <button type="button" className="btn btn-sm btn-ghost" disabled={savingMarket === m.market || savedMarkets.has(predictionKey(m.market, "Yes"))} onClick={() => void saveMarket(m)}>
-                      {savedMarkets.has(predictionKey(m.market, "Yes")) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add YES</>}
-                    </button>
-                  }
+                  actions={!androidPlaySafe ? (() => {
+                    const key = predictionKey(m.market, "Yes");
+                    const positionId = savedMarkets.get(key);
+                    return (
+                      <button type="button" className="btn btn-sm btn-ghost" disabled={savingMarket === m.market} onClick={() => {
+                        if (!positionId) { void saveMarket(m); return; }
+                        setSavingMarket(m.market);
+                        void apiDelete(`/advisor/predictions/positions/${user?.userId ?? getUserId()}/${positionId}`)
+                          .then(() => {
+                            setSavedMarkets((prev) => { const next = new Map(prev); next.delete(key); return next; });
+                            window.dispatchEvent(new CustomEvent("motivefx:portfolio-changed", { detail: { kind: "predictions" } }));
+                          })
+                          .finally(() => setSavingMarket(null));
+                      }}>
+                        {positionId ? <><Trash2 size={12} /> Remove</> : <><Plus size={12} /> Add YES</>}
+                      </button>
+                    );
+                  })() : undefined}
                 >
                   <div className="mf-yesno-row">
                     <span className="mf-yesno yes">YES {(m.yes * 100).toFixed(0)}¢</span>

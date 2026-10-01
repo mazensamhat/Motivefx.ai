@@ -149,7 +149,7 @@ export function MarketWorkspace({
 
 
 
-  const portfolioKind = slug === "stocks" || slug === "options"
+  const portfolioKind = slug === "stocks"
     ? "trades"
     : slug === "crypto"
       ? "crypto"
