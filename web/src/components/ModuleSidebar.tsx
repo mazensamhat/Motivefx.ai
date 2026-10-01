@@ -1,4 +1,4 @@
-import { BookOpen, Home, Lock, Settings2, Users } from "lucide-react";
+import { BookOpen, Home, Lock, Radar, Settings2, Sparkles, Users } from "lucide-react";
 import { TAB_TO_BRAND, brandForTab } from "../brand/moduleBrand";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
@@ -35,6 +35,10 @@ export function ModuleSidebar({
   const { openSetup } = usePlatformPrefs();
   const { profile, openSetup: openGenSetup } = useGenerationalProfile();
   const activeBrand = brandForTab(activeTab);
+  const goHomeSection = (id: string) => {
+    onSelect("home");
+    window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  };
   const playSafeLabel = (tab: { id: TabId; label: string }) => {
     if (!isNativeShell()) return tab.label;
     if (tab.id === "betting") return "Odds intel";
@@ -53,7 +57,7 @@ export function ModuleSidebar({
         )}
       </div>
 
-      <div className="sidebar-label">{isNativeShell() ? "Market Monitors" : "Market Desks"}</div>
+      <nav className="sidebar-nav sidebar-v2-primary" aria-label="Motive intelligence">\n        <button type="button" className="sidebar-item" onClick={() => goHomeSection("v2-picks")}><Sparkles size={20} className="sidebar-item-logo" /><span className="sidebar-item-text">AI Picks</span></button>\n        <button type="button" className="sidebar-item" onClick={() => goHomeSection("opportunity-radar")}><Radar size={20} className="sidebar-item-logo" /><span className="sidebar-item-text">Opportunity Radar</span></button>\n      </nav>\n\n      <div className="sidebar-label">{isNativeShell() ? "Market Monitors" : "Market Desks"}</div>
       <nav className="sidebar-nav">
         {NAV.map((t) => {
           const locked = t.module !== "home" && !hasModule(t.module);
