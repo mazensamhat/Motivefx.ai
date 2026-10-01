@@ -1,0 +1,22 @@
+name: Prediction calibration regression tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  outcome-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test as-of prices, outcome retries, and calibration integrity
+        run: node --experimental-strip-types --test apps/site/scripts/outcome-policy.test.mjs apps/site/scripts/outcome-service.test.mjs
