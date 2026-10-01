@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TabId } from "../../types";
 import { ChiefOfFinanceFab } from "./ChiefOfFinanceFab";
 import { ChiefOfFinancePanel } from "./ChiefOfFinancePanel";
@@ -10,6 +10,12 @@ interface Props {
 
 export function ChiefOfFinanceAssistant({ activeTab, onNavigate }: Props) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("motivefx:ask-open", onOpen);
+    return () => window.removeEventListener("motivefx:ask-open", onOpen);
+  }, []);
 
   return (
     <>
