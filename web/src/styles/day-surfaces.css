@@ -1,0 +1,147 @@
+/* Day palette for actual terminal selectors, including body-portalled dialogs.
+ * Keep this after global.css. No layout, visibility, permission or Night rules. */
+:root[data-color-theme="light"],
+:root[data-color-theme="light"] .app[data-theme] {
+  color-scheme: light;
+  --bg-deep: #f6f7fb;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1eef8;
+  --border: #d7d3e1;
+  --border-soft: #e1ddea;
+  --text: #201a2a;
+  --text-muted: #514a60;
+  --text-dim: #625a70;
+  --accent: #6d28d9;
+  --accent-dim: #5b21b6;
+  --purple: #6d28d9;
+  --cyan: #006b84;
+  --green: #087443;
+  --red: #bb203d;
+  --amber: #875400;
+  --day-inset: #f5f3f9;
+  --day-skeleton: #ddd8e8;
+}
+
+/* Shared shells used by all five market desks, menus and modal hosts. */
+:root[data-color-theme="light"] :is(.card, .glass-card, .glass-panel,
+  .module-sidebar, .workspace-header, .mobile-bottom-nav, .mobile-more-sheet,
+  .module-intel-strip, .mf-item-card, .mf-stat-card, .hero-metric-panel,
+  .activity-skeleton-card, .signal-detail-modal, .asset-dive-modal,
+  .ai-explain-modal, .alert-center-panel, .chief-panel, .glossary-modal,
+  .intel-tour-modal, .intel-journal, .watchlist-radar, .daily-intel-card) {
+  background: var(--bg-panel) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 18px rgba(42, 28, 72, .06);
+}
+:root[data-color-theme="light"] :is(.card-header, .card-body,
+  .module-story-banner, .live-feed, .live-feed-bar, .chief-header, .chief-footer) {
+  background: var(--bg-panel) !important;
+  color: var(--text);
+  border-color: var(--border) !important;
+}
+:root[data-color-theme="light"] :is(.card-title, .advisor-empty-title,
+  .row-primary, .vtable-card-title, .signal-detail-title) {
+  color: var(--text) !important;
+}
+:root[data-color-theme="light"] :is(.loading, .empty, .card-meta,
+  .row-secondary, .row-meta, .chief-sub, .chief-welcome, .chief-locked,
+  .ai-explain-list, .ai-explain-footer, .glossary-sub, .glossary-example) {
+  color: var(--text-muted) !important;
+}
+:root[data-color-theme="light"] :is(.activity-skeleton-line,
+  .activity-skeleton-pill) { background: var(--day-skeleton) !important; }
+:root[data-color-theme="light"] .activity-skeleton-row { background: transparent; }
+:root[data-color-theme="light"] :is(.glossary-card, .watchlist-items li,
+  .chief-bubble-assistant, .chief-chip) {
+  background: var(--day-inset) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+:root[data-color-theme="light"] .chief-bubble-user {
+  background: #eee7fb;
+  color: var(--text);
+  border-color: #c9b6eb;
+}
+:root[data-color-theme="light"] .chief-bubble strong { color: inherit !important; }
+:root[data-color-theme="light"] .chief-error { color: var(--red); }
+:root[data-color-theme="light"] :is(.chief-composer input, .watchlist-form input,
+  .watchlist-form select, .intel-journal-filters input, .intel-journal-filters select) {
+  background: var(--bg-panel) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+:root[data-color-theme="light"] .watchlist-coverage-badge {
+  color: var(--green); background: #e6f4ed; border-color: #add6c0;
+}
+
+/* OpportunityRadarBoard: exact compound selectors from global.css. */
+:root[data-color-theme="light"] .or-board.terminal-or {
+  --or-strong: #087443;
+  --or-moderate: #006b84;
+  --or-weakening: #875400;
+  --or-risk: #bb203d;
+  background: var(--bg-panel) !important;
+  color: var(--text);
+  border-color: var(--border);
+}
+:root[data-color-theme="light"] .or-board.terminal-or :is(.or-card,
+  .or-stat, .or-legend, .or-view-toggle, .or-how-panel, .or-list li) {
+  background: var(--day-inset) !important;
+  color: var(--text) !important;
+  border-color: var(--border);
+}
+:root[data-color-theme="light"] .or-board.terminal-or .or-card {
+  background: var(--bg-panel) !important;
+}
+:root[data-color-theme="light"] .or-board.terminal-or :is(.or-gauge strong,
+  .or-card-foot strong, .or-list-score, .or-title, .or-card-identity h3) {
+  color: var(--text) !important;
+}
+:root[data-color-theme="light"] .or-board.terminal-or :is(.or-stat span,
+  .or-legend li, .or-index, .or-gauge-caption, .or-desc, .or-meta-label,
+  .or-meta-grid ul, .or-card-foot, .or-updated, .or-sub) {
+  color: var(--text-muted) !important;
+}
+:root[data-color-theme="light"] .or-board.terminal-or .or-gauge-track {
+  stroke: #d8d3e3;
+}
+:root[data-color-theme="light"] .or-board.terminal-or :is(.or-nav,
+  .or-how-btn, .or-cta-btn) {
+  background: #eee7fb !important;
+  color: #5b21b6 !important;
+  border-color: #c9b6eb !important;
+}
+:root[data-color-theme="light"] .or-board.terminal-or :is(.or-card-tap,
+  .or-kicker, .or-view-toggle button.active) { color: #5b21b6; }
+:root[data-color-theme="light"] .or-board.terminal-or .or-view-toggle button.active {
+  background: #eee7fb;
+}
+
+/* Signal graph is SVG plus HTML labels; changing a panel alone is insufficient. */
+:root[data-color-theme="light"] .sg-sat { fill: #f5f3f9; stroke: #006b84; }
+:root[data-color-theme="light"] .sg-sat.hot { fill: #eee7fb; stroke: #6d28d9; }
+:root[data-color-theme="light"] .sg-sat-icon {
+  background: #fff; color: #5b21b6; box-shadow: none;
+}
+:root[data-color-theme="light"] .sg-sat-name {
+  color: var(--text); text-shadow: none;
+}
+:root[data-color-theme="light"] :is(.sg-sat-meta,
+  .signal-graph-sat-labels li.hot .sg-sat-meta) { color: var(--text-muted); }
+:root[data-color-theme="light"] .signal-graph-hub-switch button.active {
+  color: #5b21b6; background: #eee7fb; border-color: #c9b6eb;
+}
+:root[data-color-theme="light"] .sg-info-open-btn {
+  color: #5b21b6; background: #eee7fb; border-color: #c9b6eb;
+}
+
+/* Keyboard state remains visible in both themes. */
+.chief-panel button:focus-visible, .chief-composer input:focus-visible,
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 3px;
+}
+.chief-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.chief-recovery .chief-error { flex-basis: 100%; }
