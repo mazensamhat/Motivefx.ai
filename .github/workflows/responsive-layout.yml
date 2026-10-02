@@ -1,0 +1,38 @@
+name: Responsive viewport regression
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'packages/shared/**'
+      - 'tests/responsive-layout.py'
+      - '.github/workflows/responsive-layout.yml'
+permissions:
+  contents: read
+jobs:
+  populated-layout-fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm --prefix web ci
+      - run: npm --prefix web run build
+        env:
+          VITE_BASE: /terminal/
+      - run: pip install playwright==1.57.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/responsive-layout.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: responsive-layout-evidence
+          path: test-results/responsive/
+          retention-days: 7
+          if-no-files-found: ignore

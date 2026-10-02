@@ -1,0 +1,143 @@
+/* Constrain layout tracks, not content visibility. Imported after workspace themes.
+   Carousels/tables retain local horizontal scrolling; the page itself must fit. */
+:root[data-color-theme] :is(.app-body, .app-content, .terminal-main,
+  .v2-home, .v2-pro-legacy, .phase2-intel, .institutional-panel,
+  .market-workspace, .market-workspace-content) {
+  min-width: 0;
+  max-width: 100%;
+}
+:root[data-color-theme] .v2-home {
+  width: 100%;
+  max-width: 1480px;
+  grid-template-columns: minmax(0, 1fr);
+}
+:root[data-color-theme] :is(.phase2-intel, .institutional-panel, .phase2-branches,
+  .phase2-watch-list) { grid-template-columns: minmax(0, 1fr); }
+:root[data-color-theme] :is(.v2-home, .v2-pro-legacy, .phase2-intel,
+  .institutional-panel, .grid-2, .market-workspace-content, .signal-graph-layout) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+:root[data-color-theme] :is(.v2-hero-copy, .v2-panel, .v2-section, .phase2-card,
+  .phase2-theme, .phase2-genome, .phase2-branch, .phase2-break,
+  .card-title, .card-header > *, .activity-header > *, .mf-item-left,
+  .market-workspace-heading, .signal-graph-info) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:root[data-color-theme] .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root[data-color-theme] .v2-split { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
+:root[data-color-theme] :is(.phase2-theme-grid, .phase2-genome-grid) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+:root[data-color-theme] .phase2-sim-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root[data-color-theme] :is(.home-section-header, .v2-section-head, .v2-panel > header,
+  .phase2-theme-top, .phase2-break-top, .phase2-branch-top, .card-header,
+  .activity-header, .phase2-watch-list li) { flex-wrap: wrap; }
+:root[data-color-theme] .home-section-header > * { min-width: 0; max-width: 100%; }
+:root[data-color-theme] .home-section-header h2 { flex-wrap: wrap; }
+:root[data-color-theme] :is(.phase2-muted, .phase2-claim, .phase2-seed, .phase2-node,
+  .phase2-chip-list, .home-section-sub, .sg-info-hint, .sg-info-blurb) {
+  overflow-wrap: anywhere;
+}
+:root[data-color-theme] .phase2-watch-list li > div { min-width: 0; flex: 1 1 160px; }
+:root[data-color-theme] :is(.phase2-field, .phase2-field input, .phase2-field select,
+  .watchlist-form input, .watchlist-form select, .intel-journal-form input,
+  .intel-journal-filters input, .intel-journal-filters select) { min-width: 0; max-width: 100%; }
+
+/* Bound each scrolling region before sizing its children. */
+:root[data-color-theme] :is(.v2-picks-grid, .v2-quick, .or-carousel-wrap,
+  .or-carousel, .market-question-chips, .market-section-nav, .vtable-wrap) {
+  min-width: 0;
+  max-width: 100%;
+}
+:root[data-color-theme] .v2-pick-card { min-width: 0; overflow-wrap: anywhere; }
+:root[data-color-theme] .v2-pick-top { flex-wrap: wrap; }
+:root[data-color-theme] .v2-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+:root[data-color-theme] .v2-kpis button { min-width: 0; overflow-wrap: anywhere; }
+:root[data-color-theme] .v2-kpis button svg { flex-shrink: 0; }
+:root[data-color-theme] .v2-brief-row { grid-template-columns: 20px minmax(0, 120px) minmax(0, 1fr); }
+:root[data-color-theme] .v2-ask-strip { grid-template-columns: auto minmax(0, 1fr) auto; }
+:root[data-color-theme] .v2-market-list button { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+/* Radar statistics adapt to the panel's available width, not the window width. */
+:root[data-color-theme] .or-board.terminal-or .or-stats {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr));
+}
+:root[data-color-theme] .or-board.terminal-or :is(.or-stat, .or-legend,
+  .or-header-actions, .or-card-identity, .or-list li, .or-list-hit) { min-width: 0; }
+:root[data-color-theme] .or-board.terminal-or :is(.or-stat, .or-card, .or-list li) {
+  overflow-wrap: anywhere;
+}
+:root[data-color-theme] .or-board.terminal-or .or-card { min-width: 0; max-width: 100%; }
+:root[data-color-theme] .or-board.terminal-or .or-card-hit { min-width: 0; }
+:root[data-color-theme] .or-board.terminal-or .or-card-identity {
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+:root[data-color-theme] .or-board.terminal-or .or-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+:root[data-color-theme] .or-board.terminal-or .or-list-hit {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+:root[data-color-theme] .or-board.terminal-or .or-view-toggle { max-width: 100%; }
+
+/* Radial HTML labels extend beyond their SVG positions: reserve a real gutter.
+   Do not crop them or shrink the entire page with a transform. */
+:root[data-color-theme] .signal-graph-layout { grid-template-columns: minmax(0, 1fr); }
+:root[data-color-theme] .signal-graph-stage {
+  width: min(calc(100% - 4rem), 640px);
+  min-width: 0;
+  margin: 2rem auto 3rem;
+}
+:root[data-color-theme] .signal-graph-sat-labels li {
+  width: clamp(64px, 20vw, 116px);
+}
+:root[data-color-theme] :is(.sg-sat-name, .sg-sat-meta) { max-width: 100%; overflow-wrap: anywhere; }
+@media (min-width: 1100px) {
+  :root[data-color-theme] .signal-graph-layout { grid-template-columns: minmax(0, 1.35fr) minmax(0, .75fr); }
+}
+@media (max-width: 1100px) {
+  :root[data-color-theme] .v2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  :root[data-color-theme] .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  :root[data-color-theme] :is(.workspace-header, .workspace-header-top,
+    .workspace-header-left, .workspace-header-right, .mobile-header-toolbar) { min-width: 0; max-width: 100%; }
+  :root[data-color-theme] .mobile-header-toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 4px 8px;
+  }
+  :root[data-color-theme] .mobile-header-tool { min-width: 0; max-width: 100%; white-space: normal; }
+}
+@media (max-width: 760px) {
+  :root[data-color-theme] .v2-split { grid-template-columns: minmax(0, 1fr); }
+  :root[data-color-theme] .v2-pick-card { flex: 0 0 90%; min-width: 0; max-width: 100%; }
+  :root[data-color-theme] .v2-ask-strip { grid-template-columns: auto minmax(0, 1fr); }
+  :root[data-color-theme] .v2-ask-strip .v2-primary { grid-column: 1 / -1; }
+  :root[data-color-theme] .v2-market-list button { grid-template-columns: minmax(0, 1fr) auto; }
+}
+@media (max-width: 480px) {
+  :root[data-color-theme] .home-section-sub { flex-basis: 100%; }
+  :root[data-color-theme] .phase2-sim-row { grid-template-columns: minmax(0, 1fr); }
+  :root[data-color-theme] .or-board.terminal-or .or-meta-grid { grid-template-columns: minmax(0, 1fr); }
+  :root[data-color-theme] .or-board.terminal-or .or-card-top { flex-wrap: wrap; }
+  :root[data-color-theme] .or-board.terminal-or .or-list-hit { grid-template-columns: auto minmax(0, 1fr) auto; }
+  :root[data-color-theme] .or-board.terminal-or .or-list-hit .or-status { grid-column: 2 / -1; }
+}
+/* A wrapped toolbar must contribute its real height inside the native flex scroller. */
+:root[data-color-theme] .workspace-header { flex-shrink: 0; }
+:root[data-color-theme] .mobile-header-toolbar { flex-shrink: 0; }
+:root[data-color-theme] .market-workspace-hero > * { min-width: 0; }
+@media (max-width: 1100px) {
+  :root[data-color-theme] .market-workspace-hero { grid-template-columns: minmax(0, 1fr); }
+}
+/* Body-portalled dialogs have their own flex children, outside the page grid. */
+:root[data-color-theme] :is(.glossary-modal, .glossary-header, .glossary-search,
+  .glossary-search input, .glossary-list, .chief-panel, .chief-composer input) {
+  min-width: 0;
+  max-width: 100%;
+}
+:root[data-color-theme] :is(.glossary-header h2, .glossary-card-top) { flex-wrap: wrap; }
+:root[data-color-theme] .glossary-card { overflow-wrap: anywhere; }
