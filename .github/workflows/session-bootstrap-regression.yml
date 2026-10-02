@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm --prefix web ci
-      - run: node --test tests/session-bootstrap.test.mjs
+      - run: node --test tests/session-bootstrap.test.mjs tests/position-categories.test.mjs
       - run: npm --prefix web run build
         env:
           VITE_BASE: /terminal/
