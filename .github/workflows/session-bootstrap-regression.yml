@@ -1,0 +1,41 @@
+name: Session bootstrap and access regression
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  session-bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix web ci
+      - run: node --test tests/session-bootstrap.test.mjs tests/position-categories.test.mjs
+      - run: npm --prefix web run build
+        env:
+          VITE_BASE: /terminal/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright==1.57.0 && python -m playwright install --with-deps chromium
+      - run: python tests/portfolio-ui.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: session-portfolio-browser-verification
+          path: test-results/portfolio/
+          if-no-files-found: ignore
+          retention-days: 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: session-repair-compiled-terminal
+          path: web/dist/
+          retention-days: 2
