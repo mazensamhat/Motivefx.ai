@@ -1,79 +1,65 @@
-/**
- * Single-flight + short TTL for /api/auth/me.
- * On reload the app used to fire this 4–6 times in parallel and abort at 8s.
- */
-
+/** Shared cookie-session bootstrap. Service failure is NOT an anonymous session. */
 export type AuthMePayload = {
   user?: {
-    id?: string;
-    email?: string;
-    isAdmin?: boolean;
-    totpEnabled?: boolean;
-    intelligenceTier?: string;
-    selectedMarkets?: string[];
-    hasSubscription?: boolean;
+    id?: string; email?: string; isAdmin?: boolean; totpEnabled?: boolean;
+    intelligenceTier?: string; selectedMarkets?: string[]; hasSubscription?: boolean;
     [key: string]: unknown;
   };
 };
-
-type Cache = {
-  data: AuthMePayload | null;
-  expires: number;
-  inflight: Promise<AuthMePayload | null> | null;
-};
-
-const TTL_MS = 15_000;
-const FETCH_MS = 25_000;
-
-const g = globalThis as unknown as { __motivefxAuthMe?: Cache };
-if (!g.__motivefxAuthMe) {
-  g.__motivefxAuthMe = { data: null, expires: 0, inflight: null };
-}
-
-async function fetchAuthMeOnce(): Promise<AuthMePayload | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
-  try {
-    const res = await fetch("/api/auth/me", {
-      cache: "no-store",
-      credentials: "same-origin",
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as AuthMePayload;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+export class AuthLookupUnavailable extends Error {
+  constructor() {
+    super("We could not verify your session because the service is temporarily unavailable. Your account and plan have not been changed. Please retry.");
+    this.name = "AuthLookupUnavailable";
   }
 }
-
-/** Shared /api/auth/me — dedupes concurrent callers during boot/reload. */
-export async function fetchAuthMe(force = false): Promise<AuthMePayload | null> {
-  const cache = g.__motivefxAuthMe!;
-  const now = Date.now();
-  if (!force && cache.data && cache.expires > now) return cache.data;
-  if (!force && cache.inflight) return cache.inflight;
-
-  const inflight = fetchAuthMeOnce()
-    .then((data) => {
-      cache.data = data;
-      cache.expires = Date.now() + TTL_MS;
-      cache.inflight = null;
-      return data;
-    })
-    .catch(() => {
-      cache.inflight = null;
-      return null;
-    });
-
-  cache.inflight = inflight;
-  return inflight;
+export function createAuthMeClient(fetcher: typeof fetch, timeoutMs = 8_000) {
+  let cached: AuthMePayload | null = null;
+  let resolved = false;
+  let expires = 0;
+  let generation = 0;
+  let inflight: Promise<AuthMePayload | null> | null = null;
+  let controller: AbortController | null = null;
+  async function read(force = false): Promise<AuthMePayload | null> {
+    // Force bypasses a settled cache, never an in-flight request.
+    if (inflight) return inflight;
+    if (!force && resolved && Date.now() < expires) return cached;
+    const epoch = generation;
+    const ctrl = new AbortController();
+    controller = ctrl;
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const operation = async () => {
+      try {
+        const res = await fetcher("/api/auth/me", { cache: "no-store", credentials: "same-origin", signal: ctrl.signal });
+        let data: AuthMePayload | null;
+        if (res.status === 401) data = null;
+        else {
+          if (!res.ok) throw new AuthLookupUnavailable();
+          const body: unknown = await res.json();
+          if (!body || typeof body !== "object" || !("user" in body) || !body.user || typeof body.user !== "object" || !("id" in body.user) || typeof body.user.id !== "string" || !("email" in body.user) || typeof body.user.email !== "string") throw new AuthLookupUnavailable();
+          data = body as AuthMePayload;
+        }
+        if (epoch !== generation) throw new AuthLookupUnavailable();
+        cached = data; resolved = true; expires = Date.now() + 15_000;
+        return data;
+      } catch {
+        // Keep any previous cache only for diagnostics; never return it after a failed recheck.
+        if (epoch === generation) { resolved = false; expires = 0; }
+        throw new AuthLookupUnavailable();
+      } finally {
+        clearTimeout(timer);
+        if (epoch === generation) { inflight = null; controller = null; }
+      }
+    };
+    inflight = operation();
+    return inflight;
+  }
+  function invalidate() {
+    generation += 1;
+    controller?.abort(); controller = null; inflight = null;
+    cached = null; resolved = false; expires = 0;
+  }
+  return { read, invalidate };
 }
-
-export function invalidateAuthMe() {
-  const cache = g.__motivefxAuthMe!;
-  cache.data = null;
-  cache.expires = 0;
-  cache.inflight = null;
-}
+const client = createAuthMeClient((input, init) => fetch(input, init));
+export const fetchAuthMe = client.read;
+export const invalidateAuthMe = client.invalidate;
