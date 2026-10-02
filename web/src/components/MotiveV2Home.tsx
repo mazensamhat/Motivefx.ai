@@ -1,7 +1,12 @@
 import { ArrowRight, Bot, CalendarDays, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
-import type { HomeOpportunity, TabId } from "../types";
+import type { TabId } from "../types";
+import { HomeResearchDialog, type HomeResearchTarget } from "./HomeResearchDialog";
+import { opportunityKind, opportunityView, reportedScore } from "../lib/homeOpportunityActions";
+import { useSignalDetail } from "../hooks/useSignalDetail";
+import { homeScoreDetail } from "../utils/signalIntel";
+import "../styles/home-research.css";
 import { AudioBriefingButton } from "./AudioBriefingButton";
 import { Phase2IntelPanels } from "./Phase2IntelPanels";
 import { InstitutionalPanel } from "./InstitutionalPanel";
@@ -27,14 +32,10 @@ function riskLabel(risk: string) {
   return risk ? `${risk.charAt(0).toUpperCase()}${risk.slice(1)} risk` : "Risk monitored";
 }
 
-function viewLabel(o: HomeOpportunity) {
-  const s = (o.stance ?? o.title ?? "").toLowerCase();
-  if (/sell|avoid|bear|negative|caution/.test(s)) return "NEGATIVE";
-  if (/neutral|mixed|watch/.test(s)) return "MIXED";
-  return "POSITIVE";
-}
-
 export function MotiveV2Home({ onNavigate }: Props) {
+  const [review, setReview] = useState<HomeResearchTarget | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const { inspectDetail } = useSignalDetail();
   const { data: b, loading, error, refresh } = useHomeBriefing(60_000);
   const radar = useMemo(() => {
     if (!b) return [];
@@ -45,7 +46,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
   if (loading && !b) return <div className="loading">Building your Motive brief…</div>;
   if (!b) return <div className="empty">Motive brief unavailable. <button className="btn btn-sm" onClick={() => void refresh()}>Retry</button></div>;
 
-  const picks = [...b.opportunities].sort((a, z) => z.confidence - a.confidence).slice(0, 4);
+  const picks = [...b.opportunities].sort((a, z) => z.confidence - a.confidence).slice(0, showAll ? undefined : 4);
   const greeting = b.greeting || "Your Motive Brief";
   const highConfidence = b.opportunities.filter((o) => o.confidence >= 80).length;
 
@@ -53,6 +54,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
 
   return (
     <div className="v2-home">
+      {review && <HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} />}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
 
       <section className="v2-hero">
@@ -101,14 +103,14 @@ export function MotiveV2Home({ onNavigate }: Props) {
         </div>
         <div className="v2-signal-list">
           {(b.probabilityViews ?? []).filter((v) => v.id.startsWith("theme-")).slice(0, 4).map((v) => (
-            <button type="button" key={v.id} onClick={() => ask(`Explain the ${v.theme} signal`)}>
+            <button type="button" key={v.id} onClick={() => setReview({ type: "theme", source: v })}>
               <span>{v.theme}</span>
               <strong>{Math.round(v.probability)}</strong>
               <em>{v.direction === "up" ? "↑ Rising" : v.direction === "down" ? "↓ Cooling" : "→ Stable"}</em>
             </button>
           ))}
           {!(b.probabilityViews ?? []).some((v) => v.id.startsWith("theme-")) && (
-            <button type="button" onClick={() => ask("Explain today's Motive Signal")}>
+            <button type="button" onClick={() => inspectDetail(homeScoreDetail(b.motivfxScore, b.marketConfidence, b.stars))}>
               <span>Composite Motive Signal</span><strong>{Math.round(b.motivfxScore)}</strong><em>{b.marketConfidence}</em>
             </button>
           )}
@@ -118,17 +120,21 @@ export function MotiveV2Home({ onNavigate }: Props) {
       <section className="v2-section" id="v2-picks">
         <header className="v2-section-head">
           <div><span className="v2-eyebrow">FOR YOU</span><h2>Motive AI likes today</h2></div>
-          <button type="button" onClick={() => ask("Show me all of today's strongest opportunities")}>See all <ArrowRight size={14}/></button>
+          <button type="button" onClick={() => setShowAll((v) => !v)}>{showAll ? "Show fewer" : "See all"} <ArrowRight size={14}/></button>
         </header>
         <div className="v2-picks-grid">
           {picks.length ? picks.map((o) => (
-            <button className="v2-pick-card" type="button" key={o.id} onClick={() => onNavigate(moduleTab(o.module))}>
-              <div className="v2-pick-top"><strong>{o.symbol}</strong><span className={`v2-view ${viewLabel(o).toLowerCase()}`}>{viewLabel(o)}</span></div>
-              <div className="v2-signal"><span>Motive Signal</span><b>{Math.round(o.confidence)}</b><em>/100</em></div>
-              <div className="v2-spark" aria-hidden><i/><i/><i/><i/><i/><i/></div>
-              <div className="v2-pick-meta"><span>{o.modelConfidence ? `${Math.round(o.modelConfidence)}% evidence` : "Evidence monitored"}</span><span>{riskLabel(o.riskLevel)}</span></div>
+            <article className="v2-pick-card home-action-card" key={o.id}>
+              <div className="v2-pick-top"><button type="button" className="home-pick-title" aria-label={`Review ${o.symbol}`} onClick={() => setReview({ type: "opportunity", source: o })}>{o.symbol}</button><span className={`v2-view ${opportunityView(o).toLowerCase()}`}>{opportunityView(o)}</span></div>
+              <div className="v2-signal"><span>Motive Signal</span><b>{reportedScore(o.confidence) ?? "—"}</b><em>/100</em></div>
+              <div className="v2-pick-meta"><span>{reportedScore(o.modelConfidence) != null ? `Reported confidence ${reportedScore(o.modelConfidence)}/100` : "Evidence confidence not provided"}</span><span>{riskLabel(o.riskLevel)}</span></div>
               <p>{o.reasons?.[0] ?? o.title}</p>
-            </button>
+              <div className="home-pick-actions">
+                <button type="button" className="btn" onClick={() => setReview({ type: "opportunity", source: o })}>Review</button>
+                <button type="button" className="btn" aria-label={`Add ${o.symbol} to portfolio`} disabled={!opportunityKind(o.module)} onClick={() => setReview({ type: "opportunity", source: o, adding: true })}>Add to portfolio</button>
+                <button type="button" className="btn" onClick={() => ask(`Review the ${o.module} briefing item ${o.symbol}: ${o.title}. Separate the source signal from a calibrated probability.`)}>Ask Motive</button>
+              </div>
+            </article>
           )) : <div className="v2-empty-card">Live opportunities are warming up.</div>}
         </div>
       </section>
@@ -159,7 +165,12 @@ export function MotiveV2Home({ onNavigate }: Props) {
         updatedAt={b.generatedAt}
         title="Opportunity Radar™"
         subtitle="Developing situations ranked by Motive signal strength"
-        onCardClick={(card) => ask(`Explain the Opportunity Radar signal for ${card.title}`)}
+        onCardClick={(card) => {
+          const opportunity = b.opportunities.find((o) => o.id === card.id);
+          const theme = b.probabilityViews?.find((v) => v.id === card.id);
+          if (opportunity) setReview({ type: "opportunity", source: opportunity });
+          else if (theme) setReview({ type: "theme", source: theme });
+        }}
       />
 
       <section className="v2-pro-legacy" id="v2-pro-intelligence">

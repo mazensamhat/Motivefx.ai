@@ -1,0 +1,50 @@
+name: Home opportunity action regression
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'tests/home-opportunity-actions.test.mjs'
+      - 'tests/home-opportunity-browser.py'
+      - 'tests/responsive-layout.py'
+      - '.github/workflows/home-opportunity-actions.yml'
+permissions:
+  contents: read
+jobs:
+  action-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/home-opportunity-actions.test.mjs
+  compiled-home-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm --prefix web ci
+      - run: npm --prefix web run build
+        env:
+          VITE_BASE: /terminal/
+      - run: pip install playwright==1.57.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/home-opportunity-browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: home-opportunity-action-evidence
+          path: test-results/home-actions/
+          retention-days: 7
+          if-no-files-found: ignore
