@@ -10,9 +10,9 @@ export interface SiteSessionUser extends AuthUser {
 }
 
 /** Site cookie session — works even when FastAPI bridge is down. */
-export async function fetchSiteSessionUser(): Promise<SiteSessionUser | null> {
+export async function fetchSiteSessionUser(force = false): Promise<SiteSessionUser | null> {
   if (!SITE_EMBED) return null;
-  const data = await fetchAuthMe();
+  const data = await fetchAuthMe(force);
   const user = data?.user;
   if (!user?.email) return null;
   return {

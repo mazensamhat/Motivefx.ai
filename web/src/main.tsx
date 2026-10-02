@@ -18,7 +18,7 @@ import "./styles/global.css";
 import "./styles/day-surfaces.css";
 import "./styles/day-legacy-surfaces.css";
 import "./styles/workspace-v2.css";
-
+import "./styles/recovery.css";
 initializeAppearance();
 syncNativeShellDocumentClass();
 createRoot(document.getElementById("root")!).render(

@@ -1,0 +1,22 @@
+name: Portfolio and session regression tests
+on:
+  pull_request:
+    paths:
+      - 'web/src/**'
+      - 'tests/portfolio-session-regression.test.mjs'
+      - '.github/workflows/portfolio-session-regression.yml'
+permissions:
+  contents: read
+jobs:
+  session-and-category-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix web ci
+      - run: node --test tests/portfolio-session-regression.test.mjs

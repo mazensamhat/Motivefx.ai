@@ -2,13 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { WinHookModal } from "../components/WinHookModal";
 import { useAuth } from "./useAuth";
 import { resolveAcquisitionChannel } from "../lib/acquisition";
-import { apiGet, apiPost, getAccessToken, getUserId } from "../lib/api";
+import { apiGet, apiPost, getUserId } from "../lib/api";
 import {
   isNativeIapAvailable,
   isNativeIosShell,
   isNativeShell,
   requestNativeIapPurchase,
-  syncNativeShellDocumentClass,
 } from "../lib/nativeShell";
 import { SITE_EMBED } from "../lib/siteSession";
 import {
@@ -27,36 +26,17 @@ import type { PricingTierId } from "../config/pricingTiers";
 interface ModuleCatalog {
   [key: string]: { name: string; price: number; tagline: string };
 }
-
 export interface WinStory {
-  module: string;
-  city: string;
-  amount: number;
-  amountFormatted: string;
-  signal?: string;
-  detail: string;
-  timeAgo: string;
-  headline: string;
+  module: string; city: string; amount: number; amountFormatted: string;
+  signal?: string; detail: string; timeAgo: string; headline: string;
 }
-
 interface SimulationStatus {
-  active: boolean;
-  expiresAt: string | null;
-  bankroll: number;
-  modules: string[];
-  daysRemaining: number;
+  active: boolean; expiresAt: string | null; bankroll: number; modules: string[]; daysRemaining: number;
 }
-
 interface ModulesState {
-  active: string[];
-  catalog: ModuleCatalog;
-  loading: boolean;
-  hasAnnual: boolean;
-  annualPrice: number;
-  simulation: SimulationStatus | null;
-  tier: PricingTierId;
-  plan: UserPlanSnapshot;
-  allowedMarkets: string[];
+  active: string[]; catalog: ModuleCatalog; loading: boolean; error: string | null;
+  hasAnnual: boolean; annualPrice: number; simulation: SimulationStatus | null;
+  tier: PricingTierId; plan: UserPlanSnapshot; allowedMarkets: string[];
   hasModule: (module: string) => boolean;
   hasFeature: (feature: EntitlementFeature) => boolean;
   isSimulationOnly: (module: string) => boolean;
@@ -66,14 +46,17 @@ interface ModulesState {
   subscribeAnnual: () => Promise<void>;
   subscribeTier: (tier: PricingTierId, selectedMarkets?: string[]) => Promise<void>;
 }
-
 const ModulesContext = createContext<ModulesState | null>(null);
-
 export function ModulesProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading: authLoading, openAuth } = useAuth();
+  const { isAuthenticated, user, loading: authLoading, error: authError, openAuth } = useAuth();
   const [active, setActive] = useState<string[]>([]);
   const [catalog, setCatalog] = useState<ModuleCatalog>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const identityRef = useRef(user?.userId);
+  identityRef.current = user?.userId;
+  const requestId = useRef(0);
+  const busy = useRef<Promise<void> | null>(null);
   const [hasAnnual, setHasAnnual] = useState(false);
   const [annualPrice, setAnnualPrice] = useState(799);
   const [plan, setPlan] = useState<UserPlanSnapshot>(DEFAULT_PLAN);
@@ -82,416 +65,152 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   const [winStory, setWinStory] = useState<WinStory | null>(null);
   const [winModule, setWinModule] = useState("");
   const prevTierRef = useRef<PricingTierId | null>(null);
-
-  const applyModulesPayload = useCallback(
-    (data: {
-      active?: string[];
-      catalog?: ModuleCatalog;
-      hasAnnual?: boolean;
-      annualPrice?: number;
-      simulation?: SimulationStatus;
-      tier?: PricingTierId;
-      selectedMarkets?: string[];
-      allowedMarkets?: string[];
-      features?: Record<string, boolean>;
-      entitlements?: string[];
-    }) => {
-      // iOS App Store Path B: force free-reader entitlements — ignore web paid flags.
-      if (isNativeIosShell()) {
-        const reader = iosFreeReaderPlan();
-        setActive(reader.allowedMarkets);
-        setCatalog(data.catalog ?? {});
-        setHasAnnual(false);
-        setSimulation(null);
-        if (data.annualPrice) setAnnualPrice(data.annualPrice);
-        setPlan(reader);
-        prevTierRef.current = reader.tier;
-        return;
-      }
-      setActive(data.active ?? []);
-      setCatalog(data.catalog ?? {});
-      const annual = data.hasAnnual ?? false;
-      setHasAnnual(annual);
-      setSimulation(data.simulation ?? null);
+  const applyModulesPayload = useCallback((data: {
+    active?: string[]; catalog?: ModuleCatalog; hasAnnual?: boolean; annualPrice?: number;
+    simulation?: SimulationStatus; tier?: PricingTierId; selectedMarkets?: string[];
+    allowedMarkets?: string[]; features?: Record<string, boolean>; entitlements?: string[];
+  }) => {
+    if (isNativeIosShell()) {
+      const reader = iosFreeReaderPlan();
+      setActive(reader.allowedMarkets); setCatalog(data.catalog ?? {}); setHasAnnual(false); setSimulation(null);
       if (data.annualPrice) setAnnualPrice(data.annualPrice);
-      setPlan({
-        tier: data.tier ?? DEFAULT_PLAN.tier,
-        selectedMarkets: data.selectedMarkets ?? [],
-        allowedMarkets: data.allowedMarkets ?? data.active ?? [],
-        features: data.features ?? {},
-        entitlements: data.entitlements ?? [],
-        hasAnnual: data.hasAnnual ?? false,
-      });
-      const nextTier = data.tier ?? DEFAULT_PLAN.tier;
-      if (prevTierRef.current && prevTierRef.current !== nextTier) {
-        window.dispatchEvent(new Event("motivefx:entitlements-changed"));
-      }
-      prevTierRef.current = nextTier;
-    },
-    []
-  );
-
-  const applySitePlanOnly = useCallback(
-    (sitePlan: Awaited<ReturnType<typeof fetchSitePlan>>) => {
-      if (isNativeIosShell()) {
-        applyModulesPayload({});
-        return true;
-      }
-      if (!sitePlan?.hasSubscription) return false;
-      applyModulesPayload(
-        applySitePlanToModulesPayload(
-          { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
-          sitePlan,
-          { ignorePaid: false }
-        )
-      );
-      return true;
-    },
-    [applyModulesPayload]
-  );
-
+      setPlan(reader); prevTierRef.current = reader.tier; return;
+    }
+    setActive(data.active ?? []); setCatalog(data.catalog ?? {});
+    setHasAnnual(data.hasAnnual ?? false); setSimulation(data.simulation ?? null);
+    if (data.annualPrice) setAnnualPrice(data.annualPrice);
+    setPlan({ tier: data.tier ?? DEFAULT_PLAN.tier, selectedMarkets: data.selectedMarkets ?? [],
+      allowedMarkets: data.allowedMarkets ?? data.active ?? [], features: data.features ?? {},
+      entitlements: data.entitlements ?? [], hasAnnual: data.hasAnnual ?? false });
+    const nextTier = data.tier ?? DEFAULT_PLAN.tier;
+    if (prevTierRef.current && prevTierRef.current !== nextTier) window.dispatchEvent(new Event("motivefx:entitlements-changed"));
+    prevTierRef.current = nextTier;
+  }, []);
+  const applySitePlanOnly = useCallback((sitePlan: Awaited<ReturnType<typeof fetchSitePlan>>) => {
+    if (isNativeIosShell()) { applyModulesPayload({}); return true; }
+    if (!sitePlan?.hasSubscription) return false;
+    applyModulesPayload(applySitePlanToModulesPayload(
+      { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false }, sitePlan, { ignorePaid: false }));
+    return true;
+  }, [applyModulesPayload]);
   const refresh = useCallback(async () => {
-    const iosReader = isNativeIosShell();
-    const sitePlan = SITE_EMBED && !iosReader ? await fetchSitePlan() : null;
-
-    if (!getAccessToken() && !SITE_EMBED) {
-      if (iosReader) {
-        applyModulesPayload({});
-      } else {
-        setActive([]);
-        setSimulation(null);
-        setPlan(DEFAULT_PLAN);
-      }
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const data = await apiGet<{
-        active: string[];
-        catalog: ModuleCatalog;
-        hasAnnual?: boolean;
-        annualPrice?: number;
-        simulation?: SimulationStatus;
-        tier?: PricingTierId;
-        selectedMarkets?: string[];
-        allowedMarkets?: string[];
-        features?: Record<string, boolean>;
-        entitlements?: string[];
-      }>(`/advisor/modules/${getUserId()}`);
-      applyModulesPayload(
-        applySitePlanToModulesPayload(data, sitePlan, { ignorePaid: iosReader })
-      );
-    } catch {
-      if (iosReader) {
-        applyModulesPayload({});
-      } else if (sitePlan?.hasSubscription) {
-        applySitePlanOnly(sitePlan);
-      } else {
-        setActive([]);
-        setSimulation(null);
-        setPlan(DEFAULT_PLAN);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [applyModulesPayload, applySitePlanOnly]);
-
+    if (authLoading) return;
+    if (authError) { setError(authError); setLoading(false); return; }
+    if (busy.current) return busy.current;
+    const owner = user?.userId;
+    const id = ++requestId.current;
+    const current = () => id === requestId.current && identityRef.current === owner;
+    const task = (async () => {
+      const iosReader = isNativeIosShell();
+      try {
+        const sitePlan = SITE_EMBED && !iosReader ? await fetchSitePlan() : null;
+        if (!current()) return;
+        // A verified paid plan is sufficient to open its desks immediately.
+        // Catalog/simulation metadata must not hold an Elite account on a spinner.
+        if (sitePlan?.hasSubscription && applySitePlanOnly(sitePlan)) {
+          setError(null); setLoading(false); return;
+        }
+        if (!isAuthenticated && !iosReader) {
+          setActive([]); setSimulation(null); setPlan(DEFAULT_PLAN); setHasAnnual(false);
+          setError(null); return;
+        }
+        if (iosReader) { applyModulesPayload({}); setError(null); return; }
+        const data = await apiGet<{
+          active: string[]; catalog: ModuleCatalog; hasAnnual?: boolean; annualPrice?: number;
+          simulation?: SimulationStatus; tier?: PricingTierId; selectedMarkets?: string[];
+          allowedMarkets?: string[]; features?: Record<string, boolean>; entitlements?: string[];
+        }>(`/advisor/modules/${owner ?? getUserId()}`);
+        if (current()) { applyModulesPayload(data); setError(null); }
+      } catch (e) {
+        if (current()) setError(e instanceof Error ? e.message : "Access check unavailable. Please retry.");
+        // A failed read is not a downgrade. Do not clear a verified plan on 5xx.
+      } finally { if (current()) setLoading(false); }
+    })();
+    busy.current = task;
+    try { await task; } finally { if (busy.current === task) busy.current = null; }
+  }, [authLoading, authError, isAuthenticated, user?.userId, applyModulesPayload, applySitePlanOnly]);
   const triggerWinHook = useCallback(async (module: string) => {
     if (hasAnnual) return;
     try {
       const story = await apiGet<WinStory>(`/advisor/win-hook/${module}`);
-      setWinStory(story);
-      setWinModule(module);
-      setWinOpen(true);
-    } catch {
-      /* ignore */
-    }
+      setWinStory(story); setWinModule(module); setWinOpen(true);
+    } catch { /* Optional story is not on the access path. */ }
   }, [hasAnnual]);
-
   const subscribeModule = useCallback(async (module: string) => {
-    // Store payments: never start Stripe Checkout inside the native WebView.
     if (isNativeShell()) {
-      if (isNativeIapAvailable()) {
-        requestNativeIapPurchase("lite", getUserId());
-        return;
-      }
+      if (isNativeIapAvailable()) requestNativeIapPurchase("lite", getUserId());
       return;
     }
-    if (!getAccessToken()) {
-      openAuth("register");
+    if (!isAuthenticated) { openAuth("register"); return; }
+    const res = await apiPost<{ checkoutUrl?: string; demoMode?: boolean }>("/advisor/billing/module-checkout", {
+      module, user_id: getUserId(), acquisition_channel: resolveAcquisitionChannel(),
+      success_url: `${window.location.origin}/?sub=${module}`, cancel_url: window.location.href,
+    });
+    if (res.checkoutUrl) window.location.href = res.checkoutUrl;
+    else { await refresh(); window.dispatchEvent(new Event("motivefx:platform-setup")); await triggerWinHook(module === "bundle" ? "trades" : module); }
+  }, [refresh, triggerWinHook, openAuth, isAuthenticated]);
+  const subscribeTier = useCallback(async (tier: PricingTierId, selectedMarkets: string[] = []) => {
+    if (isNativeShell()) {
+      if (isNativeIapAvailable()) requestNativeIapPurchase(tier, getUserId());
       return;
     }
-    const acquisition_channel = resolveAcquisitionChannel();
-    const res = await apiPost<{ checkoutUrl?: string; demoMode?: boolean }>(
-      "/advisor/billing/module-checkout",
-      {
-        module,
-        user_id: getUserId(),
-        acquisition_channel,
-        success_url: `${window.location.origin}/?sub=${module}`,
-        cancel_url: window.location.href,
-      }
-    );
-    if (res.checkoutUrl) {
-      window.location.href = res.checkoutUrl;
-    } else {
-      await refresh();
-      window.dispatchEvent(new Event("motivefx:platform-setup"));
-      await triggerWinHook(module === "bundle" ? "trades" : module);
-    }
-  }, [refresh, triggerWinHook, openAuth]);
-
-  const subscribeTier = useCallback(
-    async (tier: PricingTierId, selectedMarkets: string[] = []) => {
-      if (isNativeShell()) {
-        if (isNativeIapAvailable()) {
-          requestNativeIapPurchase(tier, getUserId());
-          return;
-        }
-        return;
-      }
-      if (!getAccessToken()) {
-        openAuth("register");
-        return;
-      }
-      const acquisition_channel = resolveAcquisitionChannel();
-      const res = await apiPost<{
-        checkoutUrl?: string;
-        demoMode?: boolean;
-        tier?: PricingTierId;
-        message?: string;
-      }>("/advisor/billing/tier-checkout", {
-        tier,
-        selected_markets: selectedMarkets,
-        user_id: getUserId(),
-        acquisition_channel,
-        success_url: `${window.location.origin}/?tier=${tier}`,
-        cancel_url: `${window.location.origin}/#pricing`,
-      });
-      if (res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
-      } else {
-        await refresh();
-        window.dispatchEvent(new Event("motivefx:platform-setup"));
-        window.dispatchEvent(new Event("motivefx:entitlements-changed"));
-      }
-    },
-    [refresh, openAuth]
-  );
-
+    if (!isAuthenticated) { openAuth("register"); return; }
+    const res = await apiPost<{ checkoutUrl?: string; demoMode?: boolean; tier?: PricingTierId; message?: string }>("/advisor/billing/tier-checkout", {
+      tier, selected_markets: selectedMarkets, user_id: getUserId(), acquisition_channel: resolveAcquisitionChannel(),
+      success_url: `${window.location.origin}/?tier=${tier}`, cancel_url: `${window.location.origin}/#pricing`,
+    });
+    if (res.checkoutUrl) window.location.href = res.checkoutUrl;
+    else { await refresh(); window.dispatchEvent(new Event("motivefx:platform-setup")); window.dispatchEvent(new Event("motivefx:entitlements-changed")); }
+  }, [refresh, openAuth, isAuthenticated]);
   const subscribeAnnual = useCallback(async () => {
-    if (isNativeShell()) {
-      if (isNativeIapAvailable()) {
-        requestNativeIapPurchase("elite", getUserId());
-        return;
-      }
-      return;
-    }
-    if (!getAccessToken()) {
-      openAuth("register");
-      return;
-    }
-    const acquisition_channel = resolveAcquisitionChannel();
-    const res = await apiPost<{ checkoutUrl?: string; demoMode?: boolean }>(
-      "/advisor/billing/annual-checkout",
-      {
-        user_id: getUserId(),
-        acquisition_channel,
-        success_url: `${window.location.origin}/?annual=1`,
-        cancel_url: window.location.href,
-      }
-    );
-    if (res.checkoutUrl) {
-      window.location.href = res.checkoutUrl;
-    } else {
-      await refresh();
-      setWinOpen(false);
-      window.dispatchEvent(new Event("motivefx:platform-setup"));
-    }
-  }, [refresh, openAuth]);
-
+    if (isNativeShell()) { if (isNativeIapAvailable()) requestNativeIapPurchase("elite", getUserId()); return; }
+    if (!isAuthenticated) { openAuth("register"); return; }
+    const res = await apiPost<{ checkoutUrl?: string; demoMode?: boolean }>("/advisor/billing/annual-checkout", {
+      user_id: getUserId(), acquisition_channel: resolveAcquisitionChannel(),
+      success_url: `${window.location.origin}/?annual=1`, cancel_url: window.location.href,
+    });
+    if (res.checkoutUrl) window.location.href = res.checkoutUrl;
+    else { await refresh(); setWinOpen(false); window.dispatchEvent(new Event("motivefx:platform-setup")); }
+  }, [refresh, openAuth, isAuthenticated]);
   useEffect(() => {
-    const onAuth = () => {
-      refresh();
-    };
-    const onEntitlements = () => {
-      refresh();
-    };
+    const onAuth = () => { void refresh(); };
     window.addEventListener("motivefx:auth-changed", onAuth);
-    window.addEventListener("motivefx:entitlements-changed", onEntitlements);
-    return () => {
-      window.removeEventListener("motivefx:auth-changed", onAuth);
-      window.removeEventListener("motivefx:entitlements-changed", onEntitlements);
-    };
+    window.addEventListener("motivefx:entitlements-changed", onAuth);
+    return () => { window.removeEventListener("motivefx:auth-changed", onAuth); window.removeEventListener("motivefx:entitlements-changed", onAuth); };
   }, [refresh]);
-
   useEffect(() => {
-    async function init() {
-      if (authLoading) return;
-
-      syncNativeShellDocumentClass();
-      setLoading(true);
-      const iosReader = isNativeIosShell();
-      // Auth boot already warmed /api/auth/me via shared cache — just read plan.
-      const sitePlan = SITE_EMBED && !iosReader ? await fetchSitePlan() : null;
-
-      /* Cookie-auth site embed has no bearer token — still load modules + sim trial. */
-      const hasBearer = Boolean(getAccessToken());
-      if (!hasBearer && !SITE_EMBED) {
-        if (iosReader) applyModulesPayload({});
-        setLoading(false);
-        return;
-      }
-
-      if (hasBearer && !iosReader) {
-        try {
-          await apiPost("/advisor/demo/setup", { user_id: getUserId(), force: false });
-        } catch {
-          /* ok */
-        }
-      }
-
-      const params = new URLSearchParams(window.location.search);
-      const sub = params.get("sub");
-      const annual = params.get("annual");
-      if (sub || annual) {
-        window.history.replaceState({}, "", window.location.pathname);
-      }
-
-      let isAnnual = Boolean(sitePlan?.hasSubscription && sitePlan.tier === "elite");
-      try {
-        const data = await apiGet<{
-          active: string[];
-          catalog: ModuleCatalog;
-          hasAnnual?: boolean;
-          annualPrice?: number;
-          simulation?: SimulationStatus;
-          tier?: PricingTierId;
-          selectedMarkets?: string[];
-          allowedMarkets?: string[];
-          features?: Record<string, boolean>;
-          entitlements?: string[];
-        }>(`/advisor/modules/${getUserId()}`);
-
-        const merged = applySitePlanToModulesPayload(data, sitePlan, {
-          ignorePaid: iosReader,
-        });
-        applyModulesPayload(merged);
-        isAnnual = iosReader ? false : (merged.hasAnnual ?? isAnnual);
-      } catch {
-        if (iosReader) {
-          applyModulesPayload({});
-          isAnnual = false;
-        } else if (sitePlan?.hasSubscription) {
-          const merged = applySitePlanToModulesPayload(
-            { active: [], catalog: {}, allowedMarkets: [], hasAnnual: false },
-            sitePlan
-          );
-          applyModulesPayload(merged);
-          isAnnual = merged.hasAnnual ?? isAnnual;
-        } else if (SITE_EMBED) {
-          applySitePlanOnly(sitePlan);
-        } else {
-          setActive([]);
-        }
-      } finally {
-        setLoading(false);
-      }
-
-      if (iosReader) {
-        /* no win-hook / subscribe upsells on iOS free reader */
-      } else if (annual) {
-        /* refresh already applied via annual checkout */
-      } else if (sub && !isAnnual) {
-        triggerWinHook(sub);
-      } else if (
-        !isAnnual &&
-        !sitePlan?.hasSubscription &&
-        !sessionStorage.getItem("motivefx_welcome_hook")
-      ) {
-        sessionStorage.setItem("motivefx_welcome_hook", "1");
-        setTimeout(() => triggerWinHook("betting"), 2500);
-      }
-    }
-    init();
-  }, [triggerWinHook, isAuthenticated, authLoading, applyModulesPayload, applySitePlanOnly]);
-
+    // Invalidate work from another account before any plan can be applied.
+    requestId.current++; busy.current = null;
+    setActive([]); setSimulation(null); setPlan(DEFAULT_PLAN); setHasAnnual(false); setLoading(true);
+  }, [user?.userId]);
+  useEffect(() => { if (!authLoading) void refresh(); }, [authLoading, refresh]);
   const allowedMarkets = plan.allowedMarkets;
-
-  const hasModule = useCallback(
-    (module: string) => {
-      // iOS App Store free informational reader: always allow viewing market tabs
-      // (monitor-only). Guest, signed-in, and expired-simulation must NOT be blocked.
-      if (isNativeIosShell()) return true;
-      if (typeof window !== "undefined") {
-        const demo =
-          new URLSearchParams(window.location.search).get("demo") === "1" ||
-          document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1"));
-        if (demo) return true;
-      }
-      if (active.includes(module) && allowedMarkets.includes(module)) return true;
-      return Boolean(simulation?.active && simulation.modules.includes(module));
-    },
-    [active, allowedMarkets, simulation]
-  );
-
-  const hasFeature = useCallback(
-    (feature: EntitlementFeature) => {
-      if (isNativeIosShell()) {
-        return hasFeatureFromMap(iosFreeReaderPlan().features, feature);
-      }
-      return hasFeatureFromMap(plan.features, feature);
-    },
-    [plan.features]
-  );
-
-  const isSimulationOnly = useCallback(
-    (module: string) => {
-      // iOS free reader: never frame content as a paid simulation upsell.
-      if (isNativeIosShell()) return false;
-      if (active.includes(module) && allowedMarkets.includes(module)) return false;
-      return Boolean(simulation?.active && simulation.modules.includes(module));
-    },
-    [active, allowedMarkets, simulation]
-  );
-
-  return (
-    <ModulesContext.Provider
-      value={{
-        active,
-        catalog,
-        loading,
-        hasAnnual,
-        annualPrice,
-        simulation,
-        tier: plan.tier,
-        plan,
-        allowedMarkets,
-        hasModule,
-        hasFeature,
-        isSimulationOnly,
-        refresh,
-        triggerWinHook,
-        subscribeModule,
-        subscribeAnnual,
-        subscribeTier,
-      }}
-    >
-      {children}
-      {winOpen && winStory && !hasAnnual && !isNativeIosShell() && (
-        <WinHookModal
-          story={winStory}
-          subscribedModule={winModule}
-          annualPrice={annualPrice}
-          onUpgrade={subscribeAnnual}
-          onDismiss={() => setWinOpen(false)}
-        />
-      )}
-    </ModulesContext.Provider>
-  );
+  const hasModule = useCallback((module: string) => {
+    if (isNativeIosShell()) return true;
+    if (typeof window !== "undefined") {
+      const demo = new URLSearchParams(window.location.search).get("demo") === "1" || document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1"));
+      if (demo) return true;
+    }
+    if (active.includes(module) && allowedMarkets.includes(module)) return true;
+    return Boolean(simulation?.active && simulation.modules.includes(module));
+  }, [active, allowedMarkets, simulation]);
+  const hasFeature = useCallback((feature: EntitlementFeature) => {
+    if (isNativeIosShell()) return hasFeatureFromMap(iosFreeReaderPlan().features, feature);
+    return hasFeatureFromMap(plan.features, feature);
+  }, [plan.features]);
+  const isSimulationOnly = useCallback((module: string) => {
+    if (isNativeIosShell()) return false;
+    if (active.includes(module) && allowedMarkets.includes(module)) return false;
+    return Boolean(simulation?.active && simulation.modules.includes(module));
+  }, [active, allowedMarkets, simulation]);
+  return <ModulesContext.Provider value={{ active, catalog, loading, error, hasAnnual, annualPrice, simulation,
+    tier: plan.tier, plan, allowedMarkets, hasModule, hasFeature, isSimulationOnly, refresh, triggerWinHook,
+    subscribeModule, subscribeAnnual, subscribeTier }}>
+    {children}
+    {winOpen && winStory && !hasAnnual && !isNativeIosShell() && <WinHookModal story={winStory} subscribedModule={winModule}
+      annualPrice={annualPrice} onUpgrade={subscribeAnnual} onDismiss={() => setWinOpen(false)} />}
+  </ModulesContext.Provider>;
 }
-
 export function useModules() {
   const ctx = useContext(ModulesContext);
   if (!ctx) throw new Error("useModules must be used within ModulesProvider");

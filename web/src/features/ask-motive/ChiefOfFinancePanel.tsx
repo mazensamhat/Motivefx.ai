@@ -33,8 +33,8 @@ interface Props {
   initialPrompt?: { id: number; text: string } | null;
 }
 export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate, initialPrompt }: Props) {
-  const { isAuthenticated, openAuth, user } = useAuth();
-  const { hasFeature, loading } = useModules();
+  const { isAuthenticated, openAuth, user, error: authError, refreshUser } = useAuth();
+  const { hasFeature, loading, error: accessError, refresh: refreshAccess } = useModules();
   const unlocked = hasFeature("ask_motive");
   const { messages, sending, error, followUps, degraded, send, retry, cancel, reset } = useChiefChat({ activeTab, onNavigate, userId: user?.userId });
   const [draft, setDraft] = useState("");
@@ -45,11 +45,9 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate, init
   const previousUser = useRef(user?.userId);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-
   useEffect(() => {
     if (open && initialPrompt && consumedPrompt.current !== initialPrompt.id) {
       consumedPrompt.current = initialPrompt.id;
-      // Preserve the selected question through login/entitlement loading. Sending stays explicit.
       setDraft(initialPrompt.text);
       inputRef.current?.focus();
     }
@@ -74,11 +72,8 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate, init
     window.addEventListener("keydown", onKey);
     return () => { clearTimeout(focusTimer); window.removeEventListener("keydown", onKey); previous?.focus(); };
   }, [open]);
-  useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, sending, open, followUps]);
+  useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [messages, sending, open, followUps]);
   if (!open) return null;
-
   async function submit(text?: string) {
     const value = (text ?? draft).trim();
     if (!value || sending) return;
@@ -89,25 +84,17 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate, init
   const body = <div className="chief-overlay" role="presentation" onClick={onClose}>
     <aside ref={panelRef} className="chief-panel glass-panel chief-panel-enter" role="dialog" aria-modal="true" aria-labelledby="chief-title" onClick={(e) => e.stopPropagation()}>
       <header className="chief-header">
-        <div className="chief-header-copy">
-          <span className="chief-kicker"><Sparkles size={14} aria-hidden /> MotiveFX</span>
-          <h2 id="chief-title">Your A.I. Chief of Finance</h2>
-          <p className="chief-sub">{subtitleForTab(activeTab)}</p>
-        </div>
+        <div className="chief-header-copy"><span className="chief-kicker"><Sparkles size={14} aria-hidden /> MotiveFX</span><h2 id="chief-title">Your A.I. Chief of Finance</h2><p className="chief-sub">{subtitleForTab(activeTab)}</p></div>
         <button type="button" className="btn-icon chief-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
       </header>
-      {loading ? <div className="chief-locked" role="status">Checking your access…</div> : !isAuthenticated ? (
-        <div className="chief-locked"><Lock size={22} /><p>{isNativeIosShell() ? "Sign in (optional) to sync your ledger with your Chief of Finance." : "Sign in to talk with your A.I. Chief of Finance."}</p>
-          <button type="button" className="btn btn-accent-terminal btn-sm" onClick={() => openAuth("login")}>{isNativeIosShell() ? "Sign in (optional)" : "Sign in"}</button></div>
+      {(authError || accessError) && (!isAuthenticated || !unlocked) ? <div className="chief-locked" role="alert"><p>{authError || accessError}</p><p>Ask Motive cannot verify access yet. Your question is retained.</p><button type="button" className="btn" onClick={() => { if (authError) void refreshUser(); else void refreshAccess(); }}>Retry account check</button></div> : loading ? <div className="chief-locked" role="status">Checking your access…</div> : !isAuthenticated ? (
+        <div className="chief-locked"><Lock size={22} /><p>{isNativeIosShell() ? "Sign in (optional) to sync your ledger with your Chief of Finance." : "Sign in to talk with your A.I. Chief of Finance."}</p><button type="button" className="btn btn-accent-terminal btn-sm" onClick={() => openAuth("login")}>{isNativeIosShell() ? "Sign in (optional)" : "Sign in"}</button></div>
       ) : !unlocked ? (
-        <div className="chief-locked"><Lock size={22} />{isNativeIosShell() ? (
-          <p>Your A.I. Chief of Finance is part of this free informational reader. Market insights stay available without any purchase.</p>
-        ) : <><p>Unlock <strong>A.I. Chief of Finance</strong> on {requiredTierLabel("ask_motive")} or higher with an active plan.</p>
-          {isNativeShell() ? <p className="chief-locked-hint">Open Account → plans when store billing is available, or use an account that already includes this feature.</p> : <a className="btn btn-accent-terminal btn-sm" href="/pricing">View plans</a>}</>}</div>
+        <div className="chief-locked"><Lock size={22} />{isNativeIosShell() ? <p>Your A.I. Chief of Finance is part of this free informational reader. Market insights stay available without any purchase.</p>
+          : <><p>Unlock <strong>A.I. Chief of Finance</strong> on {requiredTierLabel("ask_motive")} or higher with an active plan.</p>{isNativeShell() ? <p className="chief-locked-hint">Open Account → plans when store billing is available, or use an account that already includes this feature.</p> : <a className="btn btn-accent-terminal btn-sm" href="/pricing">View plans</a>}</>}</div>
       ) : <>
         <div className="chief-messages" ref={listRef} role="log" aria-label="Conversation" aria-live="polite">
-          {!messages.length && <div className="chief-welcome"><p>Ask me to review your book, explain a ticker, surface today's signals, or help you navigate a desk.</p>
-            <div className="chief-chips">{SUGGESTIONS_BY_TAB[activeTab].map((s) => <button key={s} type="button" className="chief-chip" disabled={sending} onClick={() => void submit(s === "Explain this desk" ? `Explain the ${activeTab} desk` : s)}>{s}</button>)}</div></div>}
+          {!messages.length && <div className="chief-welcome"><p>Ask me to review your book, explain a ticker, surface today's signals, or help you navigate a desk.</p><div className="chief-chips">{SUGGESTIONS_BY_TAB[activeTab].map((s) => <button key={s} type="button" className="chief-chip" disabled={sending} onClick={() => void submit(s === "Explain this desk" ? `Explain the ${activeTab} desk` : s)}>{s}</button>)}</div></div>}
           {messages.map((m) => <div key={m.id} className={`chief-bubble chief-bubble-${m.role}`}>{m.content.split("\n").map((line, i) => <p key={`${m.id}-${i}`}>{formatInline(line)}</p>)}</div>)}
           {sending && <div className="chief-bubble chief-bubble-assistant chief-typing" role="status">Checking your question and available evidence…</div>}
           {!sending && followUps.length > 0 && <div className="chief-chips chief-followups">{followUps.map((s) => <button key={s} type="button" className="chief-chip" onClick={() => void submit(s)}>{s}</button>)}</div>}
@@ -124,6 +111,4 @@ export function ChiefOfFinancePanel({ open, onClose, activeTab, onNavigate, init
   </div>;
   return createPortal(body, document.body);
 }
-function formatInline(line: string) {
-  return line.split(/(\*\*[^*]+\*\*)/g).map((part, i) => part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>);
-}
+function formatInline(line: string) { return line.split(/(\*\*[^*]+\*\*)/g).map((part, i) => part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>); }

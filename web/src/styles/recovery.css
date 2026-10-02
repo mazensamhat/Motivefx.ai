@@ -1,0 +1,8 @@
+.saved-ledger-tools { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:.75rem; padding:1rem; border-bottom:1px solid var(--border); }
+.saved-ledger-tools label, .portfolio-form label { display:flex; flex-direction:column; gap:.35rem; font-size:.78rem; color:var(--text-muted); }
+.saved-ledger-tools select { padding:.5rem; border-radius:.5rem; background:var(--bg-card); color:var(--text); border:1px solid var(--border); }
+.saved-position-details { padding:1rem; color:var(--text); }
+.saved-position-details dl { display:grid; grid-template-columns:minmax(100px, .4fr) 1fr; gap:.45rem 1rem; }
+.saved-position-details dt { color:var(--text-muted); }
+.saved-position-details dd { margin:0; overflow-wrap:anywhere; }
+.saved-position-details p { color:var(--text-muted); font-size:.8rem; }
