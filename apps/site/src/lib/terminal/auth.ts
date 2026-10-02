@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { prisma } from "@motivefx/database";
 import { forbidden, unauthorized } from "../api";
 import { findUserSafe, findUserSafeCached } from "../load-user";
@@ -21,13 +22,25 @@ function touchLastSeen(userId: string) {
   const prev = lastSeenAt.get(userId) ?? 0;
   if (now - prev < LAST_SEEN_TTL_MS) return;
   lastSeenAt.set(userId, now);
-  // Fire-and-forget; never block the request or hold the pool waiting.
-  void prisma.user
-    .update({
-      where: { id: userId },
-      data: { lastSeenAt: new Date() },
-    })
-    .catch(() => undefined);
+  const releaseClaim = () => {
+    if (lastSeenAt.get(userId) === now) lastSeenAt.delete(userId);
+  };
+  try {
+    // Register before returning; Next keeps this write attached to the request lifecycle.
+    after(async () => {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { lastSeenAt: new Date(now) },
+        });
+      } catch {
+        releaseClaim();
+      }
+    });
+  } catch {
+    // Optional telemetry cannot break authorization or fall back to an untracked write.
+    releaseClaim();
+  }
 }
 
 export async function requireTerminalSession(): Promise<
