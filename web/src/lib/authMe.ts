@@ -1,79 +1,42 @@
-/**
- * Single-flight + short TTL for /api/auth/me.
- * On reload the app used to fire this 4–6 times in parallel and abort at 8s.
- */
-
-export type AuthMePayload = {
-  user?: {
-    id?: string;
-    email?: string;
-    isAdmin?: boolean;
-    totpEnabled?: boolean;
-    intelligenceTier?: string;
-    selectedMarkets?: string[];
-    hasSubscription?: boolean;
-    [key: string]: unknown;
-  };
-};
-
-type Cache = {
-  data: AuthMePayload | null;
-  expires: number;
-  inflight: Promise<AuthMePayload | null> | null;
-};
-
-const TTL_MS = 15_000;
-const FETCH_MS = 25_000;
-
-const g = globalThis as unknown as { __motivefxAuthMe?: Cache };
-if (!g.__motivefxAuthMe) {
-  g.__motivefxAuthMe = { data: null, expires: 0, inflight: null };
-}
-
-async function fetchAuthMeOnce(): Promise<AuthMePayload | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
-  try {
-    const res = await fetch("/api/auth/me", {
-      cache: "no-store",
-      credentials: "same-origin",
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as AuthMePayload;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+/** Single-flight session lookup. Only a real 401 is a signed-out result. */
+export type AuthMePayload = { user?: { id?: string; email?: string; isAdmin?: boolean;
+  totpEnabled?: boolean; intelligenceTier?: string; selectedMarkets?: string[];
+  hasSubscription?: boolean; [key: string]: unknown } };
+export class SessionLookupError extends Error {
+  constructor(message = "We could not verify your session. Your saved data has not been cleared. Please retry.") {
+    super(message); this.name = "SessionLookupError";
   }
 }
-
-/** Shared /api/auth/me — dedupes concurrent callers during boot/reload. */
+const TTL_MS = 15_000;
+let generation = 0;
+let cached: { data: AuthMePayload | null; expires: number } | null = null;
+let inflight: Promise<AuthMePayload | null> | null = null;
 export async function fetchAuthMe(force = false): Promise<AuthMePayload | null> {
-  const cache = g.__motivefxAuthMe!;
-  const now = Date.now();
-  if (!force && cache.data && cache.expires > now) return cache.data;
-  if (!force && cache.inflight) return cache.inflight;
-
-  const inflight = fetchAuthMeOnce()
-    .then((data) => {
-      cache.data = data;
-      cache.expires = Date.now() + TTL_MS;
-      cache.inflight = null;
+  // Even forced callers join one active lookup instead of multiplying DB queries.
+  if (inflight) return inflight;
+  if (!force && cached && cached.expires > Date.now()) return cached.data;
+  const epoch = generation;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12_000);
+  const request = (async () => {
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin", signal: ctrl.signal });
+      let data: AuthMePayload | null = null;
+      if (res.status !== 401) {
+        if (!res.ok) throw new SessionLookupError();
+        data = await res.json() as AuthMePayload;
+        if (!data?.user?.id || !data.user.email) throw new SessionLookupError("The session response was incomplete. Please retry.");
+      }
+      if (generation !== epoch) throw new SessionLookupError("The session changed. Please retry.");
+      cached = { data, expires: Date.now() + (data ? TTL_MS : 1_000) };
       return data;
-    })
-    .catch(() => {
-      cache.inflight = null;
-      return null;
-    });
-
-  cache.inflight = inflight;
-  return inflight;
+    } catch (e) {
+      // Never turn outages, invalid JSON or a timeout into a signed-out user.
+      throw e instanceof SessionLookupError ? e : new SessionLookupError();
+    } finally { clearTimeout(timer); }
+  })();
+  inflight = request;
+  try { return await request; }
+  finally { if (inflight === request) inflight = null; }
 }
-
-export function invalidateAuthMe() {
-  const cache = g.__motivefxAuthMe!;
-  cache.data = null;
-  cache.expires = 0;
-  cache.inflight = null;
-}
+export function invalidateAuthMe() { generation++; cached = null; inflight = null; }

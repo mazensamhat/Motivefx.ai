@@ -1,3 +1,4 @@
+import { DataHealthNotice } from "./components/DataHealthNotice";
 import { useState, useEffect } from "react";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { IntelTour } from "./components/IntelTour";
@@ -42,82 +43,50 @@ const TABS: { id: TabId; label: string; module: string }[] = [
   { id: "betting", label: "Bets", module: "betting" },
   { id: "predictions", label: "Predictions", module: "predictions" },
 ];
-
 const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
 const SITE_EMBED = import.meta.env.BASE_URL === "/terminal/";
-
 function playSafeModuleLabel(tab: { id: TabId; label: string }) {
   if (!isNativeShell()) return tab.label;
   if (tab.id === "betting") return "Odds intel";
   if (tab.id === "predictions") return "Event intel";
   return tab.label;
 }
-
-function legalHref(page: string) {
-  return SITE_EMBED ? `/terminal/?page=${page}` : `/?page=${page}`;
-}
-
+function legalHref(page: string) { return SITE_EMBED ? `/terminal/?page=${page}` : `/?page=${page}`; }
 function initialTabFromUrl(): TabId {
   const tab = new URLSearchParams(window.location.search).get("tab");
-  if (tab && TAB_IDS.has(tab as TabId)) return tab as TabId;
-  return "home";
+  return tab && TAB_IDS.has(tab as TabId) ? tab as TabId : "home";
 }
-
 export default function App() {
   const params = new URLSearchParams(window.location.search);
   const legacyAdminView = !SITE_EMBED && params.get("view") === "admin";
   const legalPage = params.get("page");
   const resetToken = params.get("token") ?? "";
-  const isPublicDemo =
-    params.get("demo") === "1" ||
-    (typeof document !== "undefined" &&
-      document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1")));
+  const isPublicDemo = params.get("demo") === "1" || (typeof document !== "undefined" && document.cookie.split(";").some((c) => c.trim().startsWith("motivefx_demo=1")));
   const [activeTab, setActiveTab] = useState<TabId>(initialTabFromUrl);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const health = useApi<{
-    feeds: Record<string, boolean>;
-    quota?: {
-      sharp_api?: { remaining: number | null; limit?: number | null };
-      the_odds_api?: { remaining: number | null; used: number | null };
-    };
-  }>("/health", 60_000);
+  const health = useApi<{ feeds: Record<string, boolean>; quota?: {
+    sharp_api?: { remaining: number | null; limit?: number | null };
+    the_odds_api?: { remaining: number | null; used: number | null };
+  } }>("/health", 60_000);
   const { badges: pulseBadges } = useModulePulse(activeTab);
   const { hasModule, annualPrice, active: activeModules } = useModules();
-  const { isAuthenticated, openAuth, isAdmin } = useAuth();
+  const { isAuthenticated, openAuth, isAdmin, loading: authLoading, error: authError, refreshUser } = useAuth();
   useModuleUsageTracker(activeTab);
   const liveCount = Object.values(health.data?.feeds ?? {}).filter(Boolean).length;
   const sharpRemaining = health.data?.quota?.sharp_api?.remaining;
   const oddsRemaining = health.data?.quota?.the_odds_api?.remaining;
-  const preferredRemaining =
-    sharpRemaining != null && Number.isFinite(sharpRemaining) ? sharpRemaining : oddsRemaining;
-  const preferredQuotaLabel =
-    sharpRemaining != null && Number.isFinite(sharpRemaining) ? "Sharp" : "Odds";
-
+  const preferredRemaining = sharpRemaining != null && Number.isFinite(sharpRemaining) ? sharpRemaining : oddsRemaining;
+  const preferredQuotaLabel = sharpRemaining != null && Number.isFinite(sharpRemaining) ? "Sharp" : "Odds";
   const active = TABS.find((t) => t.id === activeTab)!;
-
   useEffect(() => {
-    const onEntitlements = () => {
-      if (activeTab !== "home" && !hasModule(active.module)) {
-        setActiveTab("home");
-      }
-    };
+    const onEntitlements = () => { if (activeTab !== "home" && !hasModule(active.module)) setActiveTab("home"); };
     window.addEventListener("motivefx:entitlements-changed", onEntitlements);
     return () => window.removeEventListener("motivefx:entitlements-changed", onEntitlements);
   }, [activeTab, active.module, hasModule]);
-
-  useEffect(() => {
-    syncNativeShellDocumentClass();
-  }, []);
-
-  const statusLabel =
-    preferredRemaining != null && Number.isFinite(preferredRemaining)
-      ? `${preferredQuotaLabel} ${Math.round(preferredRemaining).toLocaleString()} left`
-      : health.data?.feeds?.openai
-        ? "GPT insights live"
-        : liveCount > 0
-          ? `${liveCount} feeds`
-          : "Free data mode";
-
+  useEffect(() => { syncNativeShellDocumentClass(); }, []);
+  const statusLabel = preferredRemaining != null && Number.isFinite(preferredRemaining)
+    ? `${preferredQuotaLabel} ${Math.round(preferredRemaining).toLocaleString()} left`
+    : health.data?.feeds?.openai ? "GPT insights live" : liveCount > 0 ? `${liveCount} feeds` : "Free data mode";
   if (legalPage === "privacy") return <PrivacyPage />;
   if (legalPage === "terms") return <TermsPage />;
   if (legalPage === "data-deletion") return <DataDeletionPage />;
@@ -125,115 +94,52 @@ export default function App() {
   if (legalPage === "disclaimer") return <DisclaimerPage />;
   if (legalPage === "forgot-password") return <ForgotPasswordPage />;
   if (legalPage === "reset-password") return <ResetPasswordPage token={resetToken} />;
-
-  if (legacyAdminView) {
-    return <AdminDashboard />;
-  }
-
-  return (
-    <div className="app app-terminal" data-theme={TAB_TO_BRAND[activeTab]}>
-      {!isAuthenticated && !SITE_EMBED && (
-        <div className="launch-banner">
-          <span>Create a free account to secure your data before launch.</span>
-          <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>
-            Get started
-          </button>
-        </div>
-      )}
-      {isPublicDemo && !isAuthenticated && (
-        <div className="launch-banner" style={{ background: "rgba(34, 197, 94, 0.12)" }}>
-          <span>
-            {isNativeIosShell()
-              ? "Free informational reader — browse market insights without an account. Sign-in is optional."
-              : "Read-only public demo — sample & live feeds for exploration. Sign up to save portfolios."}
-          </span>
-          {isNativeIosShell() ? (
-            <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("login")}>
-              Sign in (optional)
-            </button>
-          ) : isNativeShell() ? (
-            <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>
-              Create account
-            </button>
-          ) : (
-            <a className="btn btn-annual-cta" href="/pricing">
-              Start free trial
-            </a>
-          )}
-        </div>
-      )}
-      <PlatformSetupGate activeModules={activeModules} />
-      <IntelTour />
-      {glossaryOpen && <SignalGlossaryModal onClose={() => setGlossaryOpen(false)} />}
-      <div className="app-body">
-        <ModuleSidebar
-          activeTab={activeTab}
-          onSelect={setActiveTab}
-          hasModule={hasModule}
-          statusLabel={statusLabel}
-          pulseBadges={pulseBadges}
-          onOpenGlossary={() => setGlossaryOpen(true)}
-        />
-
-        <div className="app-content">
-          <WorkspaceHeader
-            activeTab={activeTab}
-            statusLabel={statusLabel}
-            onSelectTab={setActiveTab}
-            onOpenGlossary={() => setGlossaryOpen(true)}
-          />
-          <LiveFeed />
-
-          <main className="main terminal-main">
-            {activeTab === "home" ? (
-              <MotiveV2Home onNavigate={setActiveTab} />
-            ) : (
-              <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
-                {activeTab === "stocks" && <TabStocks />}
-                {activeTab === "penny" && <TabPenny />}
-                {activeTab === "crypto" && <TabCrypto />}
-                {activeTab === "betting" && <TabBetting />}
-                {activeTab === "predictions" && <TabPredictions />}
-              </ModuleGate>
-            )}
-            <TierPricing />
-          </main>
-
-          <footer className="app-footer">
-            {/* Desktop: fuller copy. Mobile: short lines + links (see CSS + .mobile / .desktop variants). */}
-            <div className="app-footer-legal-desktop">
-              <FinancialDisclaimer compact />
-              {!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} />}
-            </div>
-            <div className="app-footer-legal-mobile">
-              <FinancialDisclaimer mobile />
-              {!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} compact />}
-            </div>
-            <div className="app-footer-links">
-              {!isNativeIosShell() && (
-                <a href="/legal-documents.html" target="_blank" rel="noreferrer">
-                  Legal
-                </a>
-              )}
-              <a href={legalHref("privacy")}>Privacy</a>
-              <a href={legalHref("terms")}>Terms</a>
-              <a href={legalHref("data-deletion")}>Data deletion</a>
-              {!isNativeIosShell() && <a href={legalHref("cookies")}>Cookies</a>}
-              <a href={legalHref("disclaimer")}>Disclaimer</a>
-              {SITE_EMBED && !isNativeShell() && <a href="/app/settings">Site account</a>}
-              {SITE_EMBED && isAdmin && !isNativeShell() && <a href="/admin">Ops Console</a>}
-              {!SITE_EMBED && (
-                <a href="?view=admin" className="admin-footer-link">
-                  Ops Console
-                </a>
-              )}
-            </div>
-          </footer>
-        </div>
+  if (legacyAdminView) return <AdminDashboard />;
+  return <div className="app app-terminal" data-theme={TAB_TO_BRAND[activeTab]}>
+    {!isAuthenticated && !SITE_EMBED && !authLoading && !authError && <div className="launch-banner">
+      <span>Create a free account to secure your data before launch.</span><button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>Get started</button>
+    </div>}
+    {isPublicDemo && !isAuthenticated && !authLoading && !authError && <div className="launch-banner" style={{ background: "rgba(34, 197, 94, 0.12)" }}>
+      <span>{isNativeIosShell() ? "Free informational reader — browse market insights without an account. Sign-in is optional." : "Read-only public demo — sample & live feeds for exploration. Sign up to save portfolios."}</span>
+      {isNativeIosShell() ? <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("login")}>Sign in (optional)</button>
+        : isNativeShell() ? <button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>Create account</button>
+        : <a className="btn btn-annual-cta" href="/pricing">Start free trial</a>}
+    </div>}
+    {authError && <div className="launch-banner" role="alert"><span>{authError}</span><button className="btn" type="button" onClick={() => void refreshUser()}>Retry account</button></div>}
+    <PlatformSetupGate activeModules={activeModules} />
+    <IntelTour />
+    {glossaryOpen && <SignalGlossaryModal onClose={() => setGlossaryOpen(false)} />}
+    <div className="app-body">
+      <ModuleSidebar activeTab={activeTab} onSelect={setActiveTab} hasModule={hasModule} statusLabel={statusLabel} pulseBadges={pulseBadges} onOpenGlossary={() => setGlossaryOpen(true)} />
+      <div className="app-content">
+        <WorkspaceHeader activeTab={activeTab} statusLabel={statusLabel} onSelectTab={setActiveTab} onOpenGlossary={() => setGlossaryOpen(true)} />
+        <LiveFeed />
+        <main className="main terminal-main">
+          <DataHealthNotice />
+          {activeTab === "home" ? <MotiveV2Home onNavigate={setActiveTab} /> : <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
+            {activeTab === "stocks" && <TabStocks />}
+            {activeTab === "penny" && <TabPenny />}
+            {activeTab === "crypto" && <TabCrypto />}
+            {activeTab === "betting" && <TabBetting />}
+            {activeTab === "predictions" && <TabPredictions />}
+          </ModuleGate>}
+          <TierPricing />
+        </main>
+        <footer className="app-footer">
+          <div className="app-footer-legal-desktop"><FinancialDisclaimer compact />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} />}</div>
+          <div className="app-footer-legal-mobile"><FinancialDisclaimer mobile />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} compact />}</div>
+          <div className="app-footer-links">
+            {!isNativeIosShell() && <a href="/legal-documents.html" target="_blank" rel="noreferrer">Legal</a>}
+            <a href={legalHref("privacy")}>Privacy</a><a href={legalHref("terms")}>Terms</a><a href={legalHref("data-deletion")}>Data deletion</a>
+            {!isNativeIosShell() && <a href={legalHref("cookies")}>Cookies</a>}<a href={legalHref("disclaimer")}>Disclaimer</a>
+            {SITE_EMBED && !isNativeShell() && <a href="/app/settings">Site account</a>}
+            {SITE_EMBED && isAdmin && !isNativeShell() && <a href="/admin">Ops Console</a>}
+            {!SITE_EMBED && <a href="?view=admin" className="admin-footer-link">Ops Console</a>}
+          </div>
+        </footer>
       </div>
-
-      <MobileBottomNav activeTab={activeTab} onSelect={setActiveTab} />
-      <ChiefOfFinanceAssistant activeTab={activeTab} onNavigate={setActiveTab} />
     </div>
-  );
+    <MobileBottomNav activeTab={activeTab} onSelect={setActiveTab} />
+    <ChiefOfFinanceAssistant activeTab={activeTab} onNavigate={setActiveTab} />
+  </div>;
 }

@@ -11,8 +11,8 @@ const AGE_GATED = new Set(["betting", "predictions"]);
 const MODULE_DEFAULT_TIER: Record<string, string> = { trades: "lite", crypto: "lite", penny: "lite", betting: "lite", predictions: "lite" };
 function isIosFreeReaderShell(): boolean { return isNativeIosShell(); }
 export function ModuleGate({ module, moduleLabel, children }: Props) {
-  const { isAuthenticated, openAuth } = useAuth();
-  const { hasModule, loading, subscribeModule, simulation } = useModules();
+  const { isAuthenticated, openAuth, error: authError, refreshUser } = useAuth();
+  const { hasModule, loading, error, refresh, subscribeModule, simulation } = useModules();
   const [ageOk, setAgeOk] = useState(() => isAgeVerified() || !AGE_GATED.has(module) || isIosFreeReaderShell());
   const [nativeIap, setNativeIap] = useState(false);
   const native = isNativeShell();
@@ -20,9 +20,13 @@ export function ModuleGate({ module, moduleLabel, children }: Props) {
   const simEligible = AGE_GATED.has(module);
   const simExpired = !iosReader && simEligible && isAuthenticated && simulation && !simulation.active;
   useEffect(() => { syncNativeShellDocumentClass(); setNativeIap(isNativeIapAvailable()); }, []);
+  if ((authError || error) && !hasModule(module)) return <section className="card" role="alert" style={{ padding: "1.5rem" }}>
+    <h2>Unable to verify access</h2><p>{authError || error}</p>
+    <p>This is not a subscription downgrade. No portfolio records have been removed by this access check.</p>
+    <button type="button" className="btn btn-primary" onClick={() => { if (authError) void refreshUser(); else void refresh(); }}>Retry access check</button>
+  </section>;
   if (loading) return <div className="loading" style={{ padding: "3rem" }}>{iosReader ? "Loading…" : "Checking subscription…"}</div>;
   if (AGE_GATED.has(module) && !ageOk) return <AgeGateModal moduleLabel={moduleLabel} onVerified={() => setAgeOk(true)} />;
-  // Existing entitlement and native-reader behavior is preserved. Only the presentation wrapper is new.
   if (iosReader || hasModule(module)) return <MarketWorkspace module={module}>{children}</MarketWorkspace>;
   function onUnlock() {
     if (native && nativeIap) { requestNativeIapPurchase(MODULE_DEFAULT_TIER[module] ?? "lite", getUserId()); return; }
