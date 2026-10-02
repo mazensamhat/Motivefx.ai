@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { json } from "@/lib/api";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { getSession } from "@/lib/session";
@@ -20,7 +21,8 @@ import type {
 import { getIntelPrefs } from "@/lib/terminal/intel-prefs";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 15;
+// Post-response alert persistence shares this lifetime; the briefing calculation timeout remains eight seconds.
+export const maxDuration = 60;
 
 function fallbackBriefing(displayName: string | null) {
   const name = (displayName ?? "Trader").split(/\s+/)[0];
@@ -71,15 +73,18 @@ function fallbackBriefing(displayName: string | null) {
 }
 
 async function withTimeout<T>(promise: Promise<T>, fallback: T, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error("timeout")), ms);
+        timer = setTimeout(() => reject(new Error("timeout")), ms);
       }),
     ]);
   } catch {
     return fallback;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -120,7 +125,8 @@ export async function GET(request: Request) {
   );
 
   if (userIdForAlerts && plan?.features.push_notifications) {
-    void (async () => {
+    const alertUserId = userIdForAlerts;
+    after(async () => {
       try {
         const radar =
           ((briefing.personalized as { radarHits?: Array<Record<string, unknown>> })?.radarHits) ??
@@ -148,7 +154,7 @@ export async function GET(request: Request) {
         }
 
         // Phase 3: evaluate custom predictive alert rules
-        const prefs = await getIntelPrefs(userIdForAlerts);
+        const prefs = await getIntelPrefs(alertUserId);
         const predictive = evaluateSignalAlertRules(prefs.alertRules as SignalAlertRule[], {
           probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
           consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
@@ -165,11 +171,11 @@ export async function GET(request: Request) {
           });
         }
 
-        if (alerts.length) await upsertAlerts(userIdForAlerts, alerts);
+        if (alerts.length) await upsertAlerts(alertUserId, alerts);
       } catch {
-        /* ignore */
+        console.warn("[home/briefing] alert_persistence_failed");
       }
-    })();
+    });
   }
 
   return json(briefing);

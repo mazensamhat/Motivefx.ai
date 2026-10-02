@@ -50,6 +50,8 @@ jobs:
       - name: Install terminal dependencies from lockfile
         working-directory: web
         run: npm ci --include=dev
+      - name: Serverless write lifecycle regressions
+        run: node --test scripts/serverless-write-lifecycle.test.cjs
       - name: Type-check terminal
         working-directory: web
         run: npm run typecheck
