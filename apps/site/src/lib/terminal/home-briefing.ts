@@ -1,7 +1,7 @@
-import { countAllHoldings, portfolioSnapshot } from "./portfolio";
+import { portfolioSnapshot } from "./portfolio";
 import { listBets } from "./bets";
 import { listPredictions } from "./predictions";
-import { listWatchlist, userTrackedSymbols } from "./watchlist";
+import { listWatchlist } from "./watchlist";
 import type { TerminalPlan } from "./plan";
 import {
   fetchCongressTrades,
@@ -164,85 +164,78 @@ function matchedFeedSignals(
   ).length;
 }
 
-async function ledgerPulse(userId: string | null, opportunities: Array<Record<string, unknown>>) {
-  if (isEphemeralUserId(userId)) {
-    return {
-      trades: 0,
-      penny: 0,
-      crypto: 0,
-      betting: 0,
-      predictions: 0,
-      matched: { trades: 0, penny: 0, crypto: 0, betting: 0, predictions: 0 },
-    };
-  }
+type HomeUserContext = {
+  counts: { trades: number; penny: number; crypto: number };
+  symbols: { trades: string[]; penny: string[]; crypto: string[] };
+  watchlist: Array<{ module: string; symbol: string; created_at: string }>;
+  bets: Awaited<ReturnType<typeof listBets>>;
+  preds: Awaited<ReturnType<typeof listPredictions>>;
+  tracked: Set<string>;
+  holdingsTotal: number;
+};
 
-  const uid = userId as string;
-  const [{ counts, symbols }, bets, preds] = await Promise.all([
-    portfolioSnapshot(uid),
-    listBets(uid),
-    listPredictions(uid),
+async function loadHomeUserContext(userId: string): Promise<HomeUserContext> {
+  const [{ counts, symbols }, watchlist, bets, preds] = await Promise.all([
+    portfolioSnapshot(userId),
+    listWatchlist(userId),
+    listBets(userId),
+    listPredictions(userId),
   ]);
-
-  const realBets = bets.filter((b) => !b.is_simulation);
-  const realPreds = preds.filter((p) => !p.is_simulation);
-
+  const tracked = new Set<string>();
+  for (const item of watchlist) tracked.add(item.symbol.toUpperCase());
+  for (const list of Object.values(symbols)) {
+    for (const symbol of list) tracked.add(symbol.toUpperCase());
+  }
   return {
-    trades: counts.trades,
-    penny: counts.penny,
-    crypto: counts.crypto,
+    counts,
+    symbols,
+    watchlist,
+    bets,
+    preds,
+    tracked,
+    holdingsTotal: counts.trades + counts.penny + counts.crypto,
+  };
+}
+
+function ledgerPulseFromContext(ctx: HomeUserContext, opportunities: Array<Record<string, unknown>>) {
+  const realBets = ctx.bets.filter((b) => !b.is_simulation);
+  const realPreds = ctx.preds.filter((p) => !p.is_simulation);
+  return {
+    trades: ctx.counts.trades,
+    penny: ctx.counts.penny,
+    crypto: ctx.counts.crypto,
     betting: realBets.length,
     predictions: realPreds.length,
     matched: {
-      trades: matchedFeedSignals("trades", symbols.trades, opportunities),
-      penny: matchedFeedSignals("penny", symbols.penny, opportunities),
-      crypto: matchedFeedSignals("crypto", symbols.crypto, opportunities),
+      trades: matchedFeedSignals("trades", ctx.symbols.trades, opportunities),
+      penny: matchedFeedSignals("penny", ctx.symbols.penny, opportunities),
+      crypto: matchedFeedSignals("crypto", ctx.symbols.crypto, opportunities),
       betting: 0,
       predictions: 0,
     },
   };
 }
 
-async function personalizedIntel(userId: string | null, opportunities: Array<Record<string, unknown>>) {
-  if (isEphemeralUserId(userId)) {
-    return {
-      holdingsCount: 0,
-      watchlistCount: 0,
-      radarSignalCount: 0,
-      coverageLine: null,
-      intelNote: "Add holdings or star symbols on your radar for personalized intel.",
-      simRecord: null,
-      radarHits: [] as Array<Record<string, unknown>>,
-    };
-  }
-
-  const uid = userId as string;
-  const [holdingsTotal, watchlist, tracked, bets, preds] = await Promise.all([
-    countAllHoldings(uid),
-    listWatchlist(uid),
-    userTrackedSymbols(uid),
-    listBets(uid),
-    listPredictions(uid),
-  ]);
-
-  const radarHits = opportunities.filter((o) => symbolMatch(tracked, String(o.symbol ?? "")));
+function personalizedIntelFromContext(ctx: HomeUserContext, opportunities: Array<Record<string, unknown>>) {
+  const radarHits = opportunities.filter((o) => symbolMatch(ctx.tracked, String(o.symbol ?? "")));
 
   let coverageLine: string | null = null;
-  if (tracked.size > 0) {
-    coverageLine = `${radarHits.length} signal${radarHits.length !== 1 ? "s" : ""} on ${tracked.size} tracked name${tracked.size !== 1 ? "s" : ""} today`;
-  } else if (holdingsTotal > 0) {
-    coverageLine = `Monitoring ${holdingsTotal} tracked holding${holdingsTotal !== 1 ? "s" : ""}`;
+  if (ctx.tracked.size > 0) {
+    coverageLine = `${radarHits.length} signal${radarHits.length !== 1 ? "s" : ""} on ${ctx.tracked.size} tracked name${ctx.tracked.size !== 1 ? "s" : ""} today`;
+  } else if (ctx.holdingsTotal > 0) {
+    coverageLine = `Monitoring ${ctx.holdingsTotal} tracked holding${ctx.holdingsTotal !== 1 ? "s" : ""}`;
   }
 
   let intelNote = "Star symbols on your radar to get signal coverage on Home.";
   if (radarHits.length) {
     const top = radarHits[0];
     intelNote = `Radar hit: ${top.symbol} — ${top.title} (${top.confidence}% signal strength).`;
-  } else if (holdingsTotal > 0) {
-    intelNote = `${holdingsTotal} holdings in your ledger — run AI Analyze on any module desk.`;
+  } else if (ctx.holdingsTotal > 0) {
+    intelNote = `${ctx.holdingsTotal} holdings in your ledger — run AI Analyze on any module desk.`;
   }
 
-  const simBets = bets.filter((b) => b.is_simulation);
-  const simPreds = preds.filter((p) => p.is_simulation);
+  const simBets = ctx.bets.filter((b) => b.is_simulation);
+  const simPreds = ctx.preds.filter((p) => p.is_simulation);
   const simWins = simBets.filter((b) => b.outcome === "won").length;
   const simLosses = simBets.filter((b) => b.outcome === "lost").length;
   let simRecord: string | null = null;
@@ -254,8 +247,8 @@ async function personalizedIntel(userId: string | null, opportunities: Array<Rec
   }
 
   return {
-    holdingsCount: holdingsTotal,
-    watchlistCount: watchlist.length,
+    holdingsCount: ctx.holdingsTotal,
+    watchlistCount: ctx.watchlist.length,
     radarSignalCount: radarHits.length,
     coverageLine,
     intelNote,
@@ -494,12 +487,12 @@ export async function buildHomeBriefing(opts: {
     predictions: top8.filter((o) => o.module === "predictions").length,
   };
 
-  const ledger = await withFeedTimeout(ledgerPulse(opts.userId ?? null, top8), emptyLedger(), 2500);
-  const personalized = await withFeedTimeout(
-    personalizedIntel(opts.userId ?? null, top8),
-    emptyPersonalized(),
-    2500
-  );
+  const uid = opts.userId ?? null;
+  const userContext = isEphemeralUserId(uid)
+    ? null
+    : await withFeedTimeout(loadHomeUserContext(uid as string), null, 3500);
+  const ledger = userContext ? ledgerPulseFromContext(userContext, top8) : emptyLedger();
+  const personalized = userContext ? personalizedIntelFromContext(userContext, top8) : emptyPersonalized();
 
   const top = top8[0];
   const congressBuy = congressTrades.find((t) => String(t.transaction).toLowerCase().includes("purchase"));
