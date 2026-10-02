@@ -1,0 +1,35 @@
+name: Ask Motive evidence and request regression
+on:
+  pull_request:
+    paths:
+      - 'apps/site/src/lib/ask-motive/**'
+      - 'apps/site/src/app/api/ask-motive/**'
+      - 'tests/ask-evidence-regression.test.mjs'
+      - 'tests/ask-sdk-regression.test.mjs'
+      - '.github/workflows/ask-evidence-regression.yml'
+permissions:
+  contents: read
+jobs:
+  evidence-and-request-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/ask-evidence-regression.test.mjs
+  installed-sdk-loop-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npx pnpm@9.15.0 install --frozen-lockfile --ignore-scripts
+      - run: node --test tests/ask-sdk-regression.test.mjs
