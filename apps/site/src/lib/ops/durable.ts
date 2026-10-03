@@ -242,7 +242,14 @@ export async function getAiUsageSummary(days = 30) {
   }
 }
 
-export async function persistSignalSnapshot(input: {
+let signalPersistQueue: Promise<void> = Promise.resolve();
+
+function isTransientSignalStoreError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === "P1001" || code === "P2024";
+}
+
+async function persistSignalSnapshotOnce(input: {
   ledgerId: string;
   symbol: string;
   motiveSignal?: number;
@@ -253,55 +260,79 @@ export async function persistSignalSnapshot(input: {
 }): Promise<void> {
   const score = input.motiveSignal ?? 0;
   const conf = Math.min(99, 40 + input.signalEvidence.length * 12);
-  try {
-    await prisma.signalSnapshot.upsert({
-      where: { ledgerId: input.ledgerId },
-      create: {
-        ledgerId: input.ledgerId,
+  const snap = await prisma.signalSnapshot.upsert({
+    where: { ledgerId: input.ledgerId },
+    create: {
+      ledgerId: input.ledgerId,
+      symbol: input.symbol,
+      motiveSignal: input.motiveSignal,
+      confidence: conf,
+      stance: classifyMotiveStance(score),
+      engineVersion: input.engineVersion,
+      evidenceJson: JSON.stringify(input.evidence),
+      signalEvidenceJson: JSON.stringify(input.signalEvidence),
+      evidenceCount: input.evidence.length,
+      signalEvidenceCount: input.signalEvidence.length,
+      recordedAt: new Date(input.recordedAt),
+    },
+    update: {
+      motiveSignal: input.motiveSignal,
+      confidence: conf,
+      stance: classifyMotiveStance(score),
+      evidenceJson: JSON.stringify(input.evidence),
+      signalEvidenceJson: JSON.stringify(input.signalEvidence),
+      evidenceCount: input.evidence.length,
+      signalEvidenceCount: input.signalEvidence.length,
+    },
+  });
+
+  // The upsert already returns the durable row; avoid a redundant pool checkout.
+  const existing = await prisma.signalOutcome.count({ where: { snapshotId: snap.id } });
+  if (existing === 0 && input.motiveSignal != null) {
+    await prisma.signalOutcome.create({
+      data: {
+        snapshotId: snap.id,
         symbol: input.symbol,
-        motiveSignal: input.motiveSignal,
-        confidence: conf,
-        stance: classifyMotiveStance(score),
-        engineVersion: input.engineVersion,
-        evidenceJson: JSON.stringify(input.evidence),
-        signalEvidenceJson: JSON.stringify(input.signalEvidence),
-        evidenceCount: input.evidence.length,
-        signalEvidenceCount: input.signalEvidence.length,
-        recordedAt: new Date(input.recordedAt),
-      },
-      update: {
-        motiveSignal: input.motiveSignal,
-        confidence: conf,
-        stance: classifyMotiveStance(score),
-        evidenceJson: JSON.stringify(input.evidence),
-        signalEvidenceJson: JSON.stringify(input.signalEvidence),
-        evidenceCount: input.evidence.length,
-        signalEvidenceCount: input.signalEvidence.length,
+        claim: `${input.symbol} Motive Signal ${input.motiveSignal} (${classifyMotiveStance(score)})`,
+        horizonDays: 30,
+        predictedScore: input.motiveSignal,
+        predictedConf: conf,
+        evaluatorVersion: "MARKET_OUTCOME_V2",
+        outcome: "PENDING",
       },
     });
+  }
+}
 
-    // Seed pending outcome for calibration horizon
-    const snap = await prisma.signalSnapshot.findUnique({ where: { ledgerId: input.ledgerId } });
-    if (snap) {
-      const existing = await prisma.signalOutcome.count({ where: { snapshotId: snap.id } });
-      if (existing === 0 && input.motiveSignal != null) {
-        await prisma.signalOutcome.create({
-          data: {
-            snapshotId: snap.id,
-            symbol: input.symbol,
-            claim: `${input.symbol} Motive Signal ${input.motiveSignal} (${classifyMotiveStance(score)})`,
-            horizonDays: 30,
-            predictedScore: input.motiveSignal,
-            predictedConf: conf,
-            evaluatorVersion: "MARKET_OUTCOME_V2",
-            outcome: "PENDING",
-          },
-        });
+export function persistSignalSnapshot(input: {
+  ledgerId: string;
+  symbol: string;
+  motiveSignal?: number;
+  engineVersion: string;
+  evidence: unknown[];
+  signalEvidence: unknown[];
+  recordedAt: string;
+}): Promise<void> {
+  // Home can emit several signals at once while Prisma only has a tiny serverless pool.
+  // Serialize this best-effort durability work per process instead of stampeding the pool.
+  const run = async () => {
+    try {
+      await persistSignalSnapshotOnce(input);
+    } catch (error) {
+      if (!isTransientSignalStoreError(error)) {
+        console.warn("[ops/durable] signal snapshot failed", error);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      try {
+        await persistSignalSnapshotOnce(input);
+      } catch (retryError) {
+        console.warn("[ops/durable] signal snapshot failed after transient retry", retryError);
       }
     }
-  } catch (e) {
-    console.warn("[ops/durable] signal snapshot failed", e);
-  }
+  };
+  signalPersistQueue = signalPersistQueue.then(run, run);
+  return signalPersistQueue;
 }
 
 export async function loadSignalSnapshots(limit = 100) {
