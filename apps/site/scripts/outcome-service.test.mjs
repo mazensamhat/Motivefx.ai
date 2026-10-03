@@ -20,7 +20,8 @@ const { evaluatePendingOutcomes, buildCalibrationFromOutcomes } = await import(m
 const DAY_MS = 86_400_000;
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.FINNHUB_API_KEY;
-const originalEnabled = process.env.FINNHUB_HISTORICAL_ENABLED;\nconst originalCg = process.env.COINGECKO_OUTCOMES_ENABLED;
+const originalEnabled = process.env.FINNHUB_HISTORICAL_ENABLED;
+const originalCg = process.env.COINGECKO_OUTCOMES_ENABLED;
 
 function setup(t, options = {}) {
   const queries = [], writes = [], calls = [];
@@ -39,7 +40,8 @@ function setup(t, options = {}) {
   db.signalOutcome.count = async () => 0;
   db.signalOutcome.updateMany = async args => { writes.push(args); return {count:options.writeCount ?? 1}; };
   process.env.FINNHUB_API_KEY = 'test-not-a-real-key';
-  process.env.FINNHUB_HISTORICAL_ENABLED = 'true';\n  process.env.COINGECKO_OUTCOMES_ENABLED = 'false';
+  process.env.FINNHUB_HISTORICAL_ENABLED = 'true';
+  process.env.COINGECKO_OUTCOMES_ENABLED = 'false';
   globalThis.fetch = async (url, init) => {
     calls.push({url,init});
     if (options.fail) return new Response('', {status:503});
@@ -49,7 +51,8 @@ function setup(t, options = {}) {
   t.after(() => {
     globalThis.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.FINNHUB_API_KEY; else process.env.FINNHUB_API_KEY = originalKey;
-    if (originalEnabled === undefined) delete process.env.FINNHUB_HISTORICAL_ENABLED; else process.env.FINNHUB_HISTORICAL_ENABLED = originalEnabled;\n    if (originalCg === undefined) delete process.env.COINGECKO_OUTCOMES_ENABLED; else process.env.COINGECKO_OUTCOMES_ENABLED = originalCg;
+    if (originalEnabled === undefined) delete process.env.FINNHUB_HISTORICAL_ENABLED; else process.env.FINNHUB_HISTORICAL_ENABLED = originalEnabled;
+    if (originalCg === undefined) delete process.env.COINGECKO_OUTCOMES_ENABLED; else process.env.COINGECKO_OUTCOMES_ENABLED = originalCg;
   });
   return {queries,writes,calls,row};
 }
