@@ -130,7 +130,7 @@ export function Phase2IntelPanels({
             <h2>
               <Radar size={18} /> Probability Engine
             </h2>
-            <span className="home-section-sub">Tap a theme for related watches · calibration deltas</span>
+            <span className="home-section-sub">Motive Signal themes · tap for evidence and related watches</span>
           </div>
           <div className="phase2-theme-grid">
             {themes.slice(0, 3).map((t) => (
@@ -162,7 +162,7 @@ export function Phase2IntelPanels({
               <div>
                 <strong>{t.theme}</strong>
                 <span className="phase2-muted">
-                  {t.probability != null ? `${t.probability}%` : "—"}
+                  {t.probability != null ? `${t.probability}/100` : "—"}
                   {t.deltaVsPrior != null ? ` · Δ ${t.deltaVsPrior > 0 ? "+" : ""}${t.deltaVsPrior}` : ""}
                 </span>
               </div>
@@ -187,7 +187,7 @@ export function Phase2IntelPanels({
                   onClick={() => void addTheme(s)}
                   title={s.reason}
                 >
-                  + {s.theme.slice(0, 42)} ({s.probability}%)
+                  + {s.theme.slice(0, 42)} ({s.probability}/100)
                 </button>
               ))}
             </div>
@@ -364,11 +364,11 @@ function ThemeCard({
       <button type="button" className="phase2-theme-hit" onClick={() => onOpen?.()} disabled={!onOpen}>
         <div className="phase2-theme-top">
           <span className="phase2-dir">{view.direction}</span>
-          <span>{view.probability}%</span>
+          <span>{view.probability}/100</span>
         </div>
         <h3>{view.theme}</h3>
         <p className="phase2-muted">
-          Confidence {view.confidence}%
+          Evidence confidence {view.confidence}/100
           {view.timing ? ` · ${view.timing}` : ""}
           {view.deltaVsPrior != null
             ? ` · Δ ${view.deltaVsPrior > 0 ? "+" : ""}${view.deltaVsPrior}`

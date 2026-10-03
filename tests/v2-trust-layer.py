@@ -46,6 +46,8 @@ with sync_playwright() as p:
  cases=[]
  for mode,width,theme in [('web',390,'light'),('android',390,'dark'),('web',1440,'dark')]:
    ctx,page,errors=r.render(browser,width,mode)
+   page.get_by_role('button',name='Pro',exact=True).click()
+   page.wait_for_timeout(120)
    page.wait_for_selector('#v2-track-record',timeout=5000)
    if page.evaluate('document.documentElement.dataset.colorTheme')!=theme: page.locator('.theme-toggle').evaluate('(e)=>e.click()')
    page.evaluate(WRAP_FETCH)

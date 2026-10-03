@@ -1,0 +1,24 @@
+name: V2 completion backend regression
+on:
+  pull_request:
+    paths:
+      - 'apps/site/src/lib/ops/outcomes.ts'
+      - 'apps/site/src/lib/terminal/market-truth/**'
+      - 'apps/site/src/lib/terminal/watch-agents.ts'
+      - 'apps/site/src/app/api/cron/**'
+      - 'apps/site/src/app/api/intel/**'
+      - 'apps/site/vercel.json'
+      - 'tests/v2-completion-backend.test.mjs'
+      - '.github/workflows/v2-completion-backend.yml'
+permissions:
+  contents: read
+jobs:
+  backend-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: node --test tests/v2-completion-backend.test.mjs

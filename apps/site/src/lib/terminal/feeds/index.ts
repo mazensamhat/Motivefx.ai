@@ -426,6 +426,7 @@ export type FeedMeta = {
 export type LineMoveItem = {
   matchup: string;
   sport: string;
+  eventId?: string;
   /** Odds API sport_key when available (e.g. baseball_mlb). */
   sportKey?: string;
   commenceTime?: unknown;
@@ -1267,6 +1268,7 @@ function mapOddsGames(games: Array<Record<string, unknown>>): LineMoveItem[] {
     return {
       matchup: `${away} @ ${home}`,
       sport: String(game.sport_title ?? "—"),
+      eventId: String(game.id ?? ""),
       sportKey,
       commenceTime: game.commence_time,
       openingLine: currentLine,

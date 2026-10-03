@@ -1,5 +1,5 @@
 import { ArrowRight, Bot, CalendarDays, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import type { TabId } from "../types";
 import { HomeResearchDialog, type HomeResearchTarget } from "./HomeResearchDialog";
@@ -16,6 +16,8 @@ import { HomeAlertsSection } from "./HomeAlertsSection";
 import { CompareLensSection } from "./CompareLensSection";
 import { FeatureGate } from "./FeatureGate";
 import { MotiveTrackRecord, MotiveWatchAgents } from "./MotiveV2TrustLayer";
+import { MotiveDiscover, MotiveMarketClose, MotivePortfolioIntelligence, MotiveSinceAway } from "./MotiveV2Completion";
+import "../styles/v2-completion.css";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 interface Props { onNavigate: (tab: TabId) => void; }
@@ -36,8 +38,19 @@ function riskLabel(risk: string) {
 export function MotiveV2Home({ onNavigate }: Props) {
   const [review, setReview] = useState<HomeResearchTarget | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [disclosure, setDisclosure] = useState<"simple" | "pro">("simple");
   const { inspectDetail } = useSignalDetail();
   const { data: b, loading, error, refresh } = useHomeBriefing(60_000);
+  useEffect(() => {
+    try { if (localStorage.getItem("motivefx_disclosure") === "pro") setDisclosure("pro"); } catch { /* optional */ }
+    const toPro = () => setDisclosure("pro");
+    window.addEventListener("motivefx:disclosure-pro", toPro);
+    return () => window.removeEventListener("motivefx:disclosure-pro", toPro);
+  }, []);
+  function setMode(mode: "simple" | "pro") {
+    setDisclosure(mode);
+    try { localStorage.setItem("motivefx_disclosure", mode); } catch { /* optional */ }
+  }
   const radar = useMemo(() => {
     if (!b) return [];
     const themed = mapThemesToRadarCards(b.probabilityViews ?? []);
@@ -57,6 +70,12 @@ export function MotiveV2Home({ onNavigate }: Props) {
     <div className="v2-home">
       {review && <HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} />}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
+      <div className="v2-disclosure" aria-label="Workspace detail level">
+        <span>View</span>
+        <button className={disclosure === "simple" ? "active" : ""} type="button" onClick={() => setMode("simple")}>Simple</button>
+        <button className={disclosure === "pro" ? "active" : ""} type="button" onClick={() => setMode("pro")}>Pro</button>
+      </div>
+      <MotiveSinceAway briefing={b} />
 
       <section className="v2-hero">
         <div className="v2-hero-copy">
@@ -173,8 +192,16 @@ export function MotiveV2Home({ onNavigate }: Props) {
           else if (theme) setReview({ type: "theme", source: theme });
         }}
       />
+      <MotiveDiscover
+        briefing={b}
+        onReview={(opportunity) => setReview({ type: "opportunity", source: opportunity })}
+        onAsk={ask}
+        onNavigate={onNavigate}
+      />
 
-
+      {disclosure === "pro" && <>
+      <FeatureGate feature="portfolio_intelligence"><MotivePortfolioIntelligence onAsk={ask} /></FeatureGate>
+      <FeatureGate feature="ai_brief"><MotiveMarketClose onAsk={ask} /></FeatureGate>
       <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
       <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
 
@@ -182,13 +209,23 @@ export function MotiveV2Home({ onNavigate }: Props) {
         <header className="v2-section-head">
           <div><span className="v2-eyebrow">PRO INTELLIGENCE</span><h2>Deep intelligence</h2></div>
         </header>
-        <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
+        <Phase2IntelPanels
+          briefing={b}
+          onPrefsChanged={() => void refresh()}
+          onInspectTheme={(theme) => setReview({ type: "theme", source: theme })}
+          onInspectGraphLink={(link) => ask(
+            "Explain this Signal Graph relationship: " + link.hubLabel + " → " + link.satLabel +
+            ". Recorded relation: " + link.relation + "; weight " + Math.round(link.weight * 100) +
+            "/100. Separate evidence from inference."
+          )}
+        />
         <InstitutionalPanel />
         <WatchlistRadar personalized={b.personalized} onNavigateModule={(tab) => onNavigate(tab as TabId)} />
         <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
         <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
         {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
       </section>
+      </>}
 
       <section className="v2-ask-strip">
         <div className="v2-ask-icon"><Bot size={24}/></div>
