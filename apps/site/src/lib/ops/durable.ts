@@ -246,7 +246,7 @@ let signalPersistQueue: Promise<void> = Promise.resolve();
 
 function isTransientSignalStoreError(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code;
-  return code === "P1001" || code === "P2024";
+  return code === "P1001" || code === "P1017" || code === "P2024";
 }
 
 async function persistSignalSnapshotOnce(input: {
@@ -316,18 +316,24 @@ export function persistSignalSnapshot(input: {
   // Home can emit several signals at once while Prisma only has a tiny serverless pool.
   // Serialize this best-effort durability work per process instead of stampeding the pool.
   const run = async () => {
-    try {
-      await persistSignalSnapshotOnce(input);
-    } catch (error) {
-      if (!isTransientSignalStoreError(error)) {
-        console.warn("[ops/durable] signal snapshot failed", error);
-        return;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 150));
+    const retryDelaysMs = [0, 150, 600];
+    for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
+      const delay = retryDelaysMs[attempt] ?? 0;
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
       try {
         await persistSignalSnapshotOnce(input);
-      } catch (retryError) {
-        console.warn("[ops/durable] signal snapshot failed after transient retry", retryError);
+        return;
+      } catch (error) {
+        const isLastAttempt = attempt === retryDelaysMs.length - 1;
+        if (!isTransientSignalStoreError(error) || isLastAttempt) {
+          console.warn(
+            isLastAttempt
+              ? "[ops/durable] signal snapshot failed after transient retries"
+              : "[ops/durable] signal snapshot failed",
+            error
+          );
+          return;
+        }
       }
     }
   };
