@@ -17,10 +17,10 @@ function resolveSymbol(view: ProbabilityView, opportunities: FeedOpp[]): string 
 }
 
 /** Record live opportunity views (`opp-*`) into the evidence ledger. */
-export function recordProbabilityViewsToLedger(
+export async function recordProbabilityViewsToLedger(
   views: ProbabilityView[],
   opportunities: FeedOpp[] = []
-): void {
+): Promise<void> {
   const demoMode = allowsDemoFeeds();
 
   for (const view of views) {
@@ -42,7 +42,7 @@ export function recordProbabilityViewsToLedger(
       })
     );
 
-    recordSignalEvidence({
+    await recordSignalEvidence({
       symbol,
       motiveSignal: view.probability,
       evidence,
