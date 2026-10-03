@@ -12,11 +12,8 @@ import {
   type ObservedDailyClose,
 } from "./outcome-policy";
 
-export const OUTCOME_EVALUATOR_VERSION = "MARKET_OUTCOME_V4";
-const SEED_VERSIONS = [OUTCOME_EVALUATOR_VERSION, "MARKET_OUTCOME_V3", "MARKET_OUTCOME_V2", "LEGACY_SIGNAL_V1"];
 const RETRY_AFTER_MS = 60 * 60 * 1000;
 const BATCH_BUDGET_MS = 35_000;
-const LEGACY_MISSING_DATA_NOTE = "Observed historical market price unavailable or provider capability disabled; excluded from calibration";
 const PRICE_MARKETS = new Set(["stocks", "penny", "crypto"]);
 const COIN_IDS: Record<string, string> = {
   BTC: "bitcoin", ETH: "ethereum", USDT: "tether", USDC: "usd-coin", SOL: "solana",
