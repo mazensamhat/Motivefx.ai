@@ -108,6 +108,9 @@ export function SiteFooter() {
                 <Link href="/data-sources">Data sources</Link>
               </li>
               <li>
+                <Link href="/status">System status</Link>
+              </li>
+              <li>
                 <a href={MOTIVE_CORP.href} target="_blank" rel="noopener noreferrer">
                   {MOTIVE_CORP.name}
                 </a>
@@ -170,6 +173,8 @@ export function SiteFooter() {
             <Link href="/terms">Terms</Link>
             {" · "}
             <Link href="/data-deletion">Data deletion</Link>
+            {" · "}
+            <Link href="/status">System status</Link>
             {" · "}
             Not financial advice.
           </p>

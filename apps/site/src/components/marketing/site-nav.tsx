@@ -28,6 +28,7 @@ const COMPANY_LINKS = [
   { href: "/why-motivefx", label: "Why MotiveFX" },
   { href: "/research-team", label: "Research team" },
   { href: "/data-sources", label: "Data sources" },
+  { href: "/status", label: "System status" },
   { href: `mailto:${SITE.email}`, label: "Contact" },
 ];
 
