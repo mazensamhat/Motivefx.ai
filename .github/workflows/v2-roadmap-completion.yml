@@ -29,7 +29,7 @@ jobs:
       - run: npm --prefix web run build
         env:
           VITE_BASE: /terminal/
-      - run: npx pnpm@9.15.0 install --frozen-lockfile --ignore-scripts
+      - run: npx pnpm@9.15.0 install --frozen-lockfile
       - run: node scripts/build-terminal.mjs
       - run: npx pnpm@9.15.0 --filter @motivefx/site build
       - run: pip install playwright==1.57.0
