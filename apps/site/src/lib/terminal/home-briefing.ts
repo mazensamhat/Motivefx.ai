@@ -531,7 +531,7 @@ export async function buildHomeBriefing(opts: {
 
   const intelPrefs = await withFeedTimeout(getIntelPrefs(opts.userId ?? null), null, 1500);
 
-  const phase2 = runPhase2Engines({
+  const phase2 = await runPhase2Engines({
     opportunities: top8 as Array<{
       id?: string;
       module?: string;
