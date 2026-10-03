@@ -36,6 +36,27 @@ export function normalizePrefs(raw: unknown): IntelPrefs {
     alertRules: Array.isArray(o.alertRules) && o.alertRules.length
       ? o.alertRules
       : [...DEFAULT_INTEL_PREFS.alertRules],
+    watchAgents: Array.isArray(o.watchAgents)
+      ? o.watchAgents
+          .filter((a) => a && typeof a === "object")
+          .map((a) => {
+            const row = a as Record<string, unknown>;
+            const metric = row.metric === "confidence" || row.metric === "signal_change" ? row.metric : "signal";
+            const operator = row.operator === "below" ? "below" : "above";
+            return {
+              id: String(row.id ?? `agent-${Date.now()}`),
+              name: String(row.name ?? "Motive Watch").slice(0, 120),
+              symbol: String(row.symbol ?? "").trim().toUpperCase().slice(0, 100),
+              module: row.module ? String(row.module).slice(0, 40) : undefined,
+              metric,
+              operator,
+              threshold: Math.min(100, Math.max(0, Number(row.threshold ?? 50))),
+              enabled: row.enabled !== false,
+              createdAt: String(row.createdAt ?? new Date().toISOString()),
+            };
+          })
+          .filter((a) => a.symbol)
+      : [],
     portfolioBooks:
       o.portfolioBooks && typeof o.portfolioBooks === "object" ? o.portfolioBooks : undefined,
   };

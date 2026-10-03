@@ -2,5 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "cd ../.. && corepack enable && NODE_ENV=development npx pnpm@9.15.0 install --frozen-lockfile",
-  "buildCommand": "cd ../.. && node scripts/build-terminal.mjs && npx pnpm@9.15.0 --filter @motivefx/site build"
+  "buildCommand": "cd ../.. && node scripts/build-terminal.mjs && npx pnpm@9.15.0 --filter @motivefx/site build",
+  "crons": [
+    {
+      "path": "/api/cron/outcomes",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/watch-agents",
+      "schedule": "35 * * * *"
+    }
+  ]
 }

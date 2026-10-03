@@ -404,6 +404,8 @@ export async function buildHomeBriefing(opts: {
       stance,
       confidence: conf,
       expectedMove: "On-chain context",
+      sourceReference: `coingecko:${String(asset).toLowerCase()}`,
+      sourceProvider: String((w as { provider?: string }).provider ?? "coingecko"),
       riskLevel: "medium",
       stars: stars(conf),
       signals,
@@ -432,6 +434,8 @@ export async function buildHomeBriefing(opts: {
       stance,
       confidence: conf,
       expectedMove: "Line context",
+      sourceReference: String((l as { eventId?: string }).eventId ?? ""),
+      sourceProvider: String(l.book ?? "odds-board"),
       riskLevel: riskFromConfidence(conf, "betting"),
       stars: stars(conf),
       signals,
@@ -462,6 +466,8 @@ export async function buildHomeBriefing(opts: {
       stance,
       confidence: conf,
       expectedMove: `${yes}% implied yes*`,
+      sourceReference: String(m.slug ?? ""),
+      sourceProvider: String(m.platform ?? "Polymarket"),
       riskLevel: "medium",
       stars: stars(conf),
       signals,
@@ -543,6 +549,8 @@ export async function buildHomeBriefing(opts: {
       riskLevel?: string;
       expectedMove?: string;
       stance?: string;
+      sourceReference?: string;
+      sourceProvider?: string;
     }>,
     marketConfidenceLabel: marketConfidence,
     sentiment,
@@ -558,6 +566,8 @@ export async function buildHomeBriefing(opts: {
       signals?: string[];
       reasons?: string[];
       riskLevel?: string;
+      sourceReference?: string;
+      sourceProvider?: string;
     }>,
     phase2.probabilityViews
   );

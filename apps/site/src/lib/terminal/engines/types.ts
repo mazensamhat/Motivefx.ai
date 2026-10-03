@@ -112,7 +112,14 @@ export interface MarketGenome {
   updatedAt: string;
 }
 
-export type AlertRuleKind = "probability_above" | "divergence_above" | "genome_risk";
+export type AlertRuleKind =
+  | "probability_above"
+  | "divergence_above"
+  | "genome_risk"
+  | "signal_above"
+  | "signal_below"
+  | "confidence_below"
+  | "signal_change_above";
 
 export interface SignalAlertRule {
   id: string;
@@ -121,6 +128,18 @@ export interface SignalAlertRule {
   themeId?: string;
   enabled: boolean;
   label?: string;
+}
+
+export interface WatchAgent {
+  id: string;
+  name: string;
+  symbol: string;
+  module?: string;
+  metric: "signal" | "confidence" | "signal_change";
+  operator: "above" | "below";
+  threshold: number;
+  enabled: boolean;
+  createdAt: string;
 }
 
 export interface ThemeWatchItem {
@@ -155,6 +174,7 @@ export type PortfolioBooksState = Partial<
 export interface IntelPrefs {
   themeWatchlist: ThemeWatchItem[];
   alertRules: SignalAlertRule[];
+  watchAgents?: WatchAgent[];
   /** Ultra+ named ledgers per market module (synced with active UserPortfolio). */
   portfolioBooks?: PortfolioBooksState;
 }
