@@ -3,7 +3,7 @@ import { json } from "@/lib/api";
 import { requireFeature } from "@/lib/terminal/access";
 import { accessErrorResponse, requireTerminalSession } from "@/lib/terminal/auth";
 import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
-import { OUTCOME_EVALUATOR_VERSION } from "@/lib/ops/outcomes";
+import { OUTCOME_EVALUATOR_VERSION } from "@/lib/ops/outcome-policy";
 
 export const dynamic = "force-dynamic";
 
