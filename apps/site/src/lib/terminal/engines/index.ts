@@ -35,19 +35,19 @@ type FeedOpp = {
 /**
  * Run Phase 2/3 engines against Opportunity Radar + optional user prefs.
  */
-export function runPhase2Engines(opts: {
+export async function runPhase2Engines(opts: {
   opportunities: FeedOpp[];
   marketConfidenceLabel: string;
   sentiment: { reddit?: string; x?: string; news?: string };
   activeGraphNodeId?: string;
   prefs?: IntelPrefs | null;
-}): Phase2IntelBundle {
+}): Promise<Phase2IntelBundle> {
   const symbols = opts.opportunities.map((o) => String(o.symbol ?? "")).filter(Boolean);
   const signalGraph = buildSignalGraph({
     activeNodeId: opts.activeGraphNodeId,
     boostSymbols: symbols,
   });
-  const probabilityViews = buildProbabilityViews(opts.opportunities, opts.sentiment);
+  const probabilityViews = await buildProbabilityViews(opts.opportunities, opts.sentiment);
   const consensusBreaks = detectConsensusBreaks(
     opts.opportunities,
     opts.sentiment,
