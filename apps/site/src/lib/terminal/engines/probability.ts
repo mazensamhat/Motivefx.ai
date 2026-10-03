@@ -68,7 +68,7 @@ function signalDiversity(signals?: string[]): number {
  * Motive Signal views — score is evidence-alignment strength (0–100), NOT a calibrated probability.
  * G2: OPPORTUNITY_RADAR_DEMO priors are excluded from PRODUCTION scoring.
  */
-export function buildProbabilityViews(
+export async function buildProbabilityViews(
   opportunities: FeedOpp[],
   sentiment?: { reddit?: string; x?: string; news?: string }
 ): ProbabilityView[] {
@@ -221,7 +221,7 @@ export function buildProbabilityViews(
   }
 
   const sorted = views.sort((a, b) => b.probability - a.probability);
-  recordProbabilityViewsToLedger(sorted, opportunities);
+  await recordProbabilityViewsToLedger(sorted, opportunities);
   return sorted;
 }
 
