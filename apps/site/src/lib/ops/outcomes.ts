@@ -193,12 +193,14 @@ export async function buildCalibrationFromOutcomes(){
       ?"No V4 market-grounded evaluated outcomes yet. Forecast probability remains unavailable."
       :`Calibration uses ${summary.evaluated} V4 market-grounded outcome(s); ${pendingCount} pending; ${inconclusiveCount} inconclusive.`;
     return {...summary,note,evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
-      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),\n      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
+      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),
+      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
       supportedMarkets:["stocks","penny","crypto"],unsupportedMarkets:["sports","predictions"],
       pending:pendingCount,inconclusive:inconclusiveCount,pendingCoverageSample:byMarket,lastBatch:batch};
   }catch{
     return {...summarizeCalibration([]),note:"Outcome store unavailable.",evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
-      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),\n      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
+      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),
+      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
       supportedMarkets:["stocks","penny","crypto"],unsupportedMarkets:["sports","predictions"],
       pending:0,inconclusive:0,pendingCoverageSample:{},lastBatch:batch};
   }
