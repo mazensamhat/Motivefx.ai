@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: node --test tests/v2-roadmap-contracts.test.mjs
       - run: npm --prefix web ci
       - run: npm --prefix web run build
         env:
