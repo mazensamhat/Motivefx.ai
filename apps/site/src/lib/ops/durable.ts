@@ -297,8 +297,15 @@ async function persistSignalSnapshotOnce(input: {
         horizonDays: 30,
         predictedScore: input.motiveSignal,
         predictedConf: conf,
-        evaluatorVersion: "MARKET_OUTCOME_V2",
+        evaluatorVersion: "MARKET_OUTCOME_V4",
         outcome: "PENDING",
+        notes: (() => {
+          const ev = input.signalEvidence[0] as { market?: unknown; sourceReference?: unknown } | undefined;
+          return "SOURCE_META:" + JSON.stringify({
+            market: typeof ev?.market === "string" ? ev.market : "unknown",
+            sourceReference: typeof ev?.sourceReference === "string" ? ev.sourceReference : null,
+          });
+        })(),
       },
     });
   }

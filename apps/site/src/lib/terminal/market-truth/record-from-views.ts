@@ -7,6 +7,12 @@ import { wrapMarketEvidence } from "./evidence";
 import { recordSignalEvidence } from "./evidence-ledger";
 
 type FeedOpp = { id?: string; symbol?: string; module?: string };
+function marketFor(module: string | undefined) {
+  if (module === "crypto") return { market: "crypto" as const, group: "PRICE" as const };
+  if (module === "betting") return { market: "sports" as const, group: "MARKET_CONSENSUS" as const };
+  if (module === "predictions") return { market: "predictions" as const, group: "MARKET_PRICE" as const };
+  return { market: "stocks" as const, group: "PRICE_MOMENTUM" as const };
+}
 
 function resolveSymbol(view: ProbabilityView, opportunities: FeedOpp[]): string | undefined {
   const fromRelated = view.relatedSymbols?.find((s) => s.trim());
@@ -28,15 +34,18 @@ export function recordProbabilityViewsToLedger(
     const symbol = resolveSymbol(view, opportunities);
     if (!symbol) continue;
 
+    const opportunity = opportunities.find((o) => String(o.id ?? o.symbol ?? "") === view.id.replace(/^opp-/, "") || String(o.symbol ?? "").toUpperCase() === symbol);
+    const truth = marketFor(view.module ?? opportunity?.module);
     const evidence = (view.factors ?? []).map((f) =>
       wrapMarketEvidence({
         id: `${view.id}-${f.key}`,
         value: { factor: f.key, label: f.label, score: f.score, weight: f.weight },
         sourceType: demoMode ? "DEMO" : "LIVE",
         provider: "motive-signal-engine",
-        market: "stocks",
+        market: truth.market,
         symbol,
-        group: "PRICE_MOMENTUM",
+        sourceReference: opportunity?.id ?? view.id,
+        group: truth.group,
         confidence: f.score,
         signalContribution: Math.round(f.score * f.weight),
       })
