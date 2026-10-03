@@ -1,0 +1,26 @@
+name: Public status page regression
+on:
+  pull_request:
+    paths:
+      - 'apps/site/src/app/status/**'
+      - 'apps/site/src/app/api/v1/system/status/**'
+      - 'apps/site/src/lib/public-status.ts'
+      - 'apps/site/src/components/status/**'
+      - 'apps/site/src/components/marketing/site-footer.tsx'
+      - 'apps/site/src/components/marketing/site-nav.tsx'
+      - 'tests/public-status.test.mjs'
+      - '.github/workflows/public-status.yml'
+permissions:
+  contents: read
+jobs:
+  status-page-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/public-status.test.mjs
