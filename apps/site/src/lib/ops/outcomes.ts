@@ -111,8 +111,8 @@ function providerLabel(market:OutcomeMarket){
   return market==="crypto" ? "CoinGecko historical USD daily snapshot" : market==="stocks"||market==="penny" ? "Finnhub completed daily close" : "unsupported";
 }
 
-export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:number;inconclusive:number;unsupported:number}>{
-  const started=Date.now();let evaluated=0,inconclusive=0,unsupported=0;
+export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:number;inconclusive:number}>{
+  const started=Date.now();let evaluated=0,inconclusive=0;
   const take=Number.isFinite(limit)?Math.min(250,Math.max(1,Math.floor(limit))):100;
   try{
     const pending=await prisma.signalOutcome.findMany({
@@ -130,8 +130,8 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
     });
     for(const row of pending){
       if(Date.now()-started>=BATCH_BUDGET_MS) break;
-      const market=inferOutcomeMarket(row.snapshot);
-      if(!historicalCapability(market)){unsupported+=1;continue;}
+      const market=inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol });
+      if(!historicalCapability(market)){continue;}
       const entryAt=row.snapshot.recordedAt.getTime();
       const dueAt=outcomeDueAt(entryAt,row.horizonDays);
       if(dueAt!=null&&dueAt>Date.now()) continue;
@@ -168,7 +168,7 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
       }catch{console.warn("[ops/outcomes] row evaluation failed; retained for retry");}
     }
   }catch{console.warn("[ops/outcomes] evaluation store unavailable");}
-  return {evaluated,inconclusive,unsupported};
+  return {evaluated,inconclusive};
 }
 
 export async function buildCalibrationFromOutcomes(){
@@ -188,17 +188,17 @@ export async function buildCalibrationFromOutcomes(){
     ]);
     const summary=summarizeCalibration(rows);
     const byMarket:Record<string,number>={stocks:0,penny:0,crypto:0,sports:0,predictions:0,unknown:0};
-    for(const row of coverage) byMarket[inferOutcomeMarket(row.snapshot)]+=1;
+    for(const row of coverage) byMarket[inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol })]+=1;
     const note=summary.evaluated===0
       ?"No V4 market-grounded evaluated outcomes yet. Forecast probability remains unavailable."
       :`Calibration uses ${summary.evaluated} V4 market-grounded outcome(s); ${pendingCount} pending; ${inconclusiveCount} inconclusive.`;
     return {...summary,note,evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
-      historicalDataEnabled:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
+      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),\n      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
       supportedMarkets:["stocks","penny","crypto"],unsupportedMarkets:["sports","predictions"],
       pending:pendingCount,inconclusive:inconclusiveCount,pendingCoverageSample:byMarket,lastBatch:batch};
   }catch{
     return {...summarizeCalibration([]),note:"Outcome store unavailable.",evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
-      historicalDataEnabled:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
+      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),\n      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
       supportedMarkets:["stocks","penny","crypto"],unsupportedMarkets:["sports","predictions"],
       pending:0,inconclusive:0,pendingCoverageSample:{},lastBatch:batch};
   }
