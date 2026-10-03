@@ -1,0 +1,25 @@
+.v2-trust-section h2{display:flex;align-items:center;gap:8px}
+.v2-trust-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.v2-trust-kpis>div{min-width:0;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.v2-trust-kpis span{display:block;color:var(--text-muted);font-size:.78rem;margin-bottom:5px}
+.v2-trust-kpis strong{font-size:1.15rem;overflow-wrap:anywhere}
+.v2-trust-note{color:var(--text-muted);line-height:1.55;margin:10px 0 14px}
+.v2-replay-head{display:flex;align-items:flex-start;gap:9px;margin:16px 0 10px}
+.v2-replay-head span{display:block;color:var(--text-muted);font-size:.8rem;margin-top:2px}
+.v2-replay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
+.v2-replay-card{min-width:0;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;overflow-wrap:anywhere}
+.v2-replay-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.v2-replay-top span{font-size:.72rem;color:var(--text-muted)}
+.v2-replay-signal{display:flex;align-items:baseline;gap:5px;margin:12px 0}
+.v2-replay-signal span{margin-right:auto;color:var(--text-muted);font-size:.78rem}
+.v2-replay-signal b{font-size:1.35rem}
+.v2-replay-signal em{font-style:normal;color:var(--text-muted)}
+.v2-replay-card p,.v2-replay-card small{color:var(--text-muted);line-height:1.45}
+.v2-replay-card small{display:block}
+.v2-agent-list{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px}
+.v2-agent-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.v2-agent-list li>div{min-width:0;flex:1 1 180px}
+.v2-agent-list span{display:block;color:var(--text-muted);font-size:.78rem;margin-top:3px}
+@media(max-width:760px){.v2-trust-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.v2-trust-kpis{grid-template-columns:minmax(0,1fr)}}
+:root[data-color-theme="light"] :is(.v2-trust-kpis>div,.v2-replay-card,.v2-agent-list li){background:#fff;border-color:var(--border);color:var(--text)}

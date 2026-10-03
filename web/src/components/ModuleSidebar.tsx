@@ -1,4 +1,4 @@
-import { Activity, BookOpen, Bot, Home, Lock, Radar, Settings2, Sparkles, Users } from "lucide-react";
+import { Activity, BellRing, BookOpen, Bot, History, Home, Lock, Radar, Settings2, Sparkles, Users } from "lucide-react";
 import { TAB_TO_BRAND } from "../brand/moduleBrand";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
@@ -37,6 +37,8 @@ export function ModuleSidebar({ activeTab, onSelect, hasModule, statusLabel, pul
     })}</nav>
     <div className="sidebar-label">Workspace</div>
     <nav className="sidebar-nav" aria-label="Workspace tools">
+      <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-track-record")}><History size={15} />Track Record & Replay</button>
+      <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-watch-agents")}><BellRing size={15} />Watch Agents</button>
       <button type="button" className="sidebar-apps-btn" onClick={openSetup}><Settings2 size={15} />{isNativeShell() ? "Research Apps" : "My Apps & Brokers"}</button>
       <button type="button" className="sidebar-apps-btn" onClick={onOpenGlossary}><BookOpen size={15} />Signal Glossary</button>
       <button type="button" className="sidebar-apps-btn" onClick={openGenSetup}><Users size={15} />{profile.name} Mode</button>
