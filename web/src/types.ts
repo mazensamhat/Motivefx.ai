@@ -314,11 +314,22 @@ export interface HomeBriefing {
   }>;
   alertRules?: Array<{
     id: string;
-    kind: "probability_above" | "divergence_above" | "genome_risk";
+    kind: "probability_above" | "divergence_above" | "genome_risk" | "signal_above" | "signal_below" | "confidence_below" | "signal_change_above";
     threshold: number;
     themeId?: string;
     enabled: boolean;
     label?: string;
+  }>;
+  watchAgents?: Array<{
+    id: string;
+    name: string;
+    symbol: string;
+    module?: string;
+    metric: "signal" | "confidence" | "signal_change";
+    operator: "above" | "below";
+    threshold: number;
+    enabled: boolean;
+    createdAt: string;
   }>;
 }
 
@@ -330,7 +341,9 @@ export interface IntelAlert {
   body?: string | null;
   confidence?: number | null;
   seen: boolean;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string;
+  alert_key?: string;
 }
 
 export interface HomePersonalized {

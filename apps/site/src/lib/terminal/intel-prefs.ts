@@ -30,7 +30,7 @@ export async function saveIntelPrefs(userId: string, prefs: IntelPrefs): Promise
   const existing = await getIntelPrefs(userId);
   const merged: IntelPrefs = {
     ...prefs,
-    portfolioBooks: prefs.portfolioBooks ?? existing.portfolioBooks,
+    watchAgents: prefs.watchAgents ?? existing.watchAgents,\n    portfolioBooks: prefs.portfolioBooks ?? existing.portfolioBooks,
   };
   const normalized = normalizePrefs(merged);
   if (!userId || userId === "demo" || userId.startsWith("u_")) {
