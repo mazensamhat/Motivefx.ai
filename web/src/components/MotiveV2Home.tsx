@@ -15,6 +15,7 @@ import { IntelJournalPanel } from "./IntelJournalPanel";
 import { HomeAlertsSection } from "./HomeAlertsSection";
 import { CompareLensSection } from "./CompareLensSection";
 import { FeatureGate } from "./FeatureGate";
+import { MotiveTrackRecord, MotiveWatchAgents } from "./MotiveV2TrustLayer";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 interface Props { onNavigate: (tab: TabId) => void; }
@@ -172,6 +173,10 @@ export function MotiveV2Home({ onNavigate }: Props) {
           else if (theme) setReview({ type: "theme", source: theme });
         }}
       />
+
+
+      <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
+      <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
 
       <section className="v2-pro-legacy" id="v2-pro-intelligence">
         <header className="v2-section-head">

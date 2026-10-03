@@ -20,6 +20,7 @@ import "./styles/day-legacy-surfaces.css";
 import "./styles/workspace-v2.css";
 import "./styles/recovery.css";
 import "./styles/responsive-layout.css";
+import "./styles/v2-trust.css";
 initializeAppearance();
 syncNativeShellDocumentClass();
 createRoot(document.getElementById("root")!).render(
