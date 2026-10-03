@@ -8,7 +8,8 @@ const [home,side,trust,setup,server,vercel]=await Promise.all([
  read("apps/site/src/lib/terminal/engines/predictive.ts"),read("apps/site/vercel.json")
 ]);
 test("all finish-line V2 surfaces are mounted",()=>{
- for(const id of ["v2-discover","v2-portfolio-intelligence","v2-market-close","v2-track-record","v2-watch-agents","v2-pro-intelligence"])assert.match(home,new RegExp(id));
+ for(const name of ["MotiveDiscover","MotivePortfolioIntelligence","MotiveMarketClose","MotiveTrackRecord","MotiveWatchAgents"])assert.match(home,new RegExp(name));
+ assert.match(home,/id="v2-pro-intelligence"/);
 });
 test("workspace exposes finish-line destinations",()=>{
  for(const label of ["Discover / Scanner","Portfolio Intelligence","Market Close","Track Record & Replay","Watch Agents","Pro Intelligence"])assert.match(side,new RegExp(label.replace("/","\\/")));
