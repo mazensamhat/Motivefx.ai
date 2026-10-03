@@ -2,6 +2,8 @@
 import { prisma } from "@motivefx/database";
 import {
   DAY_MS,
+  OUTCOME_EVALUATOR_VERSION,
+  OUTCOME_SEED_VERSIONS,
   RETRYABLE_OUTCOME_PREFIX,
   classifyObservedReturn,
   outcomeDueAt,
@@ -45,7 +47,7 @@ function inferredMarket(snapshot: { evidenceJson: string; signalEvidenceJson: st
   if (id.startsWith("opp-betting-")) return "sports";
   if (id.startsWith("opp-pred-")) return "predictions";
   if (id.startsWith("opp-trades-") || id.startsWith("opp-stock-")) return "stocks";
-  return market ?? "other";
+  return market ?? "stocks";
 }
 
 function coinId(symbol: string): string | null {
@@ -122,7 +124,7 @@ export async function evaluatePendingOutcomes(limit = 2000): Promise<{
   const take = Number.isFinite(limit) ? Math.min(2500, Math.max(1, Math.floor(limit))) : 2000;
   const rows = await prisma.signalOutcome.findMany({
     where: {
-      evaluatorVersion: { in: SEED_VERSIONS },
+      evaluatorVersion: { in: OUTCOME_SEED_VERSIONS },
       OR: [
         { outcome: "PENDING" },
         {

@@ -45,6 +45,7 @@ with sync_playwright() as p:
   assert page.locator('#v2-track-record').is_visible()
   assert page.locator('#v2-watch-agents').is_visible()
   assert 'NVDA' in page.locator('#v2-portfolio-intelligence').inner_text()
+  page.locator('#v2-market-close').get_by_text('Strengthened',exact=True).wait_for(timeout=3000)
   assert 'Strengthened' in page.locator('#v2-market-close').inner_text()
   page.locator('#v2-track-record').get_by_role('button',name='Open replay',exact=True).click()
   assert 'recorded timeline' in page.locator('#v2-track-record').inner_text()
