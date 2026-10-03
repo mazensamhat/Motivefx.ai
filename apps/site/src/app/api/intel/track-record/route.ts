@@ -33,7 +33,7 @@ export async function GET() {
     ]);
     const scoreBySnapshot=new Map(scored.map(o=>[o.snapshotId,o]));
     const distinctSymbols=new Set(scored.map(o=>o.symbol.toUpperCase())).size;
-    const weighted=scored.reduce((sum,o)=>sum+(o.outcome==="CONFIRMED"?1:o.outcome==="PARTIAL"?.5:0),0);
+    const weighted=scored.reduce((sum,o)=>sum+(o.outcome==="CONFIRMED"?1:o.outcome === "PARTIAL" ? 0.5 : 0),0);
     const observedAlignment=scored.length?Math.round(weighted/scored.length*1000)/10:null;
     const bySymbol=new Map<string,typeof latest>();
     for(const row of latest){const key=row.symbol.toUpperCase();const arr=bySymbol.get(key)??[];if(arr.length<8)arr.push(row);bySymbol.set(key,arr);}
