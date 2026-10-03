@@ -314,9 +314,13 @@ export interface HomeBriefing {
   }>;
   alertRules?: Array<{
     id: string;
-    kind: "probability_above" | "divergence_above" | "genome_risk";
+    kind: "probability_above" | "divergence_above" | "genome_risk" | "signal_above" | "signal_below" | "signal_change";
     threshold: number;
     themeId?: string;
+    symbol?: string;
+    module?: string;
+    cadence?: "continuous" | "hourly" | "daily";
+    delivery?: "intel" | "browser";
     enabled: boolean;
     label?: string;
   }>;

@@ -131,7 +131,7 @@ export default function App() {
           <div className="app-footer-links">
             {!isNativeIosShell() && <a href="/legal-documents.html" target="_blank" rel="noreferrer">Legal</a>}
             <a href={legalHref("privacy")}>Privacy</a><a href={legalHref("terms")}>Terms</a><a href={legalHref("data-deletion")}>Data deletion</a>
-            {!isNativeIosShell() && <a href={legalHref("cookies")}>Cookies</a>}<a href={legalHref("disclaimer")}>Disclaimer</a>
+            {!isNativeIosShell() && <a href={legalHref("cookies")}>Cookies</a>}<a href={legalHref("disclaimer")}>Disclaimer</a>{!isNativeShell() && <a href="/status">System status</a>}
             {SITE_EMBED && !isNativeShell() && <a href="/app/settings">Site account</a>}
             {SITE_EMBED && isAdmin && !isNativeShell() && <a href="/admin">Ops Console</a>}
             {!SITE_EMBED && <a href="?view=admin" className="admin-footer-link">Ops Console</a>}

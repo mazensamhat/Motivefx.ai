@@ -81,6 +81,7 @@ export function evaluateSignalAlertRules(
     probabilityViews: ProbabilityView[];
     consensusBreaks: ConsensusBreak[];
     marketGenomes: MarketGenome[];
+    opportunities?: Array<{ id?: string; module?: string; symbol?: string; title?: string; confidence?: number; deltaVsPrior?: number }>;
   }
 ): EvaluatedAlert[] {
   const out: EvaluatedAlert[] = [];
@@ -137,5 +138,27 @@ export function evaluateSignalAlertRules(
       }
     }
   }
-  return out.slice(0, 12);
+    if (rule.kind === "signal_above" || rule.kind === "signal_below" || rule.kind === "signal_change") {
+      for (const o of opts.opportunities ?? []) {
+        if (rule.symbol && String(o.symbol ?? "").toUpperCase() !== rule.symbol.toUpperCase()) continue;
+        if (rule.module && o.module !== rule.module) continue;
+        const score = Number(o.confidence);
+        if (!Number.isFinite(score)) continue;
+        const delta = Number(o.deltaVsPrior);
+        const hit = rule.kind === "signal_above" ? score >= rule.threshold
+          : rule.kind === "signal_below" ? score <= rule.threshold
+          : Number.isFinite(delta) && Math.abs(delta) >= rule.threshold;
+        if (!hit) continue;
+        const changeText = rule.kind === "signal_change" ? ` · change ${delta >= 0 ? "+" : ""}${delta}` : "";
+        out.push({
+          module: o.module,
+          symbol: o.symbol,
+          title: `Watch Agent: ${o.symbol ?? o.title ?? "signal"}`,
+          body: `Motive Signal ${Math.round(score)}/100${changeText}. Rule: ${rule.label ?? rule.kind}. This is monitoring context, not an instruction.`,
+          confidence: Math.round(score),
+          alertKey: `agent-${rule.id}-${o.id ?? o.symbol ?? "item"}`,
+        });
+      }
+    }
+  return out.slice(0, 20);
 }

@@ -1,4 +1,4 @@
-import { Activity, BellRing, BookOpen, Bot, History, Home, Lock, Radar, Settings2, Sparkles, Users } from "lucide-react";
+import { Activity, BellRing, BookOpen, Bot, Briefcase, Clock3, History, Home, Lock, Radar, Search, Settings2, Sparkles, Users } from "lucide-react";
 import { TAB_TO_BRAND } from "../brand/moduleBrand";
 import { useGenerationalProfile } from "../hooks/useGenerationalProfile";
 import { usePlatformPrefs } from "../hooks/usePlatformPrefs";
@@ -15,7 +15,14 @@ interface Props { activeTab: TabId; onSelect: (tab: TabId) => void; hasModule: (
 export function ModuleSidebar({ activeTab, onSelect, hasModule, statusLabel, pulseBadges = {}, onOpenGlossary }: Props) {
   const { openSetup } = usePlatformPrefs();
   const { profile, openSetup: openGenSetup } = useGenerationalProfile();
-  function homeSection(id: string) { onSelect("home"); revealWorkspaceSection(`#${id}`); }
+  function homeSection(id: string) {
+    if (id === "v2-pro-intelligence") {
+      localStorage.setItem("motivefx_pro_open", "1");
+      window.dispatchEvent(new Event("motivefx:pro-open"));
+    }
+    onSelect("home");
+    revealWorkspaceSection(`#${id}`);
+  }
   return <aside className="module-sidebar glass-panel">
     <div className="sidebar-brand"><MotiveFxBrandLogo compact /><div className="sidebar-brand-name">MotiveFX<span>ONE AI. EVERY MARKET.</span></div></div>
     <nav className="sidebar-nav sidebar-v2-primary" aria-label="Motive intelligence">
@@ -37,8 +44,12 @@ export function ModuleSidebar({ activeTab, onSelect, hasModule, statusLabel, pul
     })}</nav>
     <div className="sidebar-label">Workspace</div>
     <nav className="sidebar-nav" aria-label="Workspace tools">
+      <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-discover")}><Search size={15} />Discover / Scanner</button>
+      <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-portfolio-intelligence")}><Briefcase size={15} />Portfolio Intelligence</button>
+      <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-market-close")}><Clock3 size={15} />Market Close</button>
       <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-track-record")}><History size={15} />Track Record & Replay</button>
       <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-watch-agents")}><BellRing size={15} />Watch Agents</button>
+      <button type="button" className="sidebar-apps-btn" onClick={() => homeSection("v2-pro-intelligence")}><Sparkles size={15} />Pro Intelligence</button>
       <button type="button" className="sidebar-apps-btn" onClick={openSetup}><Settings2 size={15} />{isNativeShell() ? "Research Apps" : "My Apps & Brokers"}</button>
       <button type="button" className="sidebar-apps-btn" onClick={onOpenGlossary}><BookOpen size={15} />Signal Glossary</button>
       <button type="button" className="sidebar-apps-btn" onClick={openGenSetup}><Users size={15} />{profile.name} Mode</button>
