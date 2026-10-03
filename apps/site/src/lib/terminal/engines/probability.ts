@@ -71,7 +71,7 @@ function signalDiversity(signals?: string[]): number {
 export async function buildProbabilityViews(
   opportunities: FeedOpp[],
   sentiment?: { reddit?: string; x?: string; news?: string }
-): ProbabilityView[] {
+): Promise<ProbabilityView[]> {
   const views: ProbabilityView[] = [];
   const now = Date.now();
 
