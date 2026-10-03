@@ -197,7 +197,7 @@ export async function buildCalibrationFromOutcomes(){
     for(const row of coverage) byMarket[inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol })]+=1;
     const note=summary.evaluated===0
       ?"No V4 market-grounded evaluated outcomes yet. Forecast probability remains unavailable."
-      :`Calibration uses ${summary.evaluated} V4 market-grounded outcome(s); ${pendingCount} pending; ${inconclusiveCount} inconclusive.`;
+      :`Calibration uses ${summary.evaluated} V4 market-grounded outcome(s); ${pendingCount} pending; ${inconclusiveCount} inconclusive. Unsupported or not-yet-due pending outcomes are preserved.`;
     return {...summary,note,evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
       historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),
       providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
