@@ -19,6 +19,7 @@ import type {
   SignalAlertRule,
 } from "@/lib/terminal/engines";
 import { getIntelPrefs } from "@/lib/terminal/intel-prefs";
+import { flushSignalEvidencePersistence } from "@/lib/terminal/market-truth/evidence-ledger";
 
 export const dynamic = "force-dynamic";
 // Post-response alert persistence shares this lifetime; the briefing calculation timeout remains eight seconds.
@@ -123,6 +124,11 @@ export async function GET(request: Request) {
     fallbackBriefing(displayName),
     8_000
   );
+
+  // Keep durable Motive Signal writes alive after the response in serverless runtimes.
+  after(async () => {
+    await flushSignalEvidencePersistence();
+  });
 
   if (userIdForAlerts && plan?.features.push_notifications) {
     const alertUserId = userIdForAlerts;

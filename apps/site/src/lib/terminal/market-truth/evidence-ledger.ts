@@ -21,6 +21,7 @@ export type LedgerEntry = {
 
 const MAX_ENTRIES = 500;
 const ledger: LedgerEntry[] = [];
+const pendingPersistence = new Set<Promise<void>>();
 
 export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_2_HARDENING";
 
@@ -43,7 +44,7 @@ export function recordSignalEvidence(input: {
   ledger.unshift(entry);
   if (ledger.length > MAX_ENTRIES) ledger.length = MAX_ENTRIES;
 
-  void import("@/lib/ops/durable")
+  const persistence = import("@/lib/ops/durable")
     .then((m) =>
       m.persistSignalSnapshot({
         ledgerId: entry.ledgerId,
@@ -56,8 +57,15 @@ export function recordSignalEvidence(input: {
       })
     )
     .catch(() => undefined);
+  pendingPersistence.add(persistence);
+  void persistence.finally(() => pendingPersistence.delete(persistence));
 
   return entry;
+}
+
+export async function flushSignalEvidencePersistence(): Promise<void> {
+  const pending = [...pendingPersistence];
+  if (pending.length) await Promise.allSettled(pending);
 }
 
 export function getLedgerForSymbol(symbol: string, limit = 20): LedgerEntry[] {
