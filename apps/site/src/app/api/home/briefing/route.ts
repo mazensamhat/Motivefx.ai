@@ -159,6 +159,7 @@ export async function GET(request: Request) {
           probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
           consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
           marketGenomes: (briefing.marketGenomes as MarketGenome[]) ?? [],
+          opportunities: (briefing.opportunities as Array<{ id?: string; module?: string; symbol?: string; title?: string; confidence?: number; deltaVsPrior?: number }>) ?? [],
         });
         for (const a of predictive) {
           alerts.push({

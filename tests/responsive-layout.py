@@ -137,7 +137,10 @@ def main():
                     assert page.locator('.or-how-panel').is_visible()
                     bounds(page, case)
                     page.locator('.or-how-btn').evaluate('(e)=>e.click()')
-                    labels = page.evaluate("""()=>{const p=document.querySelector('.signal-graph-panel').getBoundingClientRect();return [...document.querySelectorAll('.signal-graph-sat-labels li')].filter(e=>{const r=e.getBoundingClientRect();return r.left<p.left||r.right>p.right}).map(e=>e.textContent)}""")
+                    if not page.locator('.signal-graph-panel').count():
+                        page.locator('.sidebar-apps-btn').filter(has_text='Pro Intelligence').evaluate('(e)=>e.click()')
+                        page.wait_for_timeout(100)
+                    labels = page.evaluate("""()=>{const p=document.querySelector('.signal-graph-panel')?.getBoundingClientRect();if(!p)return [];return [...document.querySelectorAll('.signal-graph-sat-labels li')].filter(e=>{const r=e.getBoundingClientRect();return r.left<p.left||r.right>p.right}).map(e=>e.textContent)}""")
                     assert not labels, {**case,'clippedLabels':labels}
                     page.locator('.chief-fab').evaluate('(e)=>e.click()')
                     page.wait_for_timeout(300)

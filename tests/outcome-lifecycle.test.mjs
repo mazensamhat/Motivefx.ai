@@ -8,7 +8,8 @@ const record = await readFile(new URL("../apps/site/src/lib/terminal/market-trut
 const vercel = JSON.parse(await readFile(new URL("../apps/site/vercel.json", import.meta.url), "utf8"));
 
 test("outcome lifecycle runs automatically and is credential protected", () => {
-  assert.deepEqual(vercel.crons, [{path:"/api/cron/outcomes", schedule:"17 * * * *"}]);
+  assert.ok(Array.isArray(vercel.crons));
+  assert.ok(vercel.crons.some((cron) => cron.path === "/api/cron/outcomes" && cron.schedule === "17 * * * *"));
 });
 test("new outcomes are seeded on V4 with source metadata", () => {
   assert.match(durable,/MARKET_OUTCOME_V4/);

@@ -4,6 +4,13 @@
   "installCommand": "cd ../.. && corepack enable && NODE_ENV=development npx pnpm@9.15.0 install --frozen-lockfile",
   "buildCommand": "cd ../.. && node scripts/build-terminal.mjs && npx pnpm@9.15.0 --filter @motivefx/site build",
   "crons": [
-    { "path": "/api/cron/outcomes", "schedule": "17 * * * *" }
+    {
+      "path": "/api/cron/outcomes",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/watch-agents",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }

@@ -1,11 +1,11 @@
-import { ArrowRight, Bot, CalendarDays, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, Bot, CalendarDays, ChevronDown, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import type { TabId } from "../types";
 import { HomeResearchDialog, type HomeResearchTarget } from "./HomeResearchDialog";
 import { opportunityKind, opportunityView, reportedScore } from "../lib/homeOpportunityActions";
 import { useSignalDetail } from "../hooks/useSignalDetail";
-import { homeScoreDetail } from "../utils/signalIntel";
+import { homeScoreDetail, resolveSignalDetail } from "../utils/signalIntel";
 import "../styles/home-research.css";
 import { AudioBriefingButton } from "./AudioBriefingButton";
 import { Phase2IntelPanels } from "./Phase2IntelPanels";
@@ -16,6 +16,10 @@ import { HomeAlertsSection } from "./HomeAlertsSection";
 import { CompareLensSection } from "./CompareLensSection";
 import { FeatureGate } from "./FeatureGate";
 import { MotiveTrackRecord, MotiveWatchAgents } from "./MotiveV2TrustLayer";
+import { MotivePortfolioIntelligence } from "./MotiveV2PortfolioIntelligence";
+import { MotiveMarketClose } from "./MotiveV2MarketClose";
+import { MotiveDiscover } from "./MotiveV2Discover";
+import { SinceYouWereAway } from "./MotiveV2SinceAway";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 interface Props { onNavigate: (tab: TabId) => void; }
@@ -36,6 +40,12 @@ function riskLabel(risk: string) {
 export function MotiveV2Home({ onNavigate }: Props) {
   const [review, setReview] = useState<HomeResearchTarget | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [proOpen, setProOpen] = useState(() => typeof window !== "undefined" && localStorage.getItem("motivefx_pro_open") === "1");
+  useEffect(() => {
+    const openPro = () => setProOpen(true);
+    window.addEventListener("motivefx:pro-open", openPro);
+    return () => window.removeEventListener("motivefx:pro-open", openPro);
+  }, []);
   const { inspectDetail } = useSignalDetail();
   const { data: b, loading, error, refresh } = useHomeBriefing(60_000);
   const radar = useMemo(() => {
@@ -91,6 +101,8 @@ export function MotiveV2Home({ onNavigate }: Props) {
         </button>
       </section>
 
+      <SinceYouWereAway briefing={b} />
+
       <section className="v2-section" id="v2-signals">
         <header className="v2-section-head">
           <div><span className="v2-eyebrow">SIGNALS</span><h2>Today&apos;s Signals</h2></div>
@@ -140,6 +152,8 @@ export function MotiveV2Home({ onNavigate }: Props) {
         </div>
       </section>
 
+      <MotiveDiscover briefing={b} onReview={(o) => setReview({ type: "opportunity", source: o })} />
+
       <div className="v2-split">
         <section className="v2-panel">
           <header><div><span className="v2-eyebrow">YOUR BRIEF</span><h2>{greeting}</h2></div>{b.audioBriefingScript && <AudioBriefingButton script={b.audioBriefingScript} />}</header>
@@ -175,19 +189,31 @@ export function MotiveV2Home({ onNavigate }: Props) {
       />
 
 
+      <FeatureGate feature="portfolio_intelligence"><MotivePortfolioIntelligence /></FeatureGate>
+      <MotiveMarketClose />
       <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
       <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
 
       <section className="v2-pro-legacy" id="v2-pro-intelligence">
         <header className="v2-section-head">
-          <div><span className="v2-eyebrow">PRO INTELLIGENCE</span><h2>Deep intelligence</h2></div>
+          <div><span className="v2-eyebrow">PRO INTELLIGENCE</span><h2>Deep intelligence</h2><p className="home-section-sub">Advanced relationship, scenario, genome, journal and institutional context.</p></div>
+          <button type="button" className="v2-pro-toggle" aria-expanded={proOpen} onClick={() => { const next=!proOpen; setProOpen(next); localStorage.setItem("motivefx_pro_open", next ? "1" : "0"); }}><ChevronDown size={15} style={{transform:proOpen?"rotate(180deg)":"none"}} />{proOpen ? "Hide Pro" : "Show Pro"}</button>
         </header>
-        <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
-        <InstitutionalPanel />
-        <WatchlistRadar personalized={b.personalized} onNavigateModule={(tab) => onNavigate(tab as TabId)} />
-        <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
-        <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
-        {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
+        {!proOpen ? <div className="v2-pro-summary">Core signals, picks, scanner, Radar, Portfolio Intelligence, Market Close and Ask Motive stay visible above. Open Pro for relationship graphs, scenario branches, genome intelligence, alerts, journal and institutional tools.</div> : <>
+          <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()}
+            onInspectTheme={(theme) => setReview({ type: "theme", source: theme })}
+            onInspectGraphLink={(link) => inspectDetail(resolveSignalDetail(`${link.hubLabel} → ${link.satLabel}`, {
+              confidence: Math.round(link.weight * 100),
+              category: "Relationship Graph",
+              contextLines: [link.relation, `Relationship strength ${Math.round(link.weight * 100)}/100`],
+              journalNote: `${link.hubLabel} → ${link.satLabel}: ${link.relation}`,
+            }))} />
+          <InstitutionalPanel />
+          <WatchlistRadar personalized={b.personalized} onNavigateModule={(tab) => onNavigate(tab as TabId)} />
+          <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
+          <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
+          {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
+        </>}
       </section>
 
       <section className="v2-ask-strip">
