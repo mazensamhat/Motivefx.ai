@@ -1,0 +1,49 @@
+name: V2 completion regression
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'apps/site/src/lib/ops/outcomes.ts'
+      - 'apps/site/src/lib/terminal/**'
+      - 'apps/site/src/app/api/intel/**'
+      - 'apps/site/src/app/api/cron/**'
+      - 'apps/site/vercel.json'
+      - 'tests/v2-completion*.mjs'
+      - 'tests/v2-completion-browser.py'
+      - 'tests/watch-agent-parser.test.mjs'
+      - '.github/workflows/v2-completion.yml'
+permissions:
+  contents: read
+jobs:
+  source-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: node --test tests/watch-agent-parser.test.mjs tests/v2-completion-source.test.mjs tests/v2-completion-backend.test.mjs
+  compiled-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: npm --prefix web ci
+      - run: npm --prefix web run build
+        env: { VITE_BASE: /terminal/ }
+      - run: pip install playwright==1.57.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/v2-completion-browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-completion-evidence
+          path: test-results/v2-complete/
+          retention-days: 7
+          if-no-files-found: ignore
