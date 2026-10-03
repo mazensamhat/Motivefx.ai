@@ -113,6 +113,12 @@ function providerLabel(market:OutcomeMarket){
 
 export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:number;inconclusive:number}>{
   const started=Date.now();let evaluated=0,inconclusive=0;
+  // No historical provider capability means there is nothing safe to evaluate.
+  // Leave pending observations untouched and avoid an unnecessary database checkout.
+  if(!stockHistoryEnabled()&&!cryptoHistoryEnabled()) return {evaluated,inconclusive};
+  // Provider observations are shared only within one evaluation batch. A later
+  // run must revalidate availability rather than inheriting a prior request's cache.
+  observedCache.clear();
   const take=Number.isFinite(limit)?Math.min(250,Math.max(1,Math.floor(limit))):100;
   try{
     const pending=await prisma.signalOutcome.findMany({
