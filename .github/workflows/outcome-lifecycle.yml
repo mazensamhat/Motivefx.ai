@@ -1,0 +1,25 @@
+name: Outcome lifecycle regression
+on:
+  pull_request:
+    paths:
+      - 'apps/site/src/lib/ops/outcome**'
+      - 'apps/site/src/lib/ops/durable.ts'
+      - 'apps/site/src/lib/terminal/market-truth/record-from-views.ts'
+      - 'apps/site/src/app/api/cron/outcomes/**'
+      - 'apps/site/vercel.json'
+      - 'tests/outcome-lifecycle.test.mjs'
+      - '.github/workflows/outcome-lifecycle.yml'
+permissions:
+  contents: read
+jobs:
+  outcome-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/outcome-lifecycle.test.mjs

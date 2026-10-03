@@ -21,6 +21,7 @@ const DAY_MS = 86_400_000;
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.FINNHUB_API_KEY;
 const originalEnabled = process.env.FINNHUB_HISTORICAL_ENABLED;
+const originalCg = process.env.COINGECKO_OUTCOMES_ENABLED;
 
 function setup(t, options = {}) {
   const queries = [], writes = [], calls = [];
@@ -40,6 +41,7 @@ function setup(t, options = {}) {
   db.signalOutcome.updateMany = async args => { writes.push(args); return {count:options.writeCount ?? 1}; };
   process.env.FINNHUB_API_KEY = 'test-not-a-real-key';
   process.env.FINNHUB_HISTORICAL_ENABLED = 'true';
+  process.env.COINGECKO_OUTCOMES_ENABLED = 'false';
   globalThis.fetch = async (url, init) => {
     calls.push({url,init});
     if (options.fail) return new Response('', {status:503});
@@ -50,6 +52,7 @@ function setup(t, options = {}) {
     globalThis.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.FINNHUB_API_KEY; else process.env.FINNHUB_API_KEY = originalKey;
     if (originalEnabled === undefined) delete process.env.FINNHUB_HISTORICAL_ENABLED; else process.env.FINNHUB_HISTORICAL_ENABLED = originalEnabled;
+    if (originalCg === undefined) delete process.env.COINGECKO_OUTCOMES_ENABLED; else process.env.COINGECKO_OUTCOMES_ENABLED = originalCg;
   });
   return {queries,writes,calls,row};
 }
@@ -72,7 +75,7 @@ test('due horizon uses frozen timestamp; successful evaluation records V3 proven
   const state = setup(t);
   assert.deepEqual(await evaluatePendingOutcomes(), {evaluated:1,inconclusive:0});
   assert.equal(state.writes[0].data.outcome,'CONFIRMED');
-  assert.equal(state.writes[0].data.evaluatorVersion,'MARKET_OUTCOME_V3');
+  assert.equal(state.writes[0].data.evaluatorVersion,'MARKET_OUTCOME_V4');
   assert.match(state.writes[0].data.notes,/not execution prices/);
   assert.equal(state.calls.length,2);
   const requested = state.calls.map(c => Number(new URL(c.url).searchParams.get('to'))*1000);
@@ -91,7 +94,7 @@ test('provider failure is excluded and remains eligible for a bounded retry', as
   assert.ok(retry.OR.some(rule => rule.notes?.startsWith === 'RETRYABLE_MARKET_DATA: '));
 });
 test('an eligible retryable result can recover to a scored V3 observation', async t => {
-  const state = setup(t,{row:{outcome:'INCONCLUSIVE',evaluatorVersion:'MARKET_OUTCOME_V3'}});
+  const state = setup(t,{row:{outcome:'INCONCLUSIVE',evaluatorVersion:'MARKET_OUTCOME_V4'}});
   assert.deepEqual(await evaluatePendingOutcomes(),{evaluated:1,inconclusive:0});
   assert.equal(state.writes[0].where.outcome,'INCONCLUSIVE');
   assert.equal(state.writes[0].data.outcome,'CONFIRMED');
@@ -117,7 +120,7 @@ test('calibration only reads finalized V3 observations and reports disabled capa
   const state = setup(t,{calibrationRows:[{predictedConf:null,outcome:'CONFIRMED'},{predictedConf:85,outcome:'CONFIRMED'}]});
   process.env.FINNHUB_HISTORICAL_ENABLED='false';
   const summary = await buildCalibrationFromOutcomes();
-  assert.equal(state.queries[0].where.evaluatorVersion,'MARKET_OUTCOME_V3');
+  assert.equal(state.queries[0].where.evaluatorVersion,'MARKET_OUTCOME_V4');
   assert.equal(summary.evaluated,1);
   assert.equal(summary.excludedInvalid,1);
   assert.equal(summary.forecastReady,false);

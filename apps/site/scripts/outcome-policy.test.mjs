@@ -56,9 +56,9 @@ test('invalid scores and prices never count as evaluated outcomes', () => {
   for (const score of [NaN, Infinity, -1, 101]) assert.equal(classifyObservedReturn(score, 100, 101), null);
   for (const price of [NaN, Infinity, 0, -1]) assert.equal(classifyObservedReturn(75, price, 101), null);
 });
-test('V3 keeps V2 pending seeds eligible without treating V2 finalized rows as V3', () => {
-  assert.equal(OUTCOME_EVALUATOR_VERSION, 'MARKET_OUTCOME_V3');
-  assert.ok(OUTCOME_SEED_VERSIONS.includes('MARKET_OUTCOME_V2'));
+test('V4 keeps V2/V3 pending seeds eligible without treating legacy finalized rows as V4', () => {
+  assert.equal(OUTCOME_EVALUATOR_VERSION, 'MARKET_OUTCOME_V4');
+  assert.ok(OUTCOME_SEED_VERSIONS.includes('MARKET_OUTCOME_V2')); assert.ok(OUTCOME_SEED_VERSIONS.includes('MARKET_OUTCOME_V3'));
 });
 test('fractional confidence values fall into exactly one bucket', () => {
   const summary = summarizeCalibration([49.9,59.9,69.9,79.9,89.9,99.9,100].map(predictedConf => ({predictedConf,outcome:'CONFIRMED'})));
