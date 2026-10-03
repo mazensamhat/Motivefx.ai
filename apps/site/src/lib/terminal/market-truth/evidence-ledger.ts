@@ -24,12 +24,12 @@ const ledger: LedgerEntry[] = [];
 
 export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_2_HARDENING";
 
-export function recordSignalEvidence(input: {
+export async function recordSignalEvidence(input: {
   symbol: string;
   motiveSignal?: number;
   evidence: MarketEvidence[];
   engineVersion?: string;
-}): LedgerEntry {
+}): Promise<LedgerEntry> {
   const signalEvidence = filterForProductionSignal(input.evidence);
   const entry: LedgerEntry = {
     ledgerId: `${input.symbol.toUpperCase()}-${Date.now()}`,
@@ -43,19 +43,20 @@ export function recordSignalEvidence(input: {
   ledger.unshift(entry);
   if (ledger.length > MAX_ENTRIES) ledger.length = MAX_ENTRIES;
 
-  void import("@/lib/ops/durable")
-    .then((m) =>
-      m.persistSignalSnapshot({
-        ledgerId: entry.ledgerId,
-        symbol: entry.symbol,
-        motiveSignal: entry.motiveSignal,
-        engineVersion: entry.engineVersion,
-        evidence: entry.evidence,
-        signalEvidence: entry.signalEvidence,
-        recordedAt: entry.recordedAt,
-      })
-    )
-    .catch(() => undefined);
+  try {
+    const durable = await import("@/lib/ops/durable");
+    await durable.persistSignalSnapshot({
+      ledgerId: entry.ledgerId,
+      symbol: entry.symbol,
+      motiveSignal: entry.motiveSignal,
+      engineVersion: entry.engineVersion,
+      evidence: entry.evidence,
+      signalEvidence: entry.signalEvidence,
+      recordedAt: entry.recordedAt,
+    });
+  } catch (error) {
+    console.warn("[market-truth] durable signal persistence failed", error);
+  }
 
   return entry;
 }
