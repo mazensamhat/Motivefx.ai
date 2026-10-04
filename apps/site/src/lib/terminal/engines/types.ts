@@ -123,6 +123,24 @@ export interface SignalAlertRule {
   label?: string;
 }
 
+export type WatchAgentMetric = "motive_signal" | "signal_change" | "evidence_confidence" | "divergence";
+export type WatchAgentOperator = "above" | "below" | "changes_by";
+export type WatchAgentTargetType = "any" | "symbol" | "theme" | "module";
+
+export interface WatchAgentRule {
+  id: string;
+  label: string;
+  metric: WatchAgentMetric;
+  operator: WatchAgentOperator;
+  threshold: number;
+  targetType: WatchAgentTargetType;
+  target?: string;
+  windowHours: number;
+  enabled: boolean;
+  createdAt: string;
+  delivery: "intel_alert";
+}
+
 export interface ThemeWatchItem {
   id: string;
   theme: string;
@@ -155,6 +173,8 @@ export type PortfolioBooksState = Partial<
 export interface IntelPrefs {
   themeWatchlist: ThemeWatchItem[];
   alertRules: SignalAlertRule[];
+  /** User-authored multi-condition monitoring rules. */
+  watchAgents?: WatchAgentRule[];
   /** Ultra+ named ledgers per market module (synced with active UserPortfolio). */
   portfolioBooks?: PortfolioBooksState;
 }

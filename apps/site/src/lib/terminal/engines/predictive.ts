@@ -6,6 +6,7 @@ import type {
   SignalAlertRule,
   ThemeSuggestion,
   ThemeWatchItem,
+  WatchAgentRule,
 } from "./types";
 
 export const DEFAULT_INTEL_PREFS: IntelPrefs = {
@@ -36,6 +37,23 @@ export function normalizePrefs(raw: unknown): IntelPrefs {
     alertRules: Array.isArray(o.alertRules) && o.alertRules.length
       ? o.alertRules
       : [...DEFAULT_INTEL_PREFS.alertRules],
+    watchAgents: Array.isArray(o.watchAgents)
+      ? o.watchAgents.filter((rule): rule is WatchAgentRule => Boolean(rule) && typeof rule === "object")
+        .slice(0, 25)
+        .map((rule) => ({
+          id: String(rule.id || `agent-${Date.now()}`).slice(0, 100),
+          label: String(rule.label || "Watch Agent").slice(0, 120),
+          metric: ["motive_signal","signal_change","evidence_confidence","divergence"].includes(rule.metric) ? rule.metric : "motive_signal",
+          operator: ["above","below","changes_by"].includes(rule.operator) ? rule.operator : "above",
+          threshold: Number.isFinite(Number(rule.threshold)) ? Math.max(0, Math.min(100, Number(rule.threshold))) : 70,
+          targetType: ["any","symbol","theme","module"].includes(rule.targetType) ? rule.targetType : "any",
+          target: rule.target ? String(rule.target).slice(0, 160) : undefined,
+          windowHours: Number.isFinite(Number(rule.windowHours)) ? Math.max(1, Math.min(720, Math.round(Number(rule.windowHours)))) : 24,
+          enabled: rule.enabled !== false,
+          createdAt: typeof rule.createdAt === "string" ? rule.createdAt : new Date().toISOString(),
+          delivery: "intel_alert",
+        }))
+      : [],
     portfolioBooks:
       o.portfolioBooks && typeof o.portfolioBooks === "object" ? o.portfolioBooks : undefined,
   };
@@ -138,4 +156,69 @@ export function evaluateSignalAlertRules(
     }
   }
   return out.slice(0, 12);
+}
+
+
+function agentTargetMatches(rule: WatchAgentRule, view: ProbabilityView): boolean {
+  const target = (rule.target ?? "").trim().toLowerCase();
+  if (rule.targetType === "any" || !target) return true;
+  if (rule.targetType === "theme") return view.theme.toLowerCase().includes(target);
+  if (rule.targetType === "module") return String(view.module ?? "").toLowerCase() === target;
+  if (rule.targetType === "symbol") return (view.relatedSymbols ?? []).some((s) => s.toLowerCase() === target.replace(/^\$/, ""));
+  return false;
+}
+
+function agentCondition(rule: WatchAgentRule, value: number): boolean {
+  if (!Number.isFinite(value)) return false;
+  if (rule.operator === "below") return value <= rule.threshold;
+  if (rule.operator === "changes_by") return Math.abs(value) >= rule.threshold;
+  return value >= rule.threshold;
+}
+
+/** Evaluate user-authored Watch Agents against the current intelligence bundle. */
+export function evaluateWatchAgents(
+  rules: WatchAgentRule[],
+  opts: { probabilityViews: ProbabilityView[]; consensusBreaks: ConsensusBreak[] }
+): EvaluatedAlert[] {
+  const out: EvaluatedAlert[] = [];
+  for (const rule of rules) {
+    if (!rule.enabled) continue;
+    if (rule.metric === "divergence") {
+      for (const row of opts.consensusBreaks) {
+        const target = (rule.target ?? "").trim().toLowerCase();
+        if (rule.targetType === "symbol" && target && !row.relatedSymbols.some((s) => s.toLowerCase() === target.replace(/^\$/, ""))) continue;
+        if (rule.targetType === "module" && target && String(row.module ?? "").toLowerCase() !== target) continue;
+        if (!agentCondition(rule, row.divergenceScore)) continue;
+        out.push({
+          module: row.module,
+          symbol: row.relatedSymbols[0],
+          title: `Watch Agent: ${rule.label}`,
+          body: `Consensus divergence ${row.divergenceScore} matched your rule “${rule.label}”. ${row.breakReason}`.slice(0, 260),
+          confidence: row.divergenceScore,
+          alertKey: `agent-${rule.id}-${row.id}-${Math.round(row.divergenceScore)}`,
+        });
+      }
+      continue;
+    }
+    for (const view of opts.probabilityViews) {
+      if (!agentTargetMatches(rule, view)) continue;
+      const value = rule.metric === "motive_signal"
+        ? (view.motiveSignal ?? view.probability)
+        : rule.metric === "evidence_confidence"
+          ? view.confidence
+          : (view.deltaVsPrior ?? 0);
+      if (!agentCondition(rule, value)) continue;
+      const metricLabel = rule.metric === "motive_signal" ? "Motive Signal"
+        : rule.metric === "evidence_confidence" ? "evidence confidence" : "signal change";
+      out.push({
+        module: view.module,
+        symbol: view.relatedSymbols[0],
+        title: `Watch Agent: ${rule.label}`,
+        body: `${view.theme}: ${metricLabel} ${Math.round(value * 10) / 10} matched your rule. Motive Signal is evidence strength, not outcome probability.`,
+        confidence: view.confidence,
+        alertKey: `agent-${rule.id}-${view.id}-${Math.round(value)}`,
+      });
+    }
+  }
+  return out.slice(0, 20);
 }

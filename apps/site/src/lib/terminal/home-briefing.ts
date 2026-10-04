@@ -635,6 +635,7 @@ export async function buildHomeBriefing(opts: {
     themeSuggestions: phase2.themeSuggestions,
     themeWatchlist,
     alertRules: intelPrefs?.alertRules ?? [],
+    watchAgents: intelPrefs?.watchAgents ?? [],
     audioBriefingScript: [
       `Market confidence looks ${densityWord}, with a MotiveFX score of ${score} out of 100.`,
       topOpportunitySummary,

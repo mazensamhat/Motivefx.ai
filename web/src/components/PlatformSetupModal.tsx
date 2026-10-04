@@ -101,11 +101,10 @@ export function PlatformSetupModal({ catalog, prefs, onSave, onClose }: Props) {
 
         <header className="platform-setup-header">
           <h2 id="platform-setup-title" className="platform-setup-title">
-            Connect your apps & brokers
+            Preferred apps & broker handoffs
           </h2>
           <p className="platform-setup-sub">
-            Optional: choose the external apps you already use for research follow-ups. MotiveFX is
-            monitor-only — it does not place trades, bets, or purchases inside this app.
+            Optional: choose the external apps you already use for research follow-ups. These preferences only control external handoff links — MotiveFX does not connect to brokerage accounts, import holdings, or sync transactions. MotiveFX is monitor-only and does not place trades, bets, or purchases.
             {androidPlaySafe
               ? " Sportsbook and prediction-market app handoffs are not shown in the Android app."
               : ""}
