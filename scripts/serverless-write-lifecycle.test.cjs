@@ -73,10 +73,9 @@ function briefingFixture(options = {}) {
       if (options.writeFails) throw new Error('database unavailable');
       if (options.wait) await options.wait;
     } },
-    '@/lib/terminal/engines': { evaluateSignalAlertRules: () => [], evaluateWatchAgents: () => [] },
+    '@/lib/terminal/engines': { evaluateSignalAlertRules: () => [] },
     '../../../../../../../packages/shared/src/briefing-period': { formatBriefingGreeting: (p, n) => `Hello ${n}`, formatBriefingKicker: () => 'Fixture', getBriefingPeriod: () => 'morning' },
-    '@/lib/terminal/intel-prefs': { getIntelPrefs: async id => { preferenceReads.push(id); return { alertRules: [], watchAgents: [] }; } },
-    '@/lib/terminal/market-truth/evidence-ledger': { flushSignalEvidencePersistence: async () => {} },
+    '@/lib/terminal/intel-prefs': { getIntelPrefs: async id => { preferenceReads.push(id); return { alertRules: [] }; } },
   };
   const api = load(briefingPath, mocks, { clearTimeout: id => cleared.push(id), console: { warn: value => warnings.push(value), error() {}, log() {} } });
   return { api, queue, writes, preferenceReads, cleared, warnings, briefing };
