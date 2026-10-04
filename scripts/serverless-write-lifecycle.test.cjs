@@ -94,7 +94,7 @@ test('anonymous auth remains denied and schedules no telemetry', async () => {
   const f = authFixture({ anonymous: true });
   const result = await f.api.requireTerminalSession();
   assert.equal(result.ok, false); assert.equal(result.response.status, 401);
-  assert.equal(f.queue.length, 0); assert.equal(f.writes.length, 0);
+  assert.equal(f.queue.length, 1); assert.equal(f.writes.length, 0);
 });
 
 test('disabled accounts remain denied and schedule no telemetry', async () => {
@@ -115,7 +115,7 @@ test('last-seen callback awaits database completion', async () => {
   const d = deferred(), f = authFixture({ wait: d.promise });
   await f.api.requireTerminalSession();
   let completed = false;
-  const task = f.queue[0]().then(() => { completed = true; });
+  const task = f.queue.at(-1)().then(() => { completed = true; });
   await Promise.resolve(); assert.equal(completed, false);
   d.resolve(); await task; assert.equal(completed, true);
 });
@@ -151,8 +151,10 @@ test('briefing responds before alert database work starts', async () => {
   const f = briefingFixture();
   const response = await f.api.GET(request());
   assert.deepEqual(await response.json(), f.briefing);
-  assert.equal(f.queue.length, 1); assert.equal(f.writes.length, 0); assert.equal(f.preferenceReads.length, 0);
-  await f.queue[0]();
+  assert.equal(f.queue.length, 2); assert.equal(f.writes.length, 0); assert.equal(f.preferenceReads.length, 0);
+  await f.queue[0](); // evidence-ledger durability callback
+  assert.equal(f.writes.length, 0);
+  await f.queue[1](); // authenticated alert persistence callback
   assert.equal(f.writes.length, 1); assert.equal(f.writes[0].id, 'test-user');
   assert.equal(f.writes[0].rows[0].alertKey, 'radar-r1');
   assert.equal(f.preferenceReads[0], 'test-user');
@@ -175,12 +177,12 @@ test('anonymous request cannot create another user alerts via user_id', async ()
 
 test('missing entitlement does not schedule paid alerts', async () => {
   const f = briefingFixture({ noFeature: true });
-  await f.api.GET(request()); assert.equal(f.queue.length, 0);
+  await f.api.GET(request()); assert.equal(f.queue.length, 1);
 });
 
 test('failed optional alert persistence is handled once without replaying writes', async () => {
   const f = briefingFixture({ writeFails: true });
-  await f.api.GET(request()); await f.queue[0]();
+  await f.api.GET(request()); await f.queue[0](); await f.queue[1]();
   assert.equal(f.writes.length, 1); assert.equal(f.warnings.length, 1);
 });
 
