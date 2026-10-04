@@ -286,11 +286,12 @@ async function persistSignalSnapshotOnce(input: {
     },
   });
 
-  // The upsert already returns the durable row; avoid a redundant pool checkout.
-  const existing = await prisma.signalOutcome.count({ where: { snapshotId: snap.id } });
-  if (existing === 0 && input.motiveSignal != null) {
-    await prisma.signalOutcome.create({
-      data: {
+  if (input.motiveSignal != null) {
+    const outcomeId = `signal-outcome:${snap.id}:30:MARKET_OUTCOME_V4`;
+    await prisma.signalOutcome.upsert({
+      where: { id: outcomeId },
+      create: {
+        id: outcomeId,
         snapshotId: snap.id,
         symbol: input.symbol,
         claim: `${input.symbol} Motive Signal ${input.motiveSignal} (${classifyMotiveStance(score)})`,
@@ -307,6 +308,7 @@ async function persistSignalSnapshotOnce(input: {
           });
         })(),
       },
+      update: {},
     });
   }
 }
