@@ -45,17 +45,16 @@ function signalObservationId(input: {
   symbol: string;
   motiveSignal?: number;
   engineVersion: string;
-  signalEvidence: MarketEvidence[];
   observedAt: Date;
 }): string {
-  // One logical signal state gets one durable observation per UTC minute.
-  // Concurrent Home requests with identical evidence therefore converge on the same unique ledgerId.
+  // One logical symbol/score state gets one durable observation per UTC minute.
+  // Feed evidence can jitter between concurrent requests; it must not create extra calibration votes.
+  // The snapshot upsert can still refresh its evidence payload while preserving one observation identity.
   const minuteBucket = Math.floor(input.observedAt.getTime() / 60_000);
   const signature = stableSerialize({
     symbol: input.symbol.toUpperCase(),
     motiveSignal: input.motiveSignal ?? null,
     engineVersion: input.engineVersion,
-    signalEvidence: input.signalEvidence,
     minuteBucket,
   });
   return `${input.symbol.toUpperCase()}-${minuteBucket}-${shortHash(signature)}`;
@@ -76,7 +75,6 @@ export function recordSignalEvidence(input: {
       symbol,
       motiveSignal: input.motiveSignal,
       engineVersion,
-      signalEvidence,
       observedAt,
     }),
     recordedAt: observedAt.toISOString(),
