@@ -25,6 +25,42 @@ const pendingPersistence = new Set<Promise<void>>();
 
 export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_2_HARDENING";
 
+function stableSerialize(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return "[" + value.map(stableSerialize).join(",") + "]";
+  const row = value as Record<string, unknown>;
+  return "{" + Object.keys(row).sort().map((key) => JSON.stringify(key) + ":" + stableSerialize(row[key])).join(",") + "}";
+}
+
+function shortHash(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function signalObservationId(input: {
+  symbol: string;
+  motiveSignal?: number;
+  engineVersion: string;
+  signalEvidence: MarketEvidence[];
+  observedAt: Date;
+}): string {
+  // One logical signal state gets one durable observation per UTC minute.
+  // Concurrent Home requests with identical evidence therefore converge on the same unique ledgerId.
+  const minuteBucket = Math.floor(input.observedAt.getTime() / 60_000);
+  const signature = stableSerialize({
+    symbol: input.symbol.toUpperCase(),
+    motiveSignal: input.motiveSignal ?? null,
+    engineVersion: input.engineVersion,
+    signalEvidence: input.signalEvidence,
+    minuteBucket,
+  });
+  return `${input.symbol.toUpperCase()}-${minuteBucket}-${shortHash(signature)}`;
+}
+
 export function recordSignalEvidence(input: {
   symbol: string;
   motiveSignal?: number;
@@ -32,12 +68,21 @@ export function recordSignalEvidence(input: {
   engineVersion?: string;
 }): LedgerEntry {
   const signalEvidence = filterForProductionSignal(input.evidence);
+  const observedAt = new Date();
+  const engineVersion = input.engineVersion ?? MOTIVE_SIGNAL_ENGINE_VERSION;
+  const symbol = input.symbol.toUpperCase();
   const entry: LedgerEntry = {
-    ledgerId: `${input.symbol.toUpperCase()}-${Date.now()}`,
-    recordedAt: new Date().toISOString(),
-    symbol: input.symbol.toUpperCase(),
+    ledgerId: signalObservationId({
+      symbol,
+      motiveSignal: input.motiveSignal,
+      engineVersion,
+      signalEvidence,
+      observedAt,
+    }),
+    recordedAt: observedAt.toISOString(),
+    symbol,
     motiveSignal: input.motiveSignal,
-    engineVersion: input.engineVersion ?? MOTIVE_SIGNAL_ENGINE_VERSION,
+    engineVersion,
     evidence: input.evidence,
     signalEvidence,
   };
