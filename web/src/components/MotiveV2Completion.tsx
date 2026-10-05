@@ -22,8 +22,11 @@ export function SinceYouWereAway(){
     let previous:string;
     try{previous=localStorage.getItem("motivefx_last_home_seen_v2")||new Date(Date.now()-86400000).toISOString();}catch{previous=new Date(Date.now()-86400000).toISOString();}
     let cancelled=false;
-    apiGet<SinceData>("/intel/since-away?since="+encodeURIComponent(previous)).then((result)=>{if(!cancelled)setData(result);}).catch(()=>{});
-    try{localStorage.setItem("motivefx_last_home_seen_v2",new Date().toISOString());}catch{}
+    apiGet<SinceData>("/intel/since-away?since="+encodeURIComponent(previous)).then((result)=>{
+      if(cancelled)return;
+      setData(result);
+      try{localStorage.setItem("motivefx_last_home_seen_v2",result.generatedAt||new Date().toISOString());}catch{}
+    }).catch(()=>{});
     return()=>{cancelled=true};
   },[isAuthenticated]);
   if(!data||(data.changes.length===0&&data.alerts.length===0))return null;
@@ -51,8 +54,9 @@ export function PortfolioIntelligence(){
 }
 
 export function MotiveDiscover(){
-  const [data,setData]=useState<DiscoverData|null>(null),[market,setMarket]=useState("all"),[query,setQuery]=useState(""),[minSignal,setMinSignal]=useState(55),[mine,setMine]=useState(false),[movement,setMovement]=useState("all");
-  useEffect(()=>{apiGet<DiscoverData>("/intel/discover").then(setData).catch(()=>setData({generatedAt:new Date().toISOString(),items:[]}));},[]);
+  const [data,setData]=useState<DiscoverData|null>(null),[error,setError]=useState<string|null>(null),[loading,setLoading]=useState(true),[market,setMarket]=useState("all"),[query,setQuery]=useState(""),[minSignal,setMinSignal]=useState(55),[mine,setMine]=useState(false),[movement,setMovement]=useState("all");
+  const load=useCallback(async()=>{setLoading(true);setError(null);try{setData(await apiGet<DiscoverData>("/intel/discover"));}catch(e){setError(e instanceof Error?e.message:"Scanner unavailable.");}finally{setLoading(false);}},[]);
+  useEffect(()=>{void load();},[load]);
   const rows=useMemo(()=>{const q=query.trim().toLowerCase();return(data?.items??[]).filter((row)=>(market==="all"||row.market===market)&&(row.motiveSignal??0)>=minSignal&&(!mine||row.relevant)&&(!q||row.symbol.toLowerCase().includes(q))&&(movement==="all"||(movement==="rising"&&(row.delta??0)>0)||(movement==="falling"&&(row.delta??0)<0))).slice(0,50)},[data,market,query,minSignal,mine,movement]);
   return <section className="v2-section v2-completion-section" id="v2-discover">
     <header className="v2-section-head"><div><span className="v2-eyebrow">DISCOVER</span><h2><Radar size={18}/> Cross-Market Scanner</h2></div><span className="v2-section-sub">One scanner · every market</span></header>
@@ -63,14 +67,16 @@ export function MotiveDiscover(){
       <label className="v2-range"><Filter size={14}/><span>Min signal {minSignal}</span><input aria-label="Minimum Motive Signal" type="range" min="0" max="95" step="5" value={minSignal} onChange={(e)=>setMinSignal(Number(e.target.value))}/></label>
       <label className="v2-check"><input type="checkbox" checked={mine} onChange={(e)=>setMine(e.target.checked)}/> My stuff only</label>
     </div>
-    <div className="v2-scanner-list">{rows.length?rows.map((row)=><button type="button" key={row.market+row.symbol} onClick={()=>ask("Explain the scanner result for "+row.symbol+" in "+marketLabel(row.market)+". Motive Signal "+row.motiveSignal+"/100, evidence confidence "+(row.evidenceConfidence??"unavailable")+", recent change "+(row.delta??"unavailable")+". Cite what evidence is actually available and do not convert the signal into a probability.")}><span className="v2-scanner-symbol">{row.symbol}<small>{marketLabel(row.market)}{row.relevant?" · MY STUFF":""}</small></span><span>Motive Signal <strong>{Math.round(row.motiveSignal??0)}</strong></span><span>Evidence <strong>{row.evidenceConfidence==null?"—":Math.round(row.evidenceConfidence)}</strong></span><span className={(row.delta??0)>0?"is-up":(row.delta??0)<0?"is-down":""}>{row.delta==null?"—":(row.delta>=0?"+":"")+row.delta}</span></button>):<div className="v2-empty-card">No recorded signals match these filters.</div>}</div>
+    <div className="v2-scanner-list">{error?<div className="v2-warmup" role="alert">Scanner data could not be loaded. This is not an empty-market result. <button type="button" className="btn btn-sm" onClick={()=>void load()} disabled={loading}>Retry</button></div>:!data?<div className="loading">Loading recorded signals…</div>:rows.length?rows.map((row)=><button type="button" key={row.market+row.symbol} onClick={()=>ask("Explain the scanner result for "+row.symbol+" in "+marketLabel(row.market)+". Motive Signal "+row.motiveSignal+"/100, evidence confidence "+(row.evidenceConfidence??"unavailable")+", recent change "+(row.delta??"unavailable")+". Cite what evidence is actually available and do not convert the signal into a probability.")}><span className="v2-scanner-symbol">{row.symbol}<small>{marketLabel(row.market)}{row.relevant?" · MY STUFF":""}</small></span><span>Motive Signal <strong>{Math.round(row.motiveSignal??0)}</strong></span><span>Evidence <strong>{row.evidenceConfidence==null?"—":Math.round(row.evidenceConfidence)}</strong></span><span className={(row.delta??0)>0?"is-up":(row.delta??0)<0?"is-down":""}>{row.delta==null?"—":(row.delta>=0?"+":"")+row.delta}</span></button>):<div className="v2-empty-card">No recorded signals match these filters.</div>}</div>
   </section>;
 }
 
 export function MarketClose(){
-  const [data,setData]=useState<CloseData|null>(null);
-  useEffect(()=>{apiGet<CloseData>("/intel/market-close").then(setData).catch(()=>setData(null));},[]);
-  if(!data)return <section className="v2-section v2-completion-section" id="v2-market-close"><span className="v2-eyebrow">MARKET CLOSE</span><p className="loading">Building session recap…</p></section>;
+  const [data,setData]=useState<CloseData|null>(null),[error,setError]=useState<string|null>(null),[loading,setLoading]=useState(true);
+  const load=useCallback(async()=>{setLoading(true);setError(null);try{setData(await apiGet<CloseData>("/intel/market-close"));}catch(e){setError(e instanceof Error?e.message:"Session recap unavailable.");}finally{setLoading(false);}},[]);
+  useEffect(()=>{void load();},[load]);
+  if(error)return <section className="v2-section v2-completion-section" id="v2-market-close"><span className="v2-eyebrow">MARKET CLOSE</span><p className="v2-warmup" role="alert">Session recap could not be loaded. This is not a no-change result. <button type="button" className="btn btn-sm" onClick={()=>void load()} disabled={loading}>Retry</button></p></section>;
+  if(loading||!data)return <section className="v2-section v2-completion-section" id="v2-market-close"><span className="v2-eyebrow">MARKET CLOSE</span><p className="loading">Building session recap…</p></section>;
   const renderRow=(row:CloseRow)=><button type="button" key={row.market+row.symbol} className="v2-close-row" onClick={()=>ask("Explain what changed for "+row.symbol+" during this session and what evidence carries forward. Keep Motive Signal separate from probability.")}><span><strong>{row.symbol}</strong><small>{marketLabel(row.market)}{row.relevant?" · MY STUFF":""}</small></span><span>Motive Signal <b>{row.currentSignal==null?"—":Math.round(row.currentSignal)}</b></span><span className={(row.delta??0)>0?"is-up":"is-down"}>{row.delta==null?"—":(row.delta>=0?"+":"")+row.delta+" pts"}</span></button>;
   return <section className="v2-section v2-completion-section" id="v2-market-close">
     <header className="v2-section-head"><div><span className="v2-eyebrow">{data.mode==="MARKET_CLOSE"?"MARKET CLOSE":"SESSION RECAP"}</span><h2><MoonStar size={18}/> What actually changed</h2></div><button type="button" onClick={()=>ask("Give me the Market Close: what strengthened, what weakened, what matters to my portfolio, and what carries into the next session.")}>Ask Motive</button></header>
