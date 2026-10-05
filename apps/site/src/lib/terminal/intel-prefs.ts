@@ -7,6 +7,7 @@ export async function getIntelPrefs(userId: string | null | undefined): Promise<
     return {
       themeWatchlist: [...DEFAULT_INTEL_PREFS.themeWatchlist],
       alertRules: [...DEFAULT_INTEL_PREFS.alertRules],
+      watchAgents: [],
     };
   }
   try {
@@ -15,6 +16,7 @@ export async function getIntelPrefs(userId: string | null | undefined): Promise<
       return {
         themeWatchlist: [],
         alertRules: [...DEFAULT_INTEL_PREFS.alertRules],
+        watchAgents: [],
       };
     }
     return normalizePrefs(JSON.parse(row.prefsJson));
@@ -22,6 +24,7 @@ export async function getIntelPrefs(userId: string | null | undefined): Promise<
     return {
       themeWatchlist: [],
       alertRules: [...DEFAULT_INTEL_PREFS.alertRules],
+      watchAgents: [],
     };
   }
 }
@@ -30,6 +33,7 @@ export async function saveIntelPrefs(userId: string, prefs: IntelPrefs): Promise
   const existing = await getIntelPrefs(userId);
   const merged: IntelPrefs = {
     ...prefs,
+    watchAgents: prefs.watchAgents ?? existing.watchAgents,
     portfolioBooks: prefs.portfolioBooks ?? existing.portfolioBooks,
   };
   const normalized = normalizePrefs(merged);
