@@ -94,7 +94,7 @@ test('anonymous auth remains denied and schedules no telemetry', async () => {
   const f = authFixture({ anonymous: true });
   const result = await f.api.requireTerminalSession();
   assert.equal(result.ok, false); assert.equal(result.response.status, 401);
-  assert.equal(f.queue.length, 1); assert.equal(f.writes.length, 0);
+  assert.equal(f.queue.length, 0); assert.equal(f.writes.length, 0);
 });
 
 test('disabled accounts remain denied and schedule no telemetry', async () => {
@@ -164,7 +164,7 @@ test('briefing alert callback awaits database completion', async () => {
   const d = deferred(), f = briefingFixture({ wait: d.promise });
   await f.api.GET(request());
   let completed = false;
-  const task = f.queue[0]().then(() => { completed = true; });
+  const task = f.queue.at(-1)().then(() => { completed = true; });
   await Promise.resolve(); await Promise.resolve(); assert.equal(completed, false);
   d.resolve(); await task; assert.equal(completed, true);
 });
@@ -172,7 +172,9 @@ test('briefing alert callback awaits database completion', async () => {
 test('anonymous request cannot create another user alerts via user_id', async () => {
   const f = briefingFixture({ anonymous: true });
   await f.api.GET(request());
-  assert.equal(f.queue.length, 0); assert.equal(f.writes.length, 0);
+  assert.equal(f.queue.length, 1); assert.equal(f.writes.length, 0);
+  await f.queue[0](); // evidence persistence is account-agnostic; no alert write is allowed
+  assert.equal(f.writes.length, 0);
 });
 
 test('missing entitlement does not schedule paid alerts', async () => {
