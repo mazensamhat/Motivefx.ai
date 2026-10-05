@@ -46,15 +46,24 @@ export async function GET(request: Request) {
     }
   });
 
+  // Refresh durable Motive Signal + Market DNA on every scheduled run.
+  // Intelligence freshness must not depend on whether a user has configured a watch agent.
+  const briefing = await buildSharedIntel();
+  await flushSignalEvidencePersistence();
+
   if (!configured.length) {
     return Response.json(
-      { ok: true, usersScanned: prefRows.length, usersWithAgents: 0, agentsEvaluated: 0, triggered: 0 },
+      {
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        usersScanned: prefRows.length,
+        usersWithAgents: 0,
+        agentsEvaluated: 0,
+        triggered: 0,
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   }
-
-  const briefing = await buildSharedIntel();
-  await flushSignalEvidencePersistence();
 
   const probabilityViews = (Array.isArray(briefing.probabilityViews)
     ? briefing.probabilityViews
