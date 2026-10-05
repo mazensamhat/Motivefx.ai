@@ -6,9 +6,13 @@ const outcomes = await readFile(new URL("../apps/site/src/lib/ops/outcomes.ts", 
 const durable = await readFile(new URL("../apps/site/src/lib/ops/durable.ts", import.meta.url), "utf8");
 const record = await readFile(new URL("../apps/site/src/lib/terminal/market-truth/record-from-views.ts", import.meta.url), "utf8");
 const vercel = JSON.parse(await readFile(new URL("../apps/site/vercel.json", import.meta.url), "utf8"));
+const outcomeRoute = await readFile(new URL("../apps/site/src/app/api/cron/outcomes/route.ts", import.meta.url), "utf8");
 
 test("outcome lifecycle runs automatically and is credential protected", () => {
-  assert.deepEqual(vercel.crons, [{path:"/api/cron/outcomes", schedule:"17 * * * *"}]);
+  assert.deepEqual(vercel.crons.find((row) => row.path === "/api/cron/outcomes"), {path:"/api/cron/outcomes", schedule:"17 * * * *"});
+  assert.match(outcomeRoute, /process\.env\.CRON_SECRET/);
+  assert.match(outcomeRoute, /authorization/);
+  assert.match(outcomeRoute, /Bearer/);
 });
 test("new outcomes are seeded on V4 with source metadata", () => {
   assert.match(durable,/MARKET_OUTCOME_V4/);
