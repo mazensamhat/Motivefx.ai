@@ -11,6 +11,7 @@ import {
   loadLatestDna,
   loadLatestGraphEdges,
   loadSignalSnapshots,
+  persistDnaProfiles,
 } from "./durable";
 
 type EvidenceRow = {
@@ -284,21 +285,17 @@ export async function buildMarketDnaOps() {
       };
     });
   } else {
-    void import("./durable")
-      .then((m) =>
-        m.persistDnaProfiles(
-          profiles.slice(0, 40).map((p) => ({
-            asset: p.asset,
-            version: p.version,
-            primaryDrivers: p.primaryDrivers,
-            negativeSensitivities: p.negativeSensitivities,
-            currentRegime: p.currentRegime,
-            confidence: p.confidence,
-            signal: p.signal,
-          }))
-        )
-      )
-      .catch(() => undefined);
+    await persistDnaProfiles(
+      profiles.slice(0, 40).map((p) => ({
+        asset: p.asset,
+        version: p.version,
+        primaryDrivers: p.primaryDrivers,
+        negativeSensitivities: p.negativeSensitivities,
+        currentRegime: p.currentRegime,
+        confidence: p.confidence,
+        signal: p.signal,
+      }))
+    );
   }
 
   return {
