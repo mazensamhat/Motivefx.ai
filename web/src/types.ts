@@ -320,6 +320,19 @@ export interface HomeBriefing {
     enabled: boolean;
     label?: string;
   }>;
+  watchAgents?: Array<{
+    id: string;
+    label: string;
+    metric: "motive_signal" | "signal_change" | "evidence_confidence" | "divergence";
+    operator: "above" | "below" | "changes_by";
+    threshold: number;
+    targetType: "any" | "symbol" | "theme" | "module";
+    target?: string;
+    windowHours: number;
+    enabled: boolean;
+    createdAt: string;
+    delivery: "intel_alert";
+  }>;
 }
 
 export interface IntelAlert {

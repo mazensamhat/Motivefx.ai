@@ -6,7 +6,7 @@ import { findUserSafeCached } from "@/lib/load-user";
 import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import type { TerminalPlan } from "@/lib/terminal/plan";
 import { upsertAlerts } from "@/lib/terminal/alerts";
-import { evaluateSignalAlertRules } from "@/lib/terminal/engines";
+import { evaluateSignalAlertRules, evaluateWatchAgents } from "@/lib/terminal/engines";
 import {
   formatBriefingGreeting,
   formatBriefingKicker,
@@ -167,6 +167,21 @@ export async function GET(request: Request) {
           marketGenomes: (briefing.marketGenomes as MarketGenome[]) ?? [],
         });
         for (const a of predictive) {
+          alerts.push({
+            module: String(a.module ?? ""),
+            symbol: String(a.symbol ?? ""),
+            title: a.title,
+            body: a.body ?? "",
+            confidence: Number(a.confidence ?? 0),
+            alertKey: a.alertKey,
+          });
+        }
+
+        const agentAlerts = evaluateWatchAgents(prefs.watchAgents ?? [], {
+          probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
+          consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
+        });
+        for (const a of agentAlerts) {
           alerts.push({
             module: String(a.module ?? ""),
             symbol: String(a.symbol ?? ""),

@@ -137,6 +137,11 @@ def main():
                     assert page.locator('.or-how-panel').is_visible()
                     bounds(page, case)
                     page.locator('.or-how-btn').evaluate('(e)=>e.click()')
+                    pro_toggle = page.locator('.v2-pro-toggle button')
+                    if pro_toggle.count() and pro_toggle.get_attribute('aria-expanded') != 'true':
+                        pro_toggle.evaluate('(e)=>e.click()')
+                        page.wait_for_timeout(80)
+                    assert page.locator('.signal-graph-panel').count() == 1, {**case,'missing':'signal-graph-panel'}
                     labels = page.evaluate("""()=>{const p=document.querySelector('.signal-graph-panel').getBoundingClientRect();return [...document.querySelectorAll('.signal-graph-sat-labels li')].filter(e=>{const r=e.getBoundingClientRect();return r.left<p.left||r.right>p.right}).map(e=>e.textContent)}""")
                     assert not labels, {**case,'clippedLabels':labels}
                     page.locator('.chief-fab').evaluate('(e)=>e.click()')
@@ -154,6 +159,10 @@ def main():
                 ctx.close()
         for mode, width in [('android',390), ('web',1440)]:
             ctx, page, errors = render(browser, width, mode)
+            pro_toggle = page.locator('.v2-pro-toggle button')
+            if pro_toggle.count() and pro_toggle.get_attribute('aria-expanded') != 'true':
+                pro_toggle.evaluate('(e)=>e.click()')
+                page.wait_for_timeout(80)
             for selector, name in [('.or-board','radar'), ('.signal-graph-panel','signal-graph'), ('.phase2-intel','intelligence')]:
                 page.locator(selector).screenshot(path=str(OUT / f'{name}-{mode}-{width}.png'))
             ctx.close()

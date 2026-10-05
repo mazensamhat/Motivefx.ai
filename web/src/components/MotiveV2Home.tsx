@@ -16,6 +16,7 @@ import { HomeAlertsSection } from "./HomeAlertsSection";
 import { CompareLensSection } from "./CompareLensSection";
 import { FeatureGate } from "./FeatureGate";
 import { MotiveTrackRecord, MotiveWatchAgents } from "./MotiveV2TrustLayer";
+import { MarketClose, MotiveDiscover, PortfolioIntelligence, SinceYouWereAway } from "./MotiveV2Completion";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 interface Props { onNavigate: (tab: TabId) => void; }
@@ -36,6 +37,7 @@ function riskLabel(risk: string) {
 export function MotiveV2Home({ onNavigate }: Props) {
   const [review, setReview] = useState<HomeResearchTarget | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [proOpen, setProOpen] = useState(false);
   const { inspectDetail } = useSignalDetail();
   const { data: b, loading, error, refresh } = useHomeBriefing(60_000);
   const radar = useMemo(() => {
@@ -57,6 +59,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
     <div className="v2-home">
       {review && <HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} />}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
+      <SinceYouWereAway />
 
       <section className="v2-hero">
         <div className="v2-hero-copy">
@@ -175,19 +178,35 @@ export function MotiveV2Home({ onNavigate }: Props) {
       />
 
 
+      <MotiveDiscover />
+      <FeatureGate feature="portfolio_intelligence"><PortfolioIntelligence /></FeatureGate>
+      <MarketClose />
       <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
       <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
 
       <section className="v2-pro-legacy" id="v2-pro-intelligence">
-        <header className="v2-section-head">
+        <header className="v2-section-head v2-pro-toggle">
           <div><span className="v2-eyebrow">PRO INTELLIGENCE</span><h2>Deep intelligence</h2></div>
+          <button type="button" className="btn" aria-expanded={proOpen} onClick={() => setProOpen((v) => !v)}>{proOpen ? "Hide Pro tools" : "Open Pro tools"}</button>
         </header>
-        <Phase2IntelPanels briefing={b} onPrefsChanged={() => void refresh()} />
-        <InstitutionalPanel />
-        <WatchlistRadar personalized={b.personalized} onNavigateModule={(tab) => onNavigate(tab as TabId)} />
-        <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
-        <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
-        {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
+        {!proOpen ? <div className="v2-pro-collapsed">Relationship Graph, theme watchlists, consensus breaks, future scenarios, Market Genome, alerts, journal and institutional tools stay tucked away until you need them.</div> : <>
+          <Phase2IntelPanels
+            briefing={b}
+            onPrefsChanged={() => void refresh()}
+            onInspectTheme={(theme) => setReview({ type: "theme", source: theme })}
+            onInspectGraphLink={(link) => inspectDetail({
+              title: link.hubLabel + " → " + link.satLabel,
+              category: "Relationship Graph",
+              definition: link.relation,
+              contextLines: ["Recorded relationship strength: " + Math.round(link.weight * 100) + "/100.", "Relationship strength is contextual evidence, not an outcome probability."],
+            })}
+          />
+          <InstitutionalPanel />
+          <WatchlistRadar personalized={b.personalized} onNavigateModule={(tab) => onNavigate(tab as TabId)} />
+          <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
+          <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
+          {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
+        </>}
       </section>
 
       <section className="v2-ask-strip">

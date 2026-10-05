@@ -73,9 +73,10 @@ function briefingFixture(options = {}) {
       if (options.writeFails) throw new Error('database unavailable');
       if (options.wait) await options.wait;
     } },
-    '@/lib/terminal/engines': { evaluateSignalAlertRules: () => [] },
+    '@/lib/terminal/engines': { evaluateSignalAlertRules: () => [], evaluateWatchAgents: () => [] },
     '../../../../../../../packages/shared/src/briefing-period': { formatBriefingGreeting: (p, n) => `Hello ${n}`, formatBriefingKicker: () => 'Fixture', getBriefingPeriod: () => 'morning' },
-    '@/lib/terminal/intel-prefs': { getIntelPrefs: async id => { preferenceReads.push(id); return { alertRules: [] }; } },
+    '@/lib/terminal/intel-prefs': { getIntelPrefs: async id => { preferenceReads.push(id); return { alertRules: [], watchAgents: [] }; } },
+    '@/lib/terminal/market-truth/evidence-ledger': { flushSignalEvidencePersistence: async () => {} },
   };
   const api = load(briefingPath, mocks, { clearTimeout: id => cleared.push(id), console: { warn: value => warnings.push(value), error() {}, log() {} } });
   return { api, queue, writes, preferenceReads, cleared, warnings, briefing };
@@ -114,7 +115,7 @@ test('last-seen callback awaits database completion', async () => {
   const d = deferred(), f = authFixture({ wait: d.promise });
   await f.api.requireTerminalSession();
   let completed = false;
-  const task = f.queue[0]().then(() => { completed = true; });
+  const task = f.queue.at(-1)().then(() => { completed = true; });
   await Promise.resolve(); assert.equal(completed, false);
   d.resolve(); await task; assert.equal(completed, true);
 });
@@ -150,8 +151,10 @@ test('briefing responds before alert database work starts', async () => {
   const f = briefingFixture();
   const response = await f.api.GET(request());
   assert.deepEqual(await response.json(), f.briefing);
-  assert.equal(f.queue.length, 1); assert.equal(f.writes.length, 0); assert.equal(f.preferenceReads.length, 0);
-  await f.queue[0]();
+  assert.equal(f.queue.length, 2); assert.equal(f.writes.length, 0); assert.equal(f.preferenceReads.length, 0);
+  await f.queue[0](); // evidence-ledger durability callback
+  assert.equal(f.writes.length, 0);
+  await f.queue[1](); // authenticated alert persistence callback
   assert.equal(f.writes.length, 1); assert.equal(f.writes[0].id, 'test-user');
   assert.equal(f.writes[0].rows[0].alertKey, 'radar-r1');
   assert.equal(f.preferenceReads[0], 'test-user');
@@ -161,7 +164,7 @@ test('briefing alert callback awaits database completion', async () => {
   const d = deferred(), f = briefingFixture({ wait: d.promise });
   await f.api.GET(request());
   let completed = false;
-  const task = f.queue[0]().then(() => { completed = true; });
+  const task = f.queue.at(-1)().then(() => { completed = true; });
   await Promise.resolve(); await Promise.resolve(); assert.equal(completed, false);
   d.resolve(); await task; assert.equal(completed, true);
 });
@@ -169,17 +172,19 @@ test('briefing alert callback awaits database completion', async () => {
 test('anonymous request cannot create another user alerts via user_id', async () => {
   const f = briefingFixture({ anonymous: true });
   await f.api.GET(request());
-  assert.equal(f.queue.length, 0); assert.equal(f.writes.length, 0);
+  assert.equal(f.queue.length, 1); assert.equal(f.writes.length, 0);
+  await f.queue[0](); // evidence persistence is account-agnostic; no alert write is allowed
+  assert.equal(f.writes.length, 0);
 });
 
 test('missing entitlement does not schedule paid alerts', async () => {
   const f = briefingFixture({ noFeature: true });
-  await f.api.GET(request()); assert.equal(f.queue.length, 0);
+  await f.api.GET(request()); assert.equal(f.queue.length, 1);
 });
 
 test('failed optional alert persistence is handled once without replaying writes', async () => {
   const f = briefingFixture({ writeFails: true });
-  await f.api.GET(request()); await f.queue[0]();
+  await f.api.GET(request()); await f.queue[0](); await f.queue[1]();
   assert.equal(f.writes.length, 1); assert.equal(f.warnings.length, 1);
 });
 
