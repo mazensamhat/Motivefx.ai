@@ -17,6 +17,7 @@ export {
   normalizePrefs,
   suggestThemes,
   evaluateSignalAlertRules,
+  evaluateWatchAgents,
 } from "./predictive";
 
 type FeedOpp = {
