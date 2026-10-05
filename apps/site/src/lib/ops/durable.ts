@@ -286,6 +286,41 @@ async function persistSignalSnapshotOnce(input: {
     },
   });
 
+  // Keep Market DNA current in the same serverless lifecycle as the durable signal.
+  // This avoids relying on a later admin/Ops read to perform a detached best-effort write.
+  try {
+    const driverGroups = new Map<string, number>();
+    for (const raw of input.evidence) {
+      const ev = raw as { group?: unknown; signalContribution?: unknown };
+      const group = typeof ev.group === "string" && ev.group.trim() ? ev.group.trim() : "OTHER";
+      const contribution =
+        typeof ev.signalContribution === "number" && Number.isFinite(ev.signalContribution)
+          ? ev.signalContribution
+          : 1;
+      driverGroups.set(group, (driverGroups.get(group) ?? 0) + contribution);
+    }
+    const sortedDrivers = [...driverGroups.entries()].sort((a, b) => b[1] - a[1]);
+    await prisma.marketDnaSnapshot.create({
+      data: {
+        asset: input.symbol,
+        version: input.engineVersion,
+        primaryDriversJson: JSON.stringify(sortedDrivers.slice(0, 3).map(([group]) => group)),
+        negativeJson: JSON.stringify(
+          sortedDrivers
+            .filter(([, value]) => value < 0)
+            .slice(0, 3)
+            .map(([group]) => group)
+        ),
+        currentRegime: classifyMotiveStance(score),
+        confidence: conf,
+        signal: input.motiveSignal ?? undefined,
+        recordedAt: new Date(input.recordedAt),
+      },
+    });
+  } catch (error) {
+    console.warn("[ops/durable] market DNA persist failed", error);
+  }
+
   if (input.motiveSignal != null) {
     const outcomeId = `signal-outcome:${snap.id}:30:MARKET_OUTCOME_V4`;
     await prisma.signalOutcome.upsert({
