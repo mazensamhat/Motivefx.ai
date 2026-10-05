@@ -52,6 +52,8 @@ jobs:
         run: npm ci --include=dev
       - name: Serverless write lifecycle regressions
         run: node --test scripts/serverless-write-lifecycle.test.cjs
+      - name: Watch Agent cron invariants
+        run: node --test scripts/watch-agents-cron.test.cjs
       - name: Type-check terminal
         working-directory: web
         run: npm run typecheck
