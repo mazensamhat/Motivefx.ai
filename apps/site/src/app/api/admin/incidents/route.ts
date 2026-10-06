@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
-import { acknowledgeIncident, listOpsIncidents } from "@/lib/ops/incidents";
+import { acknowledgeIncident, forecastOpsRisks, listOpsIncidents } from "@/lib/ops/incidents";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -10,12 +10,17 @@ export async function GET() {
   }
 
   try {
-    const incidents = await listOpsIncidents();
+    const [incidents, forecasts] = await Promise.all([
+      listOpsIncidents(),
+      forecastOpsRisks(),
+    ]);
     return json({
       generatedAt: new Date().toISOString(),
       incidents,
+      forecasts,
       open: incidents.filter((i) => i.status === "open").length,
       critical: incidents.filter((i) => i.severity === "CRITICAL").length,
+      forecastHigh: forecasts.filter((i) => i.severity === "HIGH").length,
     });
   } catch (error) {
     console.error("[admin/incidents]", error);
