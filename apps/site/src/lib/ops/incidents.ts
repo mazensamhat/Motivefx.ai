@@ -5,7 +5,7 @@
 
 import { buildCommandAttention, type AttentionSeverity } from "./attention";
 import { recordAudit } from "./audit";
-import { loadIncidents, updateIncidentStatus, upsertIncident } from "./durable";
+import { loadIncidents, loadRecentTelemetry, updateIncidentStatus, upsertIncident } from "./durable";
 
 export type IncidentSeverity = "INFO" | "WARNING" | "HIGH" | "CRITICAL";
 
@@ -32,6 +32,90 @@ function mapSeverity(s: AttentionSeverity): IncidentSeverity {
   if (s === "high") return "HIGH";
   if (s === "warning") return "WARNING";
   return "INFO";
+}
+
+export type OpsRiskForecast = {
+  id: string;
+  severity: "WARNING" | "HIGH";
+  domain: string;
+  title: string;
+  reason: string;
+  confidence: number;
+  samples: number;
+  errorRatePct: number;
+  staleRatePct: number;
+  lastObservedAt: string;
+};
+
+export async function forecastOpsRisks(hours = 6): Promise<OpsRiskForecast[]> {
+  const rows = await loadRecentTelemetry(500);
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const recent = rows.filter((row) => {
+    const at = Date.parse(row.observedAt);
+    return Number.isFinite(at) && at >= cutoff;
+  });
+
+  type Bucket = {
+    domain: string;
+    samples: number;
+    errors: number;
+    stale: number;
+    lastObservedAt: string;
+  };
+
+  const buckets = new Map<string, Bucket>();
+  for (const row of recent) {
+    const provider = row.provider?.trim();
+    const desk = row.desk?.trim();
+    const domain = provider ? `provider:${provider}` : desk ? `desk:${desk}` : "platform";
+    const bucket = buckets.get(domain) ?? {
+      domain,
+      samples: 0,
+      errors: 0,
+      stale: 0,
+      lastObservedAt: row.observedAt,
+    };
+    bucket.samples += 1;
+    if (row.status === "error" || row.status === "fail") bucket.errors += 1;
+    if (row.truthState === "STALE" || row.truthState === "EXPIRED") bucket.stale += 1;
+    if (row.observedAt > bucket.lastObservedAt) bucket.lastObservedAt = row.observedAt;
+    buckets.set(domain, bucket);
+  }
+
+  const forecasts: OpsRiskForecast[] = [];
+  for (const bucket of buckets.values()) {
+    if (bucket.samples < 5) continue;
+    const errorRatePct = Math.round((bucket.errors / bucket.samples) * 1000) / 10;
+    const staleRatePct = Math.round((bucket.stale / bucket.samples) * 1000) / 10;
+    if (errorRatePct < 15 && staleRatePct < 30) continue;
+
+    const severity: "WARNING" | "HIGH" =
+      errorRatePct >= 40 || staleRatePct >= 60 ? "HIGH" : "WARNING";
+    const confidence = Math.min(
+      95,
+      Math.round(45 + Math.min(bucket.samples, 50) * 0.8 + Math.max(errorRatePct, staleRatePct) * 0.3)
+    );
+    const display = bucket.domain.replace(/^provider:/, "").replace(/^desk:/, "");
+
+    forecasts.push({
+      id: `forecast:${bucket.domain}`,
+      severity,
+      domain: bucket.domain,
+      title: `${display} degradation risk`,
+      reason:
+        `${bucket.samples} telemetry samples in ${hours}h · ${errorRatePct}% errors · ${staleRatePct}% stale/expired`,
+      confidence,
+      samples: bucket.samples,
+      errorRatePct,
+      staleRatePct,
+      lastObservedAt: bucket.lastObservedAt,
+    });
+  }
+
+  return forecasts.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "HIGH" ? -1 : 1;
+    return b.confidence - a.confidence;
+  });
 }
 
 export async function listOpsIncidents(): Promise<OpsIncident[]> {
