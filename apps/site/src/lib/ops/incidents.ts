@@ -76,7 +76,7 @@ export async function forecastOpsRisks(hours = 6): Promise<OpsRiskForecast[]> {
       lastObservedAt: row.observedAt,
     };
     bucket.samples += 1;
-    if (row.status === "error" || row.status === "fail") bucket.errors += 1;
+    if (row.status === "error" || row.status === "timeout") bucket.errors += 1;
     if (row.truthState === "STALE" || row.truthState === "EXPIRED") bucket.stale += 1;
     if (row.observedAt > bucket.lastObservedAt) bucket.lastObservedAt = row.observedAt;
     buckets.set(domain, bucket);
