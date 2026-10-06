@@ -1,0 +1,10 @@
+ALTER TABLE "ProductFeedback"
+  ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'new',
+  ADD COLUMN IF NOT EXISTS "priority" TEXT NOT NULL DEFAULT 'normal',
+  ADD COLUMN IF NOT EXISTS "assignedTo" TEXT,
+  ADD COLUMN IF NOT EXISTS "internalNote" TEXT,
+  ADD COLUMN IF NOT EXISTS "resolvedAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS "ProductFeedback_status_priority_idx"
+  ON "ProductFeedback"("status", "priority");
