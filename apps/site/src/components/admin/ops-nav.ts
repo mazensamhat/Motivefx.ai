@@ -94,7 +94,7 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
     items: [
       { id: "product", label: "Product Analytics", href: "/admin/product", icon: Layers, description: "Modules & utilization" },
       { id: "users", label: "Users", href: "/admin/users", icon: Users, description: "Accounts & User 360" },
-      { id: "feedback", label: "Feedback", href: "/admin/feedback", icon: MessageSquare, description: "Feedback inbox" },
+      { id: "feedback", label: "Support Center", href: "/admin/feedback", icon: MessageSquare, description: "User support workflow" },
     ],
   },
   {
