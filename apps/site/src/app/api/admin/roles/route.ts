@@ -19,8 +19,11 @@ export async function GET() {
     actor: {
       id: auth.actor.id,
       email: auth.actor.email,
-      role: "full_admin",
-      note: "Until multi-role RBAC lands, ADMIN_EMAILS grants the full capability set.",
+      role: auth.actor.role,
+      note:
+        auth.actor.role === "full_admin"
+          ? "Full admin. Set OPS_ROLE_ASSIGNMENTS to scope individual ADMIN_EMAILS users."
+          : "Role resolved from OPS_ROLE_ASSIGNMENTS; capability checks are enforced server-side.",
     },
     capabilities: OPS_CAPABILITIES.map((id) => ({
       id,
