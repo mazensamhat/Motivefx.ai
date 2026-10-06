@@ -22,8 +22,9 @@ import { getIntelPrefs } from "@/lib/terminal/intel-prefs";
 import { flushSignalEvidencePersistence } from "@/lib/terminal/market-truth/evidence-ledger";
 
 export const dynamic = "force-dynamic";
-// Post-response alert persistence shares this lifetime; the briefing calculation timeout remains eight seconds.
-export const maxDuration = 60;
+// The customer briefing falls back within eight seconds. Post-response durability work is
+// independently bounded below so a slow database/provider cannot consume the full function lifetime.
+export const maxDuration = 30;
 
 function fallbackBriefing(displayName: string | null) {
   const name = (displayName ?? "Trader").split(/\s+/)[0];
@@ -127,75 +128,78 @@ export async function GET(request: Request) {
 
   // Keep durable Motive Signal writes alive after the response in serverless runtimes.
   after(async () => {
-    await flushSignalEvidencePersistence();
+    await withTimeout(flushSignalEvidencePersistence(), undefined, 8_000);
   });
 
   if (userIdForAlerts && plan?.features.push_notifications) {
     const alertUserId = userIdForAlerts;
     after(async () => {
-      try {
-        const radar =
-          ((briefing.personalized as { radarHits?: Array<Record<string, unknown>> })?.radarHits) ??
-          [];
-        const alerts = radar.map((h) => ({
-          module: String(h.module ?? ""),
-          symbol: String(h.symbol ?? ""),
-          title: `Radar hit: ${h.symbol}`,
-          body: String(h.title ?? ""),
-          confidence: Number(h.confidence ?? 0),
-          alertKey: `radar-${h.id ?? h.symbol}`,
-        }));
-        for (const o of ((briefing.opportunities as Array<Record<string, unknown>>) ?? []).slice(
-          0,
-          3
-        )) {
-          alerts.push({
-            module: String(o.module ?? ""),
-            symbol: String(o.symbol ?? ""),
-            title: `Top signal: ${o.symbol}`,
-            body: String(o.title ?? ""),
-            confidence: Number(o.confidence ?? 0),
-            alertKey: `signal-${o.id}`,
-          });
-        }
+      const persistAlerts = async () => {
+        try {
+          const radar =
+            ((briefing.personalized as { radarHits?: Array<Record<string, unknown>> })?.radarHits) ??
+            [];
+          const alerts = radar.map((h) => ({
+            module: String(h.module ?? ""),
+            symbol: String(h.symbol ?? ""),
+            title: `Radar hit: ${h.symbol}`,
+            body: String(h.title ?? ""),
+            confidence: Number(h.confidence ?? 0),
+            alertKey: `radar-${h.id ?? h.symbol}`,
+          }));
+          for (const o of ((briefing.opportunities as Array<Record<string, unknown>>) ?? []).slice(
+            0,
+            3
+          )) {
+            alerts.push({
+              module: String(o.module ?? ""),
+              symbol: String(o.symbol ?? ""),
+              title: `Top signal: ${o.symbol}`,
+              body: String(o.title ?? ""),
+              confidence: Number(o.confidence ?? 0),
+              alertKey: `signal-${o.id}`,
+            });
+          }
 
-        // Phase 3: evaluate custom predictive alert rules
-        const prefs = await getIntelPrefs(alertUserId);
-        const predictive = evaluateSignalAlertRules(prefs.alertRules as SignalAlertRule[], {
-          probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
-          consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
-          marketGenomes: (briefing.marketGenomes as MarketGenome[]) ?? [],
-        });
-        for (const a of predictive) {
-          alerts.push({
-            module: String(a.module ?? ""),
-            symbol: String(a.symbol ?? ""),
-            title: a.title,
-            body: a.body ?? "",
-            confidence: Number(a.confidence ?? 0),
-            alertKey: a.alertKey,
+          // Phase 3: evaluate custom predictive alert rules.
+          const prefs = await getIntelPrefs(alertUserId);
+          const predictive = evaluateSignalAlertRules(prefs.alertRules as SignalAlertRule[], {
+            probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
+            consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
+            marketGenomes: (briefing.marketGenomes as MarketGenome[]) ?? [],
           });
-        }
+          for (const a of predictive) {
+            alerts.push({
+              module: String(a.module ?? ""),
+              symbol: String(a.symbol ?? ""),
+              title: a.title,
+              body: a.body ?? "",
+              confidence: Number(a.confidence ?? 0),
+              alertKey: a.alertKey,
+            });
+          }
 
-        const agentAlerts = evaluateWatchAgents(prefs.watchAgents ?? [], {
-          probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
-          consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
-        });
-        for (const a of agentAlerts) {
-          alerts.push({
-            module: String(a.module ?? ""),
-            symbol: String(a.symbol ?? ""),
-            title: a.title,
-            body: a.body ?? "",
-            confidence: Number(a.confidence ?? 0),
-            alertKey: a.alertKey,
+          const agentAlerts = evaluateWatchAgents(prefs.watchAgents ?? [], {
+            probabilityViews: (briefing.probabilityViews as ProbabilityView[]) ?? [],
+            consensusBreaks: (briefing.consensusBreaks as ConsensusBreak[]) ?? [],
           });
-        }
+          for (const a of agentAlerts) {
+            alerts.push({
+              module: String(a.module ?? ""),
+              symbol: String(a.symbol ?? ""),
+              title: a.title,
+              body: a.body ?? "",
+              confidence: Number(a.confidence ?? 0),
+              alertKey: a.alertKey,
+            });
+          }
 
-        if (alerts.length) await upsertAlerts(alertUserId, alerts);
-      } catch {
-        console.warn("[home/briefing] alert_persistence_failed");
-      }
+          if (alerts.length) await upsertAlerts(alertUserId, alerts);
+        } catch {
+          console.warn("[home/briefing] alert_persistence_failed");
+        }
+      };
+      await withTimeout(persistAlerts(), undefined, 8_000);
     });
   }
 
