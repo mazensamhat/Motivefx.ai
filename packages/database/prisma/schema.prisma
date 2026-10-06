@@ -611,25 +611,39 @@ model SocialMetricsSnapshot {
 
 model ProductFeedback {
 
-  id        String   @id @default(cuid())
+  id           String    @id @default(cuid())
 
-  userId    String?
+  userId       String?
 
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  email     String
+  email        String
 
-  kind      String
+  kind         String
 
-  message   String
+  message      String
 
-  pagePath  String?
+  pagePath     String?
 
-  createdAt DateTime @default(now())
+  status       String    @default("new")
+
+  priority     String    @default("normal")
+
+  assignedTo   String?
+
+  internalNote String?
+
+  resolvedAt   DateTime?
+
+  createdAt    DateTime  @default(now())
+
+  updatedAt    DateTime  @updatedAt
 
 
 
   @@index([createdAt])
+
+  @@index([status, priority])
 
 }
 
