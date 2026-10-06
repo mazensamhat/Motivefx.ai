@@ -119,6 +119,13 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
         badge: "New",
       },
       {
+        id: "social-performance",
+        label: "Social Performance",
+        href: "/admin/social-performance",
+        icon: Activity,
+        description: "Channel metrics · creative learning",
+      },
+      {
         id: "growth",
         label: "MyMotiveLife Growth",
         href: MOTIVELIFE_OPS_URL,
