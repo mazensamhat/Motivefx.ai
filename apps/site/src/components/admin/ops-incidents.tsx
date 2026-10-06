@@ -16,9 +16,23 @@ type Incident = {
   lastSeen: string;
 };
 
+type Forecast = {
+  id: string;
+  severity: "WARNING" | "HIGH";
+  domain: string;
+  title: string;
+  reason: string;
+  confidence: number;
+  samples: number;
+  errorRatePct: number;
+  staleRatePct: number;
+  lastObservedAt: string;
+};
+
 export function OpsIncidents() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [stats, setStats] = useState({ open: 0, critical: 0 });
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [stats, setStats] = useState({ open: 0, critical: 0, forecastHigh: 0 });
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -28,11 +42,18 @@ export function OpsIncidents() {
       if (res.ok) {
         const body = (await res.json()) as {
           incidents: Incident[];
+          forecasts: Forecast[];
           open: number;
           critical: number;
+          forecastHigh: number;
         };
         setIncidents(body.incidents);
-        setStats({ open: body.open, critical: body.critical });
+        setForecasts(body.forecasts ?? []);
+        setStats({
+          open: body.open,
+          critical: body.critical,
+          forecastHigh: body.forecastHigh ?? 0,
+        });
       }
     } finally {
       setLoading(false);
@@ -62,7 +83,7 @@ export function OpsIncidents() {
           <div>
             <h2>Alerts &amp; Incidents</h2>
             <p>
-              {stats.open} open · {stats.critical} critical · sourced from Command attention
+              {stats.open} open · {stats.critical} critical · {stats.forecastHigh} high-risk forecast
             </p>
           </div>
           <button type="button" className="ops-toolbar-btn" onClick={load} disabled={loading}>
@@ -70,6 +91,47 @@ export function OpsIncidents() {
           </button>
         </div>
       </header>
+
+      <section className="ops-card">
+        <header className="ops-card-header">
+          <h3>Predictive risk</h3>
+        </header>
+        {forecasts.length === 0 ? (
+          <p className="ops-muted">No elevated telemetry risk detected in the recent window.</p>
+        ) : (
+          <div className="ops-table-wrap">
+            <table className="ops-table">
+              <thead>
+                <tr>
+                  <th>Risk</th>
+                  <th>Domain</th>
+                  <th>Evidence</th>
+                  <th>Confidence</th>
+                  <th>Last observed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {forecasts.map((f) => (
+                  <tr key={f.id}>
+                    <td>
+                      <span className={`ops-intel-pill ${f.severity === "HIGH" ? "critical" : "degraded"}`}>
+                        {f.severity}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{f.title}</strong>
+                      <div className="ops-muted" style={{ fontSize: "0.75rem" }}>{f.domain}</div>
+                    </td>
+                    <td>{f.reason}</td>
+                    <td>{f.confidence}%</td>
+                    <td>{new Date(f.lastObservedAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="ops-card">
         {incidents.length === 0 ? (
