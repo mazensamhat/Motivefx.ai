@@ -82,9 +82,30 @@ function verificationLabel(entry: AuditEntry) {
   return "MONITORING / UNKNOWN";
 }
 
-export default async function HealthAuditsPage() {
+export default async function HealthAuditsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ cadence?: string; status?: string }>;
+}) {
   const all = await runs();
+  const params = (await searchParams) ?? {};
   const cadences = ["hourly", "daily", "weekly", "monthly"];
+  const statuses = ["healthy", "attention", "incident"];
+  const cadenceFilter = cadences.includes(params.cadence ?? "") ? params.cadence! : "all";
+  const statusFilter = statuses.includes(params.status ?? "") ? params.status! : "all";
+  const filtered = all.filter(
+    (run) =>
+      (cadenceFilter === "all" || run.cadence === cadenceFilter) &&
+      (statusFilter === "all" || run.status === statusFilter)
+  );
+
+  const filterHref = (cadence: string, status: string) => {
+    const query = new URLSearchParams();
+    if (cadence !== "all") query.set("cadence", cadence);
+    if (status !== "all") query.set("status", status);
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : "?";
+  };
 
   return (
     <div className="space-y-6">
@@ -96,20 +117,45 @@ export default async function HealthAuditsPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {cadences.map((cadence) => (
-          <a
-            key={cadence}
-            href={"#" + cadence}
-            className="rounded-lg border px-3 py-2 text-sm font-medium"
-          >
-            {cadence[0].toUpperCase() + cadence.slice(1)} (
-            {all.filter((run) => run.cadence === cadence).length})
-          </a>
-        ))}
+      <div className="space-y-3 rounded-xl border bg-slate-50 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Cadence
+          </span>
+          {["all", ...cadences].map((cadence) => (
+            <a
+              key={cadence}
+              href={filterHref(cadence, statusFilter)}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                cadenceFilter === cadence ? "bg-slate-900 text-white" : "bg-white"
+              }`}
+            >
+              {cadence === "all" ? "All" : cadence[0].toUpperCase() + cadence.slice(1)}
+              {cadence !== "all"
+                ? ` (${all.filter((run) => run.cadence === cadence).length})`
+                : ` (${all.length})`}
+            </a>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Status
+          </span>
+          {["all", ...statuses].map((status) => (
+            <a
+              key={status}
+              href={filterHref(cadenceFilter, status)}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                statusFilter === status ? "bg-slate-900 text-white" : "bg-white"
+              }`}
+            >
+              {status === "all" ? "All" : status[0].toUpperCase() + status.slice(1)}
+            </a>
+          ))}
+        </div>
       </div>
 
-      {cadences.map((cadence) => (
+      {(cadenceFilter === "all" ? cadences : [cadenceFilter]).map((cadence) => (
         <section
           id={cadence}
           key={cadence}
@@ -122,7 +168,7 @@ export default async function HealthAuditsPage() {
           </div>
 
           <div className="divide-y">
-            {all
+            {filtered
               .filter((run) => run.cadence === cadence)
               .map((run) => {
                 const entries = auditEntries(run);
@@ -184,7 +230,7 @@ export default async function HealthAuditsPage() {
                 );
               })}
 
-            {!all.some((run) => run.cadence === cadence) && (
+            {!filtered.some((run) => run.cadence === cadence) && (
               <p className="px-5 py-6 text-sm text-slate-500">
                 No recorded {cadence} run yet.
               </p>
