@@ -140,6 +140,7 @@ export const OPS_NAV_GROUPS: OpsNavGroup[] = [
     label: "Platform",
     items: [
       { id: "health-audits", label: "Health & Security", href: "/admin/health-audits", icon: HeartPulse, description: "Hourly · daily · weekly · monthly audits" },
+      { id: "client-errors", label: "Client Errors", href: "/admin/client-errors", icon: Bug, description: "Web · iOS · Android error triage" },
       { id: "jobs", label: "Jobs", href: "/admin/jobs", icon: Cpu, description: "Background jobs" },
       { id: "releases", label: "Releases", href: "/admin/releases", icon: Rocket, description: "G1–G7 gates" },
     ],
