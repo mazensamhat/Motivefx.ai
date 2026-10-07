@@ -198,8 +198,10 @@ test('successful and failed briefing calculations clear their deadline timers', 
 
 test('post-response lifetime is bounded and calculation timeout remains unchanged', () => {
   const f = briefingFixture();
-  assert.equal(f.api.maxDuration, 60);
+  assert.equal(f.api.maxDuration, 30);
   const source = fs.readFileSync(path.join(root, briefingPath), 'utf8');
-  assert.match(source, /8_000/);
+  assert.match(source, /buildHomeBriefing[\\s\\S]*8_000/);
+  assert.match(source, /withTimeout\(flushSignalEvidencePersistence\(\), undefined, 8_000\)/);
+  assert.match(source, /withTimeout\(persistAlerts\(\), undefined, 8_000\)/);
   assert.doesNotMatch(source, /void\s*\(async/);
 });
