@@ -318,7 +318,7 @@ async function collectSnapshot(
   }
 
   const issueCount = findings.length;
-  const status = issueCount === 0 ? "pass" : "attention";
+  const status = issueCount === 0 ? "healthy" : "attention";
   const componentStatus = {
     web: health.ok ? "operational" : "degraded",
     database: "operational",
@@ -336,7 +336,7 @@ async function collectSnapshot(
     fixedCount,
     summary:
       issueCount === 0
-        ? `${cadence} MotiveFX production audit passed with current intelligence, telemetry and incident state.`
+        ? `${cadence} MotiveFX production audit is healthy with current intelligence, telemetry and incident state.`
         : `${cadence} MotiveFX production audit found ${issueCount} item(s) requiring attention.`,
     details: {
       scope: cadence,
