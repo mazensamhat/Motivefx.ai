@@ -72,6 +72,7 @@ async function collectSnapshot(
     latestTelemetry,
     openIncidents,
     telemetryErrors,
+    clientErrors,
     portfolioCount,
     betCount,
     predictionCount,
@@ -97,6 +98,12 @@ async function collectSnapshot(
       where: {
         observedAt: { gte: periodStart, lt: periodEnd },
         status: { in: ["error", "fail"] },
+      },
+    }),
+    prisma.opsTelemetryEvent.count({
+      where: {
+        observedAt: { gte: periodStart, lt: periodEnd },
+        eventName: "client.error",
       },
     }),
     cadence === "hourly" ? Promise.resolve(null) : prisma.userPortfolio.count(),
@@ -217,6 +224,25 @@ async function collectSnapshot(
   });
 
   add({
+    check: "client_runtime_errors",
+    finding:
+      clientErrors === 0
+        ? "No first-party web/native client crashes were captured in this audit period."
+        : `${clientErrors} first-party web/native client crash event(s) were captured in this audit period.`,
+    diagnosis:
+      clientErrors === 0
+        ? "No observed client-runtime crash requires engineering review."
+        : "One or more user-facing runtime crashes require engineering review; store telemetry is not required for detection.",
+    fixedState: clientErrors === 0 ? "pass" : "fail",
+    affectedSurface: "web / iOS / Android client runtime",
+    remediationPerformed:
+      clientErrors === 0
+        ? "No repair required."
+        : "Crash evidence is retained in privacy-minimized Ops telemetry for engineering triage; customer and credential state were not changed.",
+    verificationEvidence: "OpsTelemetryEvent eventName=client.error",
+  });
+
+  add({
     check: "incident_desk",
     finding: `${openIncidents} open or acknowledged incident(s).`,
     diagnosis: openIncidents === 0 ? "No unresolved Ops incidents." : "Ops has unresolved incidents.",
@@ -325,6 +351,7 @@ async function collectSnapshot(
     signals: signalAge <= 2.5 ? "operational" : "degraded",
     marketDna: dnaAge <= 2.5 ? "operational" : "degraded",
     telemetry: telemetryAge <= 3 ? "operational" : "degraded",
+    clientRuntime: clientErrors === 0 ? "operational" : "attention",
     incidents: openIncidents === 0 ? "clear" : "attention",
     ai: latestAi && staleHours(latestAi.createdAt, now) <= 48 ? "operational" : "unknown",
   };
