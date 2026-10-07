@@ -2069,12 +2069,26 @@ type InsiderRow = {
 };
 
 async function fetchFinnhubInsider(symbol: string, apiKey: string) {
-  const res = await withTimeout(
-    fetch(
-      `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`,
-      { next: { revalidate: 300 } }
-    ),
-    3000
+  const startedAt = Date.now();
+  let res: Response | null;
+  try {
+    res = await withTimeout(
+      fetch(
+        `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`,
+        { next: { revalidate: 300 } }
+      ),
+      3000
+    );
+  } catch (error) {
+    await recordProviderResult("finnhub", "error", startedAt, "NETWORK_ERROR", { symbol });
+    throw error;
+  }
+  await recordProviderResult(
+    "finnhub",
+    res?.ok ? "ok" : res ? "error" : "timeout",
+    startedAt,
+    res?.ok ? undefined : res ? `HTTP_${res.status}` : "TIMEOUT",
+    { symbol }
   );
   if (!res?.ok) return [];
   const data = (await res.json()) as { data?: InsiderRow[] };
