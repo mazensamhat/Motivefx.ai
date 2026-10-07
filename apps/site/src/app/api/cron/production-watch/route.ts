@@ -334,6 +334,33 @@ async function collectSnapshot(
     verificationEvidence: "OpsIncidentRecord.status",
   });
 
+  type ProviderAggregate = {
+    provider: string;
+    requests: bigint;
+    failures: bigint;
+    last_success_at: Date | null;
+    last_failure_at: Date | null;
+  };
+  let providerRows: ProviderAggregate[] = [];
+  try {
+    providerRows = await prisma.$queryRawUnsafe<ProviderAggregate[]>(
+      `SELECT
+         COALESCE(provider, 'unknown') AS provider,
+         COUNT(*)::bigint AS requests,
+         COUNT(*) FILTER (WHERE status IN ('error','fail'))::bigint AS failures,
+         MAX("observedAt") FILTER (WHERE status NOT IN ('error','fail')) AS last_success_at,
+         MAX("observedAt") FILTER (WHERE status IN ('error','fail')) AS last_failure_at
+       FROM public."OpsTelemetryEvent"
+       WHERE "observedAt" >= $1
+         AND ("provider" IS NOT NULL OR "eventName" LIKE 'provider.%')
+       GROUP BY 1
+       ORDER BY requests DESC`,
+      new Date(now.getTime() - 24 * 3_600_000)
+    );
+  } catch (error) {
+    console.warn("[cron/production-watch] provider telemetry aggregate failed", error);
+  }
+
   const feedMap =
     health.body && typeof health.body === "object" && "feeds" in health.body
       ? ((health.body as { feeds?: Record<string, boolean> }).feeds ?? {})
@@ -343,13 +370,42 @@ async function collectSnapshot(
   add({
     check: "public_health",
     finding: health.ok
-      ? `/api/health returned HTTP ${health.status}; ${feedEntries.length - badFeeds.length}/${feedEntries.length} configured feed checks are green.`
+      ? `/api/health returned HTTP ${health.status}; ${feedEntries.length - badFeeds.length}/${feedEntries.length} provider/configuration flags are enabled.`
       : `/api/health did not return a successful response (status ${health.status || "timeout"}).`,
-    diagnosis: health.ok && badFeeds.length === 0 ? "Public health endpoint is green." : "Public health requires attention.",
-    fixedState: health.ok && badFeeds.length === 0 ? "pass" : health.ok ? "partial" : "fail",
-    affectedSurface: "public API / feeds",
-    remediationPerformed: "Provider kill switches and fallbacks remain authoritative; audit does not alter credentials.",
+    diagnosis: health.ok
+      ? "Public liveness/configuration endpoint is reachable. Feed flags indicate configuration only, not upstream provider success."
+      : "Public liveness endpoint requires attention.",
+    fixedState: health.ok ? (badFeeds.length === 0 ? "pass" : "partial") : "fail",
+    affectedSurface: "public API / provider configuration",
+    remediationPerformed: "No paid upstream probe is triggered by the public health endpoint.",
     verificationEvidence: "/api/health",
+  });
+
+  const observedProviderRequests = providerRows.reduce((sum, row) => sum + Number(row.requests), 0);
+  const observedProviderFailures = providerRows.reduce((sum, row) => sum + Number(row.failures), 0);
+  const degradedProviders = providerRows
+    .filter((row) => Number(row.requests) > 0 && Number(row.failures) / Number(row.requests) >= 0.1)
+    .map((row) => row.provider);
+  add({
+    check: "provider_telemetry",
+    finding:
+      observedProviderRequests === 0
+        ? "No provider request telemetry was observed in the last 24 hours."
+        : `${observedProviderRequests} provider request event(s) observed in 24h; ${observedProviderFailures} failure(s). Degraded: ${degradedProviders.length ? degradedProviders.join(", ") : "none"}.`,
+    diagnosis:
+      observedProviderRequests === 0
+        ? "Live provider state is unknown because no request telemetry was recorded."
+        : degradedProviders.length
+          ? "One or more providers have an observed failure rate of at least 10%."
+          : "Observed provider telemetry is healthy.",
+    fixedState:
+      observedProviderRequests === 0 ? "unknown" : degradedProviders.length ? "fail" : "pass",
+    affectedSurface: "live data providers",
+    remediationPerformed:
+      degradedProviders.length
+        ? "Existing provider fallbacks/circuit breakers remain active; credentials, billing, and scopes are not changed automatically."
+        : "No repair required.",
+    verificationEvidence: "OpsTelemetryEvent provider/status over trailing 24h",
   });
 
   if (cadence !== "hourly") {
@@ -433,6 +489,8 @@ async function collectSnapshot(
     signals: signalAge <= 2.5 ? "operational" : "degraded",
     marketDna: dnaAge <= 2.5 ? "operational" : "degraded",
     telemetry: telemetryAge <= 3 ? "operational" : "degraded",
+    providers:
+      observedProviderRequests === 0 ? "unknown" : degradedProviders.length ? "degraded" : "operational",
     clientRuntime: clientErrors === 0 ? "operational" : "attention",
     incidents: currentOpenIncidents === 0 ? "clear" : "attention",
     ai: latestAi && staleHours(latestAi.createdAt, now) <= 48 ? "operational" : "unknown",
