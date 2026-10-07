@@ -1,8 +1,6 @@
 import { DataHealthNotice } from "./components/DataHealthNotice";
-import { useState, useEffect } from "react";
-import { AdminDashboard } from "./components/AdminDashboard";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { IntelTour } from "./components/IntelTour";
-import { SignalGlossaryModal } from "./components/SignalGlossaryModal";
 import { LiveFeed } from "./components/LiveFeed";
 import { BillingFinePrint } from "./components/BillingFinePrint";
 import { FinancialDisclaimer } from "./components/FinancialDisclaimer";
@@ -11,12 +9,7 @@ import { ModuleGate } from "./components/ModuleGate";
 import { ModuleSidebar } from "./components/ModuleSidebar";
 import { MobileBottomNav } from "./components/MobileNav";
 import { WorkspaceHeader } from "./components/WorkspaceHeader";
-import { TabBetting } from "./components/TabBetting";
-import { TabCrypto } from "./components/TabCrypto";
 import { MotiveV2Home } from "./components/MotiveV2Home";
-import { TabPenny } from "./components/TabPenny";
-import { TabPredictions } from "./components/TabPredictions";
-import { TabStocks } from "./components/TabStocks";
 import { useApi } from "./hooks/useApi";
 import { useModules } from "./hooks/useModules";
 import { useAuth } from "./hooks/useAuth";
@@ -24,16 +17,56 @@ import { useModulePulse } from "./hooks/useModulePulse";
 import { useModuleUsageTracker } from "./hooks/useModuleUsageTracker";
 import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
 import { isNativeIosShell, isNativeShell, syncNativeShellDocumentClass } from "./lib/nativeShell";
-import { PrivacyPage } from "./pages/PrivacyPage";
-import { TermsPage } from "./pages/TermsPage";
-import { DataDeletionPage } from "./pages/DataDeletionPage";
-import { CookiePolicyPage } from "./pages/CookiePolicyPage";
-import { DisclaimerPage } from "./pages/DisclaimerPage";
-import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { TAB_TO_BRAND } from "./brand/moduleBrand";
 import type { TabId } from "./types";
 import { ChiefOfFinanceAssistant } from "./features/ask-motive/ChiefOfFinanceAssistant";
+
+const AdminDashboard = lazy(() =>
+  import("./components/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const SignalGlossaryModal = lazy(() =>
+  import("./components/SignalGlossaryModal").then((m) => ({ default: m.SignalGlossaryModal }))
+);
+const TabStocks = lazy(() =>
+  import("./components/TabStocks").then((m) => ({ default: m.TabStocks }))
+);
+const TabPenny = lazy(() =>
+  import("./components/TabPenny").then((m) => ({ default: m.TabPenny }))
+);
+const TabCrypto = lazy(() =>
+  import("./components/TabCrypto").then((m) => ({ default: m.TabCrypto }))
+);
+const TabBetting = lazy(() =>
+  import("./components/TabBetting").then((m) => ({ default: m.TabBetting }))
+);
+const TabPredictions = lazy(() =>
+  import("./components/TabPredictions").then((m) => ({ default: m.TabPredictions }))
+);
+const PrivacyPage = lazy(() =>
+  import("./pages/PrivacyPage").then((m) => ({ default: m.PrivacyPage }))
+);
+const TermsPage = lazy(() =>
+  import("./pages/TermsPage").then((m) => ({ default: m.TermsPage }))
+);
+const DataDeletionPage = lazy(() =>
+  import("./pages/DataDeletionPage").then((m) => ({ default: m.DataDeletionPage }))
+);
+const CookiePolicyPage = lazy(() =>
+  import("./pages/CookiePolicyPage").then((m) => ({ default: m.CookiePolicyPage }))
+);
+const DisclaimerPage = lazy(() =>
+  import("./pages/DisclaimerPage").then((m) => ({ default: m.DisclaimerPage }))
+);
+const ForgotPasswordPage = lazy(() =>
+  import("./pages/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage }))
+);
+const ResetPasswordPage = lazy(() =>
+  import("./pages/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage }))
+);
+
+function LoadingSurface() {
+  return <div className="empty-state">Loading MotiveFX…</div>;
+}
 
 const TABS: { id: TabId; label: string; module: string }[] = [
   { id: "home", label: "Home", module: "home" },
@@ -87,14 +120,14 @@ export default function App() {
   const statusLabel = preferredRemaining != null && Number.isFinite(preferredRemaining)
     ? `${preferredQuotaLabel} ${Math.round(preferredRemaining).toLocaleString()} left`
     : health.data?.feeds?.openai ? "GPT insights live" : liveCount > 0 ? `${liveCount} feeds` : "Free data mode";
-  if (legalPage === "privacy") return <PrivacyPage />;
-  if (legalPage === "terms") return <TermsPage />;
-  if (legalPage === "data-deletion") return <DataDeletionPage />;
-  if (legalPage === "cookies") return <CookiePolicyPage />;
-  if (legalPage === "disclaimer") return <DisclaimerPage />;
-  if (legalPage === "forgot-password") return <ForgotPasswordPage />;
-  if (legalPage === "reset-password") return <ResetPasswordPage token={resetToken} />;
-  if (legacyAdminView) return <AdminDashboard />;
+  if (legalPage === "privacy") return <Suspense fallback={<LoadingSurface />}><PrivacyPage /></Suspense>;
+  if (legalPage === "terms") return <Suspense fallback={<LoadingSurface />}><TermsPage /></Suspense>;
+  if (legalPage === "data-deletion") return <Suspense fallback={<LoadingSurface />}><DataDeletionPage /></Suspense>;
+  if (legalPage === "cookies") return <Suspense fallback={<LoadingSurface />}><CookiePolicyPage /></Suspense>;
+  if (legalPage === "disclaimer") return <Suspense fallback={<LoadingSurface />}><DisclaimerPage /></Suspense>;
+  if (legalPage === "forgot-password") return <Suspense fallback={<LoadingSurface />}><ForgotPasswordPage /></Suspense>;
+  if (legalPage === "reset-password") return <Suspense fallback={<LoadingSurface />}><ResetPasswordPage token={resetToken} /></Suspense>;
+  if (legacyAdminView) return <Suspense fallback={<LoadingSurface />}><AdminDashboard /></Suspense>;
   return <div className="app app-terminal" data-theme={TAB_TO_BRAND[activeTab]}>
     {!isAuthenticated && !SITE_EMBED && !authLoading && !authError && <div className="launch-banner">
       <span>Create a free account to secure your data before launch.</span><button type="button" className="btn btn-annual-cta" onClick={() => openAuth("register")}>Get started</button>
@@ -108,7 +141,11 @@ export default function App() {
     {authError && <div className="launch-banner" role="alert"><span>{authError}</span><button className="btn" type="button" onClick={() => void refreshUser()}>Retry account</button></div>}
     <PlatformSetupGate activeModules={activeModules} />
     <IntelTour />
-    {glossaryOpen && <SignalGlossaryModal onClose={() => setGlossaryOpen(false)} />}
+    {glossaryOpen && (
+      <Suspense fallback={null}>
+        <SignalGlossaryModal onClose={() => setGlossaryOpen(false)} />
+      </Suspense>
+    )}
     <div className="app-body">
       <ModuleSidebar activeTab={activeTab} onSelect={setActiveTab} hasModule={hasModule} statusLabel={statusLabel} pulseBadges={pulseBadges} onOpenGlossary={() => setGlossaryOpen(true)} />
       <div className="app-content">
@@ -116,13 +153,17 @@ export default function App() {
         <LiveFeed />
         <main className="main terminal-main">
           <DataHealthNotice />
-          {activeTab === "home" ? <MotiveV2Home onNavigate={setActiveTab} /> : <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
-            {activeTab === "stocks" && <TabStocks />}
-            {activeTab === "penny" && <TabPenny />}
-            {activeTab === "crypto" && <TabCrypto />}
-            {activeTab === "betting" && <TabBetting />}
-            {activeTab === "predictions" && <TabPredictions />}
-          </ModuleGate>}
+          {activeTab === "home" ? <MotiveV2Home onNavigate={setActiveTab} /> : (
+            <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
+              <Suspense fallback={<LoadingSurface />}>
+                {activeTab === "stocks" && <TabStocks />}
+                {activeTab === "penny" && <TabPenny />}
+                {activeTab === "crypto" && <TabCrypto />}
+                {activeTab === "betting" && <TabBetting />}
+                {activeTab === "predictions" && <TabPredictions />}
+              </Suspense>
+            </ModuleGate>
+          )}
           <TierPricing />
         </main>
         <footer className="app-footer">
