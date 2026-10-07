@@ -160,6 +160,21 @@ export function recordTelemetry(input: TelemetryInput): TelemetryEnvelope {
   return envelope;
 }
 
+export async function recordTelemetryDurable(
+  input: TelemetryInput
+): Promise<TelemetryEnvelope> {
+  const envelope = buildTelemetryEnvelope(input);
+  ring.unshift(envelope);
+  if (ring.length > RING_MAX) ring.length = RING_MAX;
+  if (envelope.instrumentationErrors.length > 0) {
+    console.warn("[ops/telemetry] instrumentation", envelope.eventId, envelope.instrumentationErrors);
+  }
+  const { persistTelemetry } = await import("./durable");
+  await persistTelemetry(envelope);
+  return envelope;
+}
+
+
 export function getRecentTelemetry(limit = 50): TelemetryEnvelope[] {
   return ring.slice(0, Math.max(1, Math.min(limit, RING_MAX)));
 }
