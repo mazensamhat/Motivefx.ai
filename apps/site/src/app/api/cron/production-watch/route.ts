@@ -230,7 +230,7 @@ async function collectSnapshot(
       periodStart,
       periodEnd
     );
-    const duplicates = Number(duplicateRows[0]?.duplicate_groups ?? 0n);
+    const duplicates = Number(duplicateRows[0]?.duplicate_groups ?? BigInt(0));
     add({
       check: "signal_duplicate_integrity",
       finding: `${duplicates} duplicate logical signal group(s) detected in the audit window.`,
@@ -249,8 +249,8 @@ async function collectSnapshot(
        FROM pg_stat_activity
        WHERE datname = current_database()`
     );
-    const total = Number(connectionRows[0]?.total ?? 0n);
-    const waiting = Number(connectionRows[0]?.waiting ?? 0n);
+    const total = Number(connectionRows[0]?.total ?? BigInt(0));
+    const waiting = Number(connectionRows[0]?.waiting ?? BigInt(0));
     add({
       check: "database_reliability",
       finding: `${total} database connection(s), ${waiting} currently waiting.`,
