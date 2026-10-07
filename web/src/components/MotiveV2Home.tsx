@@ -1,23 +1,53 @@
 import { ArrowRight, Bot, CalendarDays, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useHomeBriefing } from "../hooks/useHomeBriefing";
 import type { TabId } from "../types";
-import { HomeResearchDialog, type HomeResearchTarget } from "./HomeResearchDialog";
+import type { HomeResearchTarget } from "./HomeResearchDialog";
 import { opportunityKind, opportunityView, reportedScore } from "../lib/homeOpportunityActions";
 import { useSignalDetail } from "../hooks/useSignalDetail";
 import { homeScoreDetail } from "../utils/signalIntel";
 import "../styles/home-research.css";
 import { AudioBriefingButton } from "./AudioBriefingButton";
-import { Phase2IntelPanels } from "./Phase2IntelPanels";
-import { InstitutionalPanel } from "./InstitutionalPanel";
-import { WatchlistRadar } from "./WatchlistRadar";
-import { IntelJournalPanel } from "./IntelJournalPanel";
-import { HomeAlertsSection } from "./HomeAlertsSection";
-import { CompareLensSection } from "./CompareLensSection";
 import { FeatureGate } from "./FeatureGate";
-import { MotiveTrackRecord, MotiveWatchAgents } from "./MotiveV2TrustLayer";
-import { MarketClose, MotiveDiscover, PortfolioIntelligence, SinceYouWereAway } from "./MotiveV2Completion";
+import { SinceYouWereAway } from "./MotiveV2Completion";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
+
+const HomeResearchDialog = lazy(() =>
+  import("./HomeResearchDialog").then((m) => ({ default: m.HomeResearchDialog }))
+);
+const MotiveDiscover = lazy(() =>
+  import("./MotiveV2Completion").then((m) => ({ default: m.MotiveDiscover }))
+);
+const PortfolioIntelligence = lazy(() =>
+  import("./MotiveV2Completion").then((m) => ({ default: m.PortfolioIntelligence }))
+);
+const MarketClose = lazy(() =>
+  import("./MotiveV2Completion").then((m) => ({ default: m.MarketClose }))
+);
+const MotiveTrackRecord = lazy(() =>
+  import("./MotiveV2TrustLayer").then((m) => ({ default: m.MotiveTrackRecord }))
+);
+const MotiveWatchAgents = lazy(() =>
+  import("./MotiveV2TrustLayer").then((m) => ({ default: m.MotiveWatchAgents }))
+);
+const Phase2IntelPanels = lazy(() =>
+  import("./Phase2IntelPanels").then((m) => ({ default: m.Phase2IntelPanels }))
+);
+const InstitutionalPanel = lazy(() =>
+  import("./InstitutionalPanel").then((m) => ({ default: m.InstitutionalPanel }))
+);
+const WatchlistRadar = lazy(() =>
+  import("./WatchlistRadar").then((m) => ({ default: m.WatchlistRadar }))
+);
+const IntelJournalPanel = lazy(() =>
+  import("./IntelJournalPanel").then((m) => ({ default: m.IntelJournalPanel }))
+);
+const HomeAlertsSection = lazy(() =>
+  import("./HomeAlertsSection").then((m) => ({ default: m.HomeAlertsSection }))
+);
+const CompareLensSection = lazy(() =>
+  import("./CompareLensSection").then((m) => ({ default: m.CompareLensSection }))
+);
 
 interface Props { onNavigate: (tab: TabId) => void; }
 
@@ -57,7 +87,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
 
   return (
     <div className="v2-home">
-      {review && <HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} />}
+      {review && <Suspense fallback={null}><HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} /></Suspense>}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
       <SinceYouWereAway />
 
@@ -178,18 +208,20 @@ export function MotiveV2Home({ onNavigate }: Props) {
       />
 
 
-      <MotiveDiscover />
-      <FeatureGate feature="portfolio_intelligence"><PortfolioIntelligence /></FeatureGate>
-      <MarketClose />
-      <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
-      <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
+      <Suspense fallback={null}>
+        <MotiveDiscover />
+        <FeatureGate feature="portfolio_intelligence"><PortfolioIntelligence /></FeatureGate>
+        <MarketClose />
+        <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
+        <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
+      </Suspense>
 
       <section className="v2-pro-legacy" id="v2-pro-intelligence">
         <header className="v2-section-head v2-pro-toggle">
           <div><span className="v2-eyebrow">PRO INTELLIGENCE</span><h2>Deep intelligence</h2></div>
           <button type="button" className="btn" aria-expanded={proOpen} onClick={() => setProOpen((v) => !v)}>{proOpen ? "Hide Pro tools" : "Open Pro tools"}</button>
         </header>
-        {!proOpen ? <div className="v2-pro-collapsed">Relationship Graph, theme watchlists, consensus breaks, future scenarios, Market Genome, alerts, journal and institutional tools stay tucked away until you need them.</div> : <>
+        {!proOpen ? <div className="v2-pro-collapsed">Relationship Graph, theme watchlists, consensus breaks, future scenarios, Market Genome, alerts, journal and institutional tools stay tucked away until you need them.</div> : <Suspense fallback={<div className="v2-pro-collapsed">Loading Pro intelligence…</div>}>
           <Phase2IntelPanels
             briefing={b}
             onPrefsChanged={() => void refresh()}
@@ -206,7 +238,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
           <FeatureGate feature="decision_history"><IntelJournalPanel /></FeatureGate>
           <FeatureGate feature="push_notifications"><HomeAlertsSection /></FeatureGate>
           {b.compareLens && b.compareLens.length > 0 && <CompareLensSection items={b.compareLens} />}
-        </>}
+        </Suspense>}
       </section>
 
       <section className="v2-ask-strip">
