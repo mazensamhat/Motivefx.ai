@@ -34,7 +34,18 @@ jobs:
           const v = report.metadata?.vulnerabilities ?? {};
           const high = Number(v.high ?? 0);
           const critical = Number(v.critical ?? 0);
+          const vulnerable = Object.entries(report.vulnerabilities ?? {})
+            .filter(([, row]) => row && (row.severity === "high" || row.severity === "critical"))
+            .map(([name, row]) => ({
+              name,
+              severity: row.severity,
+              range: row.range,
+              via: (row.via ?? []).map((item) => typeof item === "string" ? item : item.title || item.name || "advisory"),
+              fixAvailable: row.fixAvailable,
+              nodes: row.nodes,
+            }));
           console.log(`npm audit: high=${high} critical=${critical}`);
+          console.log("npm audit vulnerable packages:", JSON.stringify(vulnerable));
           if (high > 0 || critical > 0) process.exit(1);
           NODE
 
