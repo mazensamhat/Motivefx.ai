@@ -1582,12 +1582,6 @@ async function fetchLineMovesFromOddsApi(
       ),
     };
   } catch (err) {
-    await recordProviderResult(
-      "polymarket_gamma",
-      err instanceof DOMException && err.name === "TimeoutError" ? "timeout" : "error",
-      startedAt,
-      err instanceof DOMException && err.name === "TimeoutError" ? "TIMEOUT" : "NETWORK_ERROR"
-    );
     return {
       items: demoLineMoves(),
       source: "demo",
@@ -1998,6 +1992,12 @@ async function fetchPredictionMarketsUncached(
       cacheTtlMs: POLYMARKET_CACHE_TTL_MS,
     };
   } catch (err) {
+    await recordProviderResult(
+      "polymarket_gamma",
+      err instanceof DOMException && err.name === "TimeoutError" ? "timeout" : "error",
+      startedAt,
+      err instanceof DOMException && err.name === "TimeoutError" ? "TIMEOUT" : "NETWORK_ERROR"
+    );
     return {
       items: demoPredictionMarkets().slice(0, limit),
       source: "demo",
