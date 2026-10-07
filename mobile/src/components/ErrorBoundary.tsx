@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../theme";
+import { reportNativeClientError } from "../lib/clientTelemetry";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,11 @@ export class ErrorBoundary extends Component<Props, State> {
       name: error.name,
       stack: error.stack,
       componentStack: info.componentStack,
+    });
+    reportNativeClientError({
+      surface: "native.react",
+      errorName: error.name,
+      message: error.message,
     });
   }
 
