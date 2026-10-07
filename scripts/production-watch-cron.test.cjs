@@ -138,3 +138,12 @@ test("Production Watch only auto-resolves its own client-error incidents", () =>
   assert.match(source, /activeClientIncidentIds/);
   assert.doesNotMatch(source, /opsIncidentRecord\.updateMany\(\{\s*data:/);
 });
+
+test("Production Watch separates provider telemetry from config health", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /provider_telemetry/);
+  assert.match(source, /OpsTelemetryEvent/);
+  assert.match(source, /provider\/configuration flags/);
+  assert.match(source, /configuration only, not upstream provider success/);
+  assert.match(source, /failure rate of at least 10%/);
+});
