@@ -5,8 +5,30 @@ function demoFeedsAllowed(dataMode: DataMode = getDataMode()): boolean {
   return allowsDemoFeeds(dataMode);
 }
 import { isProviderEnabled } from "../provider-switches";
+import { recordTelemetryDurable } from "../../ops/telemetry-envelope";
 
 const now = () => new Date().toISOString();
+
+async function recordProviderResult(
+  provider: string,
+  status: "ok" | "error" | "timeout",
+  startedAtMs: number,
+  errorCode?: string,
+  metadata?: Record<string, unknown>
+) {
+  await recordTelemetryDurable({
+    eventName: status === "ok" ? "provider.request.completed" : "provider.request.failed",
+    provider,
+    durationMs: Math.max(0, Date.now() - startedAtMs),
+    status,
+    errorCode,
+    sourceClass: "provider",
+    privacyClass: "internal",
+    metadata: metadata ?? {},
+  }).catch((error) => {
+    console.warn("[feeds] provider telemetry persist failed", provider, error);
+  });
+}
 
 function futureExpiryIso(daysAhead: number): string {
   const d = new Date();
@@ -243,10 +265,17 @@ type CoinGeckoMarket = {
 };
 
 async function fetchCoinGeckoWhaleLike() {
+  const startedAt = Date.now();
   try {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=15&page=1&sparkline=false",
       { next: { revalidate: 120 } }
+    );
+    await recordProviderResult(
+      "coingecko",
+      res.ok ? "ok" : "error",
+      startedAt,
+      res.ok ? undefined : `HTTP_${res.status}`
     );
     if (!res.ok) return [];
     const rows = (await res.json()) as CoinGeckoMarket[];
@@ -267,6 +296,7 @@ async function fetchCoinGeckoWhaleLike() {
         };
       });
   } catch {
+    await recordProviderResult("coingecko", "error", startedAt, "NETWORK_ERROR");
     return [];
   }
 }
@@ -316,6 +346,7 @@ export async function fetchWhaleAlertsWithMeta(
     }
 
     if (key) {
+      const startedAt = Date.now();
       try {
         const res = await withTimeout(
           fetch("https://openapiv1.coinstats.app/coins?limit=12", {
@@ -323,6 +354,12 @@ export async function fetchWhaleAlertsWithMeta(
             next: { revalidate: 120 },
           }),
           2000
+        );
+        await recordProviderResult(
+          "coinstats",
+          res?.ok ? "ok" : res ? "error" : "timeout",
+          startedAt,
+          res?.ok ? undefined : res ? `HTTP_${res.status}` : "TIMEOUT"
         );
         if (res?.ok) {
           const raw = (await res.json()) as
@@ -1132,10 +1169,23 @@ async function fetchSharpLineMoves(apiKey: string): Promise<SharpFetchResult> {
   // One request for the board — free tier is request-rate limited (12/min), not credit-based.
   url.searchParams.set("market", "moneyline");
   url.searchParams.set("limit", "200");
-  const res = await fetch(url.toString(), {
-    headers: { "X-API-Key": apiKey },
-    cache: "no-store",
-  });
+  const startedAt = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      headers: { "X-API-Key": apiKey },
+      cache: "no-store",
+    });
+  } catch (error) {
+    await recordProviderResult("sharp_api", "error", startedAt, "NETWORK_ERROR");
+    throw error;
+  }
+  await recordProviderResult(
+    "sharp_api",
+    res.ok ? "ok" : "error",
+    startedAt,
+    res.ok ? undefined : `HTTP_${res.status}`
+  );
   rememberSharpQuotaHeaders(res.headers);
   if (!res.ok) {
     const bodyText = await res.text().catch(() => "");
@@ -1369,7 +1419,21 @@ async function fetchOddsForSport(sport: string, key: string): Promise<OddsSportR
   // Single market = 1 quota unit per call; spreads+h2h was burning 2× per sport in the fallback loop.
   url.searchParams.set("markets", "h2h");
   url.searchParams.set("oddsFormat", "american");
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  const startedAt = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { cache: "no-store" });
+  } catch (error) {
+    await recordProviderResult("the_odds_api", "error", startedAt, "NETWORK_ERROR", { sport });
+    throw error;
+  }
+  await recordProviderResult(
+    "the_odds_api",
+    res.ok ? "ok" : "error",
+    startedAt,
+    res.ok ? undefined : `HTTP_${res.status}`,
+    { sport }
+  );
   rememberOddsQuotaHeaders(res.headers);
   if (!res.ok) {
     const bodyText = await res.text().catch(() => "");
@@ -1518,6 +1582,12 @@ async function fetchLineMovesFromOddsApi(
       ),
     };
   } catch (err) {
+    await recordProviderResult(
+      "polymarket_gamma",
+      err instanceof DOMException && err.name === "TimeoutError" ? "timeout" : "error",
+      startedAt,
+      err instanceof DOMException && err.name === "TimeoutError" ? "TIMEOUT" : "NETWORK_ERROR"
+    );
     return {
       items: demoLineMoves(),
       source: "demo",
@@ -1852,6 +1922,7 @@ async function fetchPredictionMarketsUncached(
   limit: number
 ): Promise<{ items: PredictionMarketItem[] } & FeedMeta> {
   const updatedAt = now();
+  const startedAt = Date.now();
   try {
     const url = new URL("https://gamma-api.polymarket.com/events");
     url.searchParams.set("active", "true");
@@ -1867,6 +1938,12 @@ async function fetchPredictionMarketsUncached(
       cache: "no-store",
       signal: AbortSignal.timeout(4500),
     });
+    await recordProviderResult(
+      "polymarket_gamma",
+      res.ok ? "ok" : "error",
+      startedAt,
+      res.ok ? undefined : `HTTP_${res.status}`
+    );
     if (!res.ok) {
       return {
         items: demoPredictionMarkets().slice(0, limit),
