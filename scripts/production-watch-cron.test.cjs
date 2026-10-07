@@ -63,3 +63,31 @@ test("Health audit UI renders structured production-watch details and fixed coun
   assert.match(source, /statusFilter/);
   assert.match(source, /URLSearchParams/);
 });
+
+
+test("Client runtime crashes are privacy-minimized, reported, and audited", () => {
+  const registry = read("apps/site/src/lib/ops/event-registry.ts");
+  const route = read("apps/site/src/app/api/client-error/route.ts");
+  const watch = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  const webReporter = read("web/src/lib/clientTelemetry.ts");
+  const webBoundary = read("web/src/components/TerminalErrorBoundary.tsx");
+  const nativeReporter = read("mobile/src/lib/clientTelemetry.ts");
+  const nativeBoundary = read("mobile/src/components/ErrorBoundary.tsx");
+  const globalError = read("apps/site/src/app/global-error.tsx");
+
+  assert.match(registry, /"client\.error"/);
+  assert.match(route, /messageSignature/);
+  assert.match(route, /createHash\("sha256"\)/);
+  assert.match(route, /Payload too large/);
+  assert.match(route, /safeRoute/);
+  assert.doesNotMatch(route, /stack\s*:/);
+  assert.doesNotMatch(route, /email\s*:/);
+  assert.match(watch, /eventName:\s*"client\.error"/);
+  assert.match(watch, /client_runtime_errors/);
+  assert.match(webReporter, /\/api\/client-error/);
+  assert.match(webReporter, /unhandledrejection/);
+  assert.match(webBoundary, /reportClientError/);
+  assert.match(nativeReporter, /\/client-error/);
+  assert.match(nativeBoundary, /reportNativeClientError/);
+  assert.match(globalError, /\/api\/client-error/);
+});
