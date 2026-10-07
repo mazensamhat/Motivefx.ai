@@ -12,6 +12,8 @@ export const MOTIVEFX_EVENTS = [
   "product.session.started",
   "product.feature.opened",
   "product.search.executed",
+  // CLIENT RELIABILITY
+  "client.error",
   // SIGNALS
   "signal.generated",
   "signal.updated",
@@ -101,6 +103,7 @@ export function isKnownEvent(name: string): name is MotiveFxEventName {
 export type EventDomain =
   | "account"
   | "product"
+  | "client"
   | "signal"
   | "opportunity"
   | "graph"
@@ -121,6 +124,8 @@ export function eventDomain(name: MotiveFxEventName): EventDomain {
       return "account";
     case "product":
       return "product";
+    case "client":
+      return "client";
     case "signal":
       return "signal";
     case "opportunity":
