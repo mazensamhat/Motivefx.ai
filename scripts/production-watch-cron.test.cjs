@@ -28,8 +28,17 @@ test("Production Watch runs hourly and records all four audit cadences", () => {
   assert.match(source, /ON CONFLICT \(id\) DO UPDATE/);
 });
 
-test("Production Watch audits are read-only outside their own Ops ledger", () => {
+test("Production Watch may self-heal intelligence but never mutates customer or billing state", () => {
   const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+
+  // Safe automatic remediation: stale intelligence is rebuilt and durability is flushed.
+  assert.match(source, /buildHomeBriefing/);
+  assert.match(source, /flushSignalEvidencePersistence/);
+  assert.match(source, /originalSignalStale/);
+  assert.match(source, /originalDnaStale/);
+  assert.match(source, /fixedCount/);
+
+  // Customer and commercial state remain outside automatic remediation.
   assert.doesNotMatch(source, /userPortfolio\.(create|update|delete)/);
   assert.doesNotMatch(source, /userBet\.(create|update|delete)/);
   assert.doesNotMatch(source, /userPrediction\.(create|update|delete)/);
