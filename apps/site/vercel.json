@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/watch-agents",
       "schedule": "37 * * * *"
+    },
+    {
+      "path": "/api/cron/production-watch",
+      "schedule": "7 * * * *"
     }
   ]
 }
