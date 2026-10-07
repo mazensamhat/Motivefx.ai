@@ -1,4 +1,5 @@
 import { API_BASE } from "../config";
+import { reportNativeClientError } from "./clientTelemetry";
 import {
   clearSession,
   getStoredAccessToken,
@@ -15,7 +16,16 @@ function delay(ms: number): Promise<void> {
 }
 
 export function mapNetworkError(e: unknown): Error {
-  if (e instanceof ApiError) return e;
+  if (e instanceof ApiError) {
+    if (e.status >= 500) {
+      reportNativeClientError({
+        surface: "native.api",
+        errorName: `HTTP_${e.status}`,
+        message: `Server request failed with HTTP ${e.status}`,
+      });
+    }
+    return e;
+  }
   const msg = e instanceof Error ? e.message : String(e ?? "Unknown error");
   const name = e instanceof Error ? e.name : "";
   const lower = msg.toLowerCase();
@@ -27,6 +37,11 @@ export function mapNetworkError(e: unknown): Error {
     lower.includes("cancelled") ||
     msg === "TIMEOUT"
   ) {
+    reportNativeClientError({
+      surface: "native.network",
+      errorName: "NETWORK_TIMEOUT",
+      message: "Native request timed out or was interrupted",
+    });
     return new Error("Sign-in timed out or was interrupted. Check your connection and try again.");
   }
   if (
@@ -35,6 +50,11 @@ export function mapNetworkError(e: unknown): Error {
     lower.includes("fetch failed") ||
     lower.includes("network error")
   ) {
+    reportNativeClientError({
+      surface: "native.network",
+      errorName: "NETWORK_UNREACHABLE",
+      message: "Native client could not reach MotiveFX servers",
+    });
     return new Error("Could not reach MotiveFX servers. Check your connection and try again.");
   }
   return e instanceof Error ? e : new Error(msg);
