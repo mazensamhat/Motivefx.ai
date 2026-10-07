@@ -1,6 +1,7 @@
 import { prisma } from "@motivefx/database";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { flushSignalEvidencePersistence } from "@/lib/terminal/market-truth/evidence-ledger";
+import { upsertIncident } from "@/lib/ops/durable";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -161,6 +162,56 @@ async function collectSnapshot(
     }
   }
 
+  type RecurringClientError = {
+    platform: string;
+    surface: string;
+    route: string;
+    signature: string;
+    occurrences: bigint;
+  };
+  let recurringClientErrors: RecurringClientError[] = [];
+
+  if (clientErrors > 0) {
+    try {
+      recurringClientErrors = await prisma.$queryRawUnsafe<RecurringClientError[]>(
+        `SELECT
+           COALESCE(platform, 'unknown') AS platform,
+           COALESCE("metadataJson"::jsonb->>'surface', 'unknown') AS surface,
+           COALESCE("metadataJson"::jsonb->>'route', '/') AS route,
+           COALESCE("metadataJson"::jsonb->>'messageSignature', 'unknown') AS signature,
+           COUNT(*)::bigint AS occurrences
+         FROM public."OpsTelemetryEvent"
+         WHERE "eventName" = 'client.error'
+           AND "observedAt" >= $1
+           AND "observedAt" < $2
+         GROUP BY 1,2,3,4
+         HAVING COUNT(*) >= 3
+         ORDER BY occurrences DESC
+         LIMIT 10`,
+        periodStart,
+        periodEnd
+      );
+
+      for (const row of recurringClientErrors) {
+        const occurrences = Number(row.occurrences);
+        await upsertIncident({
+          id: `client-error:${row.platform}:${row.surface}:${row.signature}`.slice(0, 220),
+          severity: occurrences >= 10 ? "high" : "medium",
+          domain: "client-runtime",
+          title: `Recurring ${row.platform} client error on ${row.surface}`.slice(0, 180),
+          description:
+            `${occurrences} occurrences in the ${cadence} audit window at ${row.route}. ` +
+            `Anonymous signature ${row.signature}. Review Client Errors for triage.`,
+          href: `/admin/client-errors?days=1&platform=${encodeURIComponent(row.platform)}`,
+          runbook: "Review grouped Client Errors, reproduce safely, patch the affected surface, then verify the error signature stops recurring.",
+          source: "client-error-watch",
+        });
+      }
+    } catch (error) {
+      console.warn("[cron/production-watch] recurring client error triage failed", error);
+    }
+  }
+
   const checks: Check[] = [];
   const findings: Check[] = [];
 
@@ -238,7 +289,9 @@ async function collectSnapshot(
     remediationPerformed:
       clientErrors === 0
         ? "No repair required."
-        : "Crash evidence is retained in privacy-minimized Ops telemetry for engineering triage; customer and credential state were not changed.",
+        : recurringClientErrors.length
+          ? `Crash evidence is retained in privacy-minimized Ops telemetry and ${recurringClientErrors.length} recurring signature(s) opened/updated an Ops incident. Customer and credential state were not changed.`
+          : "Crash evidence is retained in privacy-minimized Ops telemetry for engineering triage; no signature reached the recurring-incident threshold.",
     verificationEvidence: "OpsTelemetryEvent eventName=client.error",
   });
 
