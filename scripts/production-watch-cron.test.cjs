@@ -59,4 +59,7 @@ test("Health audit UI renders structured production-watch details and fixed coun
   assert.match(source, /remediationPerformed/);
   assert.match(source, /verificationEvidence/);
   assert.match(source, /fixedState/);
+  assert.match(source, /cadenceFilter/);
+  assert.match(source, /statusFilter/);
+  assert.match(source, /URLSearchParams/);
 });
