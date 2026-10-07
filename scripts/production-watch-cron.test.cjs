@@ -147,3 +147,14 @@ test("Production Watch separates provider telemetry from config health", () => {
   assert.match(source, /configuration only, not upstream provider success/);
   assert.match(source, /failure rate of at least 10%/);
 });
+
+test("Core provider fetches emit durable telemetry", () => {
+  const feeds = read("apps/site/src/lib/terminal/feeds/index.ts");
+  const telemetry = read("apps/site/src/lib/ops/telemetry-envelope.ts");
+  assert.match(telemetry, /recordTelemetryDurable/);
+  for (const provider of ["coingecko", "coinstats", "sharp_api", "the_odds_api", "polymarket_gamma"]) {
+    assert.match(feeds, new RegExp(`recordProviderResult\\([\\s\\S]*?"${provider}"`));
+  }
+  assert.match(feeds, /provider\.request\.completed/);
+  assert.match(feeds, /provider\.request\.failed/);
+});
