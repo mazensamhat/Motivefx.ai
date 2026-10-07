@@ -1,6 +1,5 @@
 import { DataHealthNotice } from "./components/DataHealthNotice";
 import { lazy, Suspense, useState, useEffect } from "react";
-import { IntelTour } from "./components/IntelTour";
 import { LiveFeed } from "./components/LiveFeed";
 import { BillingFinePrint } from "./components/BillingFinePrint";
 import { FinancialDisclaimer } from "./components/FinancialDisclaimer";
@@ -19,10 +18,17 @@ import { PlatformSetupGate } from "./hooks/usePlatformPrefs";
 import { isNativeIosShell, isNativeShell, syncNativeShellDocumentClass } from "./lib/nativeShell";
 import { TAB_TO_BRAND } from "./brand/moduleBrand";
 import type { TabId } from "./types";
-import { ChiefOfFinanceAssistant } from "./features/ask-motive/ChiefOfFinanceAssistant";
 
 const AdminDashboard = lazy(() =>
   import("./components/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const IntelTour = lazy(() =>
+  import("./components/IntelTour").then((m) => ({ default: m.IntelTour }))
+);
+const ChiefOfFinanceAssistant = lazy(() =>
+  import("./features/ask-motive/ChiefOfFinanceAssistant").then((m) => ({
+    default: m.ChiefOfFinanceAssistant,
+  }))
 );
 const SignalGlossaryModal = lazy(() =>
   import("./components/SignalGlossaryModal").then((m) => ({ default: m.SignalGlossaryModal }))
@@ -140,7 +146,7 @@ export default function App() {
     </div>}
     {authError && <div className="launch-banner" role="alert"><span>{authError}</span><button className="btn" type="button" onClick={() => void refreshUser()}>Retry account</button></div>}
     <PlatformSetupGate activeModules={activeModules} />
-    <IntelTour />
+    <Suspense fallback={null}><IntelTour /></Suspense>
     {glossaryOpen && (
       <Suspense fallback={null}>
         <SignalGlossaryModal onClose={() => setGlossaryOpen(false)} />
@@ -181,6 +187,6 @@ export default function App() {
       </div>
     </div>
     <MobileBottomNav activeTab={activeTab} onSelect={setActiveTab} />
-    <ChiefOfFinanceAssistant activeTab={activeTab} onNavigate={setActiveTab} />
+    <Suspense fallback={null}><ChiefOfFinanceAssistant activeTab={activeTab} onNavigate={setActiveTab} /></Suspense>
   </div>;
 }
