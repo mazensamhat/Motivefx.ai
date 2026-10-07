@@ -1,4 +1,6 @@
 import { prisma } from "@motivefx/database";
+import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
+import { flushSignalEvidencePersistence } from "@/lib/terminal/market-truth/evidence-ledger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -109,6 +111,49 @@ async function collectSnapshot(
     fetchHealth(origin),
   ]);
 
+  let signalRecordedAt = latestSignal?.recordedAt ?? null;
+  let dnaRecordedAt = latestDna?.recordedAt ?? null;
+  const originalSignalStale = staleHours(signalRecordedAt, now) > 2.5;
+  const originalDnaStale = staleHours(dnaRecordedAt, now) > 2.5;
+  let intelligenceRepairAttempted = false;
+  let intelligenceRepairError: string | null = null;
+  let fixedCount = 0;
+
+  if (originalSignalStale || originalDnaStale) {
+    intelligenceRepairAttempted = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        buildHomeBriefing({ displayName: null, userId: "demo", plan: null }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("production_watch_intel_timeout")), 10_000);
+        }),
+      ]);
+      await flushSignalEvidencePersistence();
+
+      const [repairedSignal, repairedDna] = await Promise.all([
+        prisma.signalSnapshot.findFirst({
+          orderBy: { recordedAt: "desc" },
+          select: { recordedAt: true },
+        }),
+        prisma.marketDnaSnapshot.findFirst({
+          orderBy: { recordedAt: "desc" },
+          select: { recordedAt: true },
+        }),
+      ]);
+      signalRecordedAt = repairedSignal?.recordedAt ?? signalRecordedAt;
+      dnaRecordedAt = repairedDna?.recordedAt ?? dnaRecordedAt;
+
+      if (originalSignalStale && staleHours(signalRecordedAt, now) <= 2.5) fixedCount += 1;
+      if (originalDnaStale && staleHours(dnaRecordedAt, now) <= 2.5) fixedCount += 1;
+    } catch (error) {
+      intelligenceRepairError =
+        error instanceof Error ? error.message.slice(0, 160) : "intelligence_refresh_failed";
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   const checks: Check[] = [];
   const findings: Check[] = [];
 
@@ -117,29 +162,39 @@ async function collectSnapshot(
     if (entry.fixedState === "fail") findings.push(entry);
   };
 
-  const signalAge = staleHours(latestSignal?.recordedAt, now);
+  const signalAge = staleHours(signalRecordedAt, now);
   add({
     check: "signal_freshness",
-    finding: latestSignal
+    finding: signalRecordedAt
       ? `Latest durable SignalSnapshot is ${signalAge.toFixed(1)}h old.`
       : "No durable SignalSnapshot exists.",
     diagnosis: signalAge <= 2.5 ? "Signal durability is current." : "Signal durability is stale.",
     fixedState: signalAge <= 2.5 ? "pass" : "fail",
     affectedSurface: "Motive Signal / intelligence",
-    remediationPerformed: "Scheduled Watch Agent intelligence refresh remains enabled.",
+    remediationPerformed:
+      originalSignalStale
+        ? signalAge <= 2.5
+          ? "Production watch refreshed shared intelligence and verified a fresh durable SignalSnapshot."
+          : `Production watch attempted a shared-intelligence refresh but SignalSnapshot remains stale${intelligenceRepairError ? `: ${intelligenceRepairError}` : "."}`
+        : "No repair required.",
     verificationEvidence: "SignalSnapshot.recordedAt",
   });
 
-  const dnaAge = staleHours(latestDna?.recordedAt, now);
+  const dnaAge = staleHours(dnaRecordedAt, now);
   add({
     check: "market_dna_freshness",
-    finding: latestDna
+    finding: dnaRecordedAt
       ? `Latest Market DNA snapshot is ${dnaAge.toFixed(1)}h old.`
       : "No Market DNA snapshot exists.",
     diagnosis: dnaAge <= 2.5 ? "Market DNA is current." : "Market DNA is stale.",
     fixedState: dnaAge <= 2.5 ? "pass" : "fail",
     affectedSurface: "Market DNA",
-    remediationPerformed: "Market DNA persists with durable signal snapshots.",
+    remediationPerformed:
+      originalDnaStale
+        ? dnaAge <= 2.5
+          ? "Production watch refreshed shared intelligence and verified fresh Market DNA."
+          : `Production watch attempted a shared-intelligence refresh but Market DNA remains stale${intelligenceRepairError ? `: ${intelligenceRepairError}` : "."}`
+        : "No repair required.",
     verificationEvidence: "MarketDnaSnapshot.recordedAt",
   });
 
@@ -278,7 +333,7 @@ async function collectSnapshot(
     status,
     issueCount,
     openCount: issueCount,
-    fixedCount: 0,
+    fixedCount,
     summary:
       issueCount === 0
         ? `${cadence} MotiveFX production audit passed with current intelligence, telemetry and incident state.`
