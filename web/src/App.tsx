@@ -3,7 +3,6 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { LiveFeed } from "./components/LiveFeed";
 import { BillingFinePrint } from "./components/BillingFinePrint";
 import { FinancialDisclaimer } from "./components/FinancialDisclaimer";
-import { TierPricing } from "./components/TierPricing";
 import { ModuleGate } from "./components/ModuleGate";
 import { ModuleSidebar } from "./components/ModuleSidebar";
 import { MobileBottomNav } from "./components/MobileNav";
@@ -21,6 +20,9 @@ import type { TabId } from "./types";
 
 const AdminDashboard = lazy(() =>
   import("./components/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const TierPricing = lazy(() =>
+  import("./components/TierPricing").then((m) => ({ default: m.TierPricing }))
 );
 const IntelTour = lazy(() =>
   import("./components/IntelTour").then((m) => ({ default: m.IntelTour }))
@@ -170,7 +172,7 @@ export default function App() {
               </Suspense>
             </ModuleGate>
           )}
-          <TierPricing />
+          <Suspense fallback={null}><TierPricing /></Suspense>
         </main>
         <footer className="app-footer">
           <div className="app-footer-legal-desktop"><FinancialDisclaimer compact />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} />}</div>
