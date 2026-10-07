@@ -26,6 +26,11 @@ test("Production Watch runs hourly and records all four audit cadences", () => {
   }
   assert.match(source, /OpsProductionWatchRun/);
   assert.match(source, /ON CONFLICT \(id\) DO UPDATE/);
+  assert.match(
+    source,
+    /issueCount === 0 \? ["']healthy["'] : ["']attention["']/,
+    "persisted run status must honor the database healthy|attention|incident contract"
+  );
 });
 
 test("Production Watch may self-heal intelligence but never mutates customer or billing state", () => {
