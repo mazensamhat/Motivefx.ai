@@ -200,7 +200,9 @@ test('post-response lifetime is bounded and calculation timeout remains unchange
   const f = briefingFixture();
   assert.equal(f.api.maxDuration, 30);
   const source = fs.readFileSync(path.join(root, briefingPath), 'utf8');
-  assert.match(source, /buildHomeBriefing[\\s\\S]*8_000/);
+  const buildStart = source.indexOf("buildHomeBriefing({ displayName, userId: effectiveId, plan })");
+  assert.ok(buildStart >= 0);
+  assert.ok(source.indexOf("8_000", buildStart) > buildStart);
   assert.match(source, /withTimeout\(flushSignalEvidencePersistence\(\), undefined, 8_000\)/);
   assert.match(source, /withTimeout\(persistAlerts\(\), undefined, 8_000\)/);
   assert.doesNotMatch(source, /void\s*\(async/);
