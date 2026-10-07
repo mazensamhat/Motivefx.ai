@@ -12,6 +12,8 @@ import { SignalDetailHost, SignalDetailProvider } from "./hooks/useSignalDetail"
 import { IntelToastProvider } from "./hooks/useIntelToast";
 import { AccountSettingsHost } from "./components/AccountSettingsHost";
 import { ThemeBrandAssets } from "./components/ThemeToggle";
+import { TerminalErrorBoundary } from "./components/TerminalErrorBoundary";
+import { installGlobalClientErrorReporting } from "./lib/clientTelemetry";
 import { initializeAppearance } from "./lib/appearance";
 import { syncNativeShellDocumentClass } from "./lib/nativeShell";
 import "./styles/global.css";
@@ -24,8 +26,10 @@ import "./styles/v2-trust.css";
 import "./styles/v2-completion.css";
 initializeAppearance();
 syncNativeShellDocumentClass();
+installGlobalClientErrorReporting();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <TerminalErrorBoundary>
     <ThemeBrandAssets />
     <AppAgeGate><AuthProvider><NativeIapSessionBridge />
       <GenerationalProvider><ModulesProvider><PlatformPrefsProvider>
@@ -34,5 +38,6 @@ createRoot(document.getElementById("root")!).render(
         </AssetDeepDiveProvider></SignalDetailProvider></IntelToastProvider>
       </PlatformPrefsProvider></ModulesProvider></GenerationalProvider>
     </AuthProvider></AppAgeGate>
+    </TerminalErrorBoundary>
   </StrictMode>
 );
