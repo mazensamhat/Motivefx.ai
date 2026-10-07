@@ -129,3 +129,12 @@ test("Recurring anonymous client errors escalate to Ops incidents without custom
   assert.doesNotMatch(source, /client-error.*userId/i);
   assert.doesNotMatch(source, /client-error.*email/i);
 });
+
+test("Production Watch only auto-resolves its own client-error incidents", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /source:\s*"client-error-watch"/);
+  assert.match(source, /opsIncidentRecord\.updateMany/);
+  assert.match(source, /status:\s*"resolved"/);
+  assert.match(source, /activeClientIncidentIds/);
+  assert.doesNotMatch(source, /opsIncidentRecord\.updateMany\(\{\s*data:/);
+});
