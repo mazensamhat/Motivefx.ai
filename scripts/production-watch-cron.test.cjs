@@ -98,3 +98,22 @@ test("Client runtime crashes are privacy-minimized, reported, and audited", () =
   assert.match(nativeApi, /native\.network/);
   assert.match(nativeApi, /native\.api/);
 });
+
+
+test("Ops exposes privacy-minimized Client Errors triage", () => {
+  const nav = read("apps/site/src/components/admin/ops-nav.ts");
+  const page = read("apps/site/src/app/admin/(console)/client-errors/page.tsx");
+
+  assert.match(nav, /\/admin\/client-errors/);
+  assert.match(page, /eventName\" = 'client\.error'/);
+  assert.match(page, /messageSignature/);
+  assert.match(page, /errorName/);
+  assert.match(page, /platform/);
+  assert.match(page, /surface/);
+  assert.match(page, /occurrences/);
+  assert.match(page, /first_seen/);
+  assert.match(page, /last_seen/);
+  assert.doesNotMatch(page, /userId/);
+  assert.doesNotMatch(page, /email/);
+  assert.doesNotMatch(page, /stack/);
+});
