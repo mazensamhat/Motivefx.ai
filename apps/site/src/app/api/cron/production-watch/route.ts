@@ -212,6 +212,35 @@ async function collectSnapshot(
     }
   }
 
+  // Resolve only incidents created by this automated client-error watcher once
+  // their anonymous signature is no longer recurring in the current audit window.
+  // Human-created/manual incidents are never auto-closed here.
+  let currentOpenIncidents = openIncidents;
+  try {
+    const activeClientIncidentIds = recurringClientErrors.map((row) =>
+      `client-error:${row.platform}:${row.surface}:${row.signature}`.slice(0, 220)
+    );
+    const resolved = await prisma.opsIncidentRecord.updateMany({
+      where: {
+        source: "client-error-watch",
+        status: { in: ["open", "acknowledged"] },
+        ...(activeClientIncidentIds.length
+          ? { id: { notIn: activeClientIncidentIds } }
+          : {}),
+      },
+      data: {
+        status: "resolved",
+        resolvedAt: now,
+      },
+    });
+    if (resolved.count > 0) fixedCount += resolved.count;
+    currentOpenIncidents = await prisma.opsIncidentRecord.count({
+      where: { status: { in: ["open", "acknowledged"] } },
+    });
+  } catch (error) {
+    console.warn("[cron/production-watch] stale client incident resolution failed", error);
+  }
+
   const checks: Check[] = [];
   const findings: Check[] = [];
 
@@ -297,9 +326,9 @@ async function collectSnapshot(
 
   add({
     check: "incident_desk",
-    finding: `${openIncidents} open or acknowledged incident(s).`,
-    diagnosis: openIncidents === 0 ? "No unresolved Ops incidents." : "Ops has unresolved incidents.",
-    fixedState: openIncidents === 0 ? "pass" : "fail",
+    finding: `${currentOpenIncidents} open or acknowledged incident(s).`,
+    diagnosis: currentOpenIncidents === 0 ? "No unresolved Ops incidents." : "Ops has unresolved incidents.",
+    fixedState: currentOpenIncidents === 0 ? "pass" : "fail",
     affectedSurface: "Incident desk",
     remediationPerformed: "Incident lifecycle remains owned by Ops resolution workflows.",
     verificationEvidence: "OpsIncidentRecord.status",
@@ -405,7 +434,7 @@ async function collectSnapshot(
     marketDna: dnaAge <= 2.5 ? "operational" : "degraded",
     telemetry: telemetryAge <= 3 ? "operational" : "degraded",
     clientRuntime: clientErrors === 0 ? "operational" : "attention",
-    incidents: openIncidents === 0 ? "clear" : "attention",
+    incidents: currentOpenIncidents === 0 ? "clear" : "attention",
     ai: latestAi && staleHours(latestAi.createdAt, now) <= 48 ? "operational" : "unknown",
   };
 
