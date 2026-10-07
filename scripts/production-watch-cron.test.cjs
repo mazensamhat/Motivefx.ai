@@ -49,3 +49,14 @@ test("Production Watch may self-heal intelligence but never mutates customer or 
   assert.doesNotMatch(source, /userPrediction\.(create|update|delete)/);
   assert.doesNotMatch(source, /stripe|billingProvider|revenueCat/i);
 });
+
+
+test("Health audit UI renders structured production-watch details and fixed counts", () => {
+  const source = read("apps/site/src/app/admin/(console)/health-audits/page.tsx");
+  assert.match(source, /Array\.isArray\(run\.details\)/);
+  assert.match(source, /run\.details\.checks/);
+  assert.match(source, /fixed_count/);
+  assert.match(source, /remediationPerformed/);
+  assert.match(source, /verificationEvidence/);
+  assert.match(source, /fixedState/);
+});
