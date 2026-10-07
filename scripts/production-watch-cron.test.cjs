@@ -117,3 +117,15 @@ test("Ops exposes privacy-minimized Client Errors triage", () => {
   assert.doesNotMatch(page, /email/);
   assert.doesNotMatch(page, /stack/);
 });
+
+
+test("Recurring anonymous client errors escalate to Ops incidents without customer identity", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /HAVING COUNT\(\*\) >= 3/);
+  assert.match(source, /client-error-watch/);
+  assert.match(source, /upsertIncident/);
+  assert.match(source, /messageSignature/);
+  assert.match(source, /\/admin\/client-errors/);
+  assert.doesNotMatch(source, /client-error.*userId/i);
+  assert.doesNotMatch(source, /client-error.*email/i);
+});
