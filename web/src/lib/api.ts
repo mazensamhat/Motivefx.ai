@@ -1,3 +1,5 @@
+import { reportClientError } from "./clientTelemetry";
+
 const USER_KEY = "motivefx_user_id";
 const AUTH_USER_KEY = "motivefx_auth_user_id";
 const ACCESS_KEY = "motivefx_access_token";
@@ -116,8 +118,18 @@ async function fetchWithAuth(input: string, init: RequestInit, retry = true): Pr
     return res;
   } catch (e) {
     if (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) {
+      reportClientError({
+        surface: "terminal.network",
+        errorName: "NETWORK_TIMEOUT",
+        message: "Terminal request timed out",
+      });
       throw new Error("Still loading — try again in a moment.");
     }
+    reportClientError({
+      surface: "terminal.network",
+      errorName: e instanceof Error ? e.name : "FetchError",
+      message: "Terminal request failed before a response was received",
+    });
     throw e;
   } finally {
     clearTimeout(timer);
@@ -163,7 +175,16 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     credentials: "same-origin",
   });
-  if (!res.ok) throw new Error(await parseApiError(res));
+  if (!res.ok) {
+    if (res.status >= 500) {
+      reportClientError({
+        surface: "terminal.api",
+        errorName: `HTTP_${res.status}`,
+        message: `API request returned HTTP ${res.status}`,
+      });
+    }
+    throw new Error(await parseApiError(res));
+  }
   return res.json() as Promise<T>;
 }
 
@@ -175,7 +196,16 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     credentials: "same-origin",
   });
-  if (!res.ok) throw new Error(await parseApiError(res));
+  if (!res.ok) {
+    if (res.status >= 500) {
+      reportClientError({
+        surface: "terminal.api",
+        errorName: `HTTP_${res.status}`,
+        message: `API request returned HTTP ${res.status}`,
+      });
+    }
+    throw new Error(await parseApiError(res));
+  }
   return res.json() as Promise<T>;
 }
 
@@ -189,7 +219,16 @@ export async function apiGet<T>(path: string): Promise<T> {
       : buildHeaders({ "Content-Type": "application/json" }),
     credentials: "same-origin",
   });
-  if (!res.ok) throw new Error(await parseApiError(res));
+  if (!res.ok) {
+    if (res.status >= 500) {
+      reportClientError({
+        surface: "terminal.api",
+        errorName: `HTTP_${res.status}`,
+        message: `API request returned HTTP ${res.status}`,
+      });
+    }
+    throw new Error(await parseApiError(res));
+  }
   return res.json() as Promise<T>;
 }
 
@@ -199,7 +238,16 @@ export async function apiDelete<T>(path: string): Promise<T> {
     headers: usesSiteCookieAuth(path) ? { "Content-Type": "application/json" } : buildHeaders(),
     credentials: "same-origin",
   });
-  if (!res.ok) throw new Error(await parseApiError(res));
+  if (!res.ok) {
+    if (res.status >= 500) {
+      reportClientError({
+        surface: "terminal.api",
+        errorName: `HTTP_${res.status}`,
+        message: `API request returned HTTP ${res.status}`,
+      });
+    }
+    throw new Error(await parseApiError(res));
+  }
   return res.json();
 }
 
