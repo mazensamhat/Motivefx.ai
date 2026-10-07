@@ -90,4 +90,11 @@ test("Client runtime crashes are privacy-minimized, reported, and audited", () =
   assert.match(nativeReporter, /\/client-error/);
   assert.match(nativeBoundary, /reportNativeClientError/);
   assert.match(globalError, /\/api\/client-error/);
+
+  const webApi = read("web/src/lib/api.ts");
+  const nativeApi = read("mobile/src/lib/api.ts");
+  assert.match(webApi, /terminal\.network/);
+  assert.match(webApi, /terminal\.api/);
+  assert.match(nativeApi, /native\.network/);
+  assert.match(nativeApi, /native\.api/);
 });
