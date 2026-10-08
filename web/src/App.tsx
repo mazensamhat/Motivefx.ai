@@ -7,7 +7,6 @@ import { ModuleGate } from "./components/ModuleGate";
 import { ModuleSidebar } from "./components/ModuleSidebar";
 import { MobileBottomNav } from "./components/MobileNav";
 import { WorkspaceHeader } from "./components/WorkspaceHeader";
-import { MotiveV2Home } from "./components/MotiveV2Home";
 import { useApi } from "./hooks/useApi";
 import { useModules } from "./hooks/useModules";
 import { useAuth } from "./hooks/useAuth";
@@ -20,6 +19,9 @@ import type { TabId } from "./types";
 
 const AdminDashboard = lazy(() =>
   import("./components/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const MotiveV2Home = lazy(() =>
+  import("./components/MotiveV2Home").then((m) => ({ default: m.MotiveV2Home }))
 );
 const TierPricing = lazy(() =>
   import("./components/TierPricing").then((m) => ({ default: m.TierPricing }))
@@ -161,7 +163,7 @@ export default function App() {
         <LiveFeed />
         <main className="main terminal-main">
           <DataHealthNotice />
-          {activeTab === "home" ? <MotiveV2Home onNavigate={setActiveTab} /> : (
+          {activeTab === "home" ? <Suspense fallback={<LoadingSurface />}><MotiveV2Home onNavigate={setActiveTab} /></Suspense> : (
             <ModuleGate module={active.module} moduleLabel={playSafeModuleLabel(active)}>
               <Suspense fallback={<LoadingSurface />}>
                 {activeTab === "stocks" && <TabStocks />}
