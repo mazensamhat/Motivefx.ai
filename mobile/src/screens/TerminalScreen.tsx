@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { API_BASE, APP_VERSION, IOS_BUILD_NUMBER, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
+import { reportNativeClientError } from "../lib/clientTelemetry";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
 import {
@@ -280,6 +281,11 @@ export function TerminalScreen({
       setHasLoadedOnce(false);
       setError("Terminal is taking too long to load. Check your connection and tap Retry.");
       setPhase("failed");
+      reportNativeClientError({
+        surface: "native.webview.load_watchdog",
+        errorName: "WebViewLoadTimeout",
+        message: "Terminal WebView did not complete its first load within 15 seconds.",
+      });
     }, 15_000);
   }, [clearLoadWatchdog]);
 
@@ -719,18 +725,35 @@ export function TerminalScreen({
       onError: (e: { nativeEvent: { description?: string } }) => {
         clearLoadWatchdog();
         setLoading(false);
-        setError(e.nativeEvent.description || "Could not load terminal.");
+        const message = e.nativeEvent.description || "Could not load terminal.";
+        setError(message);
         setPhase("failed");
+        reportNativeClientError({
+          surface: "native.webview.load_error",
+          errorName: "WebViewLoadError",
+          message,
+        });
       },
       onHttpError: (e: { nativeEvent: { statusCode: number } }) => {
         if (e.nativeEvent.statusCode >= 500) {
-          setError(`Terminal server error (${e.nativeEvent.statusCode}). Tap Retry.`);
+          const message = `Terminal server error (${e.nativeEvent.statusCode}). Tap Retry.`;
+          setError(message);
           setPhase("failed");
           setLoading(false);
+          reportNativeClientError({
+            surface: "native.webview.http_error",
+            errorName: "WebViewHttpError",
+            message,
+          });
         }
       },
       onRenderProcessGone: () => {
         // Android renderer death: auto-remount instead of leaving a dead view.
+        reportNativeClientError({
+          surface: "native.webview.render_process_gone",
+          errorName: "AndroidWebViewRendererGone",
+          message: "Android WebView renderer process terminated and was remounted.",
+        });
         clearLoadWatchdog();
         setLoading(true);
         setHasLoadedOnce(false);
@@ -739,6 +762,11 @@ export function TerminalScreen({
       },
       onContentProcessDidTerminate: () => {
         // iOS WKWebView process death — remount instead of blank black screen.
+        reportNativeClientError({
+          surface: "native.webview.content_process_terminated",
+          errorName: "IOSWebViewContentProcessTerminated",
+          message: "iOS WKWebView content process terminated and was remounted.",
+        });
         clearLoadWatchdog();
         setHasLoadedOnce(false);
         setLoading(true);
