@@ -195,3 +195,14 @@ test("Ops provider pills use defined status classes", () => {
   assert.doesNotMatch(ui, /\? "warning"/);
   assert.doesNotMatch(ui, /: "neutral"/);
 });
+
+test("Ops never borrows source rights across providers", () => {
+  const api = read("apps/site/src/app/api/admin/providers/route.ts");
+  const ui = read("apps/site/src/components/admin/ops-providers.tsx");
+  assert.match(api, /SHARP_API:[\s\S]*?rightsId:\s*"sharp-api"/);
+  assert.doesNotMatch(api, /SHARP_API:[\s\S]*?rightsId:\s*"the-odds-api"/);
+  assert.match(api, /unregisteredProviders/);
+  assert.match(api, /rightsKnown/);
+  assert.match(ui, /Observed providers needing registry review/);
+  assert.match(ui, /UNKNOWN · \{p\.rightsId\}/);
+});
