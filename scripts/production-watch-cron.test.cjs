@@ -252,3 +252,13 @@ test("General Ops error counts include timeouts", () => {
   const watch = read("apps/site/src/app/api/cron/production-watch/route.ts");
   assert.match(watch, /status:\s*\{\s*in:\s*\["error", "fail", "timeout"\]\s*\}/);
 });
+
+test("Native WebView recovery paths report to Ops", () => {
+  const mobile = read("mobile/src/screens/TerminalScreen.tsx");
+  assert.match(mobile, /reportNativeClientError/);
+  assert.match(mobile, /native\.webview\.load_watchdog/);
+  assert.match(mobile, /native\.webview\.load_error/);
+  assert.match(mobile, /native\.webview\.http_error/);
+  assert.match(mobile, /native\.webview\.render_process_gone/);
+  assert.match(mobile, /native\.webview\.content_process_terminated/);
+});
