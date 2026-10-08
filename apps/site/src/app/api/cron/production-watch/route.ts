@@ -166,6 +166,7 @@ async function collectSnapshot(
 
   type RecurringClientError = {
     platform: string;
+    appVersion: string;
     surface: string;
     route: string;
     signature: string;
@@ -178,6 +179,7 @@ async function collectSnapshot(
       recurringClientErrors = await prisma.$queryRawUnsafe<RecurringClientError[]>(
         `SELECT
            COALESCE(platform, 'unknown') AS platform,
+           COALESCE("appVersion", 'unknown') AS "appVersion",
            COALESCE("metadataJson"::jsonb->>'surface', 'unknown') AS surface,
            COALESCE("metadataJson"::jsonb->>'route', '/') AS route,
            COALESCE("metadataJson"::jsonb->>'messageSignature', 'unknown') AS signature,
@@ -186,7 +188,7 @@ async function collectSnapshot(
          WHERE "eventName" = 'client.error'
            AND "observedAt" >= $1
            AND "observedAt" < $2
-         GROUP BY 1,2,3,4
+         GROUP BY 1,2,3,4,5
          HAVING COUNT(*) >= 3
          ORDER BY occurrences DESC
          LIMIT 10`,
@@ -197,12 +199,12 @@ async function collectSnapshot(
       for (const row of recurringClientErrors) {
         const occurrences = Number(row.occurrences);
         await upsertIncident({
-          id: `client-error:${row.platform}:${row.surface}:${row.signature}`.slice(0, 220),
+          id: `client-error:${row.platform}:${row.appVersion}:${row.surface}:${row.signature}`.slice(0, 220),
           severity: occurrences >= 10 ? "high" : "medium",
           domain: "client-runtime",
-          title: `Recurring ${row.platform} client error on ${row.surface}`.slice(0, 180),
+          title: `Recurring ${row.platform} ${row.appVersion} client error on ${row.surface}`.slice(0, 180),
           description:
-            `${occurrences} occurrences in the ${cadence} audit window at ${row.route}. ` +
+            `${occurrences} occurrences in the ${cadence} audit window at ${row.route} on app version ${row.appVersion}. ` +
             `Anonymous signature ${row.signature}. Review Client Errors for triage.`,
           href: `/admin/client-errors?days=1&platform=${encodeURIComponent(row.platform)}`,
           runbook: "Review grouped Client Errors, reproduce safely, patch the affected surface, then verify the error signature stops recurring.",
@@ -220,7 +222,7 @@ async function collectSnapshot(
   let currentOpenIncidents = openIncidents;
   try {
     const activeClientIncidentIds = recurringClientErrors.map((row) =>
-      `client-error:${row.platform}:${row.surface}:${row.signature}`.slice(0, 220)
+      `client-error:${row.platform}:${row.appVersion}:${row.surface}:${row.signature}`.slice(0, 220)
     );
     const resolved = await prisma.opsIncidentRecord.updateMany({
       where: {
