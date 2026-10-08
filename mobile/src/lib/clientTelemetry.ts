@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { API_BASE, APP_VERSION } from "../config";
+import { API_BASE, APP_VERSION, IOS_BUILD_NUMBER } from "../config";
 
 type NativeClientError = {
   surface: string;
@@ -25,7 +25,7 @@ export function reportNativeClientError(input: NativeClientError): void {
       errorName: (input.errorName ?? "Error").slice(0, 80),
       message: (input.message ?? "").slice(0, 1000),
       route: "native",
-      appVersion: APP_VERSION,
+      appVersion: Platform.OS === "ios" ? `${APP_VERSION} (${IOS_BUILD_NUMBER})` : APP_VERSION,
     }),
   }).catch(() => undefined);
 }
