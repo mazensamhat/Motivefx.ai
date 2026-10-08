@@ -135,13 +135,37 @@ export async function GET() {
       metadata: { surface: "providers-v2", count: providers.length },
     });
 
+    const knownProviderIds = new Set(Object.keys(PROVIDER_META));
+    const unregisteredProviders = [...telemetry.entries()]
+      .filter(([id]) => id !== "UNKNOWN" && !knownProviderIds.has(id))
+      .map(([id, stats]) => {
+        const rightsId = id.toLowerCase().replace(/_/g, "-");
+        const rights = getSourceRights(rightsId);
+        return {
+          id,
+          label: id
+            .toLowerCase()
+            .split("_")
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(" "),
+          requestsToday: stats.requestsToday,
+          successPct: stats.successPct,
+          p95Ms: stats.p95Ms,
+          lastSuccessAt: stats.lastSuccessAt,
+          lastFailureAt: stats.lastFailureAt,
+          rightsKnown: rights.rightsKnown,
+          rightsId,
+        };
+      });
+
     return json({
       generatedAt: new Date().toISOString(),
       providers,
+      unregisteredProviders,
       platforms: platforms.platforms,
       sourceRights: listSourceRights(),
       coverage: deskCoverage,
-      note: "Success %, p95, and request counts are from OpsTelemetryEvent (24h). Null successPct means no samples yet — not a fake 99.9.",
+      note: "Success %, p95, and request counts are from OpsTelemetryEvent (24h). Null successPct means no samples yet — not a fake 99.9. Observed providers outside the registry are surfaced separately and remain rights-unknown until reviewed.",
     });
   } catch (error) {
     console.error("[admin/providers]", error);
