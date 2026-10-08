@@ -185,5 +185,6 @@ declare global {
     ReactNativeWebView?: { postMessage: (message: string) => void };
     __MOTIVEFX_NATIVE_IAP__?: boolean;
     __MOTIVEFX_NATIVE_PLATFORM__?: "android" | "ios" | "web" | string;
+    __MOTIVEFX_NATIVE_APP_VERSION__?: string;
   }
 }
