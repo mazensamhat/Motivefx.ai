@@ -262,3 +262,12 @@ test("Native WebView recovery paths report to Ops", () => {
   assert.match(mobile, /native\.webview\.render_process_gone/);
   assert.match(mobile, /native\.webview\.content_process_terminated/);
 });
+
+test("Client runtime summary includes platform and app build", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /ClientErrorBreakdown/);
+  assert.match(source, /COALESCE\("appVersion", 'unknown'\)/);
+  assert.match(source, /grouped by platform\/appVersion/);
+  assert.match(source, /row\.platform/);
+  assert.match(source, /row\.appVersion/);
+});
