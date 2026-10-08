@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Motive Signal Methodology",
   description:
-    "How Motive Signal™ works — multi-factor confidence scoring for Daily Brief and Opportunity Radar, limitations, and an honest preliminary hit-rate framework. Informational only.",
+    "How Motive Signal™ works — multi-factor evidence-confluence scoring for Daily Brief and Opportunity Radar, with confidence treated separately. Informational only.",
   path: "/motive-signal",
 });
 
@@ -30,10 +30,15 @@ export default function MotiveSignalPage() {
       <ContentSection title="What Motive Signal is">
         <ContentProse>
           <p>
-            Motive Signal is a proprietary <strong>0–100 confidence score</strong> that ranks how strongly
+            Motive Signal is a proprietary <strong>0–100 evidence-confluence score</strong> that ranks how strongly
             multiple factors agree <em>right now</em>. It powers Opportunity Radar and the Daily Brief by
             answering: “Given the feeds we have, how strong is the confluence?” — so you research
             high-alignment ideas first.
+          </p>
+          <p>
+            Motive Signal measures observed alignment, not the probability an outcome will occur.
+            A separately displayed Confidence value is not a calibrated win probability unless
+            supported by published calibration evidence.
           </p>
           <p>
             It is <strong>not</strong> a buy/sell rating, price target, probability of profit, or personalized
