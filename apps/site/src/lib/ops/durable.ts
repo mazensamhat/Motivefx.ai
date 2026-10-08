@@ -547,6 +547,20 @@ export async function loadLatestDna(limit = 40) {
 }
 
 /** Aggregate provider telemetry for Provider Health v2 (last N hours). */
+function providerTelemetryKey(provider: string | null | undefined): string {
+  const key = (provider || "unknown")
+    .trim()
+    .replace(/[\s-]+/g, "_")
+    .toUpperCase();
+  const aliases: Record<string, string> = {
+    POLYMARKET_GAMMA: "POLYMARKET",
+    THE_ODDS_API: "ODDS_API",
+    ODDSAPI: "ODDS_API",
+    SHARPAPI: "SHARP_API",
+  };
+  return aliases[key] ?? key;
+}
+
 export async function getProviderTelemetryStats(hours = 24) {
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
   type Agg = {
@@ -577,7 +591,7 @@ export async function getProviderTelemetryStats(hours = 24) {
     });
 
     for (const r of rows) {
-      const key = (r.provider || "unknown").toUpperCase();
+      const key = providerTelemetryKey(r.provider);
       const cur = byProvider.get(key) ?? {
         requests: 0,
         ok: 0,
