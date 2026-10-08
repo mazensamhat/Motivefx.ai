@@ -239,3 +239,11 @@ test("Recurring client incidents are scoped to app build", () => {
   assert.match(source, /client-error:\$\{row\.platform\}:\$\{row\.appVersion\}/);
   assert.match(source, /on app version \$\{row\.appVersion\}/);
 });
+
+test("Provider timeouts count as failures", () => {
+  const watch = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  const durable = read("apps/site/src/lib/ops/durable.ts");
+  assert.match(watch, /status IN \('error','fail','timeout'\)/);
+  assert.match(watch, /status NOT IN \('error','fail','timeout'\)/);
+  assert.match(durable, /r\.status === "timeout"/);
+});
