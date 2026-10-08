@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Motive Signal Methodology",
   description:
-    "How Motive Signal™ works — multi-factor confidence scoring for Daily Brief and Opportunity Radar, limitations, and an honest preliminary hit-rate framework. Informational only.",
+    "How Motive Signal™ works — multi-factor confluence scoring for Daily Brief and Opportunity Radar, how it differs from confidence and calibrated probability, limitations, and an honest preliminary hit-rate framework. Informational only.",
   path: "/motive-signal",
 });
 
@@ -30,10 +30,11 @@ export default function MotiveSignalPage() {
       <ContentSection title="What Motive Signal is">
         <ContentProse>
           <p>
-            Motive Signal is a proprietary <strong>0–100 confidence score</strong> that ranks how strongly
+            Motive Signal is a proprietary <strong>0–100 confluence score</strong> that ranks how strongly
             multiple factors agree <em>right now</em>. It powers Opportunity Radar and the Daily Brief by
             answering: “Given the feeds we have, how strong is the confluence?” — so you research
-            high-alignment ideas first.
+            high-alignment ideas first. <strong>Motive Signal is not the model&apos;s confidence value and is
+            not a calibrated outcome probability.</strong>
           </p>
           <p>
             It is <strong>not</strong> a buy/sell rating, price target, probability of profit, or personalized
@@ -75,7 +76,7 @@ export default function MotiveSignalPage() {
           <ul className="content-list">
             <li>Scores depend on available feeds; demo modules use sample data and must not be treated as live tape.</li>
             <li>LLM explanations can err; always verify critical facts against primary sources.</li>
-            <li>High scores can coincide with crowded or late moves — confluence ≠ edge.</li>
+            <li>High scores can coincide with crowded or late moves — confluence ≠ confidence, probability, or edge.</li>
             <li>Sports and prediction modules are analytics-only; geo and age restrictions may apply.</li>
           </ul>
         </ContentProse>
