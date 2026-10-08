@@ -186,3 +186,12 @@ test("Ops provider health never invents success percentages", () => {
   assert.match(ui, /"healthy" \| "degraded" \| "unknown" \| "disabled"/);
   assert.match(ui, /row\.pct == null \? "—"/);
 });
+
+test("Ops provider pills use defined status classes", () => {
+  const ui = read("apps/site/src/components/admin/ops-providers.tsx");
+  const css = read("apps/site/src/app/globals.css");
+  assert.match(ui, /p\.status === "degraded"[\s\S]*?\? "degraded"/);
+  assert.match(css, /\.ops-intel-pill\.degraded/);
+  assert.doesNotMatch(ui, /\? "warning"/);
+  assert.doesNotMatch(ui, /: "neutral"/);
+});
