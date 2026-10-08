@@ -1,8 +1,5 @@
 import { DataHealthNotice } from "./components/DataHealthNotice";
 import { lazy, Suspense, useState, useEffect } from "react";
-import { LiveFeed } from "./components/LiveFeed";
-import { BillingFinePrint } from "./components/BillingFinePrint";
-import { FinancialDisclaimer } from "./components/FinancialDisclaimer";
 import { ModuleGate } from "./components/ModuleGate";
 import { ModuleSidebar } from "./components/ModuleSidebar";
 import { MobileBottomNav } from "./components/MobileNav";
@@ -22,6 +19,15 @@ const AdminDashboard = lazy(() =>
 );
 const MotiveV2Home = lazy(() =>
   import("./components/MotiveV2Home").then((m) => ({ default: m.MotiveV2Home }))
+);
+const LiveFeed = lazy(() =>
+  import("./components/LiveFeed").then((m) => ({ default: m.LiveFeed }))
+);
+const FinancialDisclaimer = lazy(() =>
+  import("./components/FinancialDisclaimer").then((m) => ({ default: m.FinancialDisclaimer }))
+);
+const BillingFinePrint = lazy(() =>
+  import("./components/BillingFinePrint").then((m) => ({ default: m.BillingFinePrint }))
 );
 const TierPricing = lazy(() =>
   import("./components/TierPricing").then((m) => ({ default: m.TierPricing }))
@@ -160,7 +166,7 @@ export default function App() {
       <ModuleSidebar activeTab={activeTab} onSelect={setActiveTab} hasModule={hasModule} statusLabel={statusLabel} pulseBadges={pulseBadges} onOpenGlossary={() => setGlossaryOpen(true)} />
       <div className="app-content">
         <WorkspaceHeader activeTab={activeTab} statusLabel={statusLabel} onSelectTab={setActiveTab} onOpenGlossary={() => setGlossaryOpen(true)} />
-        <LiveFeed />
+        <Suspense fallback={null}><LiveFeed /></Suspense>
         <main className="main terminal-main">
           <DataHealthNotice />
           {activeTab === "home" ? <Suspense fallback={<LoadingSurface />}><MotiveV2Home onNavigate={setActiveTab} /></Suspense> : (
@@ -177,8 +183,10 @@ export default function App() {
           <Suspense fallback={null}><TierPricing /></Suspense>
         </main>
         <footer className="app-footer">
-          <div className="app-footer-legal-desktop"><FinancialDisclaimer compact />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} />}</div>
-          <div className="app-footer-legal-mobile"><FinancialDisclaimer mobile />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} compact />}</div>
+          <Suspense fallback={null}>
+            <div className="app-footer-legal-desktop"><FinancialDisclaimer compact />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} />}</div>
+            <div className="app-footer-legal-mobile"><FinancialDisclaimer mobile />{!isNativeIosShell() && <BillingFinePrint annualPrice={annualPrice} compact />}</div>
+          </Suspense>
           <div className="app-footer-links">
             {!isNativeIosShell() && <a href="/legal-documents.html" target="_blank" rel="noreferrer">Legal</a>}
             <a href={legalHref("privacy")}>Privacy</a><a href={legalHref("terms")}>Terms</a><a href={legalHref("data-deletion")}>Data deletion</a>
