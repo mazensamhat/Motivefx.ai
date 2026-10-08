@@ -9,11 +9,13 @@ import { homeScoreDetail } from "../utils/signalIntel";
 import "../styles/home-research.css";
 import { AudioBriefingButton } from "./AudioBriefingButton";
 import { FeatureGate } from "./FeatureGate";
-import { SinceYouWereAway } from "./MotiveV2Completion";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 const HomeResearchDialog = lazy(() =>
   import("./HomeResearchDialog").then((m) => ({ default: m.HomeResearchDialog }))
+);
+const SinceYouWereAway = lazy(() =>
+  import("./MotiveV2Completion").then((m) => ({ default: m.SinceYouWereAway }))
 );
 const MotiveDiscover = lazy(() =>
   import("./MotiveV2Completion").then((m) => ({ default: m.MotiveDiscover }))
@@ -89,7 +91,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
     <div className="v2-home">
       {review && <Suspense fallback={null}><HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} /></Suspense>}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
-      <SinceYouWereAway />
+      <Suspense fallback={null}><SinceYouWereAway /></Suspense>
 
       <section className="v2-hero">
         <div className="v2-hero-copy">
