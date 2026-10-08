@@ -206,3 +206,13 @@ test("Ops never borrows source rights across providers", () => {
   assert.match(ui, /Observed providers needing registry review/);
   assert.match(ui, /UNKNOWN · \{p\.rightsId\}/);
 });
+
+test("Audit health fallback respects provider kill switches", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /providerHealthFlags/);
+  assert.match(source, /isBitqueryEnabled/);
+  assert.match(source, /providerFlags\.FINNHUB/);
+  assert.match(source, /providerFlags\.ODDS_API/);
+  assert.match(source, /providerFlags\.POLYMARKET/);
+  assert.match(source, /providerFlags\.ASK_MOTIVE/);
+});
