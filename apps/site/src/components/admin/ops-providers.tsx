@@ -9,7 +9,7 @@ type ProviderV2 = {
   envKey: string;
   enabled: boolean;
   markets: string[];
-  status: "healthy" | "disabled";
+  status: "healthy" | "degraded" | "unknown" | "disabled";
   authentication: string;
   rights: {
     known: boolean;
@@ -33,7 +33,7 @@ type PlatformCard = {
   metrics: { label: string; value: string }[];
 };
 
-type CoverageRow = { desk: string; pct: number };
+type CoverageRow = { desk: string; pct: number | null };
 
 type ProvidersPayload = {
   generatedAt: string;
@@ -123,9 +123,9 @@ export function OpsProviders() {
                 <li key={row.desk}>
                   <span>{row.desk}</span>
                   <div className="ops-country-bar">
-                    <span style={{ width: `${Math.max(row.pct, 2)}%` }} />
+                    <span style={{ width: row.pct == null ? "2%" : `${Math.max(row.pct, 2)}%` }} />
                   </div>
-                  <strong>{row.pct}%</strong>
+                  <strong>{row.pct == null ? "—" : `${row.pct}%`}</strong>
                 </li>
               ))}
             </ul>
@@ -165,7 +165,17 @@ export function OpsProviders() {
                         </div>
                       </td>
                       <td>
-                        <span className={`ops-intel-pill ${p.enabled ? "healthy" : "critical"}`}>
+                        <span
+                          className={`ops-intel-pill ${
+                            p.status === "healthy"
+                              ? "healthy"
+                              : p.status === "degraded"
+                                ? "warning"
+                                : p.status === "disabled"
+                                  ? "critical"
+                                  : "neutral"
+                          }`}
+                        >
                           {p.status}
                         </span>
                       </td>
