@@ -351,9 +351,9 @@ async function collectSnapshot(
       `SELECT
          COALESCE(provider, 'unknown') AS provider,
          COUNT(*)::bigint AS requests,
-         COUNT(*) FILTER (WHERE status IN ('error','fail'))::bigint AS failures,
-         MAX("observedAt") FILTER (WHERE status NOT IN ('error','fail')) AS last_success_at,
-         MAX("observedAt") FILTER (WHERE status IN ('error','fail')) AS last_failure_at
+         COUNT(*) FILTER (WHERE status IN ('error','fail','timeout'))::bigint AS failures,
+         MAX("observedAt") FILTER (WHERE status NOT IN ('error','fail','timeout')) AS last_success_at,
+         MAX("observedAt") FILTER (WHERE status IN ('error','fail','timeout')) AS last_failure_at
        FROM public."OpsTelemetryEvent"
        WHERE "observedAt" >= $1
          AND ("provider" IS NOT NULL OR "eventName" LIKE 'provider.%')
