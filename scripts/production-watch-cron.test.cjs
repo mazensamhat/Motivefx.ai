@@ -247,3 +247,8 @@ test("Provider timeouts count as failures", () => {
   assert.match(watch, /status NOT IN \('error','fail','timeout'\)/);
   assert.match(durable, /r\.status === "timeout"/);
 });
+
+test("General Ops error counts include timeouts", () => {
+  const watch = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(watch, /status:\s*\{\s*in:\s*\["error", "fail", "timeout"\]\s*\}/);
+});
