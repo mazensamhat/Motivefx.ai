@@ -176,3 +176,13 @@ test("Production Watch never reports a meaningless zero-feed denominator", () =>
   assert.match(source, /FINNHUB_API_KEY/);
   assert.match(source, /OPENAI_API_KEY/);
 });
+
+test("Ops provider health never invents success percentages", () => {
+  const api = read("apps/site/src/app/api/admin/providers/route.ts");
+  const ui = read("apps/site/src/components/admin/ops-providers.tsx");
+  assert.match(api, /"unknown" as const/);
+  assert.match(api, /stats\?\.successPct \?\? null/);
+  assert.doesNotMatch(api, /requestsToday \? 95/);
+  assert.match(ui, /"healthy" \| "degraded" \| "unknown" \| "disabled"/);
+  assert.match(ui, /row\.pct == null \? "—"/);
+});
