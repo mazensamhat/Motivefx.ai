@@ -84,9 +84,11 @@ export async function GET() {
         markets: meta.markets,
         status: !enabled
           ? ("disabled" as const)
-          : stats && (stats.successPct ?? 100) < 90
-            ? ("degraded" as const)
-            : ("healthy" as const),
+          : !stats || stats.successPct == null
+            ? ("unknown" as const)
+            : stats.successPct < 90
+              ? ("degraded" as const)
+              : ("healthy" as const),
         authentication: enabled ? "configured" : "kill-switched",
         rights: {
           known: rights.rightsKnown,
@@ -121,8 +123,7 @@ export async function GET() {
     ].map(({ desk, provider }) => {
       const enabled = flags[provider];
       const stats = telemetry.get(provider);
-      const pct =
-        !enabled ? 0 : stats?.successPct != null ? stats.successPct : stats?.requestsToday ? 95 : null;
+      const pct = !enabled ? 0 : stats?.successPct ?? null;
       return { desk, pct, requests: stats?.requestsToday ?? 0, enabled };
     });
 
