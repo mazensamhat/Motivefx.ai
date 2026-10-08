@@ -601,7 +601,7 @@ export async function getProviderTelemetryStats(hours = 24) {
         lastFailureAt: null,
       };
       cur.requests += 1;
-      const failed = r.status === "error" || r.status === "fail";
+      const failed = r.status === "error" || r.status === "fail" || r.status === "timeout";
       if (failed) {
         cur.err += 1;
         if (!cur.lastFailureAt) cur.lastFailureAt = r.observedAt.toISOString();
