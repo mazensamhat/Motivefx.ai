@@ -361,24 +361,38 @@ async function collectSnapshot(
     console.warn("[cron/production-watch] provider telemetry aggregate failed", error);
   }
 
-  const feedMap =
+  const healthFeedMap =
     health.body && typeof health.body === "object" && "feeds" in health.body
       ? ((health.body as { feeds?: Record<string, boolean> }).feeds ?? {})
       : {};
+  const localConfigFeedMap: Record<string, boolean> = {
+    finnhub: Boolean(process.env.FINNHUB_API_KEY?.trim()),
+    coinstats: Boolean(process.env.COINSTATS_API_KEY?.trim()),
+    sharp_api: Boolean(process.env.SHARP_API_KEY?.trim()),
+    the_odds_api: Boolean(process.env.THE_ODDS_API_KEY?.trim()),
+    polymarket: true,
+    bitquery: Boolean(process.env.BITQUERY_API_KEY?.trim()),
+    stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
+    openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
+  };
+  const feedMap =
+    Object.keys(healthFeedMap).length > 0 ? healthFeedMap : localConfigFeedMap;
+  const feedConfigSource =
+    Object.keys(healthFeedMap).length > 0 ? "/api/health response" : "server environment fallback";
   const feedEntries = Object.entries(feedMap);
   const badFeeds = feedEntries.filter(([, enabled]) => !enabled).map(([name]) => name);
   add({
     check: "public_health",
     finding: health.ok
-      ? `/api/health returned HTTP ${health.status}; ${feedEntries.length - badFeeds.length}/${feedEntries.length} provider/configuration flags are enabled.`
-      : `/api/health did not return a successful response (status ${health.status || "timeout"}).`,
+      ? `/api/health returned HTTP ${health.status}; ${feedEntries.length - badFeeds.length}/${feedEntries.length} provider/configuration flags are enabled (source: ${feedConfigSource}).`
+      : `/api/health did not return a successful response (status ${health.status || "timeout"}); configuration snapshot source: ${feedConfigSource}.`,
     diagnosis: health.ok
       ? "Public liveness/configuration endpoint is reachable. Feed flags indicate configuration only, not upstream provider success."
       : "Public liveness endpoint requires attention.",
     fixedState: health.ok ? (badFeeds.length === 0 ? "pass" : "partial") : "fail",
     affectedSurface: "public API / provider configuration",
     remediationPerformed: "No paid upstream probe is triggered by the public health endpoint.",
-    verificationEvidence: "/api/health",
+    verificationEvidence: `/api/health + ${feedConfigSource}`,
   });
 
   const observedProviderRequests = providerRows.reduce((sum, row) => sum + Number(row.requests), 0);
