@@ -216,3 +216,18 @@ test("Audit health fallback respects provider kill switches", () => {
   assert.match(source, /providerFlags\.POLYMARKET/);
   assert.match(source, /providerFlags\.ASK_MOTIVE/);
 });
+
+test("Native client errors preserve platform and app version context", () => {
+  const mobile = read("mobile/src/screens/TerminalScreen.tsx");
+  const client = read("web/src/lib/clientTelemetry.ts");
+  const api = read("apps/site/src/app/api/client-error/route.ts");
+  assert.match(mobile, /__MOTIVEFX_NATIVE_APP_VERSION__/);
+  assert.match(mobile, /APP_VERSION/);
+  assert.match(client, /clientPlatform\(\)/);
+  assert.match(client, /isNativeAndroidShell/);
+  assert.match(client, /isNativeIosShell/);
+  assert.match(client, /__MOTIVEFX_NATIVE_APP_VERSION__/);
+  assert.match(api, /\["web", "ios", "android", "native"\]/);
+  assert.match(api, /safeRoute/);
+  assert.match(api, /messageSignature/);
+});
