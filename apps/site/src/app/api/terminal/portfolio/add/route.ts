@@ -5,6 +5,7 @@ import { entitlementsPlanForUser } from "@/lib/terminal/ios-reader";
 import { loadPortfolio, savePortfolio, type Holding, type PortfolioModule } from "@/lib/terminal/portfolio";
 import { addPrediction } from "@/lib/terminal/predictions";
 import { addBet } from "@/lib/terminal/bets";
+import { recordTelemetryDurable } from "@/lib/ops/telemetry-envelope";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,16 @@ export async function POST(request: Request) {
         category: "signal",
         pick: body.title || body.symbol,
       });
+      await recordTelemetryDurable({
+        eventName: "portfolio.item.added",
+        userId: body.user_id,
+        product: "motivefx",
+        desk: "predictions",
+        status: "ok",
+        sourceClass: "user",
+        privacyClass: "internal",
+        metadata: { kind: body.kind },
+      });
       return json({ saved: true, id, kind: body.kind });
     }
 
@@ -41,6 +52,16 @@ export async function POST(request: Request) {
         matchup: body.symbol,
         pick: body.title || body.symbol,
         sport: "other",
+      });
+      await recordTelemetryDurable({
+        eventName: "portfolio.item.added",
+        userId: body.user_id,
+        product: "motivefx",
+        desk: "betting",
+        status: "ok",
+        sourceClass: "user",
+        privacyClass: "internal",
+        metadata: { kind: body.kind },
       });
       return json({ saved: true, id, kind: body.kind });
     }
@@ -55,6 +76,20 @@ export async function POST(request: Request) {
       ? current.map((h, i) => (i === existing ? { ...h, symbol } : h))
       : [...current, holding];
     await savePortfolio(body.user_id, body.kind, next);
+    await recordTelemetryDurable({
+      eventName: "portfolio.item.added",
+      userId: body.user_id,
+      product: "motivefx",
+      desk: body.kind,
+      status: "ok",
+      sourceClass: "user",
+      privacyClass: "internal",
+      metadata: {
+        kind: body.kind,
+        count: next.length,
+        alreadyPresent: existing >= 0,
+      },
+    });
     return json({ saved: true, count: next.length, already_present: existing >= 0, kind: body.kind });
   } catch (err) {
     return accessErrorResponse(err);
