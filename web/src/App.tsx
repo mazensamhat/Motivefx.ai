@@ -1,4 +1,5 @@
 import { DataHealthNotice } from "./components/DataHealthNotice";
+import { BillingFinePrint } from "./components/BillingFinePrint";
 import { lazy, Suspense, useState, useEffect } from "react";
 import { ModuleGate } from "./components/ModuleGate";
 import { ModuleSidebar } from "./components/ModuleSidebar";
@@ -25,9 +26,6 @@ const LiveFeed = lazy(() =>
 );
 const FinancialDisclaimer = lazy(() =>
   import("./components/FinancialDisclaimer").then((m) => ({ default: m.FinancialDisclaimer }))
-);
-const BillingFinePrint = lazy(() =>
-  import("./components/BillingFinePrint").then((m) => ({ default: m.BillingFinePrint }))
 );
 const TierPricing = lazy(() =>
   import("./components/TierPricing").then((m) => ({ default: m.TierPricing }))
