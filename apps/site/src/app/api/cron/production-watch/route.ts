@@ -164,6 +164,11 @@ async function collectSnapshot(
     }
   }
 
+  type ClientErrorBreakdown = {
+    platform: string;
+    appVersion: string;
+    occurrences: bigint;
+  };
   type RecurringClientError = {
     platform: string;
     appVersion: string;
@@ -172,10 +177,27 @@ async function collectSnapshot(
     signature: string;
     occurrences: bigint;
   };
+  let clientErrorBreakdown: ClientErrorBreakdown[] = [];
   let recurringClientErrors: RecurringClientError[] = [];
 
   if (clientErrors > 0) {
     try {
+      clientErrorBreakdown = await prisma.$queryRawUnsafe<ClientErrorBreakdown[]>(
+        `SELECT
+           COALESCE(platform, 'unknown') AS platform,
+           COALESCE("appVersion", 'unknown') AS "appVersion",
+           COUNT(*)::bigint AS occurrences
+         FROM public."OpsTelemetryEvent"
+         WHERE "eventName" = 'client.error'
+           AND "observedAt" >= $1
+           AND "observedAt" < $2
+         GROUP BY 1,2
+         ORDER BY occurrences DESC
+         LIMIT 8`,
+        periodStart,
+        periodEnd
+      );
+
       recurringClientErrors = await prisma.$queryRawUnsafe<RecurringClientError[]>(
         `SELECT
            COALESCE(platform, 'unknown') AS platform,
@@ -312,7 +334,13 @@ async function collectSnapshot(
     finding:
       clientErrors === 0
         ? "No first-party web/native client crashes were captured in this audit period."
-        : `${clientErrors} first-party web/native client crash event(s) were captured in this audit period.`,
+        : `${clientErrors} first-party web/native client crash event(s) were captured in this audit period. Builds: ${
+            clientErrorBreakdown.length
+              ? clientErrorBreakdown
+                  .map((row) => `${row.platform} ${row.appVersion}: ${Number(row.occurrences)}`)
+                  .join(", ")
+              : "breakdown unavailable"
+          }.`,
     diagnosis:
       clientErrors === 0
         ? "No observed client-runtime crash requires engineering review."
@@ -325,7 +353,7 @@ async function collectSnapshot(
         : recurringClientErrors.length
           ? `Crash evidence is retained in privacy-minimized Ops telemetry and ${recurringClientErrors.length} recurring signature(s) opened/updated an Ops incident. Customer and credential state were not changed.`
           : "Crash evidence is retained in privacy-minimized Ops telemetry for engineering triage; no signature reached the recurring-incident threshold.",
-    verificationEvidence: "OpsTelemetryEvent eventName=client.error",
+    verificationEvidence: "OpsTelemetryEvent eventName=client.error grouped by platform/appVersion",
   });
 
   add({
