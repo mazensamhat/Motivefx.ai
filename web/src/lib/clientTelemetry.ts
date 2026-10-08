@@ -1,3 +1,5 @@
+import { isNativeAndroidShell, isNativeIosShell } from "./nativeShell";
+
 type ClientErrorInput = {
   surface: string;
   errorName?: string;
@@ -11,6 +13,23 @@ let installed = false;
 
 function signature(input: ClientErrorInput) {
   return [input.surface, input.errorName ?? "Error", input.message ?? ""].join("|").slice(0, 400);
+}
+
+function clientPlatform(): "web" | "ios" | "android" {
+  if (isNativeAndroidShell()) return "android";
+  if (isNativeIosShell()) return "ios";
+  return "web";
+}
+
+function clientAppVersion(input?: string): string | undefined {
+  const explicit = input?.trim();
+  if (explicit) return explicit.slice(0, 40);
+  if (typeof window !== "undefined") {
+    const native = window.__MOTIVEFX_NATIVE_APP_VERSION__?.trim();
+    if (native) return native.slice(0, 40);
+  }
+  const viteVersion = import.meta.env.VITE_APP_VERSION?.trim();
+  return viteVersion ? viteVersion.slice(0, 40) : undefined;
 }
 
 export function reportClientError(input: ClientErrorInput): void {
@@ -31,12 +50,12 @@ export function reportClientError(input: ClientErrorInput): void {
     credentials: "same-origin",
     keepalive: true,
     body: JSON.stringify({
-      platform: "web",
+      platform: clientPlatform(),
       surface: input.surface,
       errorName: (input.errorName ?? "Error").slice(0, 80),
       message: (input.message ?? "").slice(0, 1000),
       route: input.route ?? window.location.pathname,
-      appVersion: input.appVersion,
+      appVersion: clientAppVersion(input.appVersion),
     }),
   }).catch(() => undefined);
 }
