@@ -46,6 +46,9 @@ const VIEWPORT_LOCK_SCRIPT = `
       document.documentElement.classList.add("motivefx-native-shell");
       window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
       window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
+      window.__MOTIVEFX_NATIVE_APP_VERSION__ = ${jsStringLiteral(
+        Platform.OS === "ios" ? `${APP_VERSION} (${IOS_BUILD_NUMBER})` : APP_VERSION
+      )};
       var content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover";
       var meta = document.querySelector('meta[name="viewport"]');
       if (!meta) {
@@ -142,6 +145,9 @@ function buildAuthInjectionScript(
         localStorage.setItem("motivefx_age_verified", "1");
         window.__MOTIVEFX_NATIVE_IAP__ = ${Platform.OS === "ios" ? "false" : isIapConfigured() ? "true" : "false"};
         window.__MOTIVEFX_NATIVE_PLATFORM__ = ${jsStringLiteral(Platform.OS)};
+        window.__MOTIVEFX_NATIVE_APP_VERSION__ = ${jsStringLiteral(
+          Platform.OS === "ios" ? `${APP_VERSION} (${IOS_BUILD_NUMBER})` : APP_VERSION
+        )};
         if (nativeReaderToken) {
           window.__MOTIVEFX_NATIVE_READER_TOKEN__ = nativeReaderToken;
           localStorage.setItem("motivefx_native_reader_token", nativeReaderToken);
