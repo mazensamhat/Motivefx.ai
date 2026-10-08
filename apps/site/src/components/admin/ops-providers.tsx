@@ -170,10 +170,10 @@ export function OpsProviders() {
                             p.status === "healthy"
                               ? "healthy"
                               : p.status === "degraded"
-                                ? "warning"
+                                ? "degraded"
                                 : p.status === "disabled"
                                   ? "critical"
-                                  : "neutral"
+                                  : ""
                           }`}
                         >
                           {p.status}
