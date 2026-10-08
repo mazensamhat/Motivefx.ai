@@ -223,6 +223,7 @@ test("Native client errors preserve platform and app version context", () => {
   const api = read("apps/site/src/app/api/client-error/route.ts");
   assert.match(mobile, /__MOTIVEFX_NATIVE_APP_VERSION__/);
   assert.match(mobile, /APP_VERSION/);
+  assert.match(mobile, /IOS_BUILD_NUMBER/);
   assert.match(client, /clientPlatform\(\)/);
   assert.match(client, /isNativeAndroidShell/);
   assert.match(client, /isNativeIosShell/);
