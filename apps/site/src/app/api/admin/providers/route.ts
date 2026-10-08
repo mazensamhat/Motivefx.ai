@@ -53,7 +53,7 @@ const PROVIDER_META: Record<
     label: "Sharp API",
     envKey: "SHARP_API_ENABLED",
     markets: ["SPORTS"],
-    rightsId: "the-odds-api",
+    rightsId: "sharp-api",
   },
 };
 
