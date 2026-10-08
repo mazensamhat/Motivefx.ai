@@ -232,3 +232,10 @@ test("Native client errors preserve platform and app version context", () => {
   assert.match(api, /safeRoute/);
   assert.match(api, /messageSignature/);
 });
+
+test("Recurring client incidents are scoped to app build", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /appVersion/);
+  assert.match(source, /client-error:\$\{row\.platform\}:\$\{row\.appVersion\}/);
+  assert.match(source, /on app version \$\{row\.appVersion\}/);
+});
