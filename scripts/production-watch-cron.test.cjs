@@ -166,3 +166,13 @@ test("Provider telemetry aliases match Ops provider IDs", () => {
   assert.match(durable, /SHARPAPI:\s*"SHARP_API"/);
   assert.match(durable, /providerTelemetryKey\(r\.provider\)/);
 });
+
+test("Production Watch never reports a meaningless zero-feed denominator", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /localConfigFeedMap/);
+  assert.match(source, /healthFeedMap/);
+  assert.match(source, /server environment fallback/);
+  assert.match(source, /feedConfigSource/);
+  assert.match(source, /FINNHUB_API_KEY/);
+  assert.match(source, /OPENAI_API_KEY/);
+});
