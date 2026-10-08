@@ -100,7 +100,7 @@ async function collectSnapshot(
     prisma.opsTelemetryEvent.count({
       where: {
         observedAt: { gte: periodStart, lt: periodEnd },
-        status: { in: ["error", "fail"] },
+        status: { in: ["error", "fail", "timeout"] },
       },
     }),
     prisma.opsTelemetryEvent.count({
