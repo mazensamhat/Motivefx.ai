@@ -35,9 +35,22 @@ type PlatformCard = {
 
 type CoverageRow = { desk: string; pct: number | null };
 
+type ObservedUnregisteredProvider = {
+  id: string;
+  label: string;
+  requestsToday: number;
+  successPct: number | null;
+  p95Ms: number | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  rightsKnown: boolean;
+  rightsId: string;
+};
+
 type ProvidersPayload = {
   generatedAt: string;
   providers: ProviderV2[];
+  unregisteredProviders: ObservedUnregisteredProvider[];
   platforms: PlatformCard[];
   coverage: CoverageRow[];
 };
@@ -113,6 +126,42 @@ export function OpsProviders() {
               <strong className="ops-kpi-value">{data.platforms.length}</strong>
             </article>
           </div>
+
+          {data.unregisteredProviders?.length ? (
+            <section className="ops-card">
+              <header className="ops-card-header">
+                <h3>Observed providers needing registry review</h3>
+              </header>
+              <p className="ops-muted">
+                These providers emitted live telemetry but are not registered with explicit source-rights metadata.
+                They remain UNKNOWN until reviewed.
+              </p>
+              <div className="ops-table-wrap">
+                <table className="ops-table">
+                  <thead>
+                    <tr>
+                      <th>Provider</th>
+                      <th>Requests</th>
+                      <th>Success</th>
+                      <th>p95</th>
+                      <th>Rights</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.unregisteredProviders.map((p) => (
+                      <tr key={p.id}>
+                        <td><strong>{p.label}</strong></td>
+                        <td>{p.requestsToday}</td>
+                        <td>{p.successPct == null ? "—" : `${p.successPct}%`}</td>
+                        <td>{p.p95Ms == null ? "—" : `${p.p95Ms} ms`}</td>
+                        <td><span className="ops-truth-badge critical">UNKNOWN · {p.rightsId}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
 
           <section className="ops-card">
             <header className="ops-card-header">
