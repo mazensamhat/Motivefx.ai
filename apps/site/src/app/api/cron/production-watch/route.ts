@@ -1,6 +1,8 @@
 import { prisma } from "@motivefx/database";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { flushSignalEvidencePersistence } from "@/lib/terminal/market-truth/evidence-ledger";
+import { providerHealthFlags } from "@/lib/terminal/provider-switches";
+import { isBitqueryEnabled } from "@/lib/terminal/feeds/bitquery";
 import { upsertIncident } from "@/lib/ops/durable";
 
 export const dynamic = "force-dynamic";
@@ -365,15 +367,16 @@ async function collectSnapshot(
     health.body && typeof health.body === "object" && "feeds" in health.body
       ? ((health.body as { feeds?: Record<string, boolean> }).feeds ?? {})
       : {};
+  const providerFlags = providerHealthFlags();
   const localConfigFeedMap: Record<string, boolean> = {
-    finnhub: Boolean(process.env.FINNHUB_API_KEY?.trim()),
-    coinstats: Boolean(process.env.COINSTATS_API_KEY?.trim()),
-    sharp_api: Boolean(process.env.SHARP_API_KEY?.trim()),
-    the_odds_api: Boolean(process.env.THE_ODDS_API_KEY?.trim()),
-    polymarket: true,
-    bitquery: Boolean(process.env.BITQUERY_API_KEY?.trim()),
+    finnhub: providerFlags.FINNHUB && Boolean(process.env.FINNHUB_API_KEY?.trim()),
+    coinstats: providerFlags.COINSTATS && Boolean(process.env.COINSTATS_API_KEY?.trim()),
+    sharp_api: providerFlags.SHARP_API && Boolean(process.env.SHARP_API_KEY?.trim()),
+    the_odds_api: providerFlags.ODDS_API && Boolean(process.env.THE_ODDS_API_KEY?.trim()),
+    polymarket: providerFlags.POLYMARKET,
+    bitquery: isBitqueryEnabled(),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
-    openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
+    openai: providerFlags.ASK_MOTIVE && Boolean(process.env.OPENAI_API_KEY?.trim()),
   };
   const feedMap =
     Object.keys(healthFeedMap).length > 0 ? healthFeedMap : localConfigFeedMap;
