@@ -158,3 +158,11 @@ test("Core provider fetches emit durable telemetry", () => {
   assert.match(feeds, /provider\.request\.completed/);
   assert.match(feeds, /provider\.request\.failed/);
 });
+
+test("Provider telemetry aliases match Ops provider IDs", () => {
+  const durable = read("apps/site/src/lib/ops/durable.ts");
+  assert.match(durable, /POLYMARKET_GAMMA:\s*"POLYMARKET"/);
+  assert.match(durable, /THE_ODDS_API:\s*"ODDS_API"/);
+  assert.match(durable, /SHARPAPI:\s*"SHARP_API"/);
+  assert.match(durable, /providerTelemetryKey\(r\.provider\)/);
+});
