@@ -38,9 +38,15 @@ export function StoreBadges({ variant = "badges", className }: StoreBadgesProps)
           </a>
         </li>
         <li>
-          <span className="store-link-soon" aria-label={STORE_COPY.iosAria}>
-            iOS — Coming soon
-          </span>
+          {IOS_APP_STORE_URL ? (
+            <a href={IOS_APP_STORE_URL} target="_blank" rel="noopener noreferrer" aria-label={STORE_COPY.iosAria}>
+              App Store
+            </a>
+          ) : (
+            <span className="store-link-soon" aria-label={STORE_COPY.iosAria}>
+              iOS — Coming soon
+            </span>
+          )}
         </li>
       </ul>
     );
