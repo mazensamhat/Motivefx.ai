@@ -47,7 +47,11 @@ test("Production Watch may self-heal intelligence but never mutates customer or 
   assert.doesNotMatch(source, /userPortfolio\.(create|update|delete)/);
   assert.doesNotMatch(source, /userBet\.(create|update|delete)/);
   assert.doesNotMatch(source, /userPrediction\.(create|update|delete)/);
-  assert.doesNotMatch(source, /stripe|billingProvider|revenueCat/i);
+  // Read-only provider configuration checks are allowed. Block actual commercial mutations.
+  assert.doesNotMatch(
+    source,
+    /\b(?:stripe(?:\.[A-Za-z_$][\w$]*)+|billingProvider|revenueCat)\.(?:create|update|upsert|delete|deleteMany|updateMany|cancel|capture|refund)\s*\(/i
+  );
 });
 
 
@@ -193,7 +197,11 @@ test("Ops provider pills use defined status classes", () => {
   assert.match(ui, /p\.status === "degraded"[\s\S]*?\? "degraded"/);
   assert.match(css, /\.ops-intel-pill\.degraded/);
   assert.doesNotMatch(ui, /\? "warning"/);
-  assert.doesNotMatch(ui, /: "neutral"/);
+  // Only inspect provider status pills; KPI trend CSS legitimately uses "neutral".
+  const pillStart = ui.indexOf('className={`ops-intel-pill');
+  const pillEnd = ui.indexOf("{p.status}", pillStart);
+  assert.ok(pillStart >= 0 && pillEnd > pillStart, "provider status pill must exist");
+  assert.doesNotMatch(ui.slice(pillStart, pillEnd), /: "neutral"/);
 });
 
 test("Ops never borrows source rights across providers", () => {
