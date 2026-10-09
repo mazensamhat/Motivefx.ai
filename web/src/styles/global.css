@@ -11560,3 +11560,167 @@ html.motivefx-native-shell .age-gate-overlay .btn-age-gate-continue {
 }
 
 .v2-signal-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.v2-signal-summary>div{border:1px solid var(--border-soft);border-radius:11px;background:var(--bg-card);padding:12px}.v2-signal-summary span{display:block;color:var(--text-muted);font-size:.68rem}.v2-signal-summary strong{font:800 1.45rem var(--heading);margin-right:3px}.v2-signal-summary em{font-style:normal;color:var(--text-dim);font-size:.65rem}.v2-signal-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.v2-signal-list button{display:grid;grid-template-columns:1fr auto;gap:4px 10px;border:1px solid var(--border-soft);border-radius:10px;background:var(--bg-card);color:var(--text);padding:10px;text-align:left;font:inherit;cursor:pointer}.v2-signal-list span{font-size:.72rem;font-weight:700}.v2-signal-list strong{font:800 1.1rem var(--heading)}.v2-signal-list em{grid-column:1/-1;font-style:normal;color:var(--green);font-size:.65rem}@media(max-width:760px){.v2-signal-summary{grid-template-columns:repeat(2,1fr)}.v2-signal-list{grid-template-columns:1fr 1fr}}
+
+
+/* ===== V2 complete Day-theme coverage =====
+   Compatibility layer for legacy terminal components that predate theme tokens. */
+:root[data-color-theme="light"] .app-terminal {
+  --legacy-dark-0: #ffffff;
+  --legacy-dark-1: #fbfbfd;
+  --legacy-dark-2: #f5f6fa;
+  --legacy-dark-3: #eef0f5;
+  --legacy-line: #dcd8e4;
+}
+
+:root[data-color-theme="light"] .main,
+:root[data-color-theme="light"] .terminal-main,
+:root[data-color-theme="light"] .tab-content,
+:root[data-color-theme="light"] [class*="tab-"] {
+  color: var(--text);
+}
+
+/* Panels, desks, feeds, ledgers, tables, intelligence and loading surfaces. */
+:root[data-color-theme="light"] :is(
+  .panel,.card,.section-card,.terminal-panel,.terminal-section,.desk-panel,.desk-card,
+  .ledger,.ledger-panel,.holdings-ledger,.news-panel,.news-card,.news-feed,
+  .activity-panel,.activity-feed,.activity-list,.stock-activity,.crypto-activity,.bet-activity,
+  .options-panel,.options-card,.flow-panel,.flow-card,.whale-panel,.whale-card,
+  .institutional-panel,.institutional-card,.disclosure-panel,.disclosures-panel,
+  .portfolio-panel,.portfolio-section,.portfolio-list,.watchlist-panel,.watchlist-card,
+  .signal-panel,.signal-card,.radar-panel,.radar-card,.compare-panel,.journal-panel,
+  .alert-panel,.alerts-panel,.scanner-panel,.scanner-card,.deep-dive-panel,.deep-dive-card,
+  .modal-content,.modal-card,.dialog-content,.popover-content,.dropdown-menu,
+  .table-wrap,.data-table,.vtable,.filter-panel,.filter-bar,.form-card,
+  .skeleton-card,.loading-card,.loading-panel
+) {
+  background-color: #ffffff !important;
+  color: #17131f !important;
+  border-color: #ddd9e5 !important;
+  box-shadow: 0 4px 16px rgba(47,36,73,.055);
+}
+
+/* Nested dark wells and skeleton rows must become light too. */
+:root[data-color-theme="light"] :is(
+  .panel,.card,.section-card,.terminal-panel,.terminal-section,.desk-panel,.desk-card,
+  .ledger,.holdings-ledger,.news-panel,.activity-panel,.options-panel,.flow-panel,
+  .whale-panel,.institutional-panel,.disclosure-panel,.portfolio-panel,.watchlist-panel,
+  .signal-panel,.radar-panel,.compare-panel,.journal-panel,.alert-panel,.scanner-panel,
+  .deep-dive-panel,.modal-content,.dialog-content
+) :is(
+  .panel-body,.card-body,.section-body,.content,.body,.inner,.well,.surface,.list,
+  .list-row,.table-row,.data-row,.skeleton,.skeleton-row,.skeleton-line,.loading-row
+) {
+  background-color: #fbfbfd !important;
+  border-color: #e3dfe8 !important;
+}
+
+/* Generic legacy utility classes and common hard-coded dark helpers. */
+:root[data-color-theme="light"] :is(
+  .bg-dark,.bg-deep,.bg-panel,.bg-card,.dark-panel,.dark-card,.terminal-well,
+  .intel-well,.feed-well,.loading-well,.skeleton-well
+) {
+  background: #ffffff !important;
+  color: #17131f !important;
+  border-color: #ddd9e5 !important;
+}
+
+:root[data-color-theme="light"] :is(
+  .muted,.subtle,.secondary,.meta,.caption,.hint,.description,.subtitle,.eyebrow,
+  .panel-subtitle,.card-subtitle,.section-subtitle,.loading-text,.empty-text
+) {
+  color: #696272 !important;
+  opacity: 1 !important;
+}
+
+:root[data-color-theme="light"] :is(
+  table,thead,tbody,tr,th,td
+) {
+  border-color: #e1dde7 !important;
+}
+:root[data-color-theme="light"] th {
+  background: #f6f4fa !important;
+  color: #51495d !important;
+}
+:root[data-color-theme="light"] td {
+  background: #ffffff;
+  color: #211b29;
+}
+
+/* Skeletons/loading: neutral light placeholders, never charcoal blocks. */
+:root[data-color-theme="light"] [class*="skeleton"],
+:root[data-color-theme="light"] [class*="placeholder"] {
+  border-color: #e0dce5 !important;
+}
+:root[data-color-theme="light"] [class*="skeleton"]::before,
+:root[data-color-theme="light"] [class*="skeleton"]::after {
+  opacity: .55;
+}
+:root[data-color-theme="light"] .skeleton-line,
+:root[data-color-theme="light"] .skeleton-bar,
+:root[data-color-theme="light"] .skeleton-pill {
+  background: #e4e6eb !important;
+}
+
+/* Menus, tabs, filters, pagination and icon controls. */
+:root[data-color-theme="light"] :is(
+  .tabs,.tab-list,.subtabs,.segmented,.filter-tabs,.toolbar,.panel-toolbar,.card-toolbar
+) {
+  background-color: #f7f7fa !important;
+  border-color: #ddd9e5 !important;
+}
+:root[data-color-theme="light"] :is(
+  .tab,.subtab,.filter-btn,.icon-btn,.refresh-btn,.pagination-btn
+) {
+  color: #5f5869 !important;
+  border-color: #d2cdd9 !important;
+}
+:root[data-color-theme="light"] :is(
+  .tab.active,.subtab.active,.filter-btn.active
+) {
+  color: #4c1d95 !important;
+  background: #eee8ff !important;
+  border-color: #bda9ef !important;
+}
+
+/* Chart and metric shells stay readable without forcing chart-series colors. */
+:root[data-color-theme="light"] :is(
+  .chart-wrap,.chart-panel,.metric-card,.metric-panel,.gauge-panel
+) {
+  background-color: #ffffff !important;
+  border-color: #ddd9e5 !important;
+  color: #17131f !important;
+}
+
+/* Footer/legal/billing surfaces. */
+:root[data-color-theme="light"] :is(
+  .app-footer,.financial-disclaimer,.billing-fine-print,.tier-pricing,.pricing-card,
+  .legal-page,.legal-card
+) {
+  background-color: #ffffff !important;
+  color: #4f4859 !important;
+  border-color: #ddd9e5 !important;
+}
+
+/* Brand/logo treatment: remove the black tile effect in Day mode. */
+:root[data-color-theme="light"] .sidebar-brand,
+:root[data-color-theme="light"] .workspace-header-brand,
+:root[data-color-theme="light"] .motivfx-brand-image,
+:root[data-color-theme="light"] .motivfx-brand-image-compact {
+  background-color: #ffffff !important;
+}
+:root[data-color-theme="light"] .sidebar-brand {
+  border-color: #e2dee8 !important;
+}
+:root[data-color-theme="light"] .motivfx-brand-image {
+  border-radius: 8px;
+  mix-blend-mode: multiply;
+}
+
+/* Native/mobile chrome follows Day mode too. */
+@media(max-width:900px){
+  :root[data-color-theme="light"] :is(.mobile-header,.mobile-toolbar,.mobile-bottom-nav,.mobile-more-sheet){
+    background:#ffffff !important;color:#17131f !important;border-color:#ddd9e5 !important;
+  }
+  :root[data-color-theme="light"] .mobile-bottom-nav-item{color:#625b6d !important}
+  :root[data-color-theme="light"] .mobile-bottom-nav-item.active{color:#5b21b6 !important;background:#f2edff !important}
+}
