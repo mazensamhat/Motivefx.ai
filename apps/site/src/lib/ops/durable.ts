@@ -323,9 +323,12 @@ async function persistSignalSnapshotOnce(input: {
 
   if (input.motiveSignal != null) {
     const outcomeId = `signal-outcome:${snap.id}:30:MARKET_OUTCOME_V4`;
-    await prisma.signalOutcome.upsert({
-      where: { id: outcomeId },
-      create: {
+    // The outcome id is deterministic, so concurrent serverless isolates can
+    // attempt to seed the same row at the same time. Prisma upsert can still
+    // race on the create branch and throw P2002. A conflict-safe insert makes
+    // duplicate seeding idempotent at the database boundary.
+    await prisma.signalOutcome.createMany({
+      data: [{
         id: outcomeId,
         snapshotId: snap.id,
         symbol: input.symbol,
@@ -342,8 +345,8 @@ async function persistSignalSnapshotOnce(input: {
             sourceReference: typeof ev?.sourceReference === "string" ? ev.sourceReference : null,
           });
         })(),
-      },
-      update: {},
+      }],
+      skipDuplicates: true,
     });
   }
 }
@@ -360,7 +363,7 @@ export function persistSignalSnapshot(input: {
   // Home can emit several signals at once while Prisma only has a tiny serverless pool.
   // Serialize this best-effort durability work per process instead of stampeding the pool.
   const run = async () => {
-    const retryDelaysMs = [0, 150, 600];
+    const retryDelaysMs = [0, 200, 800, 2_000];
     for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
       const delay = retryDelaysMs[attempt] ?? 0;
       if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
