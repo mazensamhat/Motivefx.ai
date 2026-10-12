@@ -17,6 +17,13 @@ test("outcome lifecycle runs automatically and is credential protected", () => {
 test("new outcomes are seeded on V4 with source metadata", () => {
   assert.match(durable,/MARKET_OUTCOME_V4/);
   assert.match(durable,/SOURCE_META/);
+  assert.match(durable,/createMany/);
+  assert.match(durable,/skipDuplicates:\s*true/);
+});
+test("outcome evaluator pages past unsupported backlog rows", () => {
+  assert.match(outcomes,/MAX_CANDIDATE_SCAN_ROWS/);
+  assert.match(outcomes,/cursor:\{id:cursorId\}/);
+  assert.match(outcomes,/pending\.length<take/);
 });
 test("signal evidence preserves desk market identity", () => {
   for (const value of ["crypto","sports","predictions","stocks"]) assert.match(record,new RegExp(value));
