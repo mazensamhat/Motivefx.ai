@@ -14,6 +14,9 @@ import {
 
 const RETRY_AFTER_MS = 60 * 60 * 1000;
 const BATCH_BUDGET_MS = 35_000;
+const CANDIDATE_SCAN_BUDGET_MS = 8_000;
+const MAX_CANDIDATE_SCAN_ROWS = 25_000;
+const CANDIDATE_PAGE_SIZE = 500;
 const LEGACY_MISSING_DATA_NOTE = "Observed historical market price unavailable or provider capability disabled; excluded from calibration";
 const COINGECKO_IDS: Record<string,string> = {
   BTC:"bitcoin", ETH:"ethereum", USDT:"tether", USDC:"usd-coin", SOL:"solana",
@@ -121,19 +124,48 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
   observedCache.clear();
   const take=Number.isFinite(limit)?Math.min(250,Math.max(1,Math.floor(limit))):100;
   try{
-    const pending=await prisma.signalOutcome.findMany({
-      where:{
-        evaluatorVersion:{in:OUTCOME_SEED_VERSIONS},
-        OR:[
-          {outcome:"PENDING"},
-          {outcome:"INCONCLUSIVE",evaluatedAt:{lte:new Date(started-RETRY_AFTER_MS)},OR:[
-            {notes:{startsWith:RETRYABLE_OUTCOME_PREFIX}},
-            {notes:LEGACY_MISSING_DATA_NOTE},
-          ]},
-        ],
-      },
-      include:{snapshot:true},take,orderBy:{createdAt:"asc"},
-    });
+    const pendingWhere={
+      evaluatorVersion:{in:OUTCOME_SEED_VERSIONS},
+      OR:[
+        {outcome:"PENDING"},
+        {outcome:"INCONCLUSIVE",evaluatedAt:{lte:new Date(started-RETRY_AFTER_MS)},OR:[
+          {notes:{startsWith:RETRYABLE_OUTCOME_PREFIX}},
+          {notes:LEGACY_MISSING_DATA_NOTE},
+        ]},
+      ],
+    };
+    // Unsupported and not-yet-due rows are intentionally preserved, but they
+    // must not permanently occupy the oldest page and starve actionable stock/
+    // crypto outcomes. Page through the backlog until we have a bounded set of
+    // due, provider-supported candidates (or hit the scan/time guard).
+    const pending=[] as Awaited<ReturnType<typeof prisma.signalOutcome.findMany>>;
+    let cursorId:string|undefined;
+    let scanned=0;
+    while(
+      pending.length<take &&
+      scanned<MAX_CANDIDATE_SCAN_ROWS &&
+      Date.now()-started<CANDIDATE_SCAN_BUDGET_MS
+    ){
+      const page=await prisma.signalOutcome.findMany({
+        where:pendingWhere,
+        include:{snapshot:true},
+        take:CANDIDATE_PAGE_SIZE,
+        orderBy:[{createdAt:"asc"},{id:"asc"}],
+        ...(cursorId?{cursor:{id:cursorId},skip:1}:{}),
+      });
+      if(page.length===0) break;
+      scanned+=page.length;
+      for(const row of page){
+        const market=inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol });
+        if(!historicalCapability(market)) continue;
+        const dueAt=outcomeDueAt(row.snapshot.recordedAt.getTime(),row.horizonDays);
+        if(dueAt!=null&&dueAt>Date.now()) continue;
+        pending.push(row);
+        if(pending.length>=take) break;
+      }
+      cursorId=page[page.length-1]?.id;
+      if(page.length<CANDIDATE_PAGE_SIZE||!cursorId) break;
+    }
     for(const row of pending){
       if(Date.now()-started>=BATCH_BUDGET_MS) break;
       const market=inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol });
