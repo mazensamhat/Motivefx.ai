@@ -52,6 +52,7 @@ source =
 const {
   buildPortfolioIntelligence,
   buildDiscovery,
+  buildMarketClose,
   buildSinceAway,
   inferSignalMarket,
 } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
@@ -78,10 +79,19 @@ function signal(symbol, motiveSignal, recordedAt, extras = {}) {
     signalEvidenceJson: extras.signalEvidenceJson ?? "",
     evidenceCount: extras.evidenceCount ?? 0,
     signalEvidenceCount: extras.signalEvidenceCount ?? 0,
-    engineVersion: extras.engineVersion ?? "test",
+    engineVersion: extras.engineVersion ?? "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE",
     recordedAt: new Date(recordedAt),
   };
 }
+
+test("legacy factor-count confidence is not presented as evidence confidence", async () => {
+  resetState();
+  testState.portfolios = [{module: "crypto", holdingsJson: '[{"symbol":"USDT","amount":1}]'}];
+  testState.signalRows = [signal("USDT", 71, new Date().toISOString(), {confidence: 99, engineVersion: "MOTIVE_SIGNAL_V4_2"})];
+  assert.equal((await buildDiscovery(null)).items[0].evidenceConfidence, null);
+  assert.equal((await buildPortfolioIntelligence("user")).assets[0].evidenceConfidence, null);
+  assert.equal((await buildMarketClose(null)).carry[0].evidenceConfidence, null);
+});
 
 test("market inference prefers recorded evidence identity before symbol heuristics", () => {
   assert.equal(

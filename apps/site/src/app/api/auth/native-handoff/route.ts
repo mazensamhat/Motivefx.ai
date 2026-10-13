@@ -46,7 +46,7 @@ function applySessionCookies(res: NextResponse, tokens: SessionTokens) {
 
 function safeTerminalNext(nextPath: string | null | undefined): string {
   const raw = nextPath?.trim() || "/terminal";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/terminal";
+  if (!raw.startsWith("/") || raw.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(raw)) return "/terminal";
   if (raw === "/terminal/" || raw.startsWith("/terminal/?")) {
     return raw.replace("/terminal/", "/terminal");
   }
