@@ -1,4 +1,5 @@
 import { json } from "@/lib/api";
+import { isVolumeProxy } from "../../../../../../packages/shared/src/provenance";
 import {
   fetchWhaleAlerts,
   fetchLineMoves,
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     events.push({
       type: "crypto",
       severity: "high",
-      message: `${String(w.asset)} whale moved ${pretty} — ${w.note ?? w.direction ?? ""}`,
+      message: `${String(w.asset)} ${isVolumeProxy(w) ? "24h trading volume" : "reported transfer"} ${pretty} — ${w.note ?? w.direction ?? ""}`,
       timestamp: w.timestamp,
     });
   }

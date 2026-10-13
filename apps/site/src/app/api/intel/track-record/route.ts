@@ -1,4 +1,5 @@
 import { prisma } from "@motivefx/database";
+import { summarizeOutcomeValidation } from "@/lib/ops/outcome-validation";
 import { json } from "@/lib/api";
 import { requireFeature } from "@/lib/terminal/access";
 import { accessErrorResponse, requireTerminalSession } from "@/lib/terminal/auth";
@@ -8,7 +9,7 @@ import { OUTCOME_EVALUATOR_VERSION, summarizeCalibration } from "@/lib/ops/outco
 export const dynamic = "force-dynamic";
 
 function evidenceConfidence(row: { engineVersion: string; confidence: number | null } | undefined) {
-  return row?.engineVersion === "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE" ? row.confidence : null;
+  return row && ["MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE","MOTIVE_SIGNAL_V4_4_SOURCE_QUALITY"].includes(row.engineVersion) ? row.confidence : null;
 }
 
 function parseEvidence(raw: string) {
@@ -73,7 +74,7 @@ export async function GET() {
 
     const resolvedRows = rawResolvedRows.map((row) => ({
       ...row,
-      predictedConf: row.snapshot.engineVersion === "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE" ? row.predictedConf : null,
+      predictedConf: ["MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE","MOTIVE_SIGNAL_V4_4_SOURCE_QUALITY"].includes(row.snapshot.engineVersion) ? row.predictedConf : null,
     }));
     const calibration = summarizeCalibration(resolvedRows);
     const resolvedOutcomes = resolvedRows.length;
@@ -131,6 +132,7 @@ export async function GET() {
       minimumResolvedForScore,
       readiness: resolvedOutcomes >= minimumResolvedForScore ? "READY" : "COLLECTING_OUTCOMES",
       score,
+      validation: summarizeOutcomeValidation(resolvedRows),
       calibration: {
         evaluatorVersion: OUTCOME_EVALUATOR_VERSION,
         evaluated: calibration.evaluated,

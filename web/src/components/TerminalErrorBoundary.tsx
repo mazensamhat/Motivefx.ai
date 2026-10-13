@@ -16,6 +16,7 @@ export class TerminalErrorBoundary extends Component<Props, State> {
       surface: "terminal.react",
       errorName: error.name,
       message: error.message,
+      stack: error.stack,
     });
   }
 

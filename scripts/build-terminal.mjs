@@ -17,7 +17,7 @@ mkdirSync(outDir, { recursive: true });
 execSync("npm ci --include=dev && npm run build", {
   cwd: webDir,
   stdio: "inherit",
-  env: { ...process.env, VITE_BASE: "/terminal/", NODE_ENV: "development" },
+  env: { ...process.env, VITE_BASE: "/terminal/", NODE_ENV: "development", VITE_APP_VERSION: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0,12) || process.env.VITE_APP_VERSION || "local" },
 });
 
 const distDir = join(webDir, "dist");

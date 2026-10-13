@@ -24,7 +24,7 @@ const MAX_ENTRIES = 500;
 const ledger: LedgerEntry[] = [];
 const pendingPersistence = new Set<Promise<void>>();
 
-export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE";
+export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_4_SOURCE_QUALITY";
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -67,11 +67,18 @@ export function recordSignalEvidence(input: {
   evidenceConfidence?: number;
   evidence: MarketEvidence[];
   engineVersion?: string;
+  observedAt?: string;
 }): LedgerEntry {
   const signalEvidence = filterForProductionSignal(input.evidence);
-  const observedAt = new Date();
+  const suppliedAt = input.observedAt ? Date.parse(input.observedAt) : NaN;
+  const observedAt = Number.isFinite(suppliedAt) && suppliedAt <= Date.now()+60_000 ? new Date(suppliedAt) : new Date();
   const engineVersion = input.engineVersion ?? MOTIVE_SIGNAL_ENGINE_VERSION;
   const symbol = input.symbol.toUpperCase();
+  if (input.observedAt) {
+    const id = signalObservationId({symbol,motiveSignal:input.motiveSignal,engineVersion,observedAt});
+    const existing = ledger.find(entry => entry.ledgerId === id);
+    if (existing) return existing;
+  }
   const entry: LedgerEntry = {
     ledgerId: signalObservationId({
       symbol,

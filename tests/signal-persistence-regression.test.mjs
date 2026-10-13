@@ -120,6 +120,20 @@ function setupLedgerHarness(persisted) {
   };
 }
 
+test("cached source observations retain their original timestamp and persist once", async (t) => {
+  const persisted=[];
+  setupLedgerHarness(persisted);
+  installMockDate(t,"2026-10-13T21:10:00Z");
+  const ledger=await loadLedgerModule("source-observation-dedupe");
+  const input={symbol:"BTC",motiveSignal:65,evidenceConfidence:50,observedAt:"2026-10-13T21:05:00Z",evidence:[evidence("source-price")]};
+  const first=ledger.recordSignalEvidence(input);
+  const repeated=ledger.recordSignalEvidence(input);
+  await ledger.flushSignalEvidencePersistence();
+  assert.equal(first.ledgerId,repeated.ledgerId);
+  assert.equal(first.recordedAt,"2026-10-13T21:05:00.000Z");
+  assert.equal(persisted.length,1);
+});
+
 test("signal ledger keys one logical score state per UTC minute despite evidence jitter", async (t) => {
   const persisted = [];
   setupLedgerHarness(persisted);

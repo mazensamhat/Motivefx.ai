@@ -5,6 +5,7 @@ import { useAutoAnalyze } from "../hooks/useAutoAnalyze";
 import { useModules } from "../hooks/useModules";
 import { FeatureGate } from "./FeatureGate";
 import type { WhaleAlert } from "../types";
+import { isVolumeProxy } from "../../../packages/shared/src/provenance";
 import { AiAdvisor } from "./AiAdvisor";
 import { DeepScanModal } from "./DeepScanModal";
 import { ModuleIntelStrip } from "./ModuleIntelStrip";
@@ -157,18 +158,18 @@ export function TabCrypto() {
                         direction: w.direction,
                         side: w.direction,
                         note: w.note,
-                        timestamp: new Date().toISOString(),
+                        timestamp: w.timestamp ?? "",
                         id: `whale-${w.asset}-${w.amountUsd}`,
                       },
                       "crypto"
                     )
                   }
-                  title={`Whale alert: ${w.asset}`}
+                  title={`${isVolumeProxy(w) ? "Trading volume" : "Reported transfer"}: ${w.asset}`}
                   symbol={w.asset}
                   name={`${w.note || `${w.direction} flow`} · Tap for scorecard`}
                   price={formatUsd(w.amountUsd)}
-                  changeLabel={w.direction}
-                  change={w.direction === "deposit" ? -1 : 1}
+                  changeLabel={isVolumeProxy(w) ? "Volume proxy" : w.direction}
+                  change={isVolumeProxy(w) ? 0 : w.direction === "deposit" ? -1 : 1}
                     actions={<button type="button" className="btn btn-sm btn-ghost" disabled={savingSymbol === w.asset.toUpperCase() || savedSymbols.has(w.asset.toUpperCase())} onClick={() => void addSymbol(w.asset)}>{savedSymbols.has(w.asset.toUpperCase()) ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}</button>}
                 />
               )}

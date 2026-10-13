@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { safeErrorFrames } from "../../../../packages/shared/src/error-frames";
 
 export default function GlobalError({
   error,
@@ -20,6 +21,8 @@ export default function GlobalError({
         surface: "site.global-error",
         errorName: error.name,
         message: error.message,
+        sourceFrames: safeErrorFrames(error.stack),
+        appVersion: process.env.NEXT_PUBLIC_RELEASE_VERSION,
         route: typeof window !== "undefined" ? window.location.pathname : "/",
       }),
     }).catch(() => undefined);

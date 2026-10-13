@@ -143,13 +143,18 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
     const pending: Prisma.SignalOutcomeGetPayload<{ include: { snapshot: true } }>[] = [];
     let cursorId:string|undefined;
     let scanned=0;
+    const symbolSamples = new Map<string,number>();
+    const perSymbolLimit = Math.max(1,Math.ceil(take/8));
     while(
       pending.length<take &&
       scanned<MAX_CANDIDATE_SCAN_ROWS &&
       Date.now()-started<CANDIDATE_SCAN_BUDGET_MS
     ){
       const page=await prisma.signalOutcome.findMany({
-        where:pendingWhere,
+        where:{...pendingWhere,
+          ...(!stockHistoryEnabled() ? {symbol:{in:cryptoHistoryEnabled()?Object.keys(COINGECKO_IDS):[]}} : {}),
+          AND:[{symbol:{notIn:[...symbolSamples].filter(([,count])=>count>=perSymbolLimit).map(([symbol])=>symbol)}}],
+        },
         include:{snapshot:true},
         take:CANDIDATE_PAGE_SIZE,
         orderBy:[{createdAt:"asc"},{id:"asc"}],
@@ -162,6 +167,9 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
         if(!historicalCapability(market)) continue;
         const dueAt=outcomeDueAt(row.snapshot.recordedAt.getTime(),row.horizonDays);
         if(dueAt!=null&&dueAt>Date.now()) continue;
+        const symbol = row.symbol.toUpperCase();
+        if((symbolSamples.get(symbol) ?? 0)>=perSymbolLimit) continue;
+        symbolSamples.set(symbol,(symbolSamples.get(symbol) ?? 0)+1);
         pending.push(row);
         if(pending.length>=take) break;
       }

@@ -5,6 +5,7 @@ function demoFeedsAllowed(dataMode: DataMode = getDataMode()): boolean {
   return allowsDemoFeeds(dataMode);
 }
 import { isProviderEnabled } from "../provider-switches";
+import { isOpenPrediction } from "../data-quality";
 import { recordTelemetryDurable } from "../../ops/telemetry-envelope";
 
 const now = () => new Date().toISOString();
@@ -522,6 +523,7 @@ export type PredictionMarketItem = {
   categoryLabel: string;
   slug?: string;
   timestamp?: string;
+  endDate?: string;
 };
 
 export function demoLineMoves(): LineMoveItem[] {
@@ -1877,20 +1879,18 @@ function parseOutcomeYes(raw: unknown): number {
   try {
     const prices = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
     if (Array.isArray(prices) && prices.length) {
+      if(!["number","string"].includes(typeof prices[0]) || String(prices[0]).trim()==="")return NaN;
       const n = Number(prices[0]);
-      return Number.isFinite(n) ? n : 0.5;
+      return Number.isFinite(n) && n>=0 && n<=1 ? n : NaN;
     }
   } catch {
     /* ok */
   }
-  return 0.5;
+  return NaN;
 }
 
 function isOpenChildMarket(m: Record<string, unknown>): boolean {
-  if (m.closed === true || m.archived === true) return false;
-  if (m.active === false) return false;
-  if (m.acceptingOrders === false) return false;
-  return true;
+  return isOpenPrediction(m);
 }
 
 function pickOpenMarket(markets: Array<Record<string, unknown>>): Record<string, unknown> | null {
@@ -1951,11 +1951,12 @@ async function fetchPredictionMarketsUncached(
     const events = (await res.json()) as Array<Record<string, unknown>>;
     const items: PredictionMarketItem[] = [];
     for (const ev of events) {
-      if (ev.closed === true || ev.archived === true) continue;
+      if (!isOpenPrediction(ev)) continue;
       const markets = (ev.markets as Array<Record<string, unknown>>) ?? [];
       const m = pickOpenMarket(markets);
       if (!m) continue;
       const yes = parseOutcomeYes(m.outcomePrices);
+      if (!Number.isFinite(yes) || yes < 0 || yes > 1) continue;
       const vol = Number(m.volume24hr ?? ev.volume24hr ?? 0);
       const question = String(m.question ?? ev.title ?? "—");
       const cats = categorizePolymarketTags(
@@ -1972,6 +1973,7 @@ async function fetchPredictionMarketsUncached(
         categoryLabel: cats.categoryLabel,
         slug: String(m.slug ?? ev.slug ?? ""),
         timestamp: updatedAt,
+        endDate: typeof m.endDate === "string" ? m.endDate : typeof ev.endDate === "string" ? ev.endDate : undefined,
       });
       if (items.length >= limit) break;
     }

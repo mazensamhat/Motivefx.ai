@@ -13,10 +13,15 @@ async function load(path,mocks={}) {
  });return module.exports;
 }
 const saved=await load('../packages/shared/src/saved-data-state.ts');
-async function fixture({failed=false,count=0}={}) {
+const provenance=await load('../packages/shared/src/provenance.ts');
+const quality=await load('../apps/site/src/lib/terminal/data-quality.ts',{'../../../../../packages/shared/src/provenance':provenance});
+async function fixture({failed=false,count=0,shared}={}) {
  let reads=0;
  const api=await load('../apps/site/src/lib/terminal/home-briefing.ts',{
   './portfolio':{portfolioSnapshot:async()=>{reads++;if(failed)throw Error('pool unavailable');return {counts:{trades:count,penny:0,crypto:0},symbols:{trades:count?['NVDA']:[],penny:[],crypto:[]}};}},
+  './data-quality':quality,
+  '../../../../../packages/shared/src/provenance':provenance,
+  './shared-home-feeds':{getSharedHomeFeeds:shared ?? (async()=>({whales:[],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:new Date().toISOString()}))},
   './bets':{listBets:async()=>[]},'./predictions':{listPredictions:async()=>[]},'./watchlist':{listWatchlist:async()=>[]},
   './feeds':{fetchCongressTrades:async()=>[],fetchLineMoves:async()=>[],fetchPredictionMarkets:async()=>[],fetchWhaleAlerts:async()=>[],scanPennyMovers:()=>[],scanUnusualOptions:()=>[]},
   './engines':{runPhase2Engines:()=>({probabilityViews:[],consensusBreaks:[],marketGenomes:[],signalGraph:{},consensusHistory:[],futureScenarios:{},themeSuggestions:[]}),enrichOpportunitiesWithProbability:x=>x},
@@ -39,4 +44,15 @@ test('loaded holdings retain their actual count',async()=>{
 });
 test('anonymous briefings do not attempt customer database reads',async()=>{
  const f=await fixture({failed:true});const b=await f.api.buildHomeBriefing({userId:'demo'});assert.equal(f.reads(),0);assert.equal(b.personalized.savedDataStatus,'anonymous');
+});
+
+test('saved account reads start before a slow shared feed finishes and no historical comparison is invented',async()=>{
+ let release;const wait=new Promise(resolve=>{release=resolve;});
+ const f=await fixture({count:3,shared:()=>wait});
+ const pending=f.api.buildHomeBriefing({userId:'owner'});
+ assert.equal(f.reads(),1);
+ release({whales:[],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:new Date().toISOString()});
+ const brief=await pending;assert.equal(brief.personalized.holdingsCount,3);
+ assert.equal(brief.compareLens.length,0);assert.equal(brief.breakingNewsCount,0);
+ assert.equal(brief.marketConfidence,'UNAVAILABLE');
 });

@@ -6,7 +6,7 @@ import { allowsDemoFeeds } from "./data-mode";
 import { wrapMarketEvidence } from "./evidence";
 import { recordSignalEvidence } from "./evidence-ledger";
 
-type FeedOpp = { id?: string; symbol?: string; module?: string };
+type FeedOpp = { id?: string; symbol?: string; module?: string; dataQuality?: {provider:string;observedAt:string|null;freshness:string;kind:string} };
 function marketFor(module: string | undefined) {
   if (module === "crypto") return { market: "crypto" as const, group: "PRICE" as const };
   if (module === "betting") return { market: "sports" as const, group: "MARKET_CONSENSUS" as const };
@@ -36,15 +36,19 @@ export function recordProbabilityViewsToLedger(
 
     const opportunity = opportunities.find((o) => String(o.id ?? o.symbol ?? "") === view.id.replace(/^opp-/, "") || String(o.symbol ?? "").toUpperCase() === symbol);
     const truth = marketFor(view.module ?? opportunity?.module);
+    const quality = opportunity?.dataQuality;
+    if (!demoMode && quality && (quality.freshness !== "fresh" || !quality.observedAt)) continue;
     const evidence = (view.factors ?? []).map((f) =>
       wrapMarketEvidence({
         id: `${view.id}-${f.key}`,
         value: { factor: f.key, label: f.label, score: f.score, weight: f.weight },
-        sourceType: demoMode ? "DEMO" : "LIVE",
+        sourceType: demoMode ? "DEMO" : quality?.kind === "derived" ? "DERIVED" : "MODEL",
         provider: "motive-signal-engine",
         market: truth.market,
         symbol,
         sourceReference: opportunity?.id ?? view.id,
+        observedAt: quality?.observedAt ?? undefined,
+        derived: Boolean(quality),
         group: truth.group,
         confidence: f.score,
         signalContribution: Math.round(f.score * f.weight),
@@ -55,6 +59,7 @@ export function recordProbabilityViewsToLedger(
       symbol,
       motiveSignal: view.probability,
       evidenceConfidence: view.confidence,
+      observedAt: quality?.observedAt ?? undefined,
       evidence,
     });
   }

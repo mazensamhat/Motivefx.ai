@@ -12,6 +12,7 @@ type ErrorGroup = {
   error_name: string;
   message_signature: string;
   app_version: string | null;
+  source_frames: string | null;
   occurrences: number;
   first_seen: Date;
   last_seen: Date;
@@ -55,6 +56,7 @@ export default async function ClientErrorsPage({
          COALESCE("metadataJson"::jsonb->>'errorName', 'Error') AS error_name,
          COALESCE("metadataJson"::jsonb->>'messageSignature', 'unknown') AS message_signature,
          "appVersion" AS app_version,
+         MAX("metadataJson"::jsonb->>'sourceFrames') AS source_frames,
          COUNT(*)::int AS occurrences,
          MIN("observedAt") AS first_seen,
          MAX("observedAt") AS last_seen
@@ -170,7 +172,7 @@ export default async function ClientErrorsPage({
                 <td className="px-4 py-3">{row.platform}</td>
                 <td className="px-4 py-3">{row.surface}</td>
                 <td className="px-4 py-3 font-mono text-xs">{row.route}</td>
-                <td className="px-4 py-3">{row.error_name}</td>
+                <td className="px-4 py-3">{row.error_name}{row.source_frames && <p className="font-mono text-xs break-all">{row.source_frames}</p>}</td>
                 <td className="px-4 py-3 font-mono text-xs">{row.message_signature}</td>
                 <td className="px-4 py-3">{row.app_version ?? "—"}</td>
                 <td className="px-4 py-3 text-xs text-slate-500">

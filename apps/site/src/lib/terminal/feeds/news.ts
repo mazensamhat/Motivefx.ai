@@ -1,4 +1,5 @@
 import { userTrackedSymbols } from "../watchlist";
+import { uniqueHeadlines } from "../data-quality";
 
 export type NewsModule = "trades" | "penny" | "crypto" | "betting" | "predictions";
 
@@ -425,7 +426,7 @@ async function fetchNewsUncached(
       };
     }
 
-    const items = raw
+    const items = uniqueHeadlines(raw)
       .slice(0, limit)
       .map((row) => toNewsItem(module, row, tracked))
       .sort((a, b) => {

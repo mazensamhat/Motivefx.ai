@@ -93,6 +93,7 @@ export function enrichOpportunitiesWithProbability(
     if (!view) return { ...o };
     return {
       ...o,
+      confidence: view.probability,
       probability: view.probability,
       modelConfidence: view.confidence,
       direction: view.direction,
