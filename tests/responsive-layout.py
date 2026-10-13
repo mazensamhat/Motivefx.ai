@@ -152,6 +152,7 @@ def main():
                     if pro_toggle.count() and pro_toggle.get_attribute('aria-expanded') != 'true':
                         pro_toggle.evaluate('(e)=>e.click()')
                         page.wait_for_timeout(80)
+                    page.locator('.signal-graph-panel').wait_for(state='visible', timeout=5000)
                     assert page.locator('.signal-graph-panel').count() == 1, {**case,'missing':'signal-graph-panel'}
                     labels = page.evaluate("""()=>{const p=document.querySelector('.signal-graph-panel').getBoundingClientRect();return [...document.querySelectorAll('.signal-graph-sat-labels li')].filter(e=>{const r=e.getBoundingClientRect();return r.left<p.left||r.right>p.right}).map(e=>e.textContent)}""")
                     assert not labels, {**case,'clippedLabels':labels}
