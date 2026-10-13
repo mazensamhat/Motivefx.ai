@@ -6,6 +6,8 @@ Run after VITE_BASE=/terminal/ npm --prefix web run build.
 import base64
 import json
 import os
+import mimetypes
+from urllib.parse import urlparse, unquote
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -53,22 +55,31 @@ SELECTORS = '.terminal-main,.v2-home,.v2-pro-legacy,.phase2-intel,.institutional
 CHECK = """(selectors)=>{const v=document.documentElement.clientWidth;return [...document.querySelectorAll(selectors)].flatMap(e=>{const r=e.getBoundingClientRect();if(!r.width)return [];return r.right>v+2||r.left< -2||r.width>v+2||e.scrollWidth>e.clientWidth+2?[{class:e.className,right:Math.round(r.right),left:Math.round(r.left),width:Math.round(r.width),client:e.clientWidth,scroll:e.scrollWidth}]:[]})}"""
 TABS = ['home', 'stocks', 'crypto', 'penny', 'betting', 'predictions']
 TAB_TITLES = dict(stocks='Stocks', crypto='Crypto', penny='Pink Sheets', betting='Sports', predictions='Predictions')
-CSS = next((DIST / 'assets').glob('*.css')).read_text()
-JS = next((DIST / 'assets').glob('*.js')).read_text()
+CSS = '\n'.join(p.read_text() for p in (DIST / 'assets').glob('*.css'))
+JS = next((DIST / 'assets').glob('index-*.js')).read_text()
 LOGO = 'data:image/png;base64,' + base64.b64encode((DIST / 'brand/motivefx-logo.png').read_bytes()).decode()
 
 
 def render(browser, width, mode):
     ctx = browser.new_context(viewport={'width':width, 'height':960}, is_mobile=width<900, has_touch=True, reduced_motion='reduce')
-    ctx.route('**/*', lambda route: route.abort())
+    def serve_compiled(route):
+        url = urlparse(route.request.url)
+        if url.netloc != 'local.qa' or not url.path.startswith('/terminal/'):
+            route.abort()
+            return
+        relative = unquote(url.path[len('/terminal/'):]) or 'index.html'
+        file = (DIST / relative).resolve()
+        if not file.is_relative_to(DIST.resolve()) or not file.is_file():
+            route.abort()
+            return
+        content_type = mimetypes.guess_type(str(file))[0] or 'application/octet-stream'
+        route.fulfill(status=200, content_type=content_type, body=file.read_bytes())
+    ctx.route('**/*', serve_compiled)
     page = ctx.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
-    page.set_content('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>' + CSS + '</style></head><body><div id="root"></div></body></html>')
-    page.evaluate(STORAGE)
-    page.evaluate(INIT + (f"window.__MOTIVEFX_NATIVE_PLATFORM__='{mode}';" if mode != 'web' else ''))
-    page.evaluate(FETCH, RESP)
-    page.add_script_tag(type='module', content=JS)
+    page.add_init_script('(' + STORAGE + ')();' + INIT + (f"window.__MOTIVEFX_NATIVE_PLATFORM__='{mode}';" if mode != 'web' else '') + '(' + FETCH + ')(' + json.dumps(RESP) + ');')
+    page.goto('https://local.qa/terminal/')
     page.wait_for_selector('.or-board', timeout=5000)
     page.wait_for_timeout(180)
     page.evaluate('(url)=>document.querySelectorAll("img[src*=motivefx-logo]").forEach(img=>img.src=url)', LOGO)
