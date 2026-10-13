@@ -1,0 +1,24 @@
+name: Native reader and consolidated Ops regressions
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  native-reader-and-ops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pnpm install --frozen-lockfile
+      - run: npm --prefix web ci --include=dev
+      - run: node --test tests/*.test.mjs scripts/*.test.cjs apps/site/scripts/*.test.mjs
+      - run: pnpm --filter @motivefx/site exec tsc --noEmit --pretty false

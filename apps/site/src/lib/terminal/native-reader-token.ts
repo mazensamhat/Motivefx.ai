@@ -24,6 +24,7 @@ function secretKey(): Uint8Array {
     process.env.AUTH_SECRET?.trim() ||
     "";
   if (!raw || raw.length < 16) {
+    if (process.env.NODE_ENV === "production") throw new Error("Native reader signing secret is not configured");
     // Deterministic fallback for local only — production must set NATIVE_READER_TOKEN_SECRET
     return new TextEncoder().encode("motivefx-dev-native-reader-insecure");
   }
