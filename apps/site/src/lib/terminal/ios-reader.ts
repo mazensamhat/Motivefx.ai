@@ -26,7 +26,7 @@ export function isNativeIosAppStoreUserAgent(ua: string | null | undefined): boo
 export async function isTrustedNativeReaderRequest(request: Request): Promise<boolean> {
   const token = readNativeReaderTokenFromRequest(request);
   const claims = await verifyNativeReaderToken(token);
-  if (claims?.readerMode) return true;
+  if (claims?.readerMode && claims.platform === "ios" && claims.channel === "app_store") return true;
 
   const requireToken =
     (process.env.NATIVE_READER_REQUIRE_TOKEN ?? "").trim().toLowerCase() === "true" ||
@@ -64,7 +64,7 @@ export async function entitlementsPlanForUser(user: User): Promise<TerminalPlan>
     const token = h.get("x-motivefx-native-reader");
     if (token) {
       const claims = await verifyNativeReaderToken(token);
-      if (claims?.readerMode && claims.platform === "ios") {
+      if (claims?.readerMode && claims.platform === "ios" && claims.channel === "app_store") {
         return iosAppStoreReaderPlan();
       }
     }
