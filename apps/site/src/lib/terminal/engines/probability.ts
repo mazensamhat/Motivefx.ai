@@ -13,6 +13,8 @@ type FeedOpp = {
   symbol?: string;
   title?: string;
   confidence?: number;
+  evidenceConfidence?: number;
+  dataQuality?: {provider:string;observedAt:string|null;kind:string;freshness:string;independentSources:number};
   signals?: string[];
   reasons?: string[];
   riskLevel?: string;
@@ -165,8 +167,8 @@ export function buildProbabilityViews(
       { key: "desk", label: "Desk signal strength", score: conf, weight: 0.45 },
       {
         key: "diversity",
-        label: "Factor diversity",
-        score: clamp(50 + signalDiversity(o.signals) * 8),
+        label: o.dataQuality ? "Independent source coverage" : "Factor diversity",
+        score: o.dataQuality ? clamp(35+o.dataQuality.independentSources*15) : clamp(50 + signalDiversity(o.signals) * 8),
         weight: 0.2,
       },
       {
@@ -188,6 +190,13 @@ export function buildProbabilityViews(
         weight: 0.1,
       },
     ];
+    const marketWeights:Record<string,number[]> = {trades:[.45,.2,.2,.1,.05],penny:[.35,.15,.35,.1,.05],crypto:[.4,.15,.25,.15,.05],betting:[.4,.15,.3,.1,.05],predictions:[.35,.2,.3,.1,.05]};
+    const weights = marketWeights[o.module ?? ""];
+    if(weights) factors.forEach((factor,i)=>{factor.weight=weights[i]!;});
+    if(o.dataQuality){
+      factors.forEach(factor=>{factor.weight*=.85;});
+      factors.push({key:"freshness",label:"Observation freshness",score:o.dataQuality.freshness === "fresh"?80:o.dataQuality.freshness === "stale"?20:35,weight:.15});
+    }
     const probability = clamp(factors.reduce((s, f) => s + f.score * f.weight, 0));
     const id = `opp-${o.id ?? o.symbol}`;
     const prior = priorCache.get(id);
@@ -202,7 +211,7 @@ export function buildProbabilityViews(
       direction: directionFromScore(conf),
       probability,
       motiveSignal: probability,
-      confidence: conf,
+      confidence: o.evidenceConfidence ?? conf,
       forecastStatus: "INSUFFICIENT_OUTCOMES",
       timing: "near-term desk window",
       beneficiaries: (o.signals ?? []).slice(0, 3),

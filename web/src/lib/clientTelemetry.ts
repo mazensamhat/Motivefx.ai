@@ -1,4 +1,5 @@
 import { isNativeAndroidShell, isNativeIosShell } from "./nativeShell";
+import { safeErrorFrames } from "../../../packages/shared/src/error-frames";
 
 type ClientErrorInput = {
   surface: string;
@@ -6,6 +7,7 @@ type ClientErrorInput = {
   message?: string;
   route?: string;
   appVersion?: string;
+  stack?: string;
 };
 
 const recent = new Map<string, number>();
@@ -56,6 +58,7 @@ export function reportClientError(input: ClientErrorInput): void {
       message: (input.message ?? "").slice(0, 1000),
       route: input.route ?? window.location.pathname,
       appVersion: clientAppVersion(input.appVersion),
+      sourceFrames: safeErrorFrames(input.stack),
     }),
   }).catch(() => undefined);
 }
@@ -67,6 +70,7 @@ export function installGlobalClientErrorReporting(): void {
   window.addEventListener("error", (event) => {
     reportClientError({
       surface: "terminal.window",
+      stack: event.error instanceof Error ? event.error.stack : undefined,
       errorName: event.error instanceof Error ? event.error.name : "WindowError",
       message:
         event.error instanceof Error
@@ -81,6 +85,7 @@ export function installGlobalClientErrorReporting(): void {
     const reason = event.reason;
     reportClientError({
       surface: "terminal.promise",
+      stack: reason instanceof Error ? reason.stack : undefined,
       errorName: reason instanceof Error ? reason.name : "UnhandledRejection",
       message: reason instanceof Error ? reason.message : String(reason ?? "Unhandled promise rejection"),
     });

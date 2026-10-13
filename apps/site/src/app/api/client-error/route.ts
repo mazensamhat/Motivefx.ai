@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { validateErrorFrames } from "../../../../../../packages/shared/src/error-frames";
 import { persistTelemetry } from "@/lib/ops/durable";
 import { buildTelemetryEnvelope } from "@/lib/ops/telemetry-envelope";
 
@@ -12,6 +13,7 @@ type ClientErrorBody = {
   message?: unknown;
   route?: unknown;
   appVersion?: unknown;
+  sourceFrames?: unknown;
 };
 
 const WINDOW_MS = 60_000;
@@ -119,6 +121,7 @@ export async function POST(request: Request) {
       surface,
       route,
       messageSignature: signature,
+      sourceFrames: validateErrorFrames(body.sourceFrames),
     },
   });
 

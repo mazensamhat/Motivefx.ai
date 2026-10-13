@@ -37,9 +37,9 @@ function fallbackBriefing(displayName: string | null) {
     briefingPeriod: period,
     briefingKicker: formatBriefingKicker(period),
     tagline: "Daily Brief · Opportunity Radar",
-    motivfxScore: 62,
+    motivfxScore: 0,
     stars: 3,
-    marketConfidence: "MODERATE",
+    marketConfidence: "UNAVAILABLE",
     opportunityCount: 0,
     highRiskAlerts: 0,
     portfolioDelta: null,
@@ -89,6 +89,7 @@ async function withTimeout<T>(promise: Promise<T>, fallback: T, ms: number): Pro
  * so Prisma pool stalls cannot blank the Home desk.
  */
 export async function GET(request: Request) {
+  const startedAt = Date.now();
   let displayName: string | null = null;
   /** G3: never trust anonymous ?user_id= for account context — session only. */
   let effectiveId = "demo";
@@ -196,5 +197,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return json(briefing);
+  return json(briefing, 200, {headers:{"Server-Timing": `briefing;dur=${Date.now()-startedAt}`, "Cache-Control":"private, no-store"}});
 }

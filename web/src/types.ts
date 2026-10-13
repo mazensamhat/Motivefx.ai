@@ -162,6 +162,11 @@ export interface Recommendation {
 }
 
 export interface HomeOpportunity {
+  dataQuality?: {provider:string;observedAt:string|null;freshness:"fresh"|"stale"|"unknown";kind:"observed"|"derived";independentSources:number;confidence:number};
+  rankingScore?: number;
+  relevance?: string;
+  conflictingEvidence?: string[];
+  invalidatedBy?: string;
   id: string;
   module: string;
   symbol: string;
@@ -260,6 +265,7 @@ export interface MarketGenome {
 }
 
 export interface HomeBriefing {
+  marketData?: {collectedAt:string;ageSeconds:number;coverage:Array<{module:string;available:boolean}>;qualityNote:string};
   greeting: string;
   greetingName?: string | null;
   briefingPeriod?: "morning" | "afternoon" | "evening";

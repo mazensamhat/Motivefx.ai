@@ -77,7 +77,7 @@ function safeSignal(value: number | null) {
 
 function recordedEvidenceConfidence(row: SignalRow | undefined) {
   // Earlier engines derived this field from factor count, not evidence confidence.
-  if (row?.engineVersion !== "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE") return null;
+  if (!row || !["MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE","MOTIVE_SIGNAL_V4_4_SOURCE_QUALITY"].includes(row.engineVersion)) return null;
   return safeSignal(row.confidence);
 }
 

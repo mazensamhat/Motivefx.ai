@@ -1,17 +1,11 @@
 import { portfolioSnapshot } from "./portfolio";
+import { getSharedHomeFeeds } from "./shared-home-feeds";
+import { evidenceQuality, rankOpportunity } from "./data-quality";
 import { unavailableLedger, unavailablePersonalized } from "../../../../../packages/shared/src/saved-data-state";
 import { listBets } from "./bets";
 import { listPredictions } from "./predictions";
 import { listWatchlist } from "./watchlist";
 import type { TerminalPlan } from "./plan";
-import {
-  fetchCongressTrades,
-  fetchLineMoves,
-  fetchPredictionMarkets,
-  fetchWhaleAlerts,
-  scanPennyMovers,
-  scanUnusualOptions,
-} from "./feeds";
 import {
   enrichOpportunitiesWithProbability,
   runPhase2Engines,
@@ -312,20 +306,17 @@ export async function buildHomeBriefing(opts: {
   plan?: TerminalPlan | null;
 }) {
   const now = new Date();
+  const uid = opts.userId ?? null;
+  const contextPromise = isEphemeralUserId(uid) ? Promise.resolve(null) : withFeedTimeout(loadHomeUserContext(uid as string), null, 3500);
+  const prefsPromise = withFeedTimeout(getIntelPrefs(uid), null, 1500);
   const period = getBriefingPeriod(now);
   const name = (opts.displayName ?? "Trader").split(/\s+/)[0];
   const greeting = formatBriefingGreeting(period, name);
   const briefingKicker = formatBriefingKicker(period);
 
-  const [whales, lines, markets, congressTrades] = await Promise.all([
-    withFeedTimeout(fetchWhaleAlerts(), [], 3500),
-    withFeedTimeout(fetchLineMoves(), [], 3500),
-    withFeedTimeout(fetchPredictionMarkets(4), [], 3500),
-    withFeedTimeout(fetchCongressTrades(10), [], 2000),
-  ]);
-
-  const options = scanUnusualOptions().slice(0, 4);
-  const penny = scanPennyMovers().slice(0, 3);
+  const {whales,lines,markets,congressTrades,options,penny,collectedAt} = await withFeedTimeout(getSharedHomeFeeds(), {
+    whales:[],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:now.toISOString(),
+  }, 4000);
   const opportunities: Array<Record<string, unknown>> = [];
 
   for (const o of options.slice(0, 3)) {
@@ -343,6 +334,7 @@ export async function buildHomeBriefing(opts: {
     });
     opportunities.push({
       id: `trades-${sym}-${o.type}`,
+      dataQuality: evidenceQuality("trades", o as unknown as Record<string,unknown>, "Options flow"),
       module: "trades",
       symbol: sym,
       title: stancePhrase(stance),
@@ -372,6 +364,7 @@ export async function buildHomeBriefing(opts: {
     });
     opportunities.push({
       id: `penny-${p.symbol}`,
+      dataQuality: evidenceQuality("penny", p as unknown as Record<string,unknown>, "Microcap scanner"),
       module: "penny",
       symbol: p.symbol,
       title: stancePhrase(stance),
@@ -391,7 +384,7 @@ export async function buildHomeBriefing(opts: {
     });
   }
 
-  for (const w of whales.slice(0, 1)) {
+  for (const w of whales.slice(0, 3)) {
     const conf = 78;
     const stance = resolveStanceFromScore(conf);
     const asset = w.asset ?? "BTC";
@@ -404,18 +397,19 @@ export async function buildHomeBriefing(opts: {
     });
     opportunities.push({
       id: `crypto-${asset}`,
+      dataQuality: evidenceQuality("crypto", w as unknown as Record<string,unknown>, "Crypto market feed"),
       module: "crypto",
       symbol: asset,
       title: stancePhrase(stance),
       stance,
       confidence: conf,
-      expectedMove: "On-chain context",
+      expectedMove: w.sourceType === "DERIVED" ? "Trading-volume context" : "On-chain context",
       riskLevel: "medium",
       stars: stars(conf),
       signals,
       reasons: [
-        `$${asset}: ~$${Math.floor(Number(w.amountUsd) / 1_000_000)}M moved — ${(w as { note?: string }).note ?? w.direction ?? "exchange flow"}.`,
-        `$${asset}: large wallet activity is volatility context, not a trade instruction.`,
+        `$${asset}: ~$${Math.floor(Number(w.amountUsd) / 1_000_000)}M ${w.sourceType === "DERIVED" || /not a single whale|24h vol|proxy/i.test(w.note ?? "") ? "reported trading volume" : "reported transfer value"} — ${w.note ?? w.direction ?? "exchange flow"}.`,
+        `$${asset}: ${w.sourceType === "DERIVED" ? "Trading volume is a market-activity proxy, not a verified whale transaction." : "Wallet activity is volatility context, not a trade instruction."}`,
         stancePlainExplain(stance),
       ],
     });
@@ -432,6 +426,7 @@ export async function buildHomeBriefing(opts: {
     });
     opportunities.push({
       id: `betting-${matchup.slice(0, 20)}`,
+      dataQuality: evidenceQuality("betting", l as unknown as Record<string,unknown>, String(l.book ?? "Odds feed")),
       module: "betting",
       symbol: matchup,
       title: stancePhrase(stance),
@@ -450,10 +445,10 @@ export async function buildHomeBriefing(opts: {
   }
 
   for (const m of markets.slice(0, 2)) {
-    const yes = Math.round((Number(m.yes) || 0.5) * 100);
+    const yes = Math.round(Number(m.yes) * 100);
     const conf = Math.max(55, Math.min(85, yes > 50 ? yes : 100 - yes));
     const stance = resolveStanceFromScore(conf);
-    const marketLabel = String(m.market).slice(0, 48);
+    const marketLabel = String(m.market);
     const signals = pickSignalsForOpportunity({
       module: "predictions",
       symbol: marketLabel,
@@ -461,7 +456,8 @@ export async function buildHomeBriefing(opts: {
       note: String(m.categoryLabel ?? m.category ?? ""),
     });
     opportunities.push({
-      id: `pred-${String(m.market).slice(0, 24)}`,
+      id: `pred-${m.slug || String(m.market)}`,
+      dataQuality: evidenceQuality("predictions", m as unknown as Record<string,unknown>, m.platform),
       module: "predictions",
       symbol: marketLabel,
       title: stancePhrase(stance),
@@ -479,10 +475,18 @@ export async function buildHomeBriefing(opts: {
     });
   }
 
-  opportunities.sort((a, b) => Number(b.confidence) - Number(a.confidence));
+  const userContext = await contextPromise;
+  for (const item of opportunities) {
+    const quality = item.dataQuality as ReturnType<typeof evidenceQuality>;
+    item.evidenceConfidence = quality.confidence;
+    item.rankingScore = Math.round(rankOpportunity(item, userContext?.tracked ?? new Set())*10)/10;
+    item.relevance = userContext?.tracked.has(String(item.symbol).toUpperCase()) ? "Matches your holdings or watchlist" : "Market context; no saved-symbol match";
+    item.conflictingEvidence = quality.kind === "derived" ? ["This is a proxy; direct transaction evidence is unavailable."] : ["One source is available; independent corroboration is not established."];
+    item.invalidatedBy = item.module === "betting" ? "A newer line, event start, or a missing consensus feed." : item.module === "predictions" ? "Market expiry, resolution, or a material price update." : "A stale observation or a newer conflicting source update.";
+  }
+  opportunities.sort((a, b) => Number(b.rankingScore) - Number(a.rankingScore));
   const top8 = opportunities.slice(0, 8);
-  let score = Math.min(95, Math.max(42, 62 + top8.length * 3));
-  if (options.length) score = Math.min(95, score + 4);
+  let score = 0;
   const highRisk = top8.filter((o) => o.riskLevel === "high" || o.riskLevel === "extreme").length;
 
   const moduleCounts = {
@@ -493,50 +497,33 @@ export async function buildHomeBriefing(opts: {
     predictions: top8.filter((o) => o.module === "predictions").length,
   };
 
-  const uid = opts.userId ?? null;
-  const userContext = isEphemeralUserId(uid)
-    ? null
-    : await withFeedTimeout(loadHomeUserContext(uid as string), null, 3500);
   const savedDataUnavailable = !isEphemeralUserId(uid) && !userContext;
   const ledger = userContext ? ledgerPulseFromContext(userContext, top8) : savedDataUnavailable ? unavailableLedger() : emptyLedger();
   const personalized = userContext ? personalizedIntelFromContext(userContext, top8) : savedDataUnavailable ? unavailablePersonalized() : emptyPersonalized();
 
   const top = top8[0];
-  const congressBuy = congressTrades.find((t) => String(t.transaction).toLowerCase().includes("purchase"));
 
-  const compareLens = top8.slice(0, 4).map((o) => {
-    const prior = Math.max(45, Number(o.confidence) - 12);
-    const delta = Number(o.confidence) - prior;
-    const signals = o.signals as string[] | undefined;
-    return {
-      id: o.id,
-      symbol: o.symbol,
-      module: o.module,
-      title: o.title,
-      currentConfidence: o.confidence,
-      priorConfidence: prior,
-      deltaLabel: `${delta >= 0 ? "+" : ""}${delta} pts vs 7-day similar setups*`,
-      context: `Similar ${(signals?.[0] ?? "signal").toLowerCase()} patterns averaged ${prior}% confidence last week.`,
-    };
-  });
+  // Comparisons require recorded prior observations; never synthesize a seven-day baseline.
+  const compareLens: Array<Record<string,unknown>> = [];
 
-  const densityWord = score >= 75 ? "high" : score >= 58 ? "moderate" : "cautious";
   const moduleStories: Record<string, string> = {
     trades: `Today's lens: ${moduleCounts.trades} options-flow flag${moduleCounts.trades !== 1 ? "s" : ""}${options[0] ? ` — $${options[0].symbol} leading Vol/OI.` : "."}`,
     penny: `Pink slip desk: ${moduleCounts.penny} microcap signal${moduleCounts.penny !== 1 ? "s" : ""}${penny[0] ? ` — $${penny[0].symbol} volume ${penny[0].volRatio}x avg.` : "."}`,
-    crypto: `On-chain lens: ${moduleCounts.crypto} whale flag${moduleCounts.crypto !== 1 ? "s" : ""}${whales[0] ? ` — ${whales[0].asset ?? "BTC"} transfer flagged.` : "."}`,
+    crypto: `Crypto activity: ${moduleCounts.crypto} item(s). Volume proxies are distinguished from verified transfers.`,
     betting: `Odds desk: ${moduleCounts.betting} line signal${moduleCounts.betting !== 1 ? "s" : ""}${lines[0] ? ` — ${lines[0].matchup} @ ${lines[0].currentLine ?? "live"}.` : "."}`,
     predictions: `Event markets: ${moduleCounts.predictions} contract${moduleCounts.predictions !== 1 ? "s" : ""} flagged${markets[0] ? ` — top yes ${Math.round((Number(markets[0].yes) || 0.5) * 100)}%.` : "."}`,
   };
 
-  const marketConfidence = score >= 75 ? "HIGH" : score >= 58 ? "MODERATE" : "CAUTIOUS";
+  score = top8.length ? Math.round(top8.reduce((sum,o)=>sum+Number(o.rankingScore),0)/top8.length) : 0;
+  const densityWord = !top8.length ? "unavailable" : score >= 75 ? "high" : score >= 58 ? "moderate" : "cautious";
+  const marketConfidence = !top8.length ? "UNAVAILABLE" : score >= 75 ? "HIGH" : score >= 58 ? "MODERATE" : "CAUTIOUS";
   const sentiment = {
-    reddit: score >= 70 ? "bullish" : "neutral",
+    reddit: "neutral",
     x: "neutral",
-    news: congressBuy ? "bullish" : "neutral",
+    news: "neutral",
   };
 
-  const intelPrefs = await withFeedTimeout(getIntelPrefs(opts.userId ?? null), null, 1500);
+  const intelPrefs = await prefsPromise;
 
   const phase2 = runPhase2Engines({
     opportunities: top8 as Array<{
@@ -572,7 +559,7 @@ export async function buildHomeBriefing(opts: {
   const topBreak = phase2.consensusBreaks[0];
   const topTheme = phase2.probabilityViews.find((v) => v.id.startsWith("theme-"));
   const topRisk = top8.find((o) => o.riskLevel === "high" || o.riskLevel === "extreme");
-  const topOpportunitySummary = opportunitySummary(top);
+  const topOpportunitySummary = opportunitySummary(enrichedOpps[0]);
   const themeLine = topTheme
     ? `${topTheme.theme} is the main theme to watch (Motive Signal ${topTheme.probability}/100 — evidence alignment, not a probability).`
     : null;
@@ -652,7 +639,8 @@ export async function buildHomeBriefing(opts: {
       "That's the brief. It's monitor-only context, not financial advice.",
     ].filter(Boolean).join(" "),
     sentiment,
-    breakingNewsCount: Math.min(12, 4 + top8.length),
+    breakingNewsCount: congressTrades.length,
+    marketData: {collectedAt, ageSeconds: Math.max(0,Math.round((Date.now()-Date.parse(collectedAt))/1000)), coverage: ["trades","penny","crypto","betting","predictions"].map(module=>({module,available:opportunities.some(o=>o.module===module)})), qualityNote: "Evidence confidence measures source quality, not the chance of a profitable outcome."},
     generatedAt: now.toISOString(),
     scenarioDisclaimer:
       "Scenarios marked * are educational context — Future Simulator branches are not forecasts or financial advice.",

@@ -10,9 +10,10 @@ type ReplayPoint={motiveSignal:number|null;confidence:number|null;stance:string|
 type ReplayItem={symbol:string;currentSignal:number|null;previousSignal:number|null;delta:number|null;confidence:number|null;stance:string|null;engineVersion:string|null;recordedAt:string|null;evidence:ReplayEvidence[];latestOutcome:(ReplayOutcome&{snapshotAt:string})|null;history:ReplayPoint[]};
 type TrackRecordData={generatedAt:string;snapshotCount:number;pendingOutcomes:number;resolvedOutcomes:number;minimumResolvedForScore:number;readiness:"READY"|"COLLECTING_OUTCOMES";score:number|null;note:string;calibration:{evaluatorVersion:string;evaluated:number;forecastReady:boolean;buckets:Array<{bucket:string;predictedMin:number;predictedMax:number;sampleSize:number;observedReliability:number|null;warning:boolean;calibrationReady:boolean}>};recentOutcomes:Array<ReplayOutcome&{symbol:string;snapshotAt:string}>;replay:ReplayItem[]};
 type Agent=NonNullable<HomeBriefing["watchAgents"]>[number];
+type DetailedTrackRecord=TrackRecordData & {validation?:{independentAssetDays:number;uniqueSymbols:number;purgedTrainingSamples:number;holdoutSamples:number;note:string}};
 
 export function MotiveTrackRecord(){
-  const [data,setData]=useState<TrackRecordData|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null),[expanded,setExpanded]=useState<string|null>(null);
+  const [data,setData]=useState<DetailedTrackRecord|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null),[expanded,setExpanded]=useState<string|null>(null);
   const load=useCallback(async()=>{setLoading(true);setError(null);try{setData(await apiGet<TrackRecordData>("/intel/track-record"));}catch(e){setError(e instanceof Error?e.message:"Track Record unavailable.");}finally{setLoading(false);}},[]);
   useEffect(()=>{void load()},[load]);
   return <section className="v2-section v2-trust-section" id="v2-track-record">
@@ -20,6 +21,7 @@ export function MotiveTrackRecord(){
     {error?<p className="v2-warmup" role="alert">{error}</p>:!data?<p className="loading">Loading recorded signal history…</p>:<>
       <div className="v2-trust-kpis"><div><span>Recorded snapshots</span><strong>{data.snapshotCount.toLocaleString()}</strong></div><div><span>Resolved outcomes</span><strong>{data.resolvedOutcomes.toLocaleString()}</strong></div><div><span>Pending outcomes</span><strong>{data.pendingOutcomes.toLocaleString()}</strong></div><div><span>Historical reliability</span><strong>{data.score==null?"Collecting":data.score+"%"}</strong></div></div>
       <p className="v2-trust-note">{data.note}</p>
+      {data.validation && <details className="v2-trust-note"><summary>Outcome coverage · {data.validation.independentAssetDays} independent asset days · {data.validation.uniqueSymbols} assets</summary><p>{data.validation.purgedTrainingSamples} completed earlier samples · {data.validation.holdoutSamples} later holdout samples.</p><p>{data.validation.note}</p></details>}
       {(data.calibration?.evaluated??0)>0&&<div className="v2-calibration"><h3>Calibration by evidence-confidence bucket</h3><div>{(data.calibration?.buckets??[]).map((b)=><span key={b.bucket} className={b.warning?"is-warning":""}><b>{b.bucket}</b><em>{b.sampleSize} samples</em><strong>{b.observedReliability==null?"—":b.observedReliability+"%"}</strong></span>)}</div><p>These are observed historical outcomes. Forecast probability remains unavailable without a validated calibration model.</p></div>}
       <div className="v2-replay-head"><RotateCcw size={16}/><div><strong>Signal Replay</strong><span>Open a symbol to see what Motive recorded then, the evidence available at that time, how the signal changed, and any resolved outcome.</span></div></div>
       <div className="v2-replay-grid">{data.replay.slice(0,12).map((row)=><article key={row.symbol} className="v2-replay-card">

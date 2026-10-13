@@ -9,6 +9,7 @@ import { homeScoreDetail } from "../utils/signalIntel";
 import "../styles/home-research.css";
 import { AudioBriefingButton } from "./AudioBriefingButton";
 import { FeatureGate } from "./FeatureGate";
+import { AfterBriefPaint } from "./AfterBriefPaint";
 import { mapOpportunitiesToRadarCards, mapThemesToRadarCards, OpportunityRadarBoard } from "./OpportunityRadarBoard";
 
 const HomeResearchDialog = lazy(() =>
@@ -81,9 +82,9 @@ export function MotiveV2Home({ onNavigate }: Props) {
   if (loading && !b) return <div className="loading">Building your Motive brief…</div>;
   if (!b) return <div className="empty">Motive brief unavailable. <button className="btn btn-sm" onClick={() => void refresh()}>Retry</button></div>;
 
-  const picks = [...b.opportunities].sort((a, z) => z.confidence - a.confidence).slice(0, showAll ? undefined : 4);
+  const picks = [...b.opportunities].sort((a, z) => (z.rankingScore ?? z.confidence) - (a.rankingScore ?? a.confidence)).slice(0, showAll ? undefined : 4);
   const greeting = b.greeting || "Your Motive Brief";
-  const highConfidence = b.opportunities.filter((o) => o.confidence >= 80).length;
+  const highConfidence = b.opportunities.filter((o) => (o.modelConfidence ?? 0) >= 80).length;
 
   const ask = (prompt?: string) => window.dispatchEvent(new CustomEvent("motivefx:ask-open", { detail: { prompt } }));
 
@@ -91,6 +92,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
     <div className="v2-home">
       {review && <Suspense fallback={null}><HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} /></Suspense>}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
+      {b.marketData && <details className="v2-warmup"><summary>Market snapshot · {Math.floor(b.marketData.ageSeconds/60)} min old · Data coverage</summary><p>{b.marketData.qualityNote}</p><p>{b.marketData.coverage.map(item=>`${item.module}: ${item.available ? "available" : "no verified feed items"}`).join(" · ")}</p></details>}
       {b.personalized?.savedDataStatus === "unavailable" && <div className="v2-warmup" role="status">Saved holdings and radar are temporarily unavailable. <button type="button" className="btn btn-sm" onClick={() => void refresh()}>Retry saved data</button></div>}
       <Suspense fallback={null}><SinceYouWereAway /></Suspense>
 
@@ -133,7 +135,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
           <button type="button" onClick={() => ask("Explain today's strongest signals")}>Explain signals <ArrowRight size={14}/></button>
         </header>
         <div className="v2-signal-summary">
-          <div><span>Motive Score</span><strong>{Math.round(b.motivfxScore)}</strong><em>/100</em></div>
+          <div><span>Motive Score</span><strong>{b.marketConfidence === "UNAVAILABLE" ? "—" : Math.round(b.motivfxScore)}</strong><em>/100</em></div>
           <div><span>New signals</span><strong>{b.opportunityCount}</strong></div>
           <div><span>Growing risks</span><strong>{b.highRiskAlerts}</strong></div>
           <div><span>Market confidence</span><strong>{b.marketConfidence}</strong></div>
@@ -166,6 +168,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
               <div className="v2-signal"><span>Motive Signal</span><b>{reportedScore(o.confidence) ?? "—"}</b><em>/100</em></div>
               <div className="v2-pick-meta"><span>{reportedScore(o.modelConfidence) != null ? `Reported confidence ${reportedScore(o.modelConfidence)}/100` : "Evidence confidence not provided"}</span><span>{riskLabel(o.riskLevel)}</span></div>
               <p>{o.reasons?.[0] ?? o.title}</p>
+              {o.dataQuality && <small>{o.dataQuality.provider} · {o.dataQuality.kind === "derived" ? "Derived proxy" : "Observed source"} · {o.dataQuality.freshness}</small>}
               <div className="home-pick-actions">
                 <button type="button" className="btn" onClick={() => setReview({ type: "opportunity", source: o })}>Review</button>
                 <button type="button" className="btn" aria-label={`Add ${o.symbol} to portfolio`} disabled={!opportunityKind(o.module)} onClick={() => setReview({ type: "opportunity", source: o, adding: true })}>Add to portfolio</button>
@@ -211,13 +214,13 @@ export function MotiveV2Home({ onNavigate }: Props) {
       />
 
 
-      <Suspense fallback={null}>
+      <AfterBriefPaint><Suspense fallback={null}>
         <MotiveDiscover />
         <FeatureGate feature="portfolio_intelligence"><PortfolioIntelligence /></FeatureGate>
         <MarketClose />
         <FeatureGate feature="advanced_analytics"><MotiveTrackRecord /></FeatureGate>
         <FeatureGate feature="push_notifications"><MotiveWatchAgents briefing={b} onPrefsChanged={() => void refresh()} /></FeatureGate>
-      </Suspense>
+      </Suspense></AfterBriefPaint>
 
       <section className="v2-pro-legacy" id="v2-pro-intelligence">
         <header className="v2-section-head v2-pro-toggle">

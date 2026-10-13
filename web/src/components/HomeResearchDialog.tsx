@@ -104,10 +104,14 @@ export function HomeResearchDialog({ target, opportunities, generatedAt, onSelec
       {opp && <p>{opp.title}</p>}
       <p><strong>{theme ? "Theme signal" : "Motive Signal"}: {score ?? "Not available"}{score != null ? "/100" : ""}</strong>. This is not a calibrated win probability.</p>
       {opp && <p>Risk reported by the source: {opp.riskLevel || "Not provided"}.</p>}
+      {opp?.dataQuality && <p>Source: {opp.dataQuality.provider} · {opp.dataQuality.kind === "derived" ? "derived proxy" : "observed"} · {opp.dataQuality.freshness}. Observed: {opp.dataQuality.observedAt ?? "not provided"}. {opp.dataQuality.independentSources} independent source; model factors are not separate sources.</p>}
+      {opp?.relevance && <p>{opp.relevance}</p>}
       {theme?.timing && <p>Horizon: {theme.timing}</p>}
       {sourceTimestamp && <p className="home-research-muted">Brief generated: {sourceTimestamp}</p>}
       <h3>Reported evidence</h3>
       {(opp?.reasons ?? theme?.supportingFactors ?? []).length ? <ul>{(opp?.reasons ?? theme?.supportingFactors ?? []).map((r, i) => <li key={i}>{r}</li>)}</ul> : <p>No source explanation was included in this brief.</p>}
+      {!!opp?.conflictingEvidence?.length && <><h3>Conflicting or missing evidence</h3><ul>{opp.conflictingEvidence.map((reason,i)=><li key={i}>{reason}</li>)}</ul></>}
+      {opp?.invalidatedBy && <><h3>What would invalidate this view</h3><p>{opp.invalidatedBy}</p></>}
       {theme && theme.alternatives?.length > 0 && <><h3>Alternative explanations</h3><ul>{theme.alternatives.map((r, i) => <li key={i}>{r}</li>)}</ul></>}
       {theme && <><h3>Related items in this briefing</h3><p>A theme is not a tradable position. Select a specific asset or event before adding it.</p>
         {related.length ? <ul className="home-research-related">{related.map((o) => <li key={o.id}><strong>{o.symbol}</strong><span>{o.module}</span>

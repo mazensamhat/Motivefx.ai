@@ -9,6 +9,8 @@ import {
   getBriefingPeriod,
 } from "../../../packages/shared/src/briefing-period";
 
+let lastVerified: {owner:string;data:HomeBriefing}|null=null;
+
 /** Instant shell so Home never blanks when the API is slow or the pool is warm. */
 function localFallbackBriefing(): HomeBriefing {
   const now = new Date();
@@ -19,9 +21,9 @@ function localFallbackBriefing(): HomeBriefing {
     briefingPeriod: period,
     briefingKicker: formatBriefingKicker(period),
     tagline: "Daily Brief · Opportunity Radar",
-    motivfxScore: 62,
+    motivfxScore: 0,
     stars: 3,
-    marketConfidence: "MODERATE",
+    marketConfidence: "UNAVAILABLE",
     opportunityCount: 0,
     highRiskAlerts: 0,
     portfolioDelta: null,
@@ -54,15 +56,18 @@ export function useHomeBriefing(intervalMs = 60_000) {
   const owner = user?.userId ?? "anonymous";
   const currentOwner = useRef(owner); currentOwner.current = owner;
   const version = useRef(0);
+  const busyOwner = useRef<{owner:string;ticket:number}|null>(null);
   const [cache, setCache] = useState<{ owner: string; data: HomeBriefing } | null>(null);
-  const data = cache?.owner === owner ? cache.data : null;
+  const data = cache?.owner === owner ? cache.data : lastVerified?.owner === owner ? lastVerified.data : null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
     if (authLoading) return;
+    if (busyOwner.current?.owner === owner) return;
     const ticket = ++version.current;
+    busyOwner.current = {owner,ticket};
     setRefreshing(true);
     try {
       const result = await apiGet<HomeBriefing>("/home/briefing");
@@ -71,6 +76,7 @@ export function useHomeBriefing(intervalMs = 60_000) {
       }
       if (currentOwner.current !== owner || version.current !== ticket) return;
       setCache({ owner, data: result });
+      if(!result.degraded) lastVerified={owner,data:result};
       setError(null);
     } catch (e) {
       // Keep last good briefing — or seed a local shell so Home never goes blank.
@@ -78,6 +84,7 @@ export function useHomeBriefing(intervalMs = 60_000) {
       setCache((prev) => prev?.owner === owner ? prev : { owner, data: localFallbackBriefing() });
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
+      if(busyOwner.current?.ticket===ticket)busyOwner.current=null;
       if (currentOwner.current === owner && version.current === ticket) {
         setLoading(false);
         setRefreshing(false);
@@ -86,18 +93,23 @@ export function useHomeBriefing(intervalMs = 60_000) {
   }, [owner, authLoading]);
 
   useEffect(() => {
+    if(!authLoading && lastVerified?.owner !== owner)lastVerified=null;
     setLoading(true);
     void refresh();
     const id = setInterval(() => {
-      void refresh();
+      if(!document.hidden) void refresh();
     }, intervalMs);
+    const onVisible=()=>{if(!document.hidden)void refresh();};
+    document.addEventListener("visibilitychange",onVisible);
     const onRefresh = () => {
       void refresh();
     };
     window.addEventListener("motivefx:briefing-refresh", onRefresh);
     return () => {
       ++version.current;
+      busyOwner.current=null;
       clearInterval(id);
+      document.removeEventListener("visibilitychange",onVisible);
       window.removeEventListener("motivefx:briefing-refresh", onRefresh);
     };
   }, [refresh, intervalMs]);
