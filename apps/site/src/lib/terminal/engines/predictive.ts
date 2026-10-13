@@ -35,7 +35,8 @@ export function normalizePrefs(raw: unknown): IntelPrefs {
   return {
     themeWatchlist: Array.isArray(o.themeWatchlist) ? o.themeWatchlist : [],
     alertRules: Array.isArray(o.alertRules) && o.alertRules.length
-      ? o.alertRules
+      ? o.alertRules.map((rule) => rule.label === "Theme probability ≥ 75%" && rule.id === "default-prob-75"
+        ? { ...rule, label: "Motive Signal ≥ 75" } : rule)
       : [...DEFAULT_INTEL_PREFS.alertRules],
     watchAgents: Array.isArray(o.watchAgents)
       ? o.watchAgents.filter((rule): rule is WatchAgentRule => Boolean(rule) && typeof rule === "object")

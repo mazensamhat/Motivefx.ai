@@ -13,6 +13,7 @@ export type LedgerEntry = {
   recordedAt: string;
   symbol: string;
   motiveSignal?: number;
+  evidenceConfidence?: number;
   engineVersion: string;
   evidence: MarketEvidence[];
   /** Production-eligible subset only */
@@ -23,7 +24,7 @@ const MAX_ENTRIES = 500;
 const ledger: LedgerEntry[] = [];
 const pendingPersistence = new Set<Promise<void>>();
 
-export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_2_HARDENING";
+export const MOTIVE_SIGNAL_ENGINE_VERSION = "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE";
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -63,6 +64,7 @@ function signalObservationId(input: {
 export function recordSignalEvidence(input: {
   symbol: string;
   motiveSignal?: number;
+  evidenceConfidence?: number;
   evidence: MarketEvidence[];
   engineVersion?: string;
 }): LedgerEntry {
@@ -80,6 +82,7 @@ export function recordSignalEvidence(input: {
     recordedAt: observedAt.toISOString(),
     symbol,
     motiveSignal: input.motiveSignal,
+    evidenceConfidence: input.evidenceConfidence,
     engineVersion,
     evidence: input.evidence,
     signalEvidence,
@@ -93,6 +96,7 @@ export function recordSignalEvidence(input: {
         ledgerId: entry.ledgerId,
         symbol: entry.symbol,
         motiveSignal: entry.motiveSignal,
+        evidenceConfidence: entry.evidenceConfidence,
         engineVersion: entry.engineVersion,
         evidence: entry.evidence,
         signalEvidence: entry.signalEvidence,

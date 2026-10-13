@@ -91,6 +91,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
     <div className="v2-home">
       {review && <Suspense fallback={null}><HomeResearchDialog key={`${review.type}:${review.source.id}:${review.type === "opportunity" && review.adding ? "add" : "review"}`} target={review} opportunities={b.opportunities} generatedAt={b.generatedAt} onSelect={setReview} onClose={() => setReview(null)} onNavigate={onNavigate} /></Suspense>}
       {error && <div className="v2-warmup">Live feeds are catching up. Showing the latest available brief.</div>}
+      {b.personalized?.savedDataStatus === "unavailable" && <div className="v2-warmup" role="status">Saved holdings and radar are temporarily unavailable. <button type="button" className="btn btn-sm" onClick={() => void refresh()}>Retry saved data</button></div>}
       <Suspense fallback={null}><SinceYouWereAway /></Suspense>
 
       <section className="v2-hero">
@@ -189,7 +190,7 @@ export function MotiveV2Home({ onNavigate }: Props) {
           <div className="v2-market-list">
             {b.moduleSummaries.map((m) => (
               <button key={m.module} type="button" onClick={() => onNavigate(moduleTab(m.module))}>
-                <span>{m.label}</span><strong>{m.count} tracked</strong><em>{m.newSignals ? `+${m.newSignals} new` : "Open desk"}</em>
+                <span>{m.label}</span><strong>{m.count == null ? "Unavailable" : `${m.count} tracked`}</strong><em>{m.newSignals ? `+${m.newSignals} new` : "Open desk"}</em>
               </button>
             ))}
           </div>

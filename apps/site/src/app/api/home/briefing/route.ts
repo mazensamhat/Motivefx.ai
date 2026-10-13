@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { unavailablePersonalized } from "../../../../../../../packages/shared/src/saved-data-state";
 import { json } from "@/lib/api";
 import { buildHomeBriefing } from "@/lib/terminal/home-briefing";
 import { getSession } from "@/lib/session";
@@ -46,22 +47,14 @@ function fallbackBriefing(displayName: string | null) {
     biggestOpportunity: "Scanning…",
     topAiTip: "Live desks are refreshing — pull to retry in a moment.",
     moduleSummaries: [
-      { module: "trades", label: "Trades", count: 0, tab: "stocks", newSignals: 0 },
-      { module: "penny", label: "Pink Slips", count: 0, tab: "penny", newSignals: 0 },
-      { module: "crypto", label: "Crypto", count: 0, tab: "crypto", newSignals: 0 },
-      { module: "betting", label: "Betting", count: 0, tab: "betting", newSignals: 0 },
-      { module: "predictions", label: "Predictions", count: 0, tab: "predictions", newSignals: 0 },
+      { module: "trades", label: "Trades", count: null, tab: "stocks", newSignals: null },
+      { module: "penny", label: "Pink Slips", count: null, tab: "penny", newSignals: null },
+      { module: "crypto", label: "Crypto", count: null, tab: "crypto", newSignals: null },
+      { module: "betting", label: "Betting", count: null, tab: "betting", newSignals: null },
+      { module: "predictions", label: "Predictions", count: null, tab: "predictions", newSignals: null },
     ],
     opportunities: [],
-    personalized: {
-      holdingsCount: 0,
-      watchlistCount: 0,
-      radarSignalCount: 0,
-      coverageLine: null,
-      intelNote: "Signal review still warming up — open a desk or retry shortly.",
-      simRecord: null,
-      radarHits: [],
-    },
+    personalized: unavailablePersonalized(),
     compareLens: [],
     moduleStories: {},
     audioBriefingScript: "",

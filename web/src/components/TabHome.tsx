@@ -575,9 +575,9 @@ export function TabHome({ onNavigate, onOpenGlossary }: Props) {
                 title={topOpp ? `Open $${topOpp.symbol} scorecard` : `Open ${m.label} desk`}
               >
                 <span className="module-pulse-label">{m.label}</span>
-                <span className="module-pulse-count">{m.count}</span>
+                <span className="module-pulse-count">{m.count ?? "—"}</span>
                 <span className="module-pulse-sub">
-                  {m.count === 0
+                  {m.count == null ? "Saved positions unavailable" : m.count === 0
                     ? "No positions yet"
                     : `${m.count} ${m.count === 1 ? "position" : "positions"} in ledger`}
                 </span>

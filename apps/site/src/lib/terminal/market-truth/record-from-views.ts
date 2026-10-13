@@ -54,6 +54,7 @@ export function recordProbabilityViewsToLedger(
     recordSignalEvidence({
       symbol,
       motiveSignal: view.probability,
+      evidenceConfidence: view.confidence,
       evidence,
     });
   }

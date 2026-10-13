@@ -20,7 +20,7 @@ export function useSavedRows<T>(path: string, field: string, owner: string, kind
       return rows;
     } catch (e) {
       if (latest.current === key && version.current === ticket) {
-        setState((s) => ({ ...s, key, loading: false, error: e instanceof Error ? e.message : "Saved data is unavailable. Please retry." }));
+        setState((s) => ({ key, rows: s.key === key ? s.rows : [], verified: s.key === key && s.verified, loading: false, error: e instanceof Error ? e.message : "Saved data is unavailable. Please retry." }));
       }
       return null;
     }
@@ -28,7 +28,7 @@ export function useSavedRows<T>(path: string, field: string, owner: string, kind
   const setRows = useCallback((next: SetStateAction<T[]>) => {
     if (latest.current !== key) return;
     ++version.current;
-    setState((s) => ({ ...s, rows: typeof next === "function" ? (next as (rows: T[]) => T[])(s.rows) : next, loading: false }));
+    setState((s) => ({ key, rows: typeof next === "function" ? (next as (rows: T[]) => T[])(s.key === key ? s.rows : []) : next, loading: false, verified: true, error: null }));
   }, [key]);
   useEffect(() => {
     ++version.current;

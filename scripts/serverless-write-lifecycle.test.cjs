@@ -75,6 +75,7 @@ function briefingFixture(options = {}) {
     } },
     '@/lib/terminal/engines': { evaluateSignalAlertRules: () => [], evaluateWatchAgents: () => [] },
     '../../../../../../../packages/shared/src/briefing-period': { formatBriefingGreeting: (p, n) => `Hello ${n}`, formatBriefingKicker: () => 'Fixture', getBriefingPeriod: () => 'morning' },
+    '../../../../../../../packages/shared/src/saved-data-state': load('packages/shared/src/saved-data-state.ts', {}),
     '@/lib/terminal/intel-prefs': { getIntelPrefs: async id => { preferenceReads.push(id); return { alertRules: [], watchAgents: [] }; } },
     '@/lib/terminal/market-truth/evidence-ledger': { flushSignalEvidencePersistence: async () => {} },
   };
@@ -193,7 +194,12 @@ test('successful and failed briefing calculations clear their deadline timers', 
   assert.equal(good.cleared.length, 1);
   const bad = briefingFixture({ buildFails: true });
   const response = await bad.api.GET(request());
-  assert.equal((await response.json()).degraded, true); assert.equal(bad.cleared.length, 1);
+  const fallback = await response.json();
+  assert.equal(fallback.degraded, true); assert.equal(bad.cleared.length, 1);
+  assert.equal(fallback.personalized.savedDataStatus, 'unavailable');
+  assert.equal(fallback.personalized.holdingsCount, null);
+  assert.equal(fallback.personalized.watchlistCount, null);
+  assert.ok(fallback.moduleSummaries.every(row => row.count === null));
 });
 
 test('post-response lifetime is bounded and calculation timeout remains unchanged', () => {

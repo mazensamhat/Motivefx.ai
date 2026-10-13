@@ -274,7 +274,7 @@ export interface HomeBriefing {
   biggestRisk: string;
   biggestOpportunity: string;
   topAiTip: string;
-  moduleSummaries: Array<{ module: string; label: string; count: number; tab: string; newSignals?: number }>;
+  moduleSummaries: Array<{ module: string; label: string; count: number | null; tab: string; newSignals?: number | null }>;
   opportunities: HomeOpportunity[];
   personalized?: HomePersonalized;
   sentiment: { reddit: string; x: string; news: string };
@@ -347,9 +347,10 @@ export interface IntelAlert {
 }
 
 export interface HomePersonalized {
-  holdingsCount: number;
-  watchlistCount: number;
-  radarSignalCount: number;
+  savedDataStatus?: "available" | "anonymous" | "unavailable";
+  holdingsCount: number | null;
+  watchlistCount: number | null;
+  radarSignalCount: number | null;
   coverageLine?: string | null;
   intelNote?: string;
   simRecord?: string | null;

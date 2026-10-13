@@ -1,55 +1,39 @@
-import { useCallback, useEffect, useState } from "react";
-import { apiDelete, apiGet, apiPost, getUserId, hasAuthSession } from "../lib/api";
+import { useCallback } from "react";
+import { apiDelete, apiPost } from "../lib/api";
+import { useAuth } from "./useAuth";
+import { useSavedRows } from "./useSavedRows";
 import type { WatchlistItem } from "../types";
 
 export function useWatchlist() {
-  const [items, setItems] = useState<WatchlistItem[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!hasAuthSession()) {
-      setItems([]);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await apiGet<{ items: WatchlistItem[] }>(`/home/watchlist/${getUserId()}`);
-      setItems(data.items ?? []);
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const onAuth = () => refresh();
-    window.addEventListener("motivefx:auth-changed", onAuth);
-    return () => window.removeEventListener("motivefx:auth-changed", onAuth);
-  }, [refresh]);
+  const { isAuthenticated, user } = useAuth();
+  const owner = isAuthenticated ? user?.userId ?? "" : "";
+  const ledger = useSavedRows<WatchlistItem>(owner ? `/home/watchlist/${owner}` : "", "items", owner, "watchlist");
 
   const addItem = useCallback(
     async (module: string, symbol: string) => {
-      if (!hasAuthSession()) return false;
+      if (!owner) throw new Error("Sign in to update your radar.");
       const data = await apiPost<{ items: WatchlistItem[] }>("/home/watchlist", {
-        user_id: getUserId(),
+        user_id: owner,
         module,
         symbol: symbol.toUpperCase().trim(),
       });
-      setItems(data.items ?? []);
+      if (!Array.isArray(data.items)) throw new Error("Radar update could not be confirmed. Retry to refresh.");
+      ledger.setRows(data.items);
+      window.dispatchEvent(new Event("motivefx:briefing-refresh"));
       return true;
     },
-    []
+    [owner, ledger.setRows]
   );
 
   const removeItem = useCallback(async (module: string, symbol: string) => {
-    if (!hasAuthSession()) return;
+    if (!owner) throw new Error("Sign in to update your radar.");
     const data = await apiDelete<{ items: WatchlistItem[] }>(
-      `/home/watchlist/${getUserId()}/${module}/${encodeURIComponent(symbol)}`
+      `/home/watchlist/${owner}/${module}/${encodeURIComponent(symbol)}`
     );
-    setItems(data.items ?? []);
-  }, []);
+    if (!Array.isArray(data.items)) throw new Error("Radar update could not be confirmed. Retry to refresh.");
+    ledger.setRows(data.items);
+    window.dispatchEvent(new Event("motivefx:briefing-refresh"));
+  }, [owner, ledger.setRows]);
 
-  return { items, loading, refresh, addItem, removeItem };
+  return { items: ledger.rows, loading: ledger.loading, error: ledger.error, verified: ledger.verified, refresh: ledger.reload, addItem, removeItem };
 }

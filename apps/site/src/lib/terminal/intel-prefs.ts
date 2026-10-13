@@ -2,7 +2,7 @@ import { prisma } from "@motivefx/database";
 import { DEFAULT_INTEL_PREFS, normalizePrefs } from "./engines/predictive";
 import type { IntelPrefs } from "./engines/types";
 
-export async function getIntelPrefs(userId: string | null | undefined): Promise<IntelPrefs> {
+export async function getIntelPrefs(userId: string | null | undefined, opts: { strict?: boolean } = {}): Promise<IntelPrefs> {
   if (!userId || userId === "demo" || userId.startsWith("u_")) {
     return {
       themeWatchlist: [...DEFAULT_INTEL_PREFS.themeWatchlist],
@@ -20,7 +20,8 @@ export async function getIntelPrefs(userId: string | null | undefined): Promise<
       };
     }
     return normalizePrefs(JSON.parse(row.prefsJson));
-  } catch {
+  } catch (error) {
+    if (opts.strict) throw error;
     return {
       themeWatchlist: [],
       alertRules: [...DEFAULT_INTEL_PREFS.alertRules],
@@ -30,8 +31,9 @@ export async function getIntelPrefs(userId: string | null | undefined): Promise<
 }
 
 export async function saveIntelPrefs(userId: string, prefs: IntelPrefs): Promise<IntelPrefs> {
-  const existing = await getIntelPrefs(userId);
+  const existing = await getIntelPrefs(userId, { strict: true });
   const merged: IntelPrefs = {
+    ...existing,
     ...prefs,
     watchAgents: prefs.watchAgents ?? existing.watchAgents,
     portfolioBooks: prefs.portfolioBooks ?? existing.portfolioBooks,
@@ -40,14 +42,10 @@ export async function saveIntelPrefs(userId: string, prefs: IntelPrefs): Promise
   if (!userId || userId === "demo" || userId.startsWith("u_")) {
     return normalized;
   }
-  try {
-    await prisma.userIntelPref.upsert({
+  await prisma.userIntelPref.upsert({
       where: { userId },
       create: { userId, prefsJson: JSON.stringify(normalized) },
       update: { prefsJson: JSON.stringify(normalized) },
-    });
-  } catch {
-    /* table may not exist until migrate — still return normalized for session use */
-  }
+  });
   return normalized;
 }

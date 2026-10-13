@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "./useAuth";
 import { apiGet } from "../lib/api";
 import type { HomeBriefing } from "../types";
+import { unavailablePersonalized } from "../../../packages/shared/src/saved-data-state";
 import {
   formatBriefingGreeting,
   formatBriefingKicker,
@@ -27,22 +29,14 @@ function localFallbackBriefing(): HomeBriefing {
     biggestOpportunity: "Scanning…",
     topAiTip: "Live desks are refreshing — retry in a moment.",
     moduleSummaries: [
-      { module: "trades", label: "Trades", count: 0, tab: "stocks", newSignals: 0 },
-      { module: "penny", label: "Pink Slips", count: 0, tab: "penny", newSignals: 0 },
-      { module: "crypto", label: "Crypto", count: 0, tab: "crypto", newSignals: 0 },
-      { module: "betting", label: "Betting", count: 0, tab: "betting", newSignals: 0 },
-      { module: "predictions", label: "Predictions", count: 0, tab: "predictions", newSignals: 0 },
+      { module: "trades", label: "Trades", count: null, tab: "stocks", newSignals: null },
+      { module: "penny", label: "Pink Slips", count: null, tab: "penny", newSignals: null },
+      { module: "crypto", label: "Crypto", count: null, tab: "crypto", newSignals: null },
+      { module: "betting", label: "Betting", count: null, tab: "betting", newSignals: null },
+      { module: "predictions", label: "Predictions", count: null, tab: "predictions", newSignals: null },
     ],
     opportunities: [],
-    personalized: {
-      holdingsCount: 0,
-      watchlistCount: 0,
-      radarSignalCount: 0,
-      coverageLine: null,
-      intelNote: "Signal review still warming up — open a desk or retry shortly.",
-      simRecord: null,
-      radarHits: [],
-    },
+    personalized: unavailablePersonalized(),
     compareLens: [],
     moduleStories: {},
     audioBriefingScript: "",
@@ -56,26 +50,40 @@ function localFallbackBriefing(): HomeBriefing {
 }
 
 export function useHomeBriefing(intervalMs = 60_000) {
-  const [data, setData] = useState<HomeBriefing | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const owner = user?.userId ?? "anonymous";
+  const currentOwner = useRef(owner); currentOwner.current = owner;
+  const version = useRef(0);
+  const [cache, setCache] = useState<{ owner: string; data: HomeBriefing } | null>(null);
+  const data = cache?.owner === owner ? cache.data : null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (authLoading) return;
+    const ticket = ++version.current;
     setRefreshing(true);
     try {
       const result = await apiGet<HomeBriefing>("/home/briefing");
-      setData(result);
+      if (!result || !Array.isArray(result.opportunities) || !Array.isArray(result.moduleSummaries)) {
+        throw new Error("Briefing returned an incomplete response. Please retry.");
+      }
+      if (currentOwner.current !== owner || version.current !== ticket) return;
+      setCache({ owner, data: result });
       setError(null);
     } catch (e) {
       // Keep last good briefing — or seed a local shell so Home never goes blank.
-      setData((prev) => prev ?? localFallbackBriefing());
+      if (currentOwner.current !== owner || version.current !== ticket) return;
+      setCache((prev) => prev?.owner === owner ? prev : { owner, data: localFallbackBriefing() });
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (currentOwner.current === owner && version.current === ticket) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, []);
+  }, [owner, authLoading]);
 
   useEffect(() => {
     setLoading(true);
@@ -88,6 +96,7 @@ export function useHomeBriefing(intervalMs = 60_000) {
     };
     window.addEventListener("motivefx:briefing-refresh", onRefresh);
     return () => {
+      ++version.current;
       clearInterval(id);
       window.removeEventListener("motivefx:briefing-refresh", onRefresh);
     };

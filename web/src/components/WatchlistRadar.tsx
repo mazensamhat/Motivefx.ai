@@ -21,7 +21,7 @@ interface Props {
 export function WatchlistRadar({ personalized, onNavigateModule }: Props) {
   const { isAuthenticated, openAuth } = useAuth();
   const { allowedMarkets, hasFeature } = useModules();
-  const { items, addItem, removeItem } = useWatchlist();
+  const { items, loading, error: loadError, verified, refresh, addItem, removeItem } = useWatchlist();
   const [symbol, setSymbol] = useState("");
   const [module, setModule] = useState<string>(allowedMarkets[0] ?? "trades");
   const [error, setError] = useState<string | null>(null);
@@ -93,10 +93,11 @@ export function WatchlistRadar({ personalized, onNavigateModule }: Props) {
         </button>
       </form>
       {error && <p className="watchlist-error">{error}</p>}
+      {loadError && <p role="alert" className="watchlist-error">Radar unavailable. {items.length > 0 ? "Showing your last loaded items. " : ""}<button type="button" className="btn btn-sm" onClick={() => void refresh()}>Retry radar</button></p>}
 
       {items.length === 0 ? (
         <p className="watchlist-empty">
-          Star symbols, matchups, or markets — Home will flag when new signals hit your radar.
+          {loading ? "Loading your radar…" : isAuthenticated && !verified ? "Saved radar has not loaded yet." : "Star symbols, matchups, or markets — Home will flag when new signals hit your radar."}
         </p>
       ) : (
         <ul className="watchlist-items">
@@ -108,7 +109,7 @@ export function WatchlistRadar({ personalized, onNavigateModule }: Props) {
                 type="button"
                 className="btn-icon"
                 aria-label={`Remove ${item.symbol}`}
-                onClick={() => removeItem(item.module, item.symbol)}
+                onClick={() => { setError(null); void removeItem(item.module, item.symbol).catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not remove radar item")); }}
               >
                 <X size={14} />
               </button>
