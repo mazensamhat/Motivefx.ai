@@ -56,3 +56,11 @@ test('saved account reads start before a slow shared feed finishes and no histor
  assert.equal(brief.compareLens.length,0);assert.equal(brief.breakingNewsCount,0);
  assert.equal(brief.marketConfidence,'UNAVAILABLE');
 });
+
+test('volume proxy drivers do not imply on-chain transfers or wallet clusters',async()=>{
+ const f=await fixture({shared:async()=>({whales:[{asset:'BTC',amountUsd:1000000,sourceType:'DERIVED',note:'24h volume proxy',timestamp:new Date().toISOString()}],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:new Date().toISOString()})});
+ const brief=await f.api.buildHomeBriefing({userId:'demo'});
+ assert.equal(brief.opportunities[0].dataQuality.kind,'derived');
+ assert.equal(brief.opportunities[0].signals.join(', '),'Trading volume, Market activity, Volume proxy');
+ assert.doesNotMatch(brief.opportunities[0].signals.join(' '),/whale|wallet|on-chain/i);
+});

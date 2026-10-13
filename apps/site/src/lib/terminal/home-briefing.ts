@@ -389,7 +389,7 @@ export async function buildHomeBriefing(opts: {
     const conf = 78;
     const stance = resolveStanceFromScore(conf);
     const asset = w.asset ?? "BTC";
-    const signals = pickSignalsForOpportunity({
+    const signals = isVolumeProxy(w) ? ["Trading volume", "Market activity", "Volume proxy"] : pickSignalsForOpportunity({
       module: "crypto",
       symbol: asset,
       amountUsd: Number(w.amountUsd) || undefined,
