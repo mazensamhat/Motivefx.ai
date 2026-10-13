@@ -75,6 +75,12 @@ function safeSignal(value: number | null) {
   return value != null && Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value * 10) / 10 : null;
 }
 
+function recordedEvidenceConfidence(row: SignalRow | undefined) {
+  // Earlier engines derived this field from factor count, not evidence confidence.
+  if (row?.engineVersion !== "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE") return null;
+  return safeSignal(row.confidence);
+}
+
 function evidenceSummary(row: SignalRow | undefined) {
   if (!row) return [] as string[];
   const evidence = parseArray(row.signalEvidenceJson || row.evidenceJson);
@@ -123,7 +129,7 @@ export async function buildPortfolioIntelligence(userId: string) {
     return {
       ...asset,
       motiveSignal: safeSignal(latest?.motiveSignal ?? null),
-      evidenceConfidence: safeSignal(latest?.confidence ?? null),
+      evidenceConfidence: recordedEvidenceConfidence(latest),
       stance: latest?.stance ?? null,
       signalChange: signalChange(rows),
       lastSignalAt: latest?.recordedAt.toISOString() ?? null,
@@ -219,7 +225,7 @@ export async function buildDiscovery(userId: string | null) {
       symbol,
       market: inferSignalMarket(latest),
       motiveSignal: safeSignal(latest.motiveSignal),
-      evidenceConfidence: safeSignal(latest.confidence),
+      evidenceConfidence: recordedEvidenceConfidence(latest),
       stance: latest.stance,
       delta: signalChange(history),
       recordedAt: latest.recordedAt.toISOString(),
@@ -273,7 +279,7 @@ export async function buildMarketClose(userId: string | null) {
       currentSignal: current,
       startSignal: prior,
       delta: current != null && prior != null ? Math.round((current - prior) * 10) / 10 : null,
-      evidenceConfidence: safeSignal(latest.confidence),
+      evidenceConfidence: recordedEvidenceConfidence(latest),
       stance: latest.stance,
       relevant: relevant.has(symbol),
       latestAt: latest.recordedAt.toISOString(),

@@ -22,7 +22,7 @@ const PRODUCT_TO_TIER = Object.fromEntries(
 
 export function tierFromAppleProductId(productId?: string | null): PricingTierId | null {
   if (!productId) return null;
-  return PRODUCT_TO_TIER[productId] ?? null;
+  return Object.hasOwn(PRODUCT_TO_TIER, productId) ? PRODUCT_TO_TIER[productId]! : null;
 }
 
 export function tierFromEntitlementId(entitlementId?: string | null): PricingTierId | null {
