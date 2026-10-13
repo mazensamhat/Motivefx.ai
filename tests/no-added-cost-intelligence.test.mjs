@@ -63,6 +63,7 @@ test('outcome coverage de-duplicates asset days and purges unfinished training h
   const rows=Array.from({length:100},(_,i)=>({symbol:i%2?'BTC':'USDT',horizonDays:30,outcome:'PARTIAL',snapshot:{recordedAt:new Date(Date.UTC(2026,0,1)+i*86400000)}}));
   rows.push({...rows[0],snapshot:{recordedAt:new Date(rows[0].snapshot.recordedAt.getTime()+60000)}});
   const result=validation.summarizeOutcomeValidation(rows);
-  assert.equal(result.independentAssetDays,100);assert.equal(result.uniqueSymbols,2);
+  assert.equal(result.distinctAssetDays,100);assert.equal(result.uniqueSymbols,2);
+  assert.match(result.note,/correlated/);
   assert.equal(result.purgedTrainingSamples,40);assert.equal(result.holdoutSamples,30);assert.equal(result.forecastReady,false);
 });
