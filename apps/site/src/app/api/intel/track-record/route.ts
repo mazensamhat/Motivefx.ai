@@ -7,6 +7,10 @@ import { OUTCOME_EVALUATOR_VERSION, summarizeCalibration } from "@/lib/ops/outco
 
 export const dynamic = "force-dynamic";
 
+function evidenceConfidence(row: { engineVersion: string; confidence: number | null } | undefined) {
+  return row?.engineVersion === "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE" ? row.confidence : null;
+}
+
 function parseEvidence(raw: string) {
   try {
     const value = JSON.parse(raw) as unknown;
@@ -33,7 +37,7 @@ export async function GET() {
     const plan = await entitlementsPlanForUser(auth.session.user);
     requireFeature(plan, "advanced_analytics");
 
-    const [snapshotCount, pendingOutcomes, resolvedRows, latest] = await Promise.all([
+    const [snapshotCount, pendingOutcomes, rawResolvedRows, latest] = await Promise.all([
       prisma.signalSnapshot.count(),
       prisma.signalOutcome.count({ where: { outcome: "PENDING" } }),
       prisma.signalOutcome.findMany({
@@ -45,7 +49,7 @@ export async function GET() {
           id: true, snapshotId: true, symbol: true, claim: true, horizonDays: true,
           predictedScore: true, predictedConf: true, entryPrice: true, outcomePrice: true,
           realizedReturnPct: true, outcome: true, evaluatedAt: true, notes: true,
-          snapshot: { select: { recordedAt: true } },
+          snapshot: { select: { recordedAt: true, engineVersion: true } },
         },
         orderBy: { evaluatedAt: "desc" },
         take: 5000,
@@ -67,6 +71,10 @@ export async function GET() {
       }),
     ]);
 
+    const resolvedRows = rawResolvedRows.map((row) => ({
+      ...row,
+      predictedConf: row.snapshot.engineVersion === "MOTIVE_SIGNAL_V4_3_EVIDENCE_CONFIDENCE" ? row.predictedConf : null,
+    }));
     const calibration = summarizeCalibration(resolvedRows);
     const resolvedOutcomes = resolvedRows.length;
     const minimumResolvedForScore = 30;
@@ -86,14 +94,14 @@ export async function GET() {
       const current = rows[0], previous = rows[1];
       const currentSignal = current?.motiveSignal ?? null;
       const previousSignal = previous?.motiveSignal ?? null;
-      const latestOutcome = rows.flatMap((r) => r.outcomes.map((o) => ({ ...o, snapshotAt: r.recordedAt.toISOString() })))
+      const latestOutcome = rows.flatMap((r) => r.outcomes.map((o) => ({ ...o, predictedConf: evidenceConfidence(r) == null ? null : o.predictedConf, snapshotAt: r.recordedAt.toISOString() })))
         .find((o) => o.outcome !== "PENDING") ?? null;
       return {
         symbol,
         currentSignal,
         previousSignal,
         delta: currentSignal != null && previousSignal != null ? Math.round((currentSignal - previousSignal) * 10) / 10 : null,
-        confidence: current?.confidence ?? null,
+        confidence: evidenceConfidence(current),
         stance: current?.stance ?? null,
         engineVersion: current?.engineVersion ?? null,
         recordedAt: current?.recordedAt.toISOString() ?? null,
@@ -101,13 +109,14 @@ export async function GET() {
         latestOutcome,
         history: rows.map((row) => ({
           motiveSignal: row.motiveSignal,
-          confidence: row.confidence,
+          confidence: evidenceConfidence(row),
           stance: row.stance,
           recordedAt: row.recordedAt.toISOString(),
           engineVersion: row.engineVersion,
           evidence: evidenceSummary(row.signalEvidenceJson || row.evidenceJson),
           outcomes: row.outcomes.map((o) => ({
             ...o,
+            predictedConf: evidenceConfidence(row) == null ? null : o.predictedConf,
             evaluatedAt: o.evaluatedAt?.toISOString() ?? null,
           })),
         })),
