@@ -1,4 +1,5 @@
 import { portfolioSnapshot } from "./portfolio";
+import { unavailableLedger, unavailablePersonalized } from "../../../../../packages/shared/src/saved-data-state";
 import { listBets } from "./bets";
 import { listPredictions } from "./predictions";
 import { listWatchlist } from "./watchlist";
@@ -30,15 +31,18 @@ function isEphemeralUserId(userId: string | null | undefined): boolean {
 }
 
 async function withFeedTimeout<T>(promise: Promise<T>, fallback: T, ms = 4000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error("feed timeout")), ms);
+        timer = setTimeout(() => reject(new Error("feed timeout")), ms);
       }),
     ]);
   } catch {
     return fallback;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -55,6 +59,7 @@ function emptyLedger() {
 
 function emptyPersonalized() {
   return {
+    savedDataStatus: "anonymous" as const,
     holdingsCount: 0,
     watchlistCount: 0,
     radarSignalCount: 0,
@@ -248,6 +253,7 @@ function personalizedIntelFromContext(ctx: HomeUserContext, opportunities: Array
 
   return {
     holdingsCount: ctx.holdingsTotal,
+    savedDataStatus: "available" as const,
     watchlistCount: ctx.watchlist.length,
     radarSignalCount: radarHits.length,
     coverageLine,
@@ -491,8 +497,9 @@ export async function buildHomeBriefing(opts: {
   const userContext = isEphemeralUserId(uid)
     ? null
     : await withFeedTimeout(loadHomeUserContext(uid as string), null, 3500);
-  const ledger = userContext ? ledgerPulseFromContext(userContext, top8) : emptyLedger();
-  const personalized = userContext ? personalizedIntelFromContext(userContext, top8) : emptyPersonalized();
+  const savedDataUnavailable = !isEphemeralUserId(uid) && !userContext;
+  const ledger = userContext ? ledgerPulseFromContext(userContext, top8) : savedDataUnavailable ? unavailableLedger() : emptyLedger();
+  const personalized = userContext ? personalizedIntelFromContext(userContext, top8) : savedDataUnavailable ? unavailablePersonalized() : emptyPersonalized();
 
   const top = top8[0];
   const congressBuy = congressTrades.find((t) => String(t.transaction).toLowerCase().includes("purchase"));

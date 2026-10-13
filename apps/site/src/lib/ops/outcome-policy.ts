@@ -100,7 +100,9 @@ export function summarizeCalibration(rows: readonly CalibrationRow[]) {
     buckets,
     evaluated: valid.length,
     excludedInvalid: rows.length - valid.length,
-    // This is a sample-readiness flag, never a per-forecast success probability.
-    forecastReady: valid.length >= 100 && buckets.some((b) => b.calibrationReady),
+    sampleReady: valid.length >= 100 && buckets.some((b) => b.calibrationReady),
+    // A large, potentially correlated sample is not a validated probability model.
+    // No calibrated forecasting model or out-of-sample validation is supplied here.
+    forecastReady: false,
   };
 }

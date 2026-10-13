@@ -83,5 +83,6 @@ test('insufficient samples cannot unlock forecast readiness', () => {
   const make = n => Array.from({length:n}, () => ({predictedConf:85,outcome:'CONFIRMED'}));
   assert.equal(summarizeCalibration(make(29)).buckets[1].calibrationReady, false);
   assert.equal(summarizeCalibration(make(99)).forecastReady, false);
-  assert.equal(summarizeCalibration(make(100)).forecastReady, true);
+  assert.equal(summarizeCalibration(make(100)).sampleReady, true);
+  assert.equal(summarizeCalibration(make(100)).forecastReady, false);
 });

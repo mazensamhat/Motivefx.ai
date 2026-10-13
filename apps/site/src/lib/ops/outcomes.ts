@@ -1,5 +1,6 @@
 /** Market-grounded outcome evaluation. Motive Signal is never treated as a forecast probability. */
 import { prisma } from "@motivefx/database";
+import type { Prisma } from "@motivefx/database";
 import {
   DAY_MS,
   OUTCOME_EVALUATOR_VERSION,
@@ -138,13 +139,8 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
     // must not permanently occupy the oldest page and starve actionable stock/
     // crypto outcomes. Page through the backlog until we have a bounded set of
     // due, provider-supported candidates (or hit the scan/time guard).
-    // Seed the accumulator through Prisma itself so TypeScript preserves the
-    // exact include:{snapshot:true} row shape without widening to any.
-    const pending=await prisma.signalOutcome.findMany({
-      where:pendingWhere,
-      include:{snapshot:true},
-      take:0,
-    });
+    // Keep the included snapshot type without spending a pool slot on a take:0 query.
+    const pending: Prisma.SignalOutcomeGetPayload<{ include: { snapshot: true } }>[] = [];
     let cursorId:string|undefined;
     let scanned=0;
     while(

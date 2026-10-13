@@ -253,13 +253,18 @@ async function persistSignalSnapshotOnce(input: {
   ledgerId: string;
   symbol: string;
   motiveSignal?: number;
+  evidenceConfidence?: number;
   engineVersion: string;
   evidence: unknown[];
   signalEvidence: unknown[];
   recordedAt: string;
 }): Promise<void> {
   const score = input.motiveSignal ?? 0;
-  const conf = Math.min(99, 40 + input.signalEvidence.length * 12);
+  // Preserve the engine's evidence confidence. Factor count is neither source
+  // quality nor a calibrated likelihood, and used to force every five-factor row to 99.
+  const conf = typeof input.evidenceConfidence === "number" && Number.isFinite(input.evidenceConfidence)
+    && input.evidenceConfidence >= 0 && input.evidenceConfidence <= 100
+    ? input.evidenceConfidence : null;
   const snap = await prisma.signalSnapshot.upsert({
     where: { ledgerId: input.ledgerId },
     create: {
@@ -355,6 +360,7 @@ export function persistSignalSnapshot(input: {
   ledgerId: string;
   symbol: string;
   motiveSignal?: number;
+  evidenceConfidence?: number;
   engineVersion: string;
   evidence: unknown[];
   signalEvidence: unknown[];

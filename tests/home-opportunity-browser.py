@@ -98,6 +98,7 @@ with sync_playwright() as p:
             page.get_by_role('heading',name='NVDA',exact=True).wait_for();check_fit(page,(mode,width,theme,'radar'))
             page.locator('.home-research-dialog').get_by_role('button',name='Ask Motive about this',exact=True).click()
             page.locator('.chief-panel').wait_for()
+            page.wait_for_function("document.querySelector('.chief-composer input')?.value.includes('NVDA')")
             assert 'NVDA' in page.locator('.chief-composer input').input_value()
             page.locator('.chief-close').click();CASES.append([mode,width,theme,'radar-to-review-to-ask'])
             open_add(page,'NVDA');page.evaluate('window.__failNext=true')

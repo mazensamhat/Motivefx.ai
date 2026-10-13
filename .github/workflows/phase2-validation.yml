@@ -63,6 +63,8 @@ jobs:
         run: npm ci --include=dev
       - name: Serverless write lifecycle regressions
         run: node --test scripts/serverless-write-lifecycle.test.cjs
+      - name: Saved data and confidence persistence regressions
+        run: node --test tests/home-saved-data.test.mjs tests/intel-prefs-persistence.test.mjs tests/signal-confidence-persistence.test.mjs tests/outcome-lifecycle.test.mjs
       - name: Watch Agent cron invariants
         run: node --test scripts/watch-agents-cron.test.cjs
       - name: Production Watch cron invariants
