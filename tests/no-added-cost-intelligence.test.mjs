@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {loadSiteModule} from './load-site-module.mjs';
-const quality=await loadSiteModule('../apps/site/src/lib/terminal/data-quality.ts');
+const provenance=await loadSiteModule('../packages/shared/src/provenance.ts');
+const quality=await loadSiteModule('../apps/site/src/lib/terminal/data-quality.ts',{'../../../../../packages/shared/src/provenance':provenance});
 const frames=await loadSiteModule('../packages/shared/src/error-frames.ts');
 const validation=await loadSiteModule('../apps/site/src/lib/ops/outcome-validation.ts');
 
@@ -34,6 +35,7 @@ test('500 simultaneous briefing readers share a single provider collection; cach
     'next/cache':{unstable_cache:(fn,keys,opts)=>{options={keys,opts};return fn;}},
     './feeds':{fetchWhaleAlerts:provider,fetchLineMoves:provider,fetchPredictionMarkets:provider,fetchCongressTrades:provider,scanUnusualOptions:()=>[],scanPennyMovers:()=>[]},
     './market-truth':{getDataMode:()=> 'PRODUCTION'},'./provider-switches':{providerHealthFlags:()=>({ODDS_API:true})},
+    './data-quality':quality,
   });
   const start=performance.now(); const snapshots=await Promise.all(Array.from({length:500},()=>cache.getSharedHomeFeeds()));
   assert.equal(calls,4);assert.equal(new Set(snapshots.map(x=>x.collectedAt)).size,1);
@@ -46,6 +48,7 @@ test('failed shared collections cool down instead of retrying providers for ever
   const cache=await loadSiteModule('../apps/site/src/lib/terminal/shared-home-feeds.ts',{
     'next/cache':{unstable_cache:fn=>fn},'./feeds':{fetchWhaleAlerts:async()=>{calls++;throw Error('offline');},fetchLineMoves:async()=>[],fetchPredictionMarkets:async()=>[],fetchCongressTrades:async()=>[],scanUnusualOptions:()=>[],scanPennyMovers:()=>[]},
     './market-truth':{getDataMode:()=> 'PRODUCTION'},'./provider-switches':{providerHealthFlags:()=>({})},
+    './data-quality':quality,
   });
   await assert.rejects(cache.getSharedHomeFeeds());await assert.rejects(cache.getSharedHomeFeeds(),/cooling down/);assert.equal(calls,1);
 });

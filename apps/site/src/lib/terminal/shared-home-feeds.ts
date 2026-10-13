@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { fetchWhaleAlerts, fetchLineMoves, fetchPredictionMarkets, fetchCongressTrades, scanUnusualOptions, scanPennyMovers } from "./feeds";
 import { getDataMode } from "./market-truth";
 import { providerHealthFlags } from "./provider-switches";
+import { isOpenPrediction } from "./data-quality";
 
 async function bounded<T>(work:Promise<T>, empty:T, ms:number):Promise<T> {
   let timer:ReturnType<typeof setTimeout>|undefined;
@@ -23,15 +24,18 @@ const cached = unstable_cache(async (_mode:string,_switches:string)=>collect(),[
 let inflight:Promise<Awaited<ReturnType<typeof collect>>>|undefined;
 let last:Awaited<ReturnType<typeof collect>>|undefined;
 let lastKey="", checkedAt=0, retryAt=0;
+function usable(value:Awaited<ReturnType<typeof collect>>) {
+  return {...value,markets:value.markets.filter(market=>isOpenPrediction(market as unknown as Record<string,unknown>))};
+}
 export async function getSharedHomeFeeds() {
   const mode=getDataMode(), switches=JSON.stringify(providerHealthFlags()), key=mode+switches;
   if(key!==lastKey){last=undefined;inflight=undefined;lastKey=key;checkedAt=0;retryAt=0;}
-  if(last&&Date.now()-checkedAt<30_000)return last;
-  if(Date.now()<retryAt){if(last)return last;throw Error("Shared feeds cooling down");}
-  if(inflight)return inflight;
+  if(last&&Date.now()-checkedAt<30_000)return usable(last);
+  if(Date.now()<retryAt){if(last)return usable(last);throw Error("Shared feeds cooling down");}
+  if(inflight)return inflight.then(usable);
   const work=cached(mode,switches).then(value=>{
     if(lastKey===key){last=value;checkedAt=Date.now();}return value;
   }).catch(error=>{if(lastKey===key)retryAt=Date.now()+60_000;if(last&&lastKey===key)return last;throw error;})
     .finally(()=>{if(inflight===work)inflight=undefined;});
-  inflight=work;return work;
+  inflight=work;return work.then(usable);
 }

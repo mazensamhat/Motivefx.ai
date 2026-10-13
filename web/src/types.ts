@@ -28,6 +28,8 @@ export interface CongressTrade {
 }
 
 export interface WhaleAlert {
+  timestamp?: string;
+  sourceType?: string;
   asset: string;
   amountUsd: number;
   from: string;

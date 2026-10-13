@@ -1,6 +1,7 @@
 import { portfolioSnapshot } from "./portfolio";
 import { getSharedHomeFeeds } from "./shared-home-feeds";
 import { evidenceQuality, rankOpportunity } from "./data-quality";
+import { isVolumeProxy } from "../../../../../packages/shared/src/provenance";
 import { unavailableLedger, unavailablePersonalized } from "../../../../../packages/shared/src/saved-data-state";
 import { listBets } from "./bets";
 import { listPredictions } from "./predictions";
@@ -403,13 +404,13 @@ export async function buildHomeBriefing(opts: {
       title: stancePhrase(stance),
       stance,
       confidence: conf,
-      expectedMove: w.sourceType === "DERIVED" ? "Trading-volume context" : "On-chain context",
+      expectedMove: isVolumeProxy(w) ? "Trading-volume context" : "On-chain context",
       riskLevel: "medium",
       stars: stars(conf),
       signals,
       reasons: [
         `$${asset}: ~$${Math.floor(Number(w.amountUsd) / 1_000_000)}M ${w.sourceType === "DERIVED" || /not a single whale|24h vol|proxy/i.test(w.note ?? "") ? "reported trading volume" : "reported transfer value"} — ${w.note ?? w.direction ?? "exchange flow"}.`,
-        `$${asset}: ${w.sourceType === "DERIVED" ? "Trading volume is a market-activity proxy, not a verified whale transaction." : "Wallet activity is volatility context, not a trade instruction."}`,
+        `$${asset}: ${isVolumeProxy(w) ? "Trading volume is a market-activity proxy, not a verified whale transaction." : "Wallet activity is volatility context, not a trade instruction."}`,
         stancePlainExplain(stance),
       ],
     });

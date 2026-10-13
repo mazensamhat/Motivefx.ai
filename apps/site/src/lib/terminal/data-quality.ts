@@ -1,3 +1,4 @@
+import { isVolumeProxy } from "../../../../../packages/shared/src/provenance";
 export type EvidenceQuality = {
   provider: string; observedAt: string | null; freshness: "fresh" | "stale" | "unknown";
   kind: "observed" | "derived"; independentSources: number; confidence: number;
@@ -7,7 +8,7 @@ export function evidenceQuality(module: string, row: Record<string, unknown>, pr
   const time = Date.parse(String(row.timestamp ?? ""));
   const age = nowMs-time;
   const freshness = !Number.isFinite(time) || age < -60_000 ? "unknown" : age > (MAX_AGE[module] ?? 15*60_000) ? "stale" : "fresh";
-  const derived = row.sourceType === "DERIVED" || /proxy|not a single whale|24h vol/i.test(String(row.note ?? ""));
+  const derived = isVolumeProxy(row);
   return {provider, observedAt: Number.isFinite(time) ? new Date(time).toISOString() : null, freshness,
     kind: derived ? "derived" : "observed", independentSources: 1,
     confidence: freshness === "stale" ? 20 : freshness === "unknown" ? 35 : derived ? 50 : 65};

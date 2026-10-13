@@ -13,12 +13,14 @@ async function load(path,mocks={}) {
  });return module.exports;
 }
 const saved=await load('../packages/shared/src/saved-data-state.ts');
-const quality=await load('../apps/site/src/lib/terminal/data-quality.ts');
+const provenance=await load('../packages/shared/src/provenance.ts');
+const quality=await load('../apps/site/src/lib/terminal/data-quality.ts',{'../../../../../packages/shared/src/provenance':provenance});
 async function fixture({failed=false,count=0,shared}={}) {
  let reads=0;
  const api=await load('../apps/site/src/lib/terminal/home-briefing.ts',{
   './portfolio':{portfolioSnapshot:async()=>{reads++;if(failed)throw Error('pool unavailable');return {counts:{trades:count,penny:0,crypto:0},symbols:{trades:count?['NVDA']:[],penny:[],crypto:[]}};}},
   './data-quality':quality,
+  '../../../../../packages/shared/src/provenance':provenance,
   './shared-home-feeds':{getSharedHomeFeeds:shared ?? (async()=>({whales:[],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:new Date().toISOString()}))},
   './bets':{listBets:async()=>[]},'./predictions':{listPredictions:async()=>[]},'./watchlist':{listWatchlist:async()=>[]},
   './feeds':{fetchCongressTrades:async()=>[],fetchLineMoves:async()=>[],fetchPredictionMarkets:async()=>[],fetchWhaleAlerts:async()=>[],scanPennyMovers:()=>[],scanUnusualOptions:()=>[]},

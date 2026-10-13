@@ -523,6 +523,7 @@ export type PredictionMarketItem = {
   categoryLabel: string;
   slug?: string;
   timestamp?: string;
+  endDate?: string;
 };
 
 export function demoLineMoves(): LineMoveItem[] {
@@ -1972,6 +1973,7 @@ async function fetchPredictionMarketsUncached(
         categoryLabel: cats.categoryLabel,
         slug: String(m.slug ?? ev.slug ?? ""),
         timestamp: updatedAt,
+        endDate: typeof m.endDate === "string" ? m.endDate : typeof ev.endDate === "string" ? ev.endDate : undefined,
       });
       if (items.length >= limit) break;
     }

@@ -225,7 +225,7 @@ export function expandSignalToReason(signal: string, ctx?: SignalReasonContext):
   }
   if (s.includes("whale") || s.includes("on-chain") || s.includes("exchange")) {
     const amt = m.amountUsd != null ? ` ~$${Math.floor(Number(m.amountUsd) / 1e6)}M.` : "";
-    return `${signal} on ${sym} — large on-chain transfer flagged.${amt} Watch liquidity; not a buy/sell order.`;
+    return `${signal} on ${sym} — reported crypto activity.${amt} Check whether the source describes a transfer or a trading-volume proxy. Not a buy/sell order.`;
   }
   if (s.includes("sharp") || s.includes("line") || s.includes("steam") || s.includes("public")) {
     return `${signal} — professional vs public ticket context on this matchup. Odds intel only.`;
