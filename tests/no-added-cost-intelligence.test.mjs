@@ -43,6 +43,30 @@ test('500 simultaneous briefing readers share a single provider collection; cach
   assert.doesNotMatch(JSON.stringify(options),/user|portfolio|email/);
   console.log(`Shared-feed concurrency fixture: 500 readers, 4 provider calls, ${Math.round(performance.now()-start)}ms.`);
 });
+test('cached prediction markets are re-filtered as their end dates pass without recollecting providers',async()=>{
+  let now=Date.parse('2026-10-15T12:00:00Z');
+  class FakeDate extends Date {
+    constructor(value){super(value ?? now);}
+    static now(){return now;}
+  }
+  const timedQuality=await loadSiteModule('../apps/site/src/lib/terminal/data-quality.ts',{'../../../../../packages/shared/src/provenance':provenance},'',{Date:FakeDate});
+  let calls=0;
+  const markets=[
+    {slug:'already-expired',endDate:'2026-10-15T11:59:00Z'},
+    {slug:'short-open',endDate:'2026-10-15T12:00:20Z'},
+    {slug:'long-open',endDate:'2026-10-15T12:05:00Z'},
+  ];
+  const cache=await loadSiteModule('../apps/site/src/lib/terminal/shared-home-feeds.ts',{
+    'next/cache':{unstable_cache:fn=>fn},
+    './feeds':{fetchWhaleAlerts:async()=>[],fetchLineMoves:async()=>[],fetchPredictionMarkets:async()=>{calls++;return markets;},fetchCongressTrades:async()=>[],scanUnusualOptions:()=>[],scanPennyMovers:()=>[]},
+    './market-truth':{getDataMode:()=> 'PRODUCTION'},'./provider-switches':{providerHealthFlags:()=>({})},
+    './data-quality':timedQuality,
+  },'',{Date:FakeDate});
+  assert.deepEqual((await cache.getSharedHomeFeeds()).markets.map(market=>market.slug),['short-open','long-open']);
+  now=Date.parse('2026-10-15T12:00:25Z');
+  assert.deepEqual((await cache.getSharedHomeFeeds()).markets.map(market=>market.slug),['long-open']);
+  assert.equal(calls,1);
+});
 test('failed shared collections cool down instead of retrying providers for every visitor',async()=>{
   let calls=0;
   const cache=await loadSiteModule('../apps/site/src/lib/terminal/shared-home-feeds.ts',{
