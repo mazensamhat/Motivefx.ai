@@ -14,6 +14,20 @@ export type PortfolioModule = (typeof MODULE_KEYS)[number];
 
 export const MAX_PORTFOLIO_BOOKS = 5;
 
+/** Missing rows may be empty; unreadable existing rows must never become empty. */
+function parseStoredHoldings(raw: string): Holding[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Saved portfolio is unavailable. Retry before making changes.");
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("Saved portfolio is unavailable. Retry before making changes.");
+  }
+  return parsed as Holding[];
+}
+
 export function isPortfolioModule(module: string): module is PortfolioModule {
   return (MODULE_KEYS as readonly string[]).includes(module);
 }
@@ -23,12 +37,7 @@ export async function loadPortfolio(userId: string, module: PortfolioModule): Pr
     where: { userId_module: { userId, module } },
   });
   if (!row) return [];
-  try {
-    const parsed = JSON.parse(row.holdingsJson) as unknown;
-    return Array.isArray(parsed) ? (parsed as Holding[]) : [];
-  } catch {
-    return [];
-  }
+  return parseStoredHoldings(row.holdingsJson);
 }
 
 export async function savePortfolio(
@@ -76,7 +85,8 @@ function defaultBooks(holdings: Holding[]): ModulePortfolioBooks {
 
 export async function listPortfolioBooks(userId: string, module: PortfolioModule) {
   const holdings = await loadPortfolio(userId, module);
-  const prefs = await getIntelPrefs(userId);
+  // A transient preference read must not create an empty default book.
+  const prefs = await getIntelPrefs(userId, { strict: true });
   let state = prefs.portfolioBooks?.[module];
   if (!state?.books?.length) {
     state = defaultBooks(holdings);
@@ -171,12 +181,7 @@ export async function countAllHoldings(userId: string): Promise<number> {
   const rows = await prisma.userPortfolio.findMany({ where: { userId } });
   let total = 0;
   for (const row of rows) {
-    try {
-      const parsed = JSON.parse(row.holdingsJson) as unknown;
-      if (Array.isArray(parsed)) total += parsed.length;
-    } catch {
-      /* ok */
-    }
+    total += parseStoredHoldings(row.holdingsJson).length;
   }
   return total;
 }
@@ -191,15 +196,9 @@ export async function portfolioSnapshot(userId: string): Promise<{
 
   for (const row of rows) {
     if (!isPortfolioModule(row.module)) continue;
-    try {
-      const parsed = JSON.parse(row.holdingsJson) as unknown;
-      if (!Array.isArray(parsed)) continue;
-      const holdings = parsed as Holding[];
-      counts[row.module] = holdings.length;
-      symbols[row.module] = holdings.map((h) => h.symbol.toUpperCase());
-    } catch {
-      /* ok */
-    }
+    const holdings = parseStoredHoldings(row.holdingsJson);
+    counts[row.module] = holdings.length;
+    symbols[row.module] = holdings.map((h) => h.symbol.toUpperCase());
   }
 
   return { counts, symbols };
