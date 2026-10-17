@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'web/src/**'
+      - 'apps/site/src/lib/terminal/portfolio.ts'
+      - 'tests/portfolio-storage-safety.test.mjs'
       - 'tests/portfolio-session-regression.test.mjs'
       - '.github/workflows/portfolio-session-regression.yml'
 permissions:
@@ -19,4 +21,4 @@ jobs:
         with:
           node-version: '22'
       - run: npm --prefix web ci
-      - run: node --test tests/portfolio-session-regression.test.mjs
+      - run: node --test tests/portfolio-session-regression.test.mjs tests/portfolio-storage-safety.test.mjs
