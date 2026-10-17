@@ -24,6 +24,7 @@ export interface SignalReasonContext {
 export interface OpportunitySignalInput {
   module: SignalClarityModule | string;
   symbol: string;
+  sourceType?: string;
   type?: string; // call | put
   volOiRatio?: number;
   premium?: number;
@@ -31,6 +32,8 @@ export interface OpportunitySignalInput {
   volRatio?: number;
   amountUsd?: number;
   direction?: string;
+  from?: string;
+  to?: string;
   yesPct?: number;
   note?: string;
   side?: string;
@@ -106,6 +109,14 @@ function pickFromPool(pool: readonly string[], seed: number, count: number, forc
   return out.slice(0, count);
 }
 
+function isCryptoVolumeProxy(input: OpportunitySignalInput): boolean {
+  const blob = `${input.sourceType ?? ""} ${input.note ?? ""} ${input.from ?? ""} ${input.to ?? ""}`.toLowerCase();
+  return (
+    String(input.sourceType ?? "").toUpperCase() === "DERIVED" ||
+    /proxy|not a single whale|24h vol|24h volume/.test(blob)
+  );
+}
+
 /** Select 2–3 differentiated signal chips for an opportunity / deep-dive row. */
 export function pickSignalsForOpportunity(input: OpportunitySignalInput): string[] {
   const sym = (input.symbol || "?").toUpperCase();
@@ -133,6 +144,9 @@ export function pickSignalsForOpportunity(input: OpportunitySignalInput): string
   }
 
   if (mod === "crypto") {
+    if (isCryptoVolumeProxy(input)) {
+      return ["Trading volume", "Market activity", "Volume proxy"];
+    }
     const forced: string[] = ["Whale Transfer"];
     const dir = String(input.direction ?? "").toLowerCase();
     if (dir.includes("out")) forced.push("Exchange Outflow");
@@ -191,6 +205,10 @@ function whyForChip(label: string, sym: string, input: OpportunitySignalInput): 
   }
   if (l.includes("catalyst")) {
     return `MotiveFX flagged $${sym} for a possible news or catalyst window — verify headlines yourself.`;
+  }
+  if (l.includes("volume proxy") || l.includes("trading volume") || l.includes("market activity")) {
+    const amt = input.amountUsd ? ` (~$${Math.floor(input.amountUsd / 1e6)}M reported volume)` : "";
+    return `${sym} is showing market-volume activity${amt}; this is a trading-volume proxy, not one tracked transaction.`;
   }
   if (l.includes("whale") || l.includes("on-chain") || l.includes("exchange") || l.includes("wallet")) {
     return `Large ${sym} wallet/exchange flow${input.amountUsd ? ` (~$${Math.floor(input.amountUsd / 1e6)}M)` : ""} — context for volatility, not a trade order.`;
@@ -359,7 +377,11 @@ export function buildPlainBrief(input: OpportunitySignalInput & {
     whatItMeans.push(`Notable options premium near $${Math.floor(input.premium).toLocaleString()}.`);
   }
   if (input.amountUsd) {
-    whatItMeans.push(`Large transfer near $${Math.floor(input.amountUsd / 1e6)}M flagged on-chain.`);
+    whatItMeans.push(
+      isCryptoVolumeProxy(input)
+        ? `Reported 24h trading volume near $${Math.floor(input.amountUsd / 1e6)}M — market activity, not one tracked transaction.`
+        : `Large transfer near $${Math.floor(input.amountUsd / 1e6)}M flagged on-chain.`
+    );
   }
   if (input.yesPct != null) {
     whatItMeans.push(`Event market implies about ${input.yesPct}% “yes” — crowd odds, not a forecast.`);
