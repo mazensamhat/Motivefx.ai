@@ -3,11 +3,12 @@ import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { stripTypeScriptTypes } from "node:module";
 
-const state = { row: null, rows: [], unavailable: false, saved: 0, strict: false };
+const state = { row: null, rows: [], unavailable: false, saved: 0, strict: false, upserts: 0 };
 const db = {
   userPortfolio: {
     findUnique: async () => state.row,
     findMany: async () => state.rows,
+    upsert: async () => { state.upserts++; },
   },
 };
 globalThis.__portfolioSafetyDb = db;
@@ -25,7 +26,14 @@ source = source
   .replace('import { prisma } from "@motivefx/database";', "const prisma = globalThis.__portfolioSafetyDb;")
   .replace('import { getIntelPrefs, saveIntelPrefs } from "@/lib/terminal/intel-prefs";', "const { getIntelPrefs, saveIntelPrefs } = globalThis.__portfolioSafetyPrefs;");
 const code = stripTypeScriptTypes(source);
-const { loadPortfolio, countAllHoldings, portfolioSnapshot, listPortfolioBooks } =
+const {
+  loadPortfolio,
+  countAllHoldings,
+  portfolioSnapshot,
+  listPortfolioBooks,
+  createPortfolioBook,
+  switchPortfolioBook,
+} =
   await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
 
 function reset() {
@@ -34,6 +42,7 @@ function reset() {
   state.unavailable = false;
   state.saved = 0;
   state.strict = false;
+  state.upserts = 0;
 }
 
 test("absent portfolio is legitimately empty; stored array is preserved", async () => {
@@ -64,4 +73,13 @@ test("portfolio book defaults must not be saved when prefs are unavailable", asy
   await assert.rejects(listPortfolioBooks("u", "crypto"), /preference read timed out/);
   assert.equal(state.strict, true);
   assert.equal(state.saved, 0);
+});
+
+test("portfolio book mutations fail before writes when current holdings are unreadable", async () => {
+  reset();
+  state.row = { holdingsJson: "not-json" };
+  await assert.rejects(createPortfolioBook("u", "crypto", "Long term"), /Saved portfolio is unavailable/);
+  await assert.rejects(switchPortfolioBook("u", "crypto", "primary"), /Saved portfolio is unavailable/);
+  assert.equal(state.saved, 0);
+  assert.equal(state.upserts, 0);
 });
