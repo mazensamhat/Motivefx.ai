@@ -47,7 +47,7 @@ export default function OpportunityRadarPage() {
             <li>Signal score with status and delta</li>
             <li>Short situation description + sparkline</li>
             <li>Key drivers and top beneficiaries / affected assets</li>
-            <li>Time horizon and confidence</li>
+            <li>Time horizon and illustrative confidence score (not a calibrated outcome probability)</li>
           </ul>
         </ContentProse>
       </ContentSection>
@@ -55,7 +55,7 @@ export default function OpportunityRadarPage() {
       <ContentSection title="Informational only">
         <ContentProse>
           <p>
-            Educational market intelligence — not advice, forecasts of profit, or trade execution. Read{" "}
+            Illustrative confluence and confidence scores are not calibrated probabilities. Educational market intelligence — not advice, forecasts of profit, or trade execution. Read{" "}
             <Link href="/limitations">methods &amp; limitations</Link> and our{" "}
             <Link href="/terms">Terms</Link>.
           </p>

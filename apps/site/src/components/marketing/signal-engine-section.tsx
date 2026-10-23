@@ -27,8 +27,9 @@ export function SignalEngineSection() {
             ))}
           </ul>
           <div className="signal-feed-confidence">
-            Confidence <strong>{SIGNAL_FEED_DEMO.confidence}%</strong>
+            Illustrative confidence <strong>{SIGNAL_FEED_DEMO.confidence}/100</strong>
           </div>
+          <p className="signal-feed-label">Demo confluence score, not a calibrated outcome probability.</p>
         </article>
       </div>
     </section>

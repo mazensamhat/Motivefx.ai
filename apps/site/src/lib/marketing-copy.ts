@@ -75,7 +75,7 @@ export const FEATURES = [
   },
   {
     title: "Opportunity Radar™",
-    description: "Developing situations ranked by probability, evidence, and who stands to benefit.",
+    description: "Developing situations ranked by signal strength, supporting evidence, and who stands to benefit.",
     icon: "why" as const,
   },
   {
@@ -95,7 +95,7 @@ export const FEATURES = [
   },
   {
     title: "Evidence Stack",
-    description: "Probability, confidence, supporting factors, analogues — not vibes.",
+    description: "Confluence scores, evidence quality, supporting factors, analogues — not vibes. Scores are not calibrated outcome probabilities.",
     icon: "everywhere" as const,
   },
 ];
