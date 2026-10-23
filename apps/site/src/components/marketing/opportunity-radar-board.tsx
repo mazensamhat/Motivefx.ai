@@ -227,6 +227,7 @@ export function OpportunityRadarBoard({
             Developing situations ranked by signal strength, drivers, beneficiaries, and horizon —
             not ticker hunting.
           </p>
+          <p className="or-sub">Preview scores are illustrative 0–100 assessments, not calibrated probabilities or forecasts.</p>
         </div>
         <div className="or-header-actions">
           <div className="or-view-toggle" role="group" aria-label="View mode">
@@ -268,7 +269,7 @@ export function OpportunityRadarBoard({
         <div className="or-how-panel" role="region" aria-label="How Opportunity Radar works">
           <p>
             Each card is a <strong>developing situation</strong> — not a trade ticket. Signal score
-            blends probability and corroboration. Key drivers explain the move; beneficiaries and
+            reflects confluence and corroboration, not calibrated outcome probabilities. Key drivers explain the move; beneficiaries and
             affected assets show who inherits the cascade. Informational only.
           </p>
         </div>
@@ -288,8 +289,8 @@ export function OpportunityRadarBoard({
           <strong>{stats.avg}</strong>
         </div>
         <div className="or-stat">
-          <span>Highest Confidence</span>
-          <strong>{stats.highest}%</strong>
+          <span>Highest Illustrative Confidence</span>
+          <strong>{stats.highest}/100</strong>
         </div>
         <div className="or-stat or-stat-wide">
           <span>Time Horizon</span>
@@ -377,7 +378,7 @@ export function OpportunityRadarBoard({
                       Time Horizon <strong>{card.horizon}</strong>
                     </span>
                     <span>
-                      Confidence <strong>{card.confidence}%</strong>
+                      Illustrative confidence <strong>{card.confidence}/100</strong>
                     </span>
                   </footer>
                 </article>
