@@ -23,6 +23,29 @@ test('expired markets and malformed expiry dates are excluded, valid open market
   for(const row of [{endDate:'2026-10-12'},{endDate:'invalid'},{closed:true},{active:false},{acceptingOrders:false}])assert.equal(quality.isOpenPrediction(row,at),false);
   assert.equal(quality.isOpenPrediction({endDate:'2026-10-14'},at),true);
 });
+test('cached prediction markets are re-filtered as expiry passes during memory reuse',async()=>{
+  let nowMs=Date.parse('2026-10-13T00:00:00Z');
+  class TestDate extends Date {
+    constructor(...args){super(...(args.length?args:[nowMs]));}
+    static now(){return nowMs;}
+  }
+  const clockedQuality=await loadSiteModule('../apps/site/src/lib/terminal/data-quality.ts',{'../../../../../packages/shared/src/provenance':provenance},'',{Date:TestDate});
+  let calls=0;
+  const markets=[
+    {market:'Expiring today',endDate:'2026-10-13T00:00:05.000Z'},
+    {market:'Still open',endDate:'2026-10-14T00:00:00.000Z'},
+  ];
+  const cache=await loadSiteModule('../apps/site/src/lib/terminal/shared-home-feeds.ts',{
+    'next/cache':{unstable_cache:fn=>fn},
+    './feeds':{fetchWhaleAlerts:async()=>[],fetchLineMoves:async()=>[],fetchPredictionMarkets:async()=>{calls++;return markets;},fetchCongressTrades:async()=>[],scanUnusualOptions:()=>[],scanPennyMovers:()=>[]},
+    './market-truth':{getDataMode:()=> 'PRODUCTION'},'./provider-switches':{providerHealthFlags:()=>({})},
+    './data-quality':clockedQuality,
+  },'',{Date:TestDate});
+  assert.deepEqual((await cache.getSharedHomeFeeds()).markets.map(m=>m.market),['Expiring today','Still open']);
+  nowMs+=10_000;
+  assert.deepEqual((await cache.getSharedHomeFeeds()).markets.map(m=>m.market),['Still open']);
+  assert.equal(calls,1);
+});
 test('same headlines from multiple wires are counted once and stale/future news is discarded',()=>{
   const at=Date.now();const stamp=n=>new Date(at+n).toISOString();
   const rows=[{headline:'BTC surges!',timestamp:stamp(0)},{headline:'BTC SURGES',timestamp:stamp(-1000)},{headline:'Old',timestamp:stamp(-8*86400000)},{headline:'Future',timestamp:stamp(120000)}];
