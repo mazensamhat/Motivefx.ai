@@ -134,14 +134,22 @@ test("Recurring anonymous client errors escalate to Ops incidents without custom
   assert.doesNotMatch(source, /client-error.*email/i);
 });
 
-test("Production Watch only auto-resolves its own client-error incidents", () => {
+test("Production Watch preserves unresolved client-error incidents until a verified fix", () => {
   const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
-  assert.match(source, /source:\s*"client-error-watch"/);
-  assert.match(source, /opsIncidentRecord\.updateMany/);
-  assert.match(source, /status:\s*"resolved"/);
-  assert.match(source, /activeClientIncidentIds/);
-  assert.doesNotMatch(source, /opsIncidentRecord\.updateMany\(\{\s*data:/);
+  assert.match(source, /source: "client-error-watch"/);
+  assert.match(source, /opsIncidentRecord\.count/);
+  assert.doesNotMatch(source, /opsIncidentRecord\.updateMany/);
+  assert.doesNotMatch(source, /status:\s*"resolved"/);
+  assert.match(source, /never close them/);
 });
+
+test("Missing client-error telemetry is unknown, never proof of crash-free operation", () => {
+  const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
+  assert.match(source, /fixedState: clientErrors === 0 \? "unknown" : "fail"/);
+  assert.match(source, /clientRuntime: clientErrors === 0 \? "unknown" : "attention"/);
+  assert.match(source, /previously open client-error incidents remain open until a production-verified fix/);
+});
+
 
 test("Production Watch separates provider telemetry from config health", () => {
   const source = read("apps/site/src/app/api/cron/production-watch/route.ts");
