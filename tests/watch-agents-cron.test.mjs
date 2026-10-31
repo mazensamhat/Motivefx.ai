@@ -10,6 +10,12 @@ const harness = {
     userIntelPref: {
       findMany: (...args) => harness.active.prisma.userIntelPref.findMany(...args),
     },
+    signalSnapshot: {
+      findFirst: (...args) => harness.active.prisma.signalSnapshot.findFirst(...args),
+    },
+    marketDnaSnapshot: {
+      findFirst: (...args) => harness.active.prisma.marketDnaSnapshot.findFirst(...args),
+    },
   },
   buildHomeBriefing: (...args) => harness.active.buildHomeBriefing(...args),
   evaluateWatchAgents: (...args) => harness.active.evaluateWatchAgents(...args),
@@ -36,12 +42,13 @@ function setup(t, overrides = {}) {
   });
 
   const calls = [];
+  const defaultPrisma = {
+    userIntelPref: { findMany: async () => [] },
+    signalSnapshot: { findFirst: async () => ({ recordedAt: new Date() }) },
+    marketDnaSnapshot: { findFirst: async () => ({ recordedAt: new Date() }) },
+  };
   harness.active = {
-    prisma: {
-      userIntelPref: {
-        findMany: async () => [],
-      },
-    },
+    prisma: defaultPrisma,
     buildHomeBriefing: async () => {
       calls.push("briefing");
       return { probabilityViews: [], consensusBreaks: [] };
@@ -56,6 +63,7 @@ function setup(t, overrides = {}) {
     },
     ...overrides,
   };
+  harness.active.prisma = { ...defaultPrisma, ...(overrides.prisma ?? {}) };
   return calls;
 }
 
@@ -115,6 +123,42 @@ test("watch-agents cron refreshes shared intelligence even when no users have en
   assert.equal(body.agentsEvaluated, 0);
   assert.equal(body.triggered, 0);
   assert.match(body.generatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("watch-agents cron reports stale durable intelligence instead of false success", async (t) => {
+  const calls = setup(t, {
+    prisma: {
+      signalSnapshot: {
+        findFirst: async () => ({ recordedAt: new Date(Date.now() - 3 * 60 * 60_000) }),
+      },
+      marketDnaSnapshot: {
+        findFirst: async () => ({ recordedAt: new Date(Date.now() - 3 * 60 * 60_000) }),
+      },
+    },
+  });
+
+  const response = await GET(cronRequest());
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(calls, ["briefing", "flush"]);
+  assert.equal(body.ok, false);
+  assert.equal(body.error, "durable_intelligence_stale");
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+});
+
+test("watch-agents cron detects a stale Market DNA snapshot even when Signal is fresh", async (t) => {
+  setup(t, {
+    prisma: {
+      marketDnaSnapshot: {
+        findFirst: async () => ({ recordedAt: new Date(Date.now() - 3 * 60 * 60_000) }),
+      },
+    },
+  });
+
+  const response = await GET(cronRequest());
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "durable_intelligence_stale");
 });
 
 test("watch-agents cron evaluates enabled agents with the refreshed shared briefing", async (t) => {
