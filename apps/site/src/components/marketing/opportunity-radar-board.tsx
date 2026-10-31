@@ -138,18 +138,17 @@ function Sparkline({ values, tone }: { values: readonly number[]; tone: Opportun
 }
 
 function formatUpdatedAt(iso?: string) {
-  if (!iso) return "Updated just now";
-  try {
-    const d = new Date(iso);
-    return `Updated ${d.toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    })}`;
-  } catch {
-    return "Updated just now";
-  }
+  // The marketing board falls back to illustrative cards without a live-data timestamp.
+  // An absent or invalid timestamp must never be represented as a fresh observation.
+  if (!iso) return "Illustrative preview · no live update timestamp";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Illustrative preview · no live update timestamp";
+  return `Updated ${d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
 }
 
 export function OpportunityRadarBoard({
