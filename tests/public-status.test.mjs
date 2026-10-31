@@ -35,6 +35,13 @@ test("status page is linked from site navigation and footer", () => {
   assert.match(footer, /href="\/status"/);
 });
 
+test("public web health is explicitly separate from login and entitlement health", () => {
+  assert.match(lib, /label: "Public Website"/);
+  assert.match(lib, /login, sessions and entitlements are checked separately/);
+  assert.doesNotMatch(lib, /label: "Website & Login"/);
+  assert.doesNotMatch(lib, /else if \(!latest\)\s*\{\s*statusById\.set\("web", "operational"\)/);
+});
+
 test("status source distinguishes unknown telemetry from operational", () => {
   assert.match(lib, /"unknown"/);
   assert.match(page, /History collection in progress/);
@@ -42,7 +49,7 @@ test("status source distinguishes unknown telemetry from operational", () => {
 });
 
 test("status page exposes monitored MotiveFX systems", () => {
-  for (const label of ["Website & Login", "Market Data & Feeds", "Portfolios & Saved Items", "Ask Motive AI", "Signals & Opportunity Radar", "Sports & Predictions", "Mobile Apps", "Integrations & Providers"]) {
+  for (const label of ["Public Website", "Market Data & Feeds", "Portfolios & Saved Items", "Ask Motive AI", "Signals & Opportunity Radar", "Sports & Predictions", "Mobile Apps", "Integrations & Providers"]) {
     assert.match(lib, new RegExp(label.replace(/[&]/g, "\\&")));
   }
 });
@@ -139,7 +146,7 @@ test("audit query failure stays unknown instead of marking every component healt
 
   assert.equal(snapshot.source, "readiness");
   assert.equal(snapshot.overall, "unknown");
-  assert.equal(componentById(snapshot, "web").status, "operational");
+  assert.equal(componentById(snapshot, "web").status, "unknown");
   assert.equal(componentById(snapshot, "feeds").status, "unknown");
   assert.equal(componentById(snapshot, "ai").status, "unknown");
   assert.deepEqual(snapshot.activeIssues, []);
