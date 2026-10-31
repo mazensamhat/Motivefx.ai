@@ -44,8 +44,8 @@ type SnapshotRow = {
 const COMPONENTS = [
   {
     id: "web",
-    label: "Website & Login",
-    detail: "MotiveFX website, terminal access, authentication and sessions",
+    label: "Public Website",
+    detail: "Public website availability only; login, sessions and entitlements are checked separately",
     terms: ["web", "website", "login", "auth", "session", "entitlement", "vercel", "database"],
   },
   {
@@ -225,8 +225,6 @@ export async function buildPublicStatusSnapshot(): Promise<PublicStatusSnapshot>
   if (!databaseReady) {
     statusById.set("web", "major_outage");
     statusById.set("portfolio", maxStatus(statusById.get("portfolio") ?? "unknown", "partial_outage"));
-  } else if (!latest) {
-    statusById.set("web", "operational");
   }
 
   const active = new Map<string, Exclude<PublicComponentStatus, "operational" | "unknown">>();
