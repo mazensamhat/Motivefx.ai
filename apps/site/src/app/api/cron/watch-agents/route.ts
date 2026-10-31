@@ -51,6 +51,41 @@ export async function GET(request: Request) {
   const briefing = await buildSharedIntel();
   await flushSignalEvidencePersistence();
 
+  // A successful provider request or cron HTTP response is not proof that
+  // the latest Signal and Market DNA evidence reached durable storage.
+  // Keep the same 2.5h freshness threshold as the production watch.
+  const [latestSignal, latestDna] = await Promise.all([
+    prisma.signalSnapshot.findFirst({
+      orderBy: { recordedAt: "desc" },
+      select: { recordedAt: true },
+    }),
+    prisma.marketDnaSnapshot.findFirst({
+      orderBy: { recordedAt: "desc" },
+      select: { recordedAt: true },
+    }),
+  ]);
+  const checkedAtMs = Date.now();
+  const freshnessCutoff = checkedAtMs - 150 * 60_000;
+  const signalAtMs = latestSignal?.recordedAt?.getTime();
+  const dnaAtMs = latestDna?.recordedAt?.getTime();
+  const hasFreshSignal = signalAtMs != null && Number.isFinite(signalAtMs) && signalAtMs >= freshnessCutoff;
+  const hasFreshDna = dnaAtMs != null && Number.isFinite(dnaAtMs) && dnaAtMs >= freshnessCutoff;
+
+  if (!hasFreshSignal || !hasFreshDna) {
+    const ageMinutes = (observedAtMs: number | undefined) =>
+      observedAtMs != null && Number.isFinite(observedAtMs)
+        ? Math.max(0, Math.round((checkedAtMs - observedAtMs) / 60_000))
+        : null;
+    console.error("[cron/watch-agents] durable_intelligence_stale", {
+      signalAgeMinutes: ageMinutes(signalAtMs),
+      marketDnaAgeMinutes: ageMinutes(dnaAtMs),
+    });
+    return Response.json(
+      { ok: false, error: "durable_intelligence_stale", generatedAt: new Date().toISOString() },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   if (!configured.length) {
     return Response.json(
       {
