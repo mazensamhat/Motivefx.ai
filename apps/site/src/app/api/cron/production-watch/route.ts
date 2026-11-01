@@ -238,33 +238,17 @@ async function collectSnapshot(
     }
   }
 
-  // Resolve only incidents created by this automated client-error watcher once
-  // their anonymous signature is no longer recurring in the current audit window.
-  // Human-created/manual incidents are never auto-closed here.
+  // A quiet telemetry window is NOT verification that a crash is fixed.
+  // Keep client-error-watch incidents open until the original user-facing
+  // failure has been reproduced, corrected, released and verified in production.
+  // This audit can create/update incidents, never close them.
   let currentOpenIncidents = openIncidents;
   try {
-    const activeClientIncidentIds = recurringClientErrors.map((row) =>
-      `client-error:${row.platform}:${row.appVersion}:${row.surface}:${row.signature}`.slice(0, 220)
-    );
-    const resolved = await prisma.opsIncidentRecord.updateMany({
-      where: {
-        source: "client-error-watch",
-        status: { in: ["open", "acknowledged"] },
-        ...(activeClientIncidentIds.length
-          ? { id: { notIn: activeClientIncidentIds } }
-          : {}),
-      },
-      data: {
-        status: "resolved",
-        resolvedAt: now,
-      },
-    });
-    if (resolved.count > 0) fixedCount += resolved.count;
     currentOpenIncidents = await prisma.opsIncidentRecord.count({
       where: { status: { in: ["open", "acknowledged"] } },
     });
   } catch (error) {
-    console.warn("[cron/production-watch] stale client incident resolution failed", error);
+    console.warn("[cron/production-watch] incident recount failed", error);
   }
 
   const checks: Check[] = [];
@@ -343,13 +327,13 @@ async function collectSnapshot(
           }.`,
     diagnosis:
       clientErrors === 0
-        ? "No observed client-runtime crash requires engineering review."
+        ? "No client.error events were captured in this window. Coverage may be incomplete; unresolved prior incidents require verified repairs."
         : "One or more user-facing runtime crashes require engineering review; store telemetry is not required for detection.",
-    fixedState: clientErrors === 0 ? "pass" : "fail",
+    fixedState: clientErrors === 0 ? "unknown" : "fail",
     affectedSurface: "web / iOS / Android client runtime",
     remediationPerformed:
       clientErrors === 0
-        ? "No repair required."
+        ? "No new event to remediate; previously open client-error incidents remain open until a production-verified fix."
         : recurringClientErrors.length
           ? `Crash evidence is retained in privacy-minimized Ops telemetry and ${recurringClientErrors.length} recurring signature(s) opened/updated an Ops incident. Customer and credential state were not changed.`
           : "Crash evidence is retained in privacy-minimized Ops telemetry for engineering triage; no signature reached the recurring-incident threshold.",
@@ -538,7 +522,7 @@ async function collectSnapshot(
     telemetry: telemetryAge <= 3 ? "operational" : "degraded",
     providers:
       observedProviderRequests === 0 ? "unknown" : degradedProviders.length ? "degraded" : "operational",
-    clientRuntime: clientErrors === 0 ? "operational" : "attention",
+    clientRuntime: clientErrors === 0 ? "unknown" : "attention",
     incidents: currentOpenIncidents === 0 ? "clear" : "attention",
     ai: latestAi && staleHours(latestAi.createdAt, now) <= 48 ? "operational" : "unknown",
   };
