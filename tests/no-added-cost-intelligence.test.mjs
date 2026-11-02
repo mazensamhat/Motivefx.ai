@@ -52,6 +52,22 @@ test('failed shared collections cool down instead of retrying providers for ever
   });
   await assert.rejects(cache.getSharedHomeFeeds());await assert.rejects(cache.getSharedHomeFeeds(),/cooling down/);assert.equal(calls,1);
 });
+
+test('scheduled refresh awaits fresh providers even after a stale cached visitor read',async()=>{
+  const old = new Date(Date.now()-3600000).toISOString();
+  let providerCalls=0, cacheCalls=0;
+  const fresh=async()=>{providerCalls++;return [{timestamp:new Date().toISOString()}];};
+  const cache=await loadSiteModule('../apps/site/src/lib/terminal/shared-home-feeds.ts',{
+    'next/cache':{unstable_cache:()=>async()=>{cacheCalls++;return {whales:[{timestamp:old}],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:old};}},
+    './feeds':{fetchWhaleAlerts:fresh,fetchLineMoves:fresh,fetchPredictionMarkets:fresh,fetchCongressTrades:fresh,scanUnusualOptions:()=>[],scanPennyMovers:()=>[]},
+    './market-truth':{getDataMode:()=> 'PRODUCTION'},'./provider-switches':{providerHealthFlags:()=>({})},'./data-quality':quality,
+  });
+  assert.equal((await cache.getSharedHomeFeeds()).collectedAt,old);
+  const refreshed=await cache.getSharedHomeFeeds({refresh:true});
+  assert.ok(Date.parse(refreshed.collectedAt)>Date.parse(old));
+  assert.notEqual(refreshed.whales[0].timestamp,old);
+  assert.equal(providerCalls,4);assert.equal(cacheCalls,1);
+});
 test('crash diagnostics keep build asset locations and reject sensitive or untrusted paths',()=>{
   const stack='Error private@example.test\n at fn (https://www.motivefxai.com/terminal/assets/index-ABC.js:12:34)\n at https://external.test/account/secret.js:1:2?token=private';
   const clean=frames.safeErrorFrames(stack);

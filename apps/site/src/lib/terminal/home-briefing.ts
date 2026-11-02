@@ -305,6 +305,7 @@ export async function buildHomeBriefing(opts: {
   displayName?: string | null;
   userId?: string | null;
   plan?: TerminalPlan | null;
+  refreshMarketData?: boolean;
 }) {
   const now = new Date();
   const uid = opts.userId ?? null;
@@ -315,7 +316,7 @@ export async function buildHomeBriefing(opts: {
   const greeting = formatBriefingGreeting(period, name);
   const briefingKicker = formatBriefingKicker(period);
 
-  const {whales,lines,markets,congressTrades,options,penny,collectedAt} = await withFeedTimeout(getSharedHomeFeeds(), {
+  const {whales,lines,markets,congressTrades,options,penny,collectedAt} = await withFeedTimeout(getSharedHomeFeeds({ refresh: opts.refreshMarketData }), {
     whales:[],lines:[],markets:[],congressTrades:[],options:[],penny:[],collectedAt:now.toISOString(),
   }, 4000);
   const opportunities: Array<Record<string, unknown>> = [];

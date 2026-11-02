@@ -27,7 +27,11 @@ let lastKey="", checkedAt=0, retryAt=0;
 function usable(value:Awaited<ReturnType<typeof collect>>) {
   return {...value,markets:value.markets.filter(market=>isOpenPrediction(market as unknown as Record<string,unknown>))};
 }
-export async function getSharedHomeFeeds() {
+export async function getSharedHomeFeeds(opts: { refresh?: boolean } = {}) {
+  // Scheduled jobs run less often than this cache's TTL. A stale-while-revalidate
+  // hit would return last hour's observations and only refresh after this run.
+  // Await collection in the job lifecycle; visitor reads keep sharing the cache.
+  if (opts.refresh) return usable(await collect());
   const mode=getDataMode(), switches=JSON.stringify(providerHealthFlags()), key=mode+switches;
   if(key!==lastKey){last=undefined;inflight=undefined;lastKey=key;checkedAt=0;retryAt=0;}
   if(last&&Date.now()-checkedAt<30_000)return usable(last);
