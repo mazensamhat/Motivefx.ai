@@ -22,7 +22,7 @@ jobs:
           node-version: '22'
       - run: node --test tests/home-opportunity-actions.test.mjs
   compiled-home-actions:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

@@ -12,7 +12,7 @@ function fixture() {
   const prisma = {
     signalSnapshot: { upsert: async args => { snapshots.push(args); return { id: 'snapshot' }; } },
     signalOutcome: { createMany: async args => { outcomes.push(args); } },
-    marketDnaSnapshot: { create: async args => { dna.push(args); } },
+    marketDnaSnapshot: { upsert: async args => { dna.push(args); } },
   };
   const module = { exports: {} };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
@@ -34,7 +34,8 @@ for (const confidence of [0, 55, 78.5, 100, undefined, null, NaN, Infinity, -1, 
     const expected = typeof confidence === 'number' && Number.isFinite(confidence) && confidence >= 0 && confidence <= 100 ? confidence : null;
     assert.equal(f.snapshots[0].create.confidence, expected);
     assert.equal(f.snapshots[0].update.confidence, expected);
-    assert.equal(f.dna[0].data.confidence, expected);
+    assert.equal(f.dna[0].create.confidence, expected);
+    assert.equal(f.dna[0].update.confidence, expected);
     assert.equal(f.outcomes[0].data[0].predictedConf, expected);
     assert.equal(f.outcomes[0].skipDuplicates, true);
   });

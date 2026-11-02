@@ -134,7 +134,7 @@ async function collectSnapshot(
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
-        buildHomeBriefing({ displayName: null, userId: "demo", plan: null }),
+        buildHomeBriefing({ displayName: null, userId: "demo", plan: null, refreshMarketData: true }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error("production_watch_intel_timeout")), 10_000);
         }),

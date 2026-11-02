@@ -305,22 +305,29 @@ async function persistSignalSnapshotOnce(input: {
       driverGroups.set(group, (driverGroups.get(group) ?? 0) + contribution);
     }
     const sortedDrivers = [...driverGroups.entries()].sort((a, b) => b[1] - a[1]);
-    await prisma.marketDnaSnapshot.create({
-      data: {
-        asset: input.symbol,
-        version: input.engineVersion,
-        primaryDriversJson: JSON.stringify(sortedDrivers.slice(0, 3).map(([group]) => group)),
-        negativeJson: JSON.stringify(
-          sortedDrivers
-            .filter(([, value]) => value < 0)
-            .slice(0, 3)
-            .map(([group]) => group)
-        ),
-        currentRegime: classifyMotiveStance(score),
-        confidence: conf,
-        signal: input.motiveSignal ?? undefined,
-        recordedAt: new Date(input.recordedAt),
-      },
+    // The signal is upserted by ledgerId. Use the same deterministic identity
+    // for its DNA so retries and concurrent page loads cannot duplicate rows.
+    // Historical duplicate rows remain untouched pending separate review.
+    const dnaId = `market-dna:${input.ledgerId}`;
+    const dnaData = {
+      asset: input.symbol,
+      version: input.engineVersion,
+      primaryDriversJson: JSON.stringify(sortedDrivers.slice(0, 3).map(([group]) => group)),
+      negativeJson: JSON.stringify(
+        sortedDrivers
+          .filter(([, value]) => value < 0)
+          .slice(0, 3)
+          .map(([group]) => group)
+      ),
+      currentRegime: classifyMotiveStance(score),
+      confidence: conf,
+      signal: input.motiveSignal ?? undefined,
+      recordedAt: new Date(input.recordedAt),
+    };
+    await prisma.marketDnaSnapshot.upsert({
+      where: { id: dnaId },
+      create: { id: dnaId, ...dnaData },
+      update: dnaData,
     });
   } catch (error) {
     console.warn("[ops/durable] market DNA persist failed", error);

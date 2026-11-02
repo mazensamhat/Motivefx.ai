@@ -206,6 +206,7 @@ test("signal ledger persists all evidence while filtering production signal evid
 
 test("durable signal persistence upserts snapshots and deterministic outcomes", async () => {
   const snapshotUpserts = [];
+  const dnaUpserts = [];
   const outcomeUpserts = [];
   globalThis[harnessKey].classifyMotiveStance = (score) => (score >= 60 ? "BULLISH" : "BEARISH");
   globalThis[harnessKey].prisma = {
@@ -215,7 +216,7 @@ test("durable signal persistence upserts snapshots and deterministic outcomes", 
         return { id: "snapshot-42" };
       },
     },
-    marketDnaSnapshot: { create: async () => {} },
+    marketDnaSnapshot: { upsert: async (args) => { dnaUpserts.push(args); } },
     signalOutcome: {
       createMany: async (args) => {
         outcomeUpserts.push(args);
@@ -245,6 +246,12 @@ test("durable signal persistence upserts snapshots and deterministic outcomes", 
   assert.equal(snapshotUpserts[0].create.ledgerId, input.ledgerId);
   assert.equal(snapshotUpserts[1].update.evidenceJson, JSON.stringify([evidence("price-b")]));
   assert.equal(snapshotUpserts[1].update.signalEvidenceJson, JSON.stringify([evidence("price-b", { market: "stocks", sourceReference: "tick:b" })]));
+  assert.equal(dnaUpserts.length, 2);
+  const dnaId = `market-dna:${input.ledgerId}`;
+  assert.deepEqual(dnaUpserts.map((args) => args.where), [{ id: dnaId }, { id: dnaId }]);
+  assert.equal(dnaUpserts[0].create.id, dnaId);
+  assert.equal(dnaUpserts[0].create.recordedAt.toISOString(), input.recordedAt);
+  assert.equal(dnaUpserts[1].update.recordedAt.toISOString(), input.recordedAt);
   assert.equal(outcomeUpserts.length, 2);
   assert.equal(outcomeUpserts[0].data[0].id, "signal-outcome:snapshot-42:30:MARKET_OUTCOME_V4");
   assert.equal(outcomeUpserts[0].data[0].snapshotId, "snapshot-42");
@@ -268,7 +275,7 @@ test("durable signal persistence retries transient pool failures before seeding 
         return { id: "snapshot-retry" };
       },
     },
-    marketDnaSnapshot: { create: async () => {} },
+    marketDnaSnapshot: { upsert: async () => {} },
     signalOutcome: {
       createMany: async (args) => {
         outcomeUpserts.push(args);

@@ -7,6 +7,8 @@ const harnessKey = "__motiveWatchAgentsCronTest";
 const harness = {
   active: {},
   prisma: {
+    signalSnapshot: { findFirst: (...args) => harness.active.prisma.signalSnapshot?.findFirst(...args) ?? { recordedAt: new Date() } },
+    marketDnaSnapshot: { findFirst: (...args) => harness.active.prisma.marketDnaSnapshot?.findFirst(...args) ?? { recordedAt: new Date() } },
     userIntelPref: {
       findMany: (...args) => harness.active.prisma.userIntelPref.findMany(...args),
     },
@@ -65,6 +67,15 @@ function cronRequest(secret = "cron-secret") {
   });
 }
 
+for (const staleStore of ['signalSnapshot','marketDnaSnapshot']) {
+  test(`watch-agents rejects success when ${staleStore} did not persist this run`,async t=>{
+    setup(t,{prisma:{userIntelPref:{findMany:async()=>[]},[staleStore]:{findFirst:async()=>({recordedAt:new Date(Date.now()-3600000)})}}});
+    const response=await GET(cronRequest());
+    assert.equal(response.status,503);
+    assert.equal((await response.json()).error,'durable_intelligence_stale');
+  });
+}
+
 test("watch-agents cron rejects unauthorized requests before touching dependencies", async (t) => {
   const calls = setup(t, {
     prisma: {
@@ -85,6 +96,11 @@ test("watch-agents cron rejects unauthorized requests before touching dependenci
 
 test("watch-agents cron refreshes shared intelligence even when no users have enabled agents", async (t) => {
   const calls = setup(t, {
+    buildHomeBriefing: async (opts) => {
+      assert.equal(opts.refreshMarketData, true);
+      calls.push("briefing");
+      return { probabilityViews: [], consensusBreaks: [] };
+    },
     prisma: {
       userIntelPref: {
         findMany: async (query) => {

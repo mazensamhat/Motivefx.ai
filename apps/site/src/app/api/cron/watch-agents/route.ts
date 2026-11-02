@@ -18,7 +18,7 @@ async function buildSharedIntel() {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      buildHomeBriefing({ displayName: null, userId: "demo", plan: null }),
+      buildHomeBriefing({ displayName: null, userId: "demo", plan: null, refreshMarketData: true }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error("watch_agent_intel_timeout")), 12_000);
       }),
@@ -30,6 +30,7 @@ async function buildSharedIntel() {
 
 export async function GET(request: Request) {
   if (!authorized(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const startedAt = Date.now();
 
   const prefRows = await prisma.userIntelPref.findMany({
     take: 1000,
@@ -50,6 +51,16 @@ export async function GET(request: Request) {
   // Intelligence freshness must not depend on whether a user has configured a watch agent.
   const briefing = await buildSharedIntel();
   await flushSignalEvidencePersistence();
+  const [signal, dna] = await Promise.all([
+    prisma.signalSnapshot.findFirst({ orderBy: { recordedAt: "desc" }, select: { recordedAt: true } }),
+    prisma.marketDnaSnapshot.findFirst({ orderBy: { recordedAt: "desc" }, select: { recordedAt: true } }),
+  ]);
+  const refreshed = (at: Date | undefined) => !!at && at.getTime() >= startedAt - 60_000 && at.getTime() <= Date.now() + 60_000;
+  if (!refreshed(signal?.recordedAt) || !refreshed(dna?.recordedAt)) {
+    return Response.json({ ok: false, error: "durable_intelligence_stale" }, {
+      status: 503, headers: { "Cache-Control": "no-store" },
+    });
+  }
 
   if (!configured.length) {
     return Response.json(
