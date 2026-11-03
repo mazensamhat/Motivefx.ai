@@ -45,14 +45,23 @@ async function readJson(response) {
   return { status: response.status, body: await response.json() };
 }
 
-function createDeps({ auth = { ok: true, session: { id: "ops-1", email: "ops@example.invalid" } } } = {}) {
+function createDeps({
+  auth = { ok: true, session: { id: "ops-1", email: "ops@example.invalid" } },
+  syncResult = { synced: 0, results: [] },
+} = {}) {
   const calls = {
     auth: [],
     audits: [],
+    providerSyncs: 0,
   };
   const deps = {
     observation,
-    sync: { syncSocialProviders: async () => ({ synced: 0, results: [] }) },
+    sync: {
+      syncSocialProviders: async () => {
+        calls.providerSyncs += 1;
+        return syncResult;
+      },
+    },
     admin: {
       requireAdminCapability: async (capability) => {
         calls.auth.push(capability);
@@ -178,6 +187,42 @@ test("social performance writes require runtime config capability before reading
   assert.equal(calls.marketingChannelUpsert, undefined);
   assert.equal(calls.socialMetricsSnapshotUpsert, undefined);
   assert.equal(calls.creativePerformanceEventCreate, undefined);
+});
+
+test("social provider sync action delegates sync and records partial audit without manual ingest writes", async () => {
+  const syncResult = {
+    synced: 1,
+    results: [
+      { channelId: "instagram", status: "synced" },
+      { channelId: "facebook", status: "disconnected", error: "Connect this company account before syncing" },
+    ],
+  };
+  const { deps, calls } = createDeps({ syncResult });
+  const { POST } = loadRoute(deps);
+  const request = new Request("https://motive.test/api/admin/social-performance", {
+    method: "POST",
+    body: JSON.stringify({ action: "sync_providers" }),
+  });
+
+  const result = await readJson(await POST(request));
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, syncResult);
+  assert.deepEqual(calls.auth, ["manage_runtime_config"]);
+  assert.equal(calls.providerSyncs, 1);
+  assert.equal(calls.marketingChannelUpsert, undefined);
+  assert.equal(calls.socialMetricsSnapshotUpsert, undefined);
+  assert.equal(calls.creativePerformanceEventCreate, undefined);
+  assert.deepEqual(calls.audits, [
+    {
+      actorId: "ops-1",
+      actorEmail: "ops@example.invalid",
+      action: "social.providers.sync",
+      capability: "manage_runtime_config",
+      result: "partial",
+      after: syncResult,
+    },
+  ]);
 });
 
 test("social performance ingest normalizes connector payloads and records an audit trail", async () => {
