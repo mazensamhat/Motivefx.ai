@@ -21,14 +21,14 @@ export const MODULES: Record<string, EntityPageContent> = {
       {
         heading: "What MotiveFX stock intelligence includes",
         paragraphs: [
-          "Our stocks module is built for operators who need speed and context, not another generic screener. Every session surfaces a ranked set of opportunities with Motive Signal confidence scores, plain-English explanations, and links to deeper research briefs.",
+          "Our stocks module is built for operators who need speed and context, not another generic screener. Every session surfaces a ranked set of opportunities with Motive Signal confluence scores, plain-English explanations, and links to deeper research briefs.",
           "Coverage spans large-cap leaders, mid-cap growth names, and high-beta movers. We combine market data, SEC filings, earnings transcripts, and flow-derived signals into one terminal experience.",
         ],
       },
       {
         heading: "Motive Signal for equities",
         paragraphs: [
-          "Motive Signal is our proprietary 0–100 confidence score. It weights unusual volume, relative strength, institutional accumulation patterns, options activity, and AI-assessed narrative momentum.",
+          "Motive Signal is our proprietary 0–100 multi-factor confluence score, not a model confidence value or calibrated outcome probability. It weights unusual volume, relative strength, institutional accumulation patterns, options activity, and AI-assessed narrative momentum.",
           "Scores above 80 typically indicate multi-factor alignment — not a buy recommendation, but a prioritization signal for further research. Every score ships with a Why It Matters summary you can read in under 90 seconds.",
         ],
       },
