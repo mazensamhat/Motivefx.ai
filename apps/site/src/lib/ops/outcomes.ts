@@ -153,6 +153,14 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
     ){
       const page=await prisma.signalOutcome.findMany({
         where:{...pendingWhere,
+          // Canonical frozen evidence puts its first source ID first. These
+          // prefixes always infer an unsupported market; remove them before
+          // paging so an old sports/prediction queue cannot consume the scan
+          // budget. Non-canonical evidence still uses the parser below.
+          NOT:[
+            {snapshot:{evidenceJson:{startsWith:'[{"id":"opp-betting-'}}},
+            {snapshot:{evidenceJson:{startsWith:'[{"id":"opp-pred-'}}},
+          ],
           ...(!stockHistoryEnabled() ? {symbol:{in:cryptoHistoryEnabled()?Object.keys(COINGECKO_IDS):[]}} : {}),
           AND:[{symbol:{notIn:[...symbolSamples].filter(([,count])=>count>=perSymbolLimit).map(([symbol])=>symbol)}}],
         },

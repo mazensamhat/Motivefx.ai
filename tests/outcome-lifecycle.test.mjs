@@ -172,6 +172,36 @@ test("a single-asset backlog fills the batch after preserving first-pass asset f
     delete globalThis.__outcomeLifecyclePrisma;
   }
 });
+test("database filtering reaches a due crypto row before an unsupported queue exhausts the scan budget",async()=>{
+  const recordedAt=new Date('2026-01-01T00:00:00Z');
+  const row=(id,evidenceId)=>({id,symbol:'USDT',outcome:'PENDING',evaluatorVersion:'MARKET_OUTCOME_V2',horizonDays:30,predictedScore:70,createdAt:recordedAt,
+    snapshot:{symbol:'USDT',recordedAt,evidenceJson:JSON.stringify([{id:evidenceId}])}});
+  const unsupported=Array.from({length:500},(_,i)=>row(`sports-${i}`,`opp-betting-${i}`));
+  const crypto=row('due-usdt','opp-crypto-USDT-desk');
+  const updates=[];let elapsed=0;
+  const oldNow=Date.now,oldFetch=globalThis.fetch,oldCrypto=process.env.COINGECKO_OUTCOMES_ENABLED,oldStock=process.env.FINNHUB_HISTORICAL_ENABLED,oldKey=process.env.FINNHUB_API_KEY;
+  const now=oldNow();Date.now=()=>now+elapsed;
+  const prisma={signalOutcome:{findMany:async args=>{
+    const prefixes=(args.where.NOT??[]).map(rule=>rule.snapshot.evidenceJson.startsWith);
+    const candidates=[...unsupported,crypto].filter(candidate=>!prefixes.some(prefix=>candidate.snapshot.evidenceJson.startsWith(prefix)));
+    if(candidates[0]!==crypto)elapsed+=9000;
+    return candidates.slice(0,args.take);
+  },updateMany:async args=>{updates.push(args);return {count:1};}}};
+  process.env.COINGECKO_OUTCOMES_ENABLED='true';process.env.FINNHUB_HISTORICAL_ENABLED='true';process.env.FINNHUB_API_KEY='fixture';
+  globalThis.fetch=async()=>({ok:true,json:async()=>({market_data:{current_price:{usd:100}}})});
+  try{
+    const {evaluatePendingOutcomes}=await loadOutcomesModule(prisma);
+    assert.deepEqual(await evaluatePendingOutcomes(160),{evaluated:1,inconclusive:0});
+    assert.deepEqual(updates.map(update=>update.where.id),['due-usdt']);
+  }finally{
+    Date.now=oldNow;globalThis.fetch=oldFetch;
+    for(const [key,value] of [['COINGECKO_OUTCOMES_ENABLED',oldCrypto],['FINNHUB_HISTORICAL_ENABLED',oldStock],['FINNHUB_API_KEY',oldKey]]){
+      if(value===undefined)delete process.env[key];else process.env[key]=value;
+    }
+    delete globalThis.__outcomeLifecyclePrisma;
+  }
+});
+
 test("market outcomes use ground truth providers and never substitute signal movement", () => {
   assert.match(outcomes,/CoinGecko historical USD daily snapshot/);
   assert.match(outcomes,/Finnhub completed daily close/);
