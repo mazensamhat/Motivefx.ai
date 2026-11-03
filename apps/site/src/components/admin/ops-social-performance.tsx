@@ -14,12 +14,12 @@ type Channel = {
   syncError: string | null;
   latest: {
     snapshotDate: string;
-    followers: number;
-    impressions: number;
-    profileViews: number;
-    linkClicks: number;
-    engagementRate: number;
-    postsCount: number;
+    followers: number | null;
+    impressions: number | null;
+    profileViews: number | null;
+    linkClicks: number | null;
+    engagementRate: number | null;
+    postsCount: number | null;
     syncedAt: string;
   } | null;
 };
@@ -29,6 +29,8 @@ export function OpsSocialPerformance() {
   const [creativeEvents, setCreativeEvents] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +55,20 @@ export function OpsSocialPerformance() {
     void load();
   }, [load]);
 
+  async function sync() {
+    setSyncing(true); setSyncMessage(null);
+    try {
+      const res = await fetch("/api/admin/social-performance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync_providers" }) });
+      if (!res.ok) throw new Error(`Could not sync channels (${res.status})`);
+      const result = await res.json() as { synced: number; results: Array<{ status: string }> };
+      const disconnected = result.results.filter(row => row.status === "disconnected").length;
+      const failed = result.results.filter(row => row.status === "failed").length;
+      setSyncMessage(`Synced ${result.synced} channel(s).${disconnected ? ` ${disconnected} need a company-account connection.` : ""}${failed ? ` ${failed} could not refresh; see the channel details.` : ""}`);
+      await load();
+    } catch (error) { setSyncMessage(error instanceof Error ? error.message : "Could not sync channels"); }
+    finally { setSyncing(false); }
+  }
+
   return (
     <section className="ops-page">
       <header className="ops-page-header">
@@ -63,16 +79,20 @@ export function OpsSocialPerformance() {
           <div>
             <h2>Social Performance</h2>
             <p>
-              Normalized channel metrics feeding MotiveFX Creative Intelligence · {creativeEvents} creative performance events
+              Observed company-account metrics · {creativeEvents} creative performance events
             </p>
           </div>
-          <button type="button" className="ops-toolbar-btn" onClick={load} disabled={loading}>
+          <button type="button" className="ops-toolbar-btn" onClick={() => void sync()} disabled={loading || syncing}>
+            {syncing ? "Syncing…" : "Sync channels"}
+          </button>
+          <button type="button" className="ops-toolbar-btn" onClick={load} disabled={loading || syncing}>
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
         </div>
       </header>
 
       {error ? <p className="admin-error-banner">{error}</p> : null}
+      {syncMessage ? <p role="status">{syncMessage}</p> : null}
 
       <section className="ops-card">
         <header className="ops-card-header">
@@ -80,8 +100,7 @@ export function OpsSocialPerformance() {
         </header>
         {channels.length === 0 ? (
           <p className="ops-muted">
-            No channels have produced metrics yet. Provider connectors can POST normalized snapshots to
-            <code> /api/admin/social-performance</code>.
+            Connect the company accounts to collect their observed social metrics.
           </p>
         ) : (
           <div className="ops-table-wrap">
@@ -110,7 +129,7 @@ export function OpsSocialPerformance() {
                     <td>{channel.latest?.followers?.toLocaleString() ?? "—"}</td>
                     <td>{channel.latest?.impressions?.toLocaleString() ?? "—"}</td>
                     <td>{channel.latest?.linkClicks?.toLocaleString() ?? "—"}</td>
-                    <td>{channel.latest ? `${channel.latest.engagementRate.toFixed(2)}%` : "—"}</td>
+                    <td>{channel.latest?.engagementRate != null ? `${channel.latest.engagementRate.toFixed(2)}%` : "—"}</td>
                     <td>
                       {channel.latest?.syncedAt
                         ? new Date(channel.latest.syncedAt).toLocaleString()

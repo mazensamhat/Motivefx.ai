@@ -2,6 +2,10 @@ import { prisma } from "@motivefx/database";
 import { requireAdminCapability } from "@/lib/admin";
 import { badRequest, forbidden, json, serverError, unauthorized } from "@/lib/api";
 import { recordAudit } from "@/lib/ops/audit";
+import { SOCIAL_METRICS, observedMetrics } from "@/lib/ops/social-observation";
+import { syncSocialProviders } from "@/lib/ops/social-provider-sync";
+
+export const maxDuration = 120;
 
 function finiteNumber(value: unknown, fallback = 0): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -65,12 +69,7 @@ export async function GET() {
           latest: latest
             ? {
                 snapshotDate: latest.snapshotDate,
-                followers: latest.followers,
-                impressions: latest.impressions,
-                profileViews: latest.profileViews,
-                linkClicks: latest.linkClicks,
-                engagementRate: latest.engagementRate,
-                postsCount: latest.postsCount,
+                ...observedMetrics(latest),
                 syncedAt: latest.syncedAt.toISOString(),
               }
             : null,
@@ -92,6 +91,7 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as {
+      action?: string;
       channelId?: string;
       platform?: string;
       handle?: string | null;
@@ -124,6 +124,12 @@ export async function POST(request: Request) {
       };
     };
 
+    if (body.action === "sync_providers") {
+      const result = await syncSocialProviders();
+      recordAudit({ actorId: auth.session.id, actorEmail: auth.session.email, action: "social.providers.sync", capability: "manage_runtime_config", result: result.results.some(row => row.status === "failed" || row.status === "disconnected") ? "partial" : "success", after: result });
+      return json(result);
+    }
+
     const platform = body.platform?.trim();
     const channelId = body.channelId?.trim() || (platform ? platform.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "");
     if (!channelId || !platform) return badRequest("channelId and platform are required");
@@ -145,6 +151,15 @@ export async function POST(request: Request) {
       },
     });
 
+    const previous = await prisma.socialMetricsSnapshot.findUnique({ where: { channelId_snapshotDate: { channelId: channel.id, snapshotDate: date } } });
+    let previousAvailable: string[] = [];
+    try { const available = JSON.parse(previous?.rawJson ?? "{}").availableMetrics; if (Array.isArray(available)) previousAvailable = available; } catch { /* No earlier provenance. */ }
+    const providedMetrics = SOCIAL_METRICS.filter(key => body[key] != null && Number.isFinite(Number(body[key])) && Number(body[key]) >= 0);
+    const rawJson = JSON.stringify({ source: "admin_import", payload: body.raw ?? null,
+      availableMetrics: [...new Set([...previousAvailable, ...providedMetrics])],
+    });
+    const updatingObservation = SOCIAL_METRICS.some(key => body[key] !== undefined) || body.raw != null;
+
     const snapshot = await prisma.socialMetricsSnapshot.upsert({
       where: {
         channelId_snapshotDate: {
@@ -161,16 +176,16 @@ export async function POST(request: Request) {
         linkClicks: finiteInt(body.linkClicks),
         engagementRate: finiteNumber(body.engagementRate),
         postsCount: finiteInt(body.postsCount),
-        rawJson: body.raw == null ? null : JSON.stringify(body.raw),
+        rawJson,
       },
       update: {
-        followers: finiteInt(body.followers),
-        impressions: finiteInt(body.impressions),
-        profileViews: finiteInt(body.profileViews),
-        linkClicks: finiteInt(body.linkClicks),
-        engagementRate: finiteNumber(body.engagementRate),
-        postsCount: finiteInt(body.postsCount),
-        rawJson: body.raw == null ? undefined : JSON.stringify(body.raw),
+        followers: body.followers === undefined ? undefined : finiteInt(body.followers),
+        impressions: body.impressions === undefined ? undefined : finiteInt(body.impressions),
+        profileViews: body.profileViews === undefined ? undefined : finiteInt(body.profileViews),
+        linkClicks: body.linkClicks === undefined ? undefined : finiteInt(body.linkClicks),
+        engagementRate: body.engagementRate === undefined ? undefined : finiteNumber(body.engagementRate),
+        postsCount: body.postsCount === undefined ? undefined : finiteInt(body.postsCount),
+        rawJson: updatingObservation ? rawJson : undefined,
         syncedAt: new Date(),
       },
     });
