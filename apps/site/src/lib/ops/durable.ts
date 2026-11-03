@@ -3,6 +3,7 @@
  * Dual-writes with in-process rings so Live Ops stays fast on cold starts.
  */
 
+import { createHash } from "node:crypto";
 import { prisma } from "@motivefx/database";
 import type { TelemetryEnvelope } from "./telemetry-envelope";
 import type { AuditRecord } from "./audit";
@@ -451,9 +452,22 @@ export async function persistDnaProfiles(
   }[]
 ): Promise<void> {
   if (!profiles.length) return;
+  // Repeated Ops reads and concurrent retries must not write the same
+  // profile three times within a short interval. A new minute or changed
+  // content receives a new identity, preserving legitimate fresh snapshots.
+  const recordedAt = new Date();
+  const minuteBucket = recordedAt.toISOString().slice(0, 16);
   try {
     await prisma.marketDnaSnapshot.createMany({
       data: profiles.map((p) => ({
+        id: `market-dna-bulk:${minuteBucket}:${createHash("sha256")
+          .update(JSON.stringify([
+            p.asset, p.version, p.primaryDrivers, p.negativeSensitivities,
+            p.currentRegime, p.confidence, p.signal,
+          ]))
+          .digest("hex")
+          .slice(0, 24)}`,
+        recordedAt,
         asset: p.asset,
         version: p.version,
         primaryDriversJson: JSON.stringify(p.primaryDrivers),
@@ -462,6 +476,7 @@ export async function persistDnaProfiles(
         confidence: p.confidence,
         signal: p.signal ?? undefined,
       })),
+      skipDuplicates: true,
     });
   } catch (e) {
     console.warn("[ops/durable] dna persist failed", e);

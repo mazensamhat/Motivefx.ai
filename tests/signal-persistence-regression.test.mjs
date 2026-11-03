@@ -298,3 +298,39 @@ test("durable signal persistence retries transient pool failures before seeding 
   assert.equal(outcomeUpserts.length, 1);
   assert.equal(outcomeUpserts[0].data[0].id, "signal-outcome:snapshot-retry:30:MARKET_OUTCOME_V4");
 });
+
+test("bulk MarketDNA retries are idempotent while fresh or changed profiles remain distinct", async (t) => {
+  const writes = [];
+  globalThis[harnessKey].prisma = {
+    marketDnaSnapshot: { createMany: async (args) => { writes.push(args); } },
+  };
+  const setNow = installMockDate(t, "2026-11-03T01:45:24.000Z");
+  const { persistDnaProfiles } = await loadDurableModule("dna-bulk-retry-identity");
+  const profile = {
+    asset: "BTC",
+    version: "MOTIVE_SIGNAL_V4",
+    primaryDrivers: ["PRICE"],
+    negativeSensitivities: [],
+    currentRegime: "BULLISH",
+    confidence: 78,
+    signal: 71,
+  };
+
+  await persistDnaProfiles([profile]);
+  setNow("2026-11-03T01:45:27.000Z");
+  await persistDnaProfiles([profile]); // same retry minute, exactly same state
+  await persistDnaProfiles([{ ...profile, confidence: 79 }]); // real new state
+  setNow("2026-11-03T01:46:00.000Z");
+  await persistDnaProfiles([profile]); // next observation minute
+
+  assert.equal(writes.length, 4);
+  for (const write of writes) {
+    assert.equal(write.skipDuplicates, true);
+    assert.equal(write.data.length, 1);
+    assert.match(write.data[0].id, /^market-dna-bulk:/);
+  }
+  assert.equal(writes[0].data[0].id, writes[1].data[0].id);
+  assert.notEqual(writes[1].data[0].id, writes[2].data[0].id);
+  assert.notEqual(writes[1].data[0].id, writes[3].data[0].id);
+  assert.equal(writes[0].data[0].recordedAt.toISOString(), "2026-11-03T01:45:24.000Z");
+});
