@@ -148,6 +148,30 @@ test("signal evidence preserves desk market identity", () => {
   for (const value of ["crypto","sports","predictions","stocks"]) assert.match(record,new RegExp(value));
   assert.match(record,/sourceReference/);
 });
+
+test("a single-asset backlog fills the batch after preserving first-pass asset fairness",async()=>{
+  const recordedAt=new Date('2026-01-01T00:00:00Z');
+  const row=(id,symbol)=>({id,symbol,outcome:'PENDING',evaluatorVersion:'MARKET_OUTCOME_V4',horizonDays:30,predictedScore:70,createdAt:recordedAt,
+    snapshot:{symbol,recordedAt,evidenceJson:JSON.stringify([{market:'crypto',id:`opp-crypto-${symbol}`}])}});
+  const updates=[];let pages=0;
+  const prisma={signalOutcome:{findMany:async()=>++pages===1?Array.from({length:500},(_,i)=>row(`usdt-${i}`,'USDT')):pages===2?[row('btc-due','BTC')]:[],
+    updateMany:async args=>{updates.push(args);return {count:1};}}};
+  const oldFetch=globalThis.fetch,oldCrypto=process.env.COINGECKO_OUTCOMES_ENABLED,oldStock=process.env.FINNHUB_HISTORICAL_ENABLED;
+  let requests=0;globalThis.fetch=async()=>{requests++;return {ok:true,json:async()=>({market_data:{current_price:{usd:100}}})};};
+  process.env.COINGECKO_OUTCOMES_ENABLED='true';process.env.FINNHUB_HISTORICAL_ENABLED='false';
+  try{
+    const {evaluatePendingOutcomes}=await loadOutcomesModule(prisma);
+    assert.deepEqual(await evaluatePendingOutcomes(16),{evaluated:16,inconclusive:0});
+    assert.equal(updates[2].where.id,'btc-due','another asset must be evaluated before the single-asset overflow');
+    assert.equal(new Set(updates.map(x=>x.where.id)).size,16);
+    assert.equal(requests,4,'shared historical dates use two requests per asset, not per row');
+  }finally{
+    globalThis.fetch=oldFetch;
+    if(oldCrypto===undefined)delete process.env.COINGECKO_OUTCOMES_ENABLED;else process.env.COINGECKO_OUTCOMES_ENABLED=oldCrypto;
+    if(oldStock===undefined)delete process.env.FINNHUB_HISTORICAL_ENABLED;else process.env.FINNHUB_HISTORICAL_ENABLED=oldStock;
+    delete globalThis.__outcomeLifecyclePrisma;
+  }
+});
 test("market outcomes use ground truth providers and never substitute signal movement", () => {
   assert.match(outcomes,/CoinGecko historical USD daily snapshot/);
   assert.match(outcomes,/Finnhub completed daily close/);
