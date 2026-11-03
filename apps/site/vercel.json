@@ -5,6 +5,10 @@
   "buildCommand": "cd ../.. && node scripts/build-terminal.mjs && npx pnpm@9.15.0 --filter @motivefx/site build",
   "crons": [
     {
+      "path": "/api/cron/social-metrics",
+      "schedule": "47 * * * *"
+    },
+    {
       "path": "/api/cron/outcomes",
       "schedule": "17 * * * *"
     },

@@ -3,6 +3,9 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 
+const observationSource = readFileSync(new URL("../apps/site/src/lib/ops/social-observation.ts", import.meta.url), "utf8");
+const observation = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(observationSource)).toString("base64")}`);
+
 function loadRoute(deps) {
   let source = readFileSync(
     new URL("../apps/site/src/app/api/admin/social-performance/route.ts", import.meta.url),
@@ -16,6 +19,9 @@ function loadRoute(deps) {
       "const { badRequest, forbidden, json, serverError, unauthorized } = deps.api;"
     )
     .replace('import { recordAudit } from "@/lib/ops/audit";', "const { recordAudit } = deps.audit;")
+    .replace('import { SOCIAL_METRICS, observedMetrics } from "@/lib/ops/social-observation";', "const { SOCIAL_METRICS, observedMetrics } = deps.observation;")
+    .replace('import { syncSocialProviders } from "@/lib/ops/social-provider-sync";', "const { syncSocialProviders } = deps.sync;")
+    .replace('export const maxDuration = 120;', '')
     .replace(/export async function GET/g, "async function GET")
     .replace(/export async function POST/g, "async function POST");
 
@@ -45,6 +51,8 @@ function createDeps({ auth = { ok: true, session: { id: "ops-1", email: "ops@exa
     audits: [],
   };
   const deps = {
+    observation,
+    sync: { syncSocialProviders: async () => ({ synced: 0, results: [] }) },
     admin: {
       requireAdminCapability: async (capability) => {
         calls.auth.push(capability);
@@ -95,6 +103,7 @@ function createDeps({ auth = { ok: true, session: { id: "ops-1", email: "ops@exa
           },
         },
         socialMetricsSnapshot: {
+          findUnique: async () => null,
           upsert: async (args) => {
             calls.socialMetricsSnapshotUpsert = args;
             return {
@@ -109,6 +118,7 @@ function createDeps({ auth = { ok: true, session: { id: "ops-1", email: "ops@exa
             return [
               {
                 id: "newer",
+                rawJson: JSON.stringify({ availableMetrics: observation.SOCIAL_METRICS }),
                 channelId: "youtube",
                 snapshotDate: "2026-10-08",
                 followers: 1200,
@@ -230,7 +240,7 @@ test("social performance ingest normalizes connector payloads and records an aud
   assert.equal(calls.socialMetricsSnapshotUpsert.create.linkClicks, 0);
   assert.equal(calls.socialMetricsSnapshotUpsert.create.engagementRate, 0.153);
   assert.equal(calls.socialMetricsSnapshotUpsert.create.postsCount, 3);
-  assert.equal(calls.socialMetricsSnapshotUpsert.create.rawJson, JSON.stringify({ connector: "qa", nested: { ok: true } }));
+  assert.deepEqual(JSON.parse(calls.socialMetricsSnapshotUpsert.create.rawJson), { source: "admin_import", payload: { connector: "qa", nested: { ok: true } }, availableMetrics: ["followers", "profileViews", "engagementRate", "postsCount"] });
   assert.equal(calls.creativePerformanceEventCreate.data.platform, "Tik Tok");
   assert.equal(calls.creativePerformanceEventCreate.data.impressions, 0);
   assert.equal(calls.creativePerformanceEventCreate.data.hold3s, 0);
@@ -273,6 +283,8 @@ test("social performance ingest preserves existing optional fields when connecto
   assert.equal(calls.marketingChannelUpsert.update.handle, undefined);
   assert.equal(calls.marketingChannelUpsert.update.url, undefined);
   assert.equal(calls.socialMetricsSnapshotUpsert.update.rawJson, undefined);
+  assert.equal(calls.socialMetricsSnapshotUpsert.update.followers, undefined);
+  assert.equal(calls.socialMetricsSnapshotUpsert.update.impressions, undefined);
   assert.equal(calls.creativePerformanceEventCreate, undefined);
   assert.equal(result.body.creativeEventId, null);
 });
