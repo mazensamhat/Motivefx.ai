@@ -141,6 +141,7 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
     // due, provider-supported candidates (or hit the scan/time guard).
     // Keep the included snapshot type without spending a pool slot on a take:0 query.
     const pending: Prisma.SignalOutcomeGetPayload<{ include: { snapshot: true } }>[] = [];
+    const overflow: typeof pending = [];
     let cursorId:string|undefined;
     let scanned=0;
     const symbolSamples = new Map<string,number>();
@@ -168,7 +169,10 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
         const dueAt=outcomeDueAt(row.snapshot.recordedAt.getTime(),row.horizonDays);
         if(dueAt!=null&&dueAt>Date.now()) continue;
         const symbol = row.symbol.toUpperCase();
-        if((symbolSamples.get(symbol) ?? 0)>=perSymbolLimit) continue;
+        if((symbolSamples.get(symbol) ?? 0)>=perSymbolLimit){
+          if(overflow.length<take) overflow.push(row);
+          continue;
+        }
         symbolSamples.set(symbol,(symbolSamples.get(symbol) ?? 0)+1);
         pending.push(row);
         if(pending.length>=take) break;
@@ -176,6 +180,9 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
       cursorId=page[page.length-1]?.id;
       if(page.length<CANDIDATE_PAGE_SIZE||!cursorId) break;
     }
+    // Give other assets their fair first pass, then use otherwise idle slots.
+    // A one-asset backlog must not stop at take/8 while most of the batch is empty.
+    pending.push(...overflow.slice(0,Math.max(0,take-pending.length)));
     for(const row of pending){
       if(Date.now()-started>=BATCH_BUDGET_MS) break;
       const market=inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol });
