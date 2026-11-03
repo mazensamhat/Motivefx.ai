@@ -18,6 +18,7 @@ function fixture() {
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
     module, exports: module.exports, console, setTimeout, clearTimeout,
     require: name => {
+      if (name === 'node:crypto') return require('node:crypto');
       if (name === '@motivefx/database') return { prisma };
       if (name.endsWith('signal-confluence')) return { classifyMotiveStance: () => 'hold' };
       throw Error(`Unexpected dependency: ${name}`);
