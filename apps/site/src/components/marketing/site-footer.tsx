@@ -33,7 +33,7 @@ export function SiteFooter() {
             <p className="footer-heading">Product</p>
             <ul className="footer-links">
               <li>
-                <Link href="#features">Features</Link>
+                <Link href="/#features">Features</Link>
               </li>
               <li>
                 <Link href="/motive-signal">Motive Signal</Link>
