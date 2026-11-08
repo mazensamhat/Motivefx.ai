@@ -24,7 +24,8 @@ jobs:
       - run: npm --prefix web ci
       - run: node --test tests/motive-reliability.test.mjs
   day-night-component-contrast:
-    runs-on: ubuntu-latest
+    # Playwright 1.57 Chromium binaries do not support ubuntu26.04 yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
