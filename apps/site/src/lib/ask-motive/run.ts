@@ -164,8 +164,17 @@ export async function runAskMotiveFallback(
   if (/whole portfolio|entire portfolio|all (my )?desk|scan (my )?book|across (all )?desk|everything i (own|hold)/.test(q)) {
     usedTools.push("scan_all_portfolios");
     const scan = await toolScanAllPortfolios(ctx.userId);
-    const lines: string[] = [`Scanned **${scan.desksScanned}** desks · **${scan.desksWithData}** with data.`];
+    const lines: string[] = [
+      `Read **${scan.desksScanned} of ${scan.desksAttempted}** desks · **${scan.desksWithData}** with data.`,
+    ];
+    if (scan.desksUnavailable > 0) {
+      lines.push(`**${scan.desksUnavailable} saved desk(s) unavailable.** Unread holdings must not be treated as empty.`);
+    }
     for (const r of scan.results) {
+      if ("unavailable" in r && r.unavailable) {
+        lines.push(`• **${r.module}**: unavailable. Saved data was not read; retry before taking action.`);
+        continue;
+      }
       if ("empty" in r && r.empty) {
         lines.push(`• ${r.module}: empty — ${r.message}`);
         continue;
