@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FAQ_ITEMS } from "@/content/faq/items";
+import { LANDING_FAQS } from "@/content/faq/items";
+import { SITE } from "@/lib/site-config";
 
 export function LandingFaq() {
-  const items = FAQ_ITEMS.slice(0, 4);
+  const items = LANDING_FAQS;
   const [open, setOpen] = useState(0);
 
   return (
@@ -14,6 +15,10 @@ export function LandingFaq() {
         <div className="section-header text-center">
           <p className="section-kicker">FAQ</p>
           <h2 className="section-title">Why Investors Trust MotiveFX.AI</h2>
+          <p className="section-desc mx-auto mt-3">
+            {SITE.description} MotiveFX.AI is part of Motive Corp. It publishes informational research
+            only — not a broker, investment advisor, or sportsbook.
+          </p>
         </div>
         <dl className="faq-accordion">
           {items.map((f, i) => {
@@ -25,7 +30,7 @@ export function LandingFaq() {
                     {f.question}
                   </button>
                 </dt>
-                {isOpen && <dd>{f.answer}</dd>}
+                <dd hidden={!isOpen}>{f.answer}</dd>
               </div>
             );
           })}

@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { isAdminEmail } from "@/lib/admin";
 import { getSession } from "@/lib/session";
 
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 /** Auth gate for all /admin routes. Console shell lives in (console)/layout. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();

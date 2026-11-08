@@ -4,7 +4,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   { question: "Is MotiveFX.AI financial advice?", answer: "No. MotiveFX provides informational market intelligence and research tools for educational purposes. We are not a registered investment advisor. Consult licensed professionals before investing." },
   { question: "What markets do you cover?", answer: "Stocks, crypto, pink sheets (micro-cap/OTC), sports betting analytics, and prediction markets. Choose modules by subscription tier." },
   { question: "What is Motive Signal?", answer: "A proprietary 0–100 confidence score combining volume, flow, momentum, and AI-assessed narrative factors. It prioritizes research — it is not a buy or sell recommendation." },
-  { question: "What is your data source?", answer: "Regulated market feeds, SEC EDGAR, exchange data (NASDAQ, NYSE, CBOE), licensed vendors (e.g. Polygon), and event market partners. Full list at /data-sources." },
+  { question: "What is your data source?", answer: "Live equity quotes use Finnhub when configured. Crypto uses CoinStats or CoinGecko. Sports odds use SharpAPI, with The Odds API as backup. Prediction markets use the Polymarket Gamma API. OpenAI writes Why It Matters briefs when configured. Options flow, congress trades, and pink-sheet movers are labeled demo samples — not Polygon, CBOE, or SEC EDGAR. Full list at /data-sources." },
   { question: "What is options flow?", answer: "Analysis of options trades for unusual size, sweeps, and open interest changes that may indicate informed positioning." },
   { question: "How does institutional buying work?", answer: "Large entities accumulate shares over time via blocks and lit markets. MotiveFX detects patterns vs historical baselines and surfaces in stock intelligence." },
   { question: "What is a dark pool?", answer: "A private trading venue where large orders execute with limited pre-trade transparency. Aggregated prints can supplement flow analysis." },
@@ -14,7 +14,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   { question: "What is congress trading?", answer: "Disclosed stock transactions by U.S. lawmakers under STOCK Act rules, typically published with delay." },
   { question: "What is unusual volume?", answer: "Trading volume significantly above recent averages, often worth investigating alongside price action." },
   { question: "Can I cancel anytime?", answer: "Yes. Manage billing through Stripe customer portal. Tier access continues through the paid period." },
-  { question: "Do you offer a free trial?", answer: "Yes — 7-day trial on eligible plans. See pricing for details." },
+  { question: "Do you offer a free trial?", answer: "No. Web plans are paid subscriptions: Lite, Pro, Ultra, and Ultra+ bill monthly, and Elite is annual. You can cancel anytime; access continues through the paid period. See /pricing." },
 ];
 
 export function faqSlug(question: string): string {
@@ -31,3 +31,18 @@ export function getFaqBySlug(slug: string) {
 export function allFaqSlugs() {
   return FAQ_ITEMS.map((f) => faqSlug(f.question));
 }
+
+/** Questions already shown on the homepage accordion. */
+export const LANDING_FAQS = FAQ_ITEMS.slice(0, 4);
+
+const PRICING_FAQ_QUESTIONS = [
+  "Is MotiveFX.AI financial advice?",
+  "What markets do you cover?",
+  "Can I cancel anytime?",
+  "Do you offer a free trial?",
+];
+
+/** Objections answered on the pricing page — same facts as the FAQ hub. */
+export const PRICING_FAQS = PRICING_FAQ_QUESTIONS.map(
+  (question) => FAQ_ITEMS.find((item) => item.question === question)!
+);

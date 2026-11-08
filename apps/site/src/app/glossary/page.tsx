@@ -4,7 +4,8 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Financial Glossary",
-  description: "500+ financial terms explained — options flow, institutional buying, Motive Signal, and more.",
+  description:
+    "Financial terms used on MotiveFX — relative volume, options flow, implied volatility, Motive Signal, and related research.",
   path: "/glossary",
 });
 

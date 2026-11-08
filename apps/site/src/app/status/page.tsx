@@ -5,11 +5,13 @@ import { BrandLogo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { StatusRefresh } from "@/components/status/status-refresh";
 import { buildPublicStatusSnapshot, type PublicComponentStatus } from "@/lib/public-status";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "MotiveFX System Status",
+export const metadata: Metadata = pageMetadata({
+  title: "System Status",
   description: "Current availability and operating history for MotiveFX services.",
-};
+  path: "/status",
+});
 
 export const dynamic = "force-dynamic";
 

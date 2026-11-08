@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { MOTIVE_CORP } from "./motive-family";
 import { SITE } from "./site-config";
+import { SOCIAL_LINKS } from "./social";
 import {
   ANDROID_PACKAGE_ID,
   IOS_APP_STORE_ID,
@@ -7,6 +9,7 @@ import {
   IOS_APP_STORE_URL_GLOBAL,
   PLAY_STORE_URL,
 } from "./store-links";
+import { formatTierPrice, PRICING_TIERS } from "./tiers";
 
 export function pageMetadata({
   title,
@@ -20,6 +23,12 @@ export function pageMetadata({
   type?: "website" | "article";
 }): Metadata {
   const url = `${SITE.url}${path}`;
+  const image = {
+    url: "/opengraph-image",
+    width: 1200,
+    height: 630,
+    alt: `${SITE.name} — ${SITE.tagline}`,
+  };
   return {
     title: `${title} | ${SITE.name}`,
     description,
@@ -30,12 +39,22 @@ export function pageMetadata({
       url,
       siteName: SITE.name,
       type,
+      images: [image],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [image.url],
     },
+  };
+}
+
+/** Auth, account, and app shells should not compete with public landing pages. */
+export function noIndexMetadata(title: string): Metadata {
+  return {
+    title,
+    robots: { index: false, follow: false },
   };
 }
 
@@ -72,13 +91,11 @@ export function articleJsonLd({
   title,
   description,
   path,
-  datePublished,
   author = "MotiveFX Research Team",
 }: {
   title: string;
   description: string;
   path: string;
-  datePublished: string;
   author?: string;
 }): JsonLd {
   return {
@@ -86,12 +103,12 @@ export function articleJsonLd({
     "@type": "Article",
     headline: title,
     description,
-    datePublished,
     author: { "@type": "Organization", name: author },
     publisher: {
       "@type": "Organization",
       name: SITE.name,
       url: SITE.url,
+      logo: { "@type": "ImageObject", url: `${SITE.url}/brand/motivefx-logo.png` },
     },
     mainEntityOfPage: `${SITE.url}${path}`,
   };
@@ -105,7 +122,18 @@ export function organizationJsonLd(): JsonLd {
     url: SITE.url,
     description: SITE.description,
     email: SITE.email,
-    sameAs: [PLAY_STORE_URL, IOS_APP_STORE_URL, IOS_APP_STORE_URL_GLOBAL],
+    logo: `${SITE.url}/brand/motivefx-logo.png`,
+    parentOrganization: {
+      "@type": "Organization",
+      name: MOTIVE_CORP.name,
+      url: MOTIVE_CORP.href,
+    },
+    sameAs: [
+      PLAY_STORE_URL,
+      IOS_APP_STORE_URL,
+      IOS_APP_STORE_URL_GLOBAL,
+      ...SOCIAL_LINKS.map((link) => link.href),
+    ],
   };
 }
 
@@ -115,11 +143,29 @@ export function webSiteJsonLd(): JsonLd {
     "@type": "WebSite",
     name: SITE.name,
     url: SITE.url,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${SITE.url}/glossary?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
+    description: SITE.description,
+    inLanguage: "en",
+    publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },
+  };
+}
+
+/** Public plan offers. Prices come from the same tier table the pricing page renders. */
+export function pricingOffersJsonLd(): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: "MotiveFX",
+    description: SITE.description,
+    brand: { "@type": "Brand", name: SITE.name },
+    url: `${SITE.url}/pricing`,
+    offers: PRICING_TIERS.map((tier) => ({
+      "@type": "Offer",
+      name: tier.name,
+      description: `${tier.tagline} — ${formatTierPrice(tier)}`,
+      price: tier.annualUsd ?? tier.monthlyUsd,
+      priceCurrency: "USD",
+      url: `${SITE.url}/pricing#${tier.id === "ultra_plus" ? "ultra-plus" : tier.id}`,
+    })),
   };
 }
 

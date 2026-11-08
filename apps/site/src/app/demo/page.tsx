@@ -61,10 +61,10 @@ export default function DemoPage() {
               Launch read-only terminal
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
-            <Button href="/pricing" size="lg" variant="secondary">
-              Start free trial
-            </Button>
           </div>
+          <p className="mt-4 text-sm text-slate-400">
+            Ready to subscribe? <Link href="/pricing">See plans</Link>
+          </p>
           <ul className="mt-6 grid gap-3 sm:grid-cols-3">
             <li className="flex gap-2 text-sm text-slate-300">
               <Eye className="h-4 w-4 shrink-0 text-brand-green" aria-hidden />

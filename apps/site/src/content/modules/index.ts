@@ -76,7 +76,7 @@ export const MODULES: Record<string, EntityPageContent> = {
       {
         question: "What data sources power stock intelligence?",
         answer:
-          "We aggregate regulated market data, SEC EDGAR filings, exchange feeds (NASDAQ, NYSE), and licensed vendor streams. See our Data Sources page for the full list.",
+          "Equity quotes use Finnhub when configured. Unusual options flow and congress trades are labeled demo samples, not live exchange or SEC EDGAR feeds. See the Data Sources page for the full list.",
       },
       {
         question: "Can I use MotiveFX with only the stocks module?",
