@@ -243,19 +243,27 @@ export async function toolScanAllPortfolios(userId: string) {
       try {
         return await toolAnalyzePortfolio({ userId, module });
       } catch {
-        return { module, empty: true, message: `${module} scan unavailable right now.` };
+        // A failed read is not a successful empty result. Never invent an empty ledger.
+        return { module, unavailable: true, message: `${module} scan unavailable right now. Saved data was not read.` };
       }
     })
   );
-  const withData = results.filter((r) => !("empty" in r && r.empty));
+  const unread = results.filter((r) => "unavailable" in r && r.unavailable);
+  const withData = results.filter(
+    (r) => !("unavailable" in r && r.unavailable) && !("empty" in r && r.empty)
+  );
   return {
-    desksScanned: modules.length,
+    desksAttempted: modules.length,
+    desksScanned: modules.length - unread.length,
+    desksUnavailable: unread.length,
     desksWithData: withData.length,
     results,
     note:
-      withData.length === 0
-        ? "No holdings or open slips found across desks. Guide the user to add ledger items."
-        : "Summarize across desks using stance language. Call out empty desks briefly.",
+      unread.length > 0
+        ? "Some saved desks were unavailable. Never infer an unread ledger is empty or advise recreating its data. Ask the user to retry; summarize only the successfully read desks."
+        : withData.length === 0
+          ? "No holdings or open slips found across desks. Guide the user to add ledger items."
+          : "Summarize across desks using stance language. Call out empty desks briefly.",
   };
 }
 
