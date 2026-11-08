@@ -46,7 +46,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <p>
           This tool page is live for SEO and internal linking. The interactive calculator will embed
           here from the MotiveFX terminal.{" "}
-          <Link href="/pricing">Start free trial</Link> for full platform access.
+          <Link href="/pricing">See plans</Link> for full platform access.
         </p>
       </ContentProse>
     </ContentLayout>

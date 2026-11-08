@@ -1,9 +1,8 @@
 import { BrandLogo } from "@/components/brand/logo";
 import { ResetPasswordForm } from "@/components/auth/password-reset-forms";
+import { noIndexMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Reset password — MotiveFX.AI",
-};
+export const metadata = noIndexMetadata("Reset password — MotiveFX.AI");
 
 export default function ResetPasswordPage() {
   return (

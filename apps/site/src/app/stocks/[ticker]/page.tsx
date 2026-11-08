@@ -43,7 +43,7 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
       ]}
       faqs={s.faqs}
       jsonLd={[
-        articleJsonLd({ title: `${s.name} analysis`, description: s.metaDescription, path, datePublished: new Date().toISOString().slice(0, 10) }),
+        articleJsonLd({ title: `${s.name} analysis`, description: s.metaDescription, path }),
         faqJsonLd(s.faqs),
       ]}
     >
@@ -59,8 +59,8 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
       <ContentSection title="Related research">
         <ContentProse>
           <p>
-            Open MotiveFX for live Motive Signal, options flow, and portfolio impact on {s.ticker}.{" "}
-            <Link href="/pricing">Start free trial →</Link>
+            Research {s.ticker} with Motive Signal on MotiveFX. Options flow stays labeled as a demo sample
+            until a dedicated vendor is wired. <Link href="/pricing">See plans →</Link>
           </p>
         </ContentProse>
       </ContentSection>

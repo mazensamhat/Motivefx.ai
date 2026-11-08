@@ -32,7 +32,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
       description={content.lead}
       faqs={content.faqs}
       jsonLd={[
-        articleJsonLd({ title: content.title, description: content.metaDescription, path: `/compare/${slug}`, datePublished: "2026-01-01" }),
+        articleJsonLd({ title: content.title, description: content.metaDescription, path: `/compare/${slug}` }),
         faqJsonLd(content.faqs),
       ]}
     >

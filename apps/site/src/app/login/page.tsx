@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthPageShell } from "@/components/auth/auth-form";
+import { noIndexMetadata } from "@/lib/seo";
 import { getSession } from "@/lib/session";
 
-export const metadata = {
-  title: "Sign in — MotiveFX.AI",
-};
+export const metadata = noIndexMetadata("Sign in — MotiveFX.AI");
 
 export default async function LoginPage() {
   const session = await getSession();

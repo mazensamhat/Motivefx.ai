@@ -13,7 +13,8 @@ const TOOLS = [
 
 export const metadata = pageMetadata({
   title: "Free Market Tools",
-  description: "Position size, risk, options, and calendar tools from MotiveFX — linkable SEO assets.",
+  description:
+    "Position size, risk, portfolio diversification, options profit, earnings calendar, and market-hours tools from MotiveFX.",
   path: "/tools",
 });
 

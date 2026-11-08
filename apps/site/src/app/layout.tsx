@@ -29,15 +29,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: "MotiveFX.AI — Predictive Market Intelligence",
   description: SITE.description,
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: "MotiveFX.AI — The Market Doesn't Move Randomly.",
-    description: SITE.description,
-    url: SITE.url,
-    siteName: "MotiveFX.AI",
-  },
   /** Safari Smart App Banner → live App Store listing. */
   other: {
     "apple-itunes-app": appleItunesAppMeta(),

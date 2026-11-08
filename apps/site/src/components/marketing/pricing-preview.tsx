@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,8 +6,6 @@ import { PRICING_TIERS, formatTierPrice } from "@/lib/tiers";
 const MODULE_DOTS = ["📈", "₿", "🎯", "🏈", "📊"];
 
 export function PricingPreview() {
-  const [annual, setAnnual] = useState(false);
-
   return (
     <section id="pricing" className="section-pad pricing-section">
       <div className="mx-auto max-w-6xl px-4">
@@ -21,14 +16,10 @@ export function PricingPreview() {
             Same Lite → Elite ladder — framed by how deep the intelligence goes, not by locking asset
             classes away. Explorer · Professional · Institutional · Enterprise VIP.
           </p>
-          <div className="pricing-toggle">
-            <button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>
-              Monthly
-            </button>
-            <button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>
-              Annual <span className="save-pill">Save up to 20%</span>
-            </button>
-          </div>
+          <p className="section-desc mx-auto mt-3">
+            Lite, Pro, Ultra, and Ultra+ bill monthly. Elite is{" "}
+            {formatTierPrice(PRICING_TIERS.find((tier) => tier.id === "elite")!)}.
+          </p>
         </div>
 
         <div className="pricing-preview-grid landing-pricing">

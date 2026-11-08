@@ -92,9 +92,9 @@ export function ContentLayout({
         {cta && (
           <section className="content-cta">
             <h2>Ready to research with context?</h2>
-            <p>Start with a 7-day trial — pick your markets and open the intelligence terminal.</p>
+            <p>Pick a paid plan, choose your desks, and open the intelligence terminal.</p>
             <Button href="/pricing" size="lg">
-              Start free trial
+              See plans
             </Button>
           </section>
         )}

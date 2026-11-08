@@ -30,6 +30,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/privacy",
     "/terms",
     "/data-deletion",
+    "/opportunity-radar",
+    "/limitations",
+    "/status",
   ];
 
   const urls: MetadataRoute.Sitemap = staticPages.map((path) => ({
@@ -55,6 +58,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
   add(allFaqSlugs().map((s) => `/faq/${s}`), 0.65);
   add(allAiSlugs().map((s) => `/ai/${s}`), 0.85);
   add(allMetricSlugs().map((s) => `/metrics/${s}`), 0.7);
+  add(
+    [
+      "/tools/position-size-calculator",
+      "/tools/risk-calculator",
+      "/tools/portfolio-diversification",
+      "/tools/options-profit-calculator",
+      "/tools/earnings-calendar",
+      "/tools/market-hours",
+    ],
+    0.6
+  );
   add(allLearnCategorySlugs().map((c) => `/learn/${c}`), 0.8);
   add(
     allLearnArticleParams().map(({ category, slug }) => `/learn/${category}/${slug}`),

@@ -33,7 +33,6 @@ export function EntityPageView({
           title: content.title,
           description: content.metaDescription,
           path,
-          datePublished: new Date().toISOString().slice(0, 10),
         }),
         ...(content.faqs.length ? [faqJsonLd(content.faqs)] : []),
       ]}
