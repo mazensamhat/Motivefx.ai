@@ -169,7 +169,7 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
               />
               <span>
                 I agree to the{" "}
-                <Link href="/faq/is-motivefx-ai-financial-advice" className="text-[#00e676] hover:underline">
+                <Link href="/terms" className="text-[#00e676] hover:underline">
                   Terms of Service
                 </Link>
               </span>
