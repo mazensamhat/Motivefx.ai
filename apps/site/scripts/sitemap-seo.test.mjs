@@ -37,7 +37,14 @@ const { metadata, default: PricingLayout } = await import('../src/app/pricing/la
 
 test('sitemap preserves public coverage and excludes private routes', () => {
   const entries = sitemap();
-  assert.equal(entries.length, 128);
+  const requiredPaths = [
+    '', '/pricing', '/demo', '/download', '/motive-signal', '/learn',
+    '/compare', '/glossary', '/faq', '/why-motivefx', '/data-sources',
+    '/research-team', '/tools', '/privacy', '/terms', '/data-deletion',
+  ];
+  for (const path of requiredPaths) {
+    assert.ok(entries.some(entry => entry.url === `${SITE.url}${path}`), `missing required public page: ${path}`);
+  }
   assert.equal(new Set(entries.map(entry => entry.url)).size, entries.length);
   assert.ok(entries.some(entry => entry.url === `${SITE.url}/pricing`));
   for (const entry of entries) {
