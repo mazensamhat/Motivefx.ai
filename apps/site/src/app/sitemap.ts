@@ -35,16 +35,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/status",
   ];
 
+  // Omit lastModified until per-page content update dates are available.
+  // Generation time is not a reliable content modification date.
   const urls: MetadataRoute.Sitemap = staticPages.map((path) => ({
     url: `${base}${path}`,
-    lastModified: new Date(),
     changeFrequency: path === "" ? "daily" : "weekly",
     priority: path === "" ? 1 : 0.8,
   }));
 
   const add = (paths: string[], priority = 0.7) => {
     for (const path of paths) {
-      urls.push({ url: `${base}${path}`, lastModified: new Date(), changeFrequency: "weekly", priority });
+      urls.push({ url: `${base}${path}`, changeFrequency: "weekly", priority });
     }
   };
 
@@ -77,3 +78,4 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return urls;
 }
+
