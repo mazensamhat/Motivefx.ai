@@ -46,8 +46,8 @@ export const MOTIVE_FAMILY_LINKS: MotiveFamilyLink[] = [
   {
     id: "motiveiq",
     name: "Motive IQ",
-    tagline: "Automotive Intelligence",
-    href: "https://www.motiveiqs.com/gate",
+    tagline: "Secret project — coming soon.",
+    href: "https://www.motive-corp.com/platforms",
   },
   {
     id: "motivefx",
