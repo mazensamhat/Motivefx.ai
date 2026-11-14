@@ -540,7 +540,7 @@ export const ECOSYSTEM = [
   { name: "Motive Life", role: "Personal Intelligence", href: "https://www.mymotivelife.com" },
   { name: "MotiveOne", role: "AI CRM & business operating system", href: "https://motive1crm.com" },
   { name: "My Motive Pulse", role: "Local business growth", href: "https://www.mymotivepulse.com" },
-  { name: "Motive IQ", role: "Automotive Intelligence", href: "https://www.motiveiqs.com/gate" },
+  { name: "Motive IQ", role: "Secret project — coming soon.", href: "https://www.motive-corp.com/platforms" },
 ];
 
 export const FOOTER_MARKETS = [
