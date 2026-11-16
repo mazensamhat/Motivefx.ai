@@ -38,10 +38,11 @@ The following are real remaining work, not evidence that delivery is already liv
 
 1. Apply the reviewed additive migration in an appropriate environment and verify
    the role/RLS behavior. This implementation checkpoint does not apply it.
-2. Complete the authenticated opt-in/address-confirmation flow and device
-   permission/registration lifecycle. Never populate consent or confirmed address
-   records merely because a user pays or has an account. Recheck native reader/IAP
-   policy before activating paid push on a store build.
+2. Activate and accept the implemented authenticated opt-in/address-confirmation
+   and device registration/revocation flow described in `EMAIL_VERIFICATION.md`.
+   Native permission/token lifecycle still requires a supported device build.
+   Never populate consent merely because a user pays or has an account. iOS
+   remains excluded from paid push while it uses the free-reader strategy.
 3. Configure a valid postal address, verified sender, unsubscribe origin, the
    existing Resend account's webhook secret, and any required Expo push credentials.
    No credentials are created or rotated by this package.
