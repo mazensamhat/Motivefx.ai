@@ -54,7 +54,8 @@ export const PRICING_TIERS: PricingTier[] = [
       "Professional intelligence depth",
       "Opportunity Radar across 2 desks",
       "Portfolio Intelligence + AI Memory",
-      "Push alerts + Motive Daily email",
+      "Watch Agents + in-app alerts",
+      "Email and background push are not active yet",
     ],
   },
   {
