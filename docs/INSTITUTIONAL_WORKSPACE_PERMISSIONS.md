@@ -20,6 +20,6 @@ The Terminal uses the server capabilities to disable unavailable actions. Loadin
 
 ## Verification and limits
 
-`node --test tests/institutional-workspace.test.mjs` exercises the real policy, service, route and rendered component with isolated account/database/provider doubles. It checks role and tenant boundaries, invalid inputs, a role change between candidate lookup and locked recheck, unavailable storage, commit-before-send ordering and no workspace write/send after denial. Site and web TypeScript checks also pass.
+`node --test tests/institutional-workspace.test.mjs` exercises the real policy, service, route and rendered component with isolated account/database/provider doubles. It checks role and tenant boundaries, invalid inputs, a role change between candidate lookup and locked recheck, unavailable storage, commit-before-send ordering and no workspace write/send after denial. Site and web TypeScript checks also pass. Actual PostgreSQL acceptance additionally proves idempotent workspace creation, no persisted research after role denial, and a real concurrent downgrade blocking the pending write; see `TRANSACTIONAL_POSTGRES_ACCEPTANCE.md`.
 
 These tests do not send real invitations, mutate production teams or impersonate a customer session. Existing invite-claim identity behavior and per-user API-key ownership are retained. Full customer invitation delivery, multi-user browser acceptance, API-key lifecycle and named-book switching remain separate acceptance tasks. Physical/native and provider activation prerequisites are unchanged.

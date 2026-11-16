@@ -17,9 +17,11 @@ export async function enqueueNotification(input: {
   requireStorage();
   const key = deliveryKey(input.channel, input.userId, input.eventKey, input.targetRef);
   const content = safeNotificationContent(input.content);
-  await prisma.notificationDelivery.upsert({
-    where: { key }, update: {},
-    create: { key, userId: input.userId, channel: input.channel, eventKey: input.eventKey, targetRef: input.targetRef,
+  // Prisma's empty-update upsert can race on a missing row. A single INSERT
+  // ON CONFLICT DO NOTHING keeps the first payload immutable under concurrency.
+  await prisma.notificationDelivery.createMany({
+    skipDuplicates: true,
+    data: { key, userId: input.userId, channel: input.channel, eventKey: input.eventKey, targetRef: input.targetRef,
       contentJson: JSON.stringify(content), createdAt: new Date(now), availableAt: new Date(now), expiresAt: new Date(now + MAX_DELIVERY_AGE_MS) },
   });
   return key;

@@ -37,8 +37,11 @@ billing to another MotiveFX account.
 
 ## Remaining production acceptance
 
-The implementation tests use real Stripe signature verification and provider/DB
-doubles. No live charge, provider send or customer mutation was performed during
+The original implementation tests use real Stripe signature verification and
+provider/DB doubles. Additional actual PostgreSQL acceptance now proves event
+deduplication, entitlement/audit rollback and retry, subscription ordering and
+setup-send claims; see `TRANSACTIONAL_POSTGRES_ACCEPTANCE.md`. Provider responses
+and outbound delivery remain synthetic. No live charge, provider send or customer mutation was performed during
 verification. Confirm actual event subscriptions in the existing Stripe endpoint
 before claiming new event coverage is receiving production traffic. Required
 handler events are checkout completion/async success, subscription created,

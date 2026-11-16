@@ -46,11 +46,13 @@ device registration. All are absent/off in the deployment inspected during this
 work. No email, push, schedule, consent backfill, credential change or native
 purchase is activated.
 
-A test environment must first apply both additive migrations and verify DB roles,
-RLS, account deletion cascades and transaction behavior. Then use controlled
+Disposable PostgreSQL acceptance now verifies the notification and verification
+migrations plus the FK-contract correction, RLS, account deletion cascades and
+transaction behavior (see `TRANSACTIONAL_POSTGRES_ACCEPTANCE.md`). Production
+schema/role acceptance is still required. Then use controlled
 addresses/devices to verify confirmation, spam/rate handling, resend, opt-out,
-revocation and exact provider receipts before real activation. The tests in this
-PR use provider/storage doubles; they are not proof of inbox or device delivery.
+revocation and exact provider receipts before real activation. Provider responses remain synthetic; neither isolated PostgreSQL acceptance
+nor the original doubled tests prove inbox or device delivery.
 Production activation remains outside this no-send/no-data-write package.
 
 The backend refuses tokens already owned by another account. Shared-device account

@@ -36,7 +36,8 @@ push, change customer consent, register devices, or apply a production migration
 
 The following are real remaining work, not evidence that delivery is already live:
 
-1. Apply the reviewed additive migration in an appropriate environment and verify
+1. Apply the notification/verification migrations and FK-contract correction
+   listed in `TRANSACTIONAL_POSTGRES_ACCEPTANCE.md` in an authorized environment and verify
    the role/RLS behavior. This implementation checkpoint does not apply it.
 2. Activate and accept the implemented authenticated opt-in/address-confirmation
    and device registration/revocation flow described in `EMAIL_VERIFICATION.md`.
