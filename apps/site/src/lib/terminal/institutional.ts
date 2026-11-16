@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@motivefx/database";
-import type { User } from "@prisma/client";
+import type { Prisma, User } from "@prisma/client";
+import { WorkspaceAccessError, workspacePermissions, workspaceRole, type WorkspaceCapability, type TeamRole } from "./institutional-policy";
 
-export type TeamRole = "owner" | "admin" | "analyst" | "viewer";
+export type { TeamRole } from "./institutional-policy";
+type WorkspaceDb = Prisma.TransactionClient;
 
 export type ScenarioTemplate = {
   id: string;
@@ -34,43 +36,69 @@ export function parseTeamPrefs(raw: string | null | undefined): TeamPrefs {
   }
 }
 
+export async function getWorkspaceAccess(userId: string, db: WorkspaceDb = prisma) {
+  const membership = await db.teamMember.findFirst({
+    where: { userId, status: "active" },
+    include: { team: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const team = membership?.team ?? await db.team.findFirst({ where: { ownerId: userId }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  if (!team) return null;
+  const role = workspaceRole(team.ownerId, userId, membership?.role);
+  if (!role) throw new WorkspaceAccessError();
+  return { team, role, permissions: workspacePermissions(role) };
+}
+
 export async function getUserTeam(userId: string) {
-  try {
-    const membership = await prisma.teamMember.findFirst({
-      where: { userId, status: "active" },
-      include: { team: true },
-      orderBy: { createdAt: "asc" },
-    });
-    if (membership) return membership.team;
-    return prisma.team.findFirst({ where: { ownerId: userId }, orderBy: { createdAt: "asc" } });
-  } catch {
-    return null;
-  }
+  return (await getWorkspaceAccess(userId))?.team ?? null;
+}
+
+/** Check and use current membership in one transaction; denial has no workspace writes. */
+export async function withWorkspaceAccess<T>(
+  userId: string,
+  capability: WorkspaceCapability,
+  operation: (db: WorkspaceDb, access: NonNullable<Awaited<ReturnType<typeof getWorkspaceAccess>>>) => Promise<T>,
+) {
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const candidate = await getWorkspaceAccess(userId, tx);
+    if (!candidate) throw new WorkspaceAccessError("Create or join a workspace first.");
+    // Membership removal, role edits and ownership transfer cannot race a checked write.
+    await tx.$queryRaw`SELECT "id" FROM "Team" WHERE "id" = ${candidate.team.id} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "TeamMember" WHERE "teamId" = ${candidate.team.id} AND "userId" = ${userId} FOR UPDATE`;
+    const access = await getWorkspaceAccess(userId, tx);
+    if (!access || access.team.id !== candidate.team.id || !access.permissions[capability]) throw new WorkspaceAccessError();
+    return operation(tx, access);
+  });
 }
 
 export async function ensureTeamForOwner(user: User, name?: string) {
-  const existing = await getUserTeam(user.id);
-  if (existing) return existing;
-
-  const team = await prisma.team.create({
-    data: {
-      name: name?.trim() || `${user.displayName ?? user.email.split("@")[0]}'s workspace`,
-      ownerId: user.id,
-      prefsJson: JSON.stringify(emptyTeamPrefs()),
-      members: {
-        create: {
-          userId: user.id,
-          role: "owner",
-          status: "active",
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+    const existing = await getWorkspaceAccess(user.id, tx);
+    if (existing) {
+      if (existing.role !== "owner") throw new WorkspaceAccessError();
+      return existing.team;
+    }
+    return tx.team.create({
+      data: {
+        name: name?.trim() || `${user.displayName ?? user.email.split("@")[0]}'s workspace`,
+        ownerId: user.id,
+        prefsJson: JSON.stringify(emptyTeamPrefs()),
+        members: {
+          create: {
+            userId: user.id,
+            role: "owner",
+            status: "active",
+          },
         },
       },
-    },
+    });
   });
-  return team;
 }
 
-export async function listTeamMembers(teamId: string) {
-  return prisma.teamMember.findMany({
+export async function listTeamMembers(teamId: string, db: WorkspaceDb = prisma) {
+  return db.teamMember.findMany({
     where: { teamId },
     orderBy: { createdAt: "asc" },
     include: { user: { select: { id: true, email: true, displayName: true } } },
@@ -80,18 +108,19 @@ export async function listTeamMembers(teamId: string) {
 export async function inviteToTeam(opts: {
   teamId: string;
   email: string;
-  role?: TeamRole;
-}) {
+  role?: Exclude<TeamRole, "owner">;
+}, db: WorkspaceDb = prisma) {
+  if (opts.role && !["admin", "analyst", "viewer"].includes(opts.role)) throw new WorkspaceAccessError();
   const email = opts.email.trim().toLowerCase();
   if (!email.includes("@")) throw new Error("Valid email required");
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  const existingUser = await db.user.findUnique({ where: { email } });
   if (existingUser) {
-    const already = await prisma.teamMember.findFirst({
+    const already = await db.teamMember.findFirst({
       where: { teamId: opts.teamId, userId: existingUser.id },
     });
     if (already) return already;
-    return prisma.teamMember.create({
+    return db.teamMember.create({
       data: {
         teamId: opts.teamId,
         userId: existingUser.id,
@@ -101,12 +130,12 @@ export async function inviteToTeam(opts: {
     });
   }
 
-  const pending = await prisma.teamMember.findFirst({
+  const pending = await db.teamMember.findFirst({
     where: { teamId: opts.teamId, invitedEmail: email, status: "pending" },
   });
   if (pending) return pending;
 
-  return prisma.teamMember.create({
+  return db.teamMember.create({
     data: {
       teamId: opts.teamId,
       invitedEmail: email,
@@ -135,8 +164,8 @@ export async function claimPendingInvites(user: User) {
   }
 }
 
-export async function listTeamNotes(teamId: string, limit = 40) {
-  return prisma.teamNote.findMany({
+export async function listTeamNotes(teamId: string, limit = 40, db: WorkspaceDb = prisma) {
+  return db.teamNote.findMany({
     where: { teamId },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -151,8 +180,8 @@ export async function createTeamNote(opts: {
   body: string;
   themeId?: string;
   symbol?: string;
-}) {
-  return prisma.teamNote.create({
+}, db: WorkspaceDb = prisma) {
+  return db.teamNote.create({
     data: {
       teamId: opts.teamId,
       authorId: opts.authorId,
@@ -164,8 +193,8 @@ export async function createTeamNote(opts: {
   });
 }
 
-export async function updateTeamPrefs(teamId: string, prefs: TeamPrefs) {
-  return prisma.team.update({
+export async function updateTeamPrefs(teamId: string, prefs: TeamPrefs, db: WorkspaceDb = prisma) {
+  return db.team.update({
     where: { id: teamId },
     data: { prefsJson: JSON.stringify(prefs) },
   });
@@ -255,16 +284,19 @@ export async function resolveApiKeyBearer(authHeader: string | null) {
 }
 
 export async function buildInstitutionalDashboard(userId: string) {
-  const team = await getUserTeam(userId);
-  if (!team) {
+  const access = await getWorkspaceAccess(userId);
+  if (!access) {
     return {
       team: null,
       members: [],
       notes: [],
       prefs: emptyTeamPrefs(),
       apiKeyCount: 0,
+      role: null,
+      permissions: workspacePermissions(null),
     };
   }
+  const { team, role, permissions } = access;
   const [members, notes, apiKeyCount] = await Promise.all([
     listTeamMembers(team.id),
     listTeamNotes(team.id, 12),
@@ -290,5 +322,7 @@ export async function buildInstitutionalDashboard(userId: string) {
     })),
     prefs: parseTeamPrefs(team.prefsJson),
     apiKeyCount,
+    role,
+    permissions,
   };
 }

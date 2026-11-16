@@ -13,6 +13,8 @@ function apiHourlyQuotaLabel(tier: PricingTierId): string {
 
 type Dashboard = {
   team: { id: string; name: string; ownerId: string } | null;
+  role: "owner" | "admin" | "analyst" | "viewer" | null;
+  permissions: { read: boolean; invite: boolean; inviteAdmin: boolean; research: boolean; preferences: boolean };
   members: Array<{
     id: string;
     role: string;
@@ -176,14 +178,21 @@ function TeamWorkspaceSection() {
   const [noteBody, setNoteBody] = useState("");
   const [tplLabel, setTplLabel] = useState("");
   const [tplSeed, setTplSeed] = useState("");
+  const [loading, setLoading] = useState(true);
+  const canInvite = !loading && !error && dash?.permissions?.invite === true;
+  const canResearch = !loading && !error && dash?.permissions?.research === true;
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await apiGet<{ dashboard: Dashboard }>("/institutional/workspace");
       setDash(res.dashboard);
       setError(null);
     } catch (e) {
+      setDash(null);
       setError(e instanceof Error ? e.message : "Unable to load workspace");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -192,6 +201,7 @@ function TeamWorkspaceSection() {
   }, [load]);
 
   async function createTeam() {
+    if (loading || error || !dash || dash.team) return;
     setBusy(true);
     try {
       await apiPost("/institutional/workspace", { action: "create_team" });
@@ -204,7 +214,7 @@ function TeamWorkspaceSection() {
   }
 
   async function invite() {
-    if (!inviteEmail.trim()) return;
+    if (!canInvite || !inviteEmail.trim()) return;
     setBusy(true);
     try {
       const res = await apiPost<{ emailSent?: boolean; emailError?: string }>(
@@ -216,6 +226,7 @@ function TeamWorkspaceSection() {
         }
       );
       setInviteEmail("");
+      await load();
       if (res.emailSent === false) {
         setError(
           res.emailError
@@ -225,7 +236,6 @@ function TeamWorkspaceSection() {
       } else {
         setError(null);
       }
-      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invite failed");
     } finally {
@@ -234,7 +244,7 @@ function TeamWorkspaceSection() {
   }
 
   async function addNote() {
-    if (!noteTitle.trim() || !noteBody.trim()) return;
+    if (!canResearch || !noteTitle.trim() || !noteBody.trim()) return;
     setBusy(true);
     try {
       await apiPost("/institutional/workspace", {
@@ -253,7 +263,7 @@ function TeamWorkspaceSection() {
   }
 
   async function saveTemplate() {
-    if (!tplLabel.trim() || !tplSeed.trim()) return;
+    if (!canResearch || !tplLabel.trim() || !tplSeed.trim()) return;
     setBusy(true);
     try {
       await apiPost("/institutional/workspace", {
@@ -286,27 +296,31 @@ function TeamWorkspaceSection() {
         <span className="home-section-sub">Shared notes · invites · scenario templates</span>
       </div>
       {error && <p className="phase2-muted">{error}</p>}
-      {!dash?.team ? (
-        <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void createTeam()}>
+      {loading && <p className="phase2-muted">Loading workspace…</p>}
+      {!loading && error && <button type="button" className="btn btn-sm btn-ghost" onClick={() => void load()}>Retry workspace</button>}
+      {dash && !dash.team ? (
+        <button type="button" className="btn btn-sm btn-ghost" disabled={busy || loading || !!error} onClick={() => void createTeam()}>
           Create workspace
         </button>
-      ) : (
+      ) : dash?.team ? (
         <>
           <p className="phase2-seed">{dash.team.name}</p>
+          <p className="phase2-muted">Your role: {dash.role ?? "unavailable"}. {!dash.permissions?.research && "You can read shared research."}</p>
           <div className="phase2-sim-row">
             <label className="phase2-field">
               <span>Invite analyst (email)</span>
               <input
                 value={inviteEmail}
+                disabled={busy || !canInvite}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="colleague@firm.com"
               />
             </label>
-            <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void invite()}>
+            <button type="button" className="btn btn-sm btn-ghost" disabled={busy || !canInvite} onClick={() => void invite()}>
               <Plus size={14} /> Invite
             </button>
           </div>
-          <p className="phase2-muted">Invites email a join link — they sign in with that address to activate.</p>
+          <p className="phase2-muted">{dash.permissions?.invite ? "Invites email a join link — they sign in with that address to activate." : "Workspace owners and admins manage invitations."}</p>
           <ul className="phase2-watch-list">
             {dash.members.map((m) => (
               <li key={m.id}>
@@ -325,13 +339,13 @@ function TeamWorkspaceSection() {
           </p>
           <label className="phase2-field">
             <span>Note title</span>
-            <input value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} />
+            <input value={noteTitle} disabled={busy || !canResearch} onChange={(e) => setNoteTitle(e.target.value)} />
           </label>
           <label className="phase2-field">
             <span>Note</span>
-            <input value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Shared thesis…" />
+            <input value={noteBody} disabled={busy || !canResearch} onChange={(e) => setNoteBody(e.target.value)} placeholder="Shared thesis…" />
           </label>
-          <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void addNote()}>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={busy || !canResearch} onClick={() => void addNote()}>
             Add shared note
           </button>
           <ul className="phase2-watch-list" style={{ marginTop: "0.65rem" }}>
@@ -353,13 +367,13 @@ function TeamWorkspaceSection() {
           </p>
           <label className="phase2-field">
             <span>Template label</span>
-            <input value={tplLabel} onChange={(e) => setTplLabel(e.target.value)} />
+            <input value={tplLabel} disabled={busy || !canResearch} onChange={(e) => setTplLabel(e.target.value)} />
           </label>
           <label className="phase2-field">
             <span>Seed event</span>
-            <input value={tplSeed} onChange={(e) => setTplSeed(e.target.value)} placeholder="What if…" />
+            <input value={tplSeed} disabled={busy || !canResearch} onChange={(e) => setTplSeed(e.target.value)} placeholder="What if…" />
           </label>
-          <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void saveTemplate()}>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={busy || !canResearch} onClick={() => void saveTemplate()}>
             Save template
           </button>
           <ul className="phase2-watch-list" style={{ marginTop: "0.65rem" }}>
@@ -375,7 +389,7 @@ function TeamWorkspaceSection() {
             ))}
           </ul>
         </>
-      )}
+      ) : null}
     </section>
   );
 }
