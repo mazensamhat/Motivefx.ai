@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AccountSettings } from "@/components/app/account-settings";
+import { NotificationSettings } from "@/components/app/notification-settings";
 import { SecuritySettings } from "@/components/app/security-settings";
 
 import { AppShell } from "@/components/app/app-shell";
@@ -39,6 +40,7 @@ export default async function SettingsPage() {
         hasBillingAccount={user.hasBillingAccount}
       />
       <SecuritySettings totpEnabled={user.totpEnabled} />
+      {!user.impersonating && <NotificationSettings />}
 
     </AppShell>
 

@@ -107,6 +107,8 @@ model User {
 
   intelPref           UserIntelPref?
 
+  emailVerification EmailVerification?
+  emailVerificationChallenges EmailVerificationChallenge[]
   notificationConsent NotificationConsent?
   notificationDevices NotificationDevice[]
   notificationDeliveries NotificationDelivery[]
@@ -121,6 +123,27 @@ model User {
 
   @@index([subscriptionStatus])
 
+}
+
+/** Address proof is separate from account access and notification consent. */
+model EmailVerification {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailHash String
+  verifiedAt DateTime
+}
+
+model EmailVerificationChallenge {
+  tokenHash String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailHash String
+  purpose String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  usedAt DateTime?
+  sendState String @default("prepared")
+  @@index([userId, purpose, createdAt])
 }
 
 /** Outbound delivery remains disabled until consent/device and provider acceptance are verified. */
