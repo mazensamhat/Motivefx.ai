@@ -301,6 +301,13 @@ export async function fetchProfile(): Promise<AuthUser> {
 }
 
 export async function logout(): Promise<void> {
+  if (process.env.EXPO_PUBLIC_IAP_ENABLED === "true") {
+    try { await (await import("../iap")).resetIapIdentity(); } catch { /* Never retain purchasing authority across logout. */ }
+  }
+  if (process.env.EXPO_PUBLIC_PUSH_ENABLED === "true") {
+    try { await (await import("./notifications")).revokeNativePush(); }
+    catch { /* Persisted device capability is retained for recovery on next boot. */ }
+  }
   const refresh = await getStoredRefreshToken();
   try {
     await fetchWithTimeout(

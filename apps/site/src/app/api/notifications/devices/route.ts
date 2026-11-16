@@ -1,3 +1,4 @@
+import { createDeviceRevocationToken } from "@/lib/notifications/device-revocation";
 import { prisma } from "@motivefx/database";
 import { getSession } from "@/lib/session";
 import { notificationStorageEnabled } from "@/lib/notifications/store";
@@ -7,7 +8,12 @@ export async function POST(request: Request) {
   if (!sameOriginMutation(request)) return Response.json({ error: "Invalid origin" }, { status: 403 });
   const body = await request.json().catch(() => null);
   if (!body || typeof body.token !== "string" || typeof body.platform !== "string" || typeof body.permission !== "string") return Response.json({ error: "Invalid device registration." }, { status: 400 });
-  try { const result = await registerPushDevice(session.id, body); return Response.json(result, { status: result.state === "registered" ? 200 : result.state === "inactive" ? 503 : 409 }); }
+  try {
+    // Check signing before registering, so no device can be orphaned at logout.
+    createDeviceRevocationToken(session.id, "configuration-check", process.env.AUTH_SECRET?.trim() ?? "");
+    const result = await registerPushDevice(session.id, body);
+    const response = result.state === "registered" ? { ...result, revocationToken: createDeviceRevocationToken(session.id, result.deviceId, process.env.AUTH_SECRET?.trim() ?? "") } : result;
+    return Response.json(response, { status: result.state === "registered" ? 200 : result.state === "inactive" ? 503 : 409 }); }
   catch { return Response.json({ error: "Device registration could not be saved." }, { status: 503 }); }
 }
 export async function DELETE(request: Request) {

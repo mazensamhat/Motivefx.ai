@@ -58,7 +58,7 @@ export async function sendDelivery(job: DeliveryJob, recipient: DeliveryRecipien
       method: "POST", signal: AbortSignal.timeout(10_000),
       headers: { "Content-Type": "application/json", Accept: "application/json",
         ...(options.expoAccessToken ? { Authorization: `Bearer ${options.expoAccessToken}` } : {}) },
-      body: JSON.stringify({ to: recipient.pushToken, title: content.title, body: content.body.slice(0, 160), sound: "default", data: { eventKey: job.key, path: content.path } }),
+      body: JSON.stringify({ to: recipient.pushToken, title: content.title, body: content.body.slice(0, 160), sound: "default", channelId: "motivefx-alerts", data: { eventKey: job.key, path: content.path } }),
     });
     if (response.status === 429) return { kind: "retry", code: "push_rate_limited" };
     // Expo does not offer our durable exactly-once key. Ambiguous network/5xx

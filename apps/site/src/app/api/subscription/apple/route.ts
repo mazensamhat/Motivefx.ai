@@ -40,7 +40,8 @@ export async function POST(request: Request) {
     // call this immediately after a RevenueCat purchase to refresh its UI; the
     // authoritative grant arrives through /api/webhooks/revenuecat.
     const active =
-      user.subscriptionStatus === "active" || user.subscriptionStatus === "comp";
+      user.subscriptionStatus === "comp" ||
+      (user.subscriptionStatus === "active" && user.billingProvider === "apple" && Boolean(user.appleOriginalTransactionId));
 
     return json({
       ok: true,
