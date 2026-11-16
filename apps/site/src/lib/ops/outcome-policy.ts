@@ -45,6 +45,61 @@ export function outcomeDueAt(recordedAtMs: number, horizonDays: number): number 
   return Number.isSafeInteger(dueAt) && dueAt <= 8.64e15 ? dueAt : null;
 }
 
+export type PendingOutcomeDiagnostic = {
+  evaluatorVersion: string;
+  recordedAtMs: number;
+  horizonDays: number;
+  predictedScore: number | null;
+  market: string;
+  marketEvidence: boolean;
+  providerEnabled: boolean;
+  symbolSupported: boolean;
+};
+
+export const PENDING_OUTCOME_REASONS = [
+  "invalid_prediction", "not_due", "market_unverified", "unsupported_market",
+  "provider_disabled", "unsupported_symbol", "ready_for_provider_check",
+] as const;
+
+/** Read-only readiness diagnostics. Ready means a provider check may be attempted,
+ * not that historical prices exist or that a forecast probability is validated. */
+export function summarizePendingOutcomeCoverage(rows: readonly PendingOutcomeDiagnostic[], nowMs: number) {
+  const byVersion: Record<string, {
+    sampled: number;
+    pastSnapshotHorizon: number;
+    reasons: Record<(typeof PENDING_OUTCOME_REASONS)[number], number>;
+  }> = {};
+  for (const row of rows) {
+    const bucket = byVersion[row.evaluatorVersion] ??= {
+      sampled: 0,
+      pastSnapshotHorizon: 0,
+      reasons: Object.fromEntries(PENDING_OUTCOME_REASONS.map((reason) => [reason, 0])) as Record<(typeof PENDING_OUTCOME_REASONS)[number], number>,
+    };
+    bucket.sampled += 1;
+    const dueAt = outcomeDueAt(row.recordedAtMs, row.horizonDays);
+    if (dueAt != null && Number.isFinite(nowMs) && dueAt <= nowMs) bucket.pastSnapshotHorizon += 1;
+    let reason: (typeof PENDING_OUTCOME_REASONS)[number];
+    if (dueAt == null || !Number.isFinite(nowMs) || row.predictedScore == null ||
+        !Number.isFinite(row.predictedScore) || row.predictedScore < 0 || row.predictedScore > 100) {
+      reason = "invalid_prediction";
+    } else if (dueAt > nowMs) {
+      reason = "not_due";
+    } else if (!row.marketEvidence || row.market === "unknown") {
+      reason = "market_unverified";
+    } else if (!["stocks", "penny", "crypto"].includes(row.market)) {
+      reason = "unsupported_market";
+    } else if (!row.providerEnabled) {
+      reason = "provider_disabled";
+    } else if (!row.symbolSupported) {
+      reason = "unsupported_symbol";
+    } else {
+      reason = "ready_for_provider_check";
+    }
+    bucket.reasons[reason] += 1;
+  }
+  return { sampled: rows.length, byVersion };
+}
+
 export function classifyObservedReturn(score: number, entryPrice: number, outcomePrice: number): {
   outcome: "CONFIRMED" | "PARTIAL" | "REJECTED";
   realizedReturnPct: number;

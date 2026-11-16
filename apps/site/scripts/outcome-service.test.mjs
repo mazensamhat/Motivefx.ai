@@ -35,9 +35,13 @@ function setup(t, options = {}) {
   };
   db.signalOutcome.findMany = async args => {
     queries.push(args);
+    if (args.include && typeof args.where.evaluatorVersion === 'string') {
+      return (options.coverageRows ?? [row]).filter(candidate => candidate.evaluatorVersion === args.where.evaluatorVersion);
+    }
     return args.include ? [row] : (options.calibrationRows ?? []);
   };
   db.signalOutcome.count = async () => 0;
+  db.signalOutcome.groupBy = async () => options.pendingGroups ?? [];
   db.signalOutcome.updateMany = async args => { writes.push(args); return {count:options.writeCount ?? 1}; };
   process.env.FINNHUB_API_KEY = 'test-not-a-real-key';
   process.env.FINNHUB_HISTORICAL_ENABLED = 'true';
@@ -71,7 +75,7 @@ test('missing provider key also leaves pending outcomes untouched', async t => {
   await evaluatePendingOutcomes();
   assert.equal(state.queries.length,0);
 });
-test('due horizon uses frozen timestamp; successful evaluation records V3 provenance', async t => {
+test('due horizon uses frozen timestamp; successful evaluation records V4 provenance', async t => {
   const state = setup(t);
   assert.deepEqual(await evaluatePendingOutcomes(), {evaluated:1,inconclusive:0});
   assert.equal(state.writes[0].data.outcome,'CONFIRMED');
@@ -93,7 +97,7 @@ test('provider failure is excluded and remains eligible for a bounded retry', as
   assert.ok(retry.evaluatedAt.lte.getTime() <= Date.now()-59*60*1000);
   assert.ok(retry.OR.some(rule => rule.notes?.startsWith === 'RETRYABLE_MARKET_DATA: '));
 });
-test('an eligible retryable result can recover to a scored V3 observation', async t => {
+test('an eligible retryable result can recover to a scored V4 observation', async t => {
   const state = setup(t,{row:{outcome:'INCONCLUSIVE',evaluatorVersion:'MARKET_OUTCOME_V4'}});
   assert.deepEqual(await evaluatePendingOutcomes(),{evaluated:1,inconclusive:0});
   assert.equal(state.writes[0].where.outcome,'INCONCLUSIVE');
@@ -116,7 +120,7 @@ test('compare-and-set losers never double-count or overwrite completed outcomes'
   assert.deepEqual(await evaluatePendingOutcomes(),{evaluated:0,inconclusive:0});
   assert.deepEqual(state.writes[0].where,{id:'fixture',outcome:'PENDING',evaluatorVersion:'MARKET_OUTCOME_V2'});
 });
-test('calibration only reads finalized V3 observations and reports disabled capability', async t => {
+test('calibration only reads finalized V4 observations and reports disabled capability', async t => {
   const state = setup(t,{calibrationRows:[{predictedConf:null,outcome:'CONFIRMED'},{predictedConf:85,outcome:'CONFIRMED'}]});
   process.env.FINNHUB_HISTORICAL_ENABLED='false';
   const summary = await buildCalibrationFromOutcomes();
@@ -126,4 +130,84 @@ test('calibration only reads finalized V3 observations and reports disabled capa
   assert.equal(summary.forecastReady,false);
   assert.equal(summary.historicalDataEnabled,false);
   assert.match(summary.note,/pending outcomes are preserved/);
+});
+
+
+test('calibration reads never evaluate or contact providers even when capabilities are enabled', async t => {
+  const state = setup(t);
+  const summary = await buildCalibrationFromOutcomes();
+  assert.equal(summary.availability, 'available');
+  assert.equal(summary.lastBatch, null);
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.calls.length, 0);
+  assert.ok(state.queries.every(query => !query.cursor && !query.where.OR));
+});
+
+test('pending coverage separates versions and uses the frozen snapshot horizon', async t => {
+  const row = version => ({
+    id: version, symbol: 'FIXTURE', evaluatorVersion: version, outcome: 'PENDING', predictedScore: 75, horizonDays: 30,
+    createdAt: new Date(),
+    snapshot: { symbol: 'FIXTURE', recordedAt: new Date(Date.now() - 40 * DAY_MS), evidenceJson: '[{"id":"opp-stock-fixture","market":"stocks"}]' },
+  });
+  const state = setup(t, {
+    coverageRows: [row('MARKET_OUTCOME_V4'), row('LEGACY_SIGNAL_V1')],
+    pendingGroups: [
+      { evaluatorVersion: 'MARKET_OUTCOME_V4', _count: { _all: 400 } },
+      { evaluatorVersion: 'LEGACY_SIGNAL_V1', _count: { _all: 3000 } },
+    ],
+  });
+  const summary = await buildCalibrationFromOutcomes();
+  assert.deepEqual(summary.pendingByVersion, { MARKET_OUTCOME_V4: 400, LEGACY_SIGNAL_V1: 3000 });
+  assert.equal(summary.pending, 3400);
+  assert.equal(summary.pendingEligibilitySample.sampled, 2);
+  assert.equal(summary.pendingEligibilitySample.truncated, true);
+  for (const version of ['MARKET_OUTCOME_V4', 'LEGACY_SIGNAL_V1']) {
+    const sample = summary.pendingEligibilitySample.byVersion[version];
+    assert.equal(sample.sampled, 1);
+    assert.equal(sample.pastSnapshotHorizon, 1, 'later insertion does not delay an already-mature snapshot');
+    assert.equal(sample.reasons.ready_for_provider_check, 1);
+  }
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.calls.length, 0);
+  const coverageQueries = state.queries.filter(query => query.include);
+  assert.equal(coverageQueries.length, 4);
+  assert.ok(coverageQueries.every(query => query.take === 250 && typeof query.where.evaluatorVersion === 'string'));
+});
+
+test('unread outcome store stays unknown, never a zero backlog or successful calibration', async t => {
+  const state = setup(t);
+  db.signalOutcome.groupBy = async () => { throw new Error('fixture database unavailable'); };
+  const summary = await buildCalibrationFromOutcomes();
+  assert.equal(summary.availability, 'unavailable');
+  assert.equal(summary.evaluated, null);
+  assert.equal(summary.pending, null);
+  assert.equal(summary.pendingByVersion, null);
+  assert.equal(summary.pendingEligibilitySample, null);
+  assert.equal(summary.forecastReady, false);
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.calls.length, 0);
+});
+
+test('explicit evaluator result can be attached without running a second batch', async t => {
+  const state = setup(t);
+  const result = { evaluated: 3, inconclusive: 2 };
+  const summary = await buildCalibrationFromOutcomes(result);
+  assert.deepEqual(summary.lastBatch, result);
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.calls.length, 0);
+});
+
+
+test('an available empty store reports real zero counts', async t => {
+  const state = setup(t, { coverageRows: [], pendingGroups: [] });
+  const summary = await buildCalibrationFromOutcomes();
+  assert.equal(summary.availability, 'available');
+  assert.equal(summary.evaluated, 0);
+  assert.equal(summary.pending, 0);
+  assert.deepEqual(summary.pendingByVersion, {});
+  assert.equal(summary.pendingEligibilitySample.sampled, 0);
+  assert.equal(summary.pendingEligibilitySample.truncated, false);
+  assert.equal(summary.forecastReady, false);
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.calls.length, 0);
 });

@@ -1,4 +1,4 @@
-import { buildCalibrationFromOutcomes } from "@/lib/ops/outcomes";
+import { buildCalibrationFromOutcomes, evaluatePendingOutcomes } from "@/lib/ops/outcomes";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,7 +11,8 @@ function authorized(request: Request) {
 
 export async function GET(request: Request) {
   if (!authorized(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const calibration = await buildCalibrationFromOutcomes();
+  const batch = await evaluatePendingOutcomes(160);
+  const calibration = await buildCalibrationFromOutcomes(batch);
   return Response.json({ ok: true, generatedAt: new Date().toISOString(), calibration }, {
     headers: { "Cache-Control": "no-store" },
   });

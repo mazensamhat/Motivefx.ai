@@ -27,7 +27,7 @@ export async function POST() {
 
   try {
     const result = await evaluatePendingOutcomes(100);
-    const calibration = await buildCalibrationFromOutcomes();
+    const calibration = await buildCalibrationFromOutcomes(result);
     return json({ ok: true, ...result, calibration });
   } catch (error) {
     console.error("[admin/outcomes POST]", error);

@@ -10,6 +10,7 @@ import {
   outcomeDueAt,
   selectCompletedDailyClose,
   summarizeCalibration,
+  summarizePendingOutcomeCoverage,
   type ObservedDailyClose,
 } from "./outcome-policy";
 
@@ -234,37 +235,83 @@ export async function evaluatePendingOutcomes(limit=100):Promise<{evaluated:numb
   return {evaluated,inconclusive};
 }
 
-export async function buildCalibrationFromOutcomes(){
-  const batch=await evaluatePendingOutcomes(160);
-  try{
-    const [rows,pendingCount,inconclusiveCount,coverage]=await Promise.all([
+/** Read-only view. Only the explicit cron/POST callers may evaluate outcomes. */
+export async function buildCalibrationFromOutcomes(lastBatch: { evaluated: number; inconclusive: number } | null = null) {
+  const checkedAt = Date.now();
+  const sampleLimitPerVersion = 250;
+  try {
+    const [rows, pendingGroups, inconclusiveCount, coverageByVersion] = await Promise.all([
       prisma.signalOutcome.findMany({
-        where:{evaluatorVersion:OUTCOME_EVALUATOR_VERSION,outcome:{in:["CONFIRMED","PARTIAL","REJECTED"]}},
-        select:{predictedConf:true,outcome:true},take:5000,orderBy:{evaluatedAt:"desc"},
+        where: { evaluatorVersion: OUTCOME_EVALUATOR_VERSION, outcome: { in: ["CONFIRMED", "PARTIAL", "REJECTED"] } },
+        select: { predictedConf: true, outcome: true }, take: 5000, orderBy: { evaluatedAt: "desc" },
       }),
-      prisma.signalOutcome.count({where:{outcome:"PENDING",evaluatorVersion:{in:OUTCOME_SEED_VERSIONS}}}),
-      prisma.signalOutcome.count({where:{outcome:"INCONCLUSIVE",evaluatorVersion:OUTCOME_EVALUATOR_VERSION}}),
-      prisma.signalOutcome.findMany({
-        where:{evaluatorVersion:{in:OUTCOME_SEED_VERSIONS},outcome:"PENDING"},
-        include:{snapshot:{select:{symbol:true,evidenceJson:true}}},take:1000,
+      prisma.signalOutcome.groupBy({
+        by: ["evaluatorVersion"],
+        where: { outcome: "PENDING" },
+        _count: { _all: true },
       }),
+      prisma.signalOutcome.count({ where: { outcome: "INCONCLUSIVE", evaluatorVersion: OUTCOME_EVALUATOR_VERSION } }),
+      // Bound each version independently: an older queue must not hide V4 coverage.
+      Promise.all(OUTCOME_SEED_VERSIONS.map((evaluatorVersion) => prisma.signalOutcome.findMany({
+        where: { evaluatorVersion, outcome: "PENDING" },
+        include: { snapshot: { select: { symbol: true, evidenceJson: true, recordedAt: true } } },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: sampleLimitPerVersion,
+      }))),
     ]);
-    const summary=summarizeCalibration(rows);
-    const byMarket:Record<string,number>={stocks:0,penny:0,crypto:0,sports:0,predictions:0,unknown:0};
-    for(const row of coverage) byMarket[inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol })]+=1;
-    const note=summary.evaluated===0
-      ?"No V4 market-grounded evaluated outcomes yet. Forecast probability remains unavailable."
-      :`Calibration uses ${summary.evaluated} V4 market-grounded outcome(s); ${pendingCount} pending; ${inconclusiveCount} inconclusive. Unsupported or not-yet-due pending outcomes are preserved.`;
-    return {...summary,note,evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
-      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),
-      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
+    const summary = summarizeCalibration(rows);
+    const pendingByVersion = Object.fromEntries(pendingGroups.map((row) => [row.evaluatorVersion, row._count._all]));
+    const pendingCount = Object.values(pendingByVersion).reduce((sum, count) => sum + count, 0);
+    const coverage = coverageByVersion.flat();
+    const byMarket: Record<string, number> = { stocks: 0, penny: 0, crypto: 0, sports: 0, predictions: 0, unknown: 0 };
+    const diagnostics = summarizePendingOutcomeCoverage(coverage.map((row) => {
+      const market = inferOutcomeMarket({ ...row.snapshot, symbol: row.snapshot.symbol ?? row.symbol });
+      byMarket[market] += 1;
+      const evidence = parseEvidence(row.snapshot.evidenceJson);
+      const marketEvidence = evidence.some((ev) =>
+        (typeof ev.id === "string" && /^opp-(crypto|betting|pred|penny|stock|trades)-/i.test(ev.id)) ||
+        (typeof ev.market === "string" && ["crypto", "sports", "predictions", "stocks", "penny"].includes(ev.market.toLowerCase()))
+      );
+      return {
+        evaluatorVersion: row.evaluatorVersion,
+        recordedAtMs: row.snapshot.recordedAt.getTime(),
+        horizonDays: row.horizonDays,
+        predictedScore: row.predictedScore,
+        market,
+        marketEvidence,
+        providerEnabled: historicalCapability(market),
+        symbolSupported: market !== "crypto" || Boolean(COINGECKO_IDS[row.symbol.toUpperCase()]),
+      };
+    }), checkedAt);
+    const note = summary.evaluated === 0
+      ? "No V4 market-grounded evaluated outcomes yet. Forecast probability remains unavailable."
+      : `Calibration uses ${summary.evaluated} V4 market-grounded outcome(s); ${pendingCount} pending across evaluator versions; ${inconclusiveCount} V4 inconclusive. Unsupported or not-yet-due pending outcomes are preserved.`;
+    return {
+      ...summary, availability: "available" as const, note, evaluatorVersion: OUTCOME_EVALUATOR_VERSION,
+      historicalDataEnabled: stockHistoryEnabled() || cryptoHistoryEnabled(),
+      providerCapabilities: { stocks: stockHistoryEnabled(), crypto: cryptoHistoryEnabled() },
       supportedMarkets:["stocks","penny","crypto"],unsupportedMarkets:["sports","predictions"],
-      pending:pendingCount,inconclusive:inconclusiveCount,pendingCoverageSample:byMarket,lastBatch:batch};
-  }catch{
-    return {...summarizeCalibration([]),note:"Outcome store unavailable.",evaluatorVersion:OUTCOME_EVALUATOR_VERSION,
-      historicalDataEnabled:stockHistoryEnabled() || cryptoHistoryEnabled(),
-      providerCapabilities:{stocks:stockHistoryEnabled(),crypto:cryptoHistoryEnabled()},
+      pending: pendingCount, pendingByVersion, inconclusive: inconclusiveCount,
+      pendingCoverageSample: byMarket,
+      pendingEligibilitySample: {
+        ...diagnostics,
+        checkedAt: new Date(checkedAt).toISOString(),
+        sampleLimitPerVersion,
+        truncated: pendingCount > diagnostics.sampled,
+        note: "Oldest pending rows sampled separately by evaluator version. Due time uses the frozen snapshot, not DB insertion. Provider readiness does not prove price availability; missing market evidence is never assumed valid. Sample counts are not total backlog counts.",
+      },
+      lastBatch,
+    };
+  } catch {
+    return {
+      ...summarizeCalibration([]), availability: "unavailable" as const, evaluated: null,
+      note: "Outcome store unavailable. Counts and eligibility are unknown; no outcomes were evaluated by this read.",
+      evaluatorVersion: OUTCOME_EVALUATOR_VERSION,
+      historicalDataEnabled: stockHistoryEnabled() || cryptoHistoryEnabled(),
+      providerCapabilities: { stocks: stockHistoryEnabled(), crypto: cryptoHistoryEnabled() },
       supportedMarkets:["stocks","penny","crypto"],unsupportedMarkets:["sports","predictions"],
-      pending:0,inconclusive:0,pendingCoverageSample:{},lastBatch:batch};
+      pending: null, pendingByVersion: null, inconclusive: null,
+      pendingCoverageSample: null, pendingEligibilitySample: null, lastBatch,
+    };
   }
 }
