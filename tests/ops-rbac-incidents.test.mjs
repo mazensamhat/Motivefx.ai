@@ -91,7 +91,7 @@ const incidents = await importTs("../apps/site/src/lib/ops/incidents.ts", (sourc
   )
 );
 
-test("predictive incident forecasts count unavailable truth-state samples as stale risk", async () => {
+test("observed incident indicators count unavailable truth-state samples without claiming calibrated confidence", async () => {
   const now = new Date("2026-10-07T08:00:00.000Z").toISOString();
   const originalDateNow = Date.now;
   Date.now = () => Date.parse(now);
@@ -118,6 +118,9 @@ test("predictive incident forecasts count unavailable truth-state samples as sta
       })),
       [{ id: "forecast:provider:polygon", severity: "HIGH", staleRatePct: 60 }]
     );
+    assert.equal(forecasts[0].basis, "observed_telemetry");
+    assert.equal("confidence" in forecasts[0], false);
+    assert.match(forecasts[0].reason, /stale\/unavailable/);
   } finally {
     Date.now = originalDateNow;
     globalThis[incidentDepsKey].loadRecentTelemetry = async () => [];

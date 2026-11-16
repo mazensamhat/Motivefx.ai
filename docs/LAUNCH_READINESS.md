@@ -6,6 +6,17 @@
 > **Pre-launch master plan (truth, signal, security, AI, CI):**  
 > [`docs/PRODUCTION_HARDENING_MASTER_PLAN.md`](./PRODUCTION_HARDENING_MASTER_PLAN.md) — **G1–G7 gates are authoritative.** Do not ship major features until G1–G4 pass.
 
+## Dated reconciliation — 2026-11-16
+
+The original checklist below is historical planning evidence, not a current deployment certificate. The production web application and Postgres already exist; source-backed Ops status, structured telemetry and security-header configuration also exist. Their old unchecked boxes do not mean the infrastructure is absent. Conversely, a checked store or security box is not a substitute for dated operational evidence.
+
+- [Execution acceptance by all 25 audit IDs](./EXECUTION_ACCEPTANCE_2026_11.md) records source/test evidence separately from production and physical-device acceptance.
+- [Email verification](./EMAIL_VERIFICATION.md) and [notification delivery](./NOTIFICATION_DELIVERY.md) are implemented behind inactive gates. Their additive migrations are staged, not applied. Existing signup/login access is unchanged; no verification or marketing consent has been backfilled.
+- [Stripe reconciliation](./STRIPE_RECONCILIATION.md) now has durable duplicate/out-of-order handling and bounded account-setup claims. Actual sandbox event subscriptions, checkout/renewal/cancel/dispute acceptance and receipt monitoring are separate remaining checks. No real charge or production webhook mutation was used as a smoke test.
+- [Native delivery and purchase acceptance](./NATIVE_NOTIFICATION_AND_PURCHASE_ACCEPTANCE.md) documents Android push lifecycle and purchase/restore source safeguards. IAP and push remain false in production/preview build configuration. This is not a new store binary or physical-device proof; the Google Play public listing still needs independent confirmation.
+- [Provider coverage](./PROVIDER_COVERAGE.md) distinguishes integrated, derived and demo/unavailable data. Options flow, congressional trading, OTC coverage, sports/prediction settlement and calibrated forecasts must not be declared live merely because their screens exist.
+- Backup restore, counsel/legal approval, privacy forms, provider rights and current store/device sign-offs require their actual owners and evidence. No historical checkbox, CI run, or empty error window completes those sign-offs. Biometrics and offline watchlists remain Phase 2 scope.
+
 ---
 
 ## P0 — Blockers (must complete before public launch)
