@@ -85,6 +85,10 @@ export async function registerPushDevice(userId: string, input: { token: string;
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (!user || user.disabledAt || !planForUser(user).features.push_notifications) return { state: "not_entitled" as const };
+    // User locks serialize one account's device limit, but two accounts can
+    // race for the same previously unseen token. Serialize that identity too;
+    // the loser sees the committed owner and never transfers the token.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`motivefx:notification-device:${input.token}`}, 0))::text`;
     const existing = await tx.notificationDevice.findUnique({ where: { token: input.token } });
     if (existing && existing.userId !== userId) return { state: "ownership_conflict" as const };
     if (!existing && await tx.notificationDevice.count({ where: { userId, revokedAt: null } }) >= 10) return { state: "device_limit" as const };

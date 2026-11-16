@@ -1,0 +1,60 @@
+name: Actual PostgreSQL transactional acceptance
+on:
+  pull_request:
+    paths:
+      - 'apps/site/src/lib/notifications/**'
+      - 'apps/site/src/lib/stripe-reconciliation.ts'
+      - 'apps/site/src/lib/checkout-account-setup.ts'
+      - 'apps/site/src/lib/ops/durable.ts'
+      - 'apps/site/src/lib/terminal/institutional*.ts'
+      - 'packages/database/prisma/**'
+      - 'tests/postgres/**'
+      - '.github/workflows/transactional-foundations.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/site/src/lib/notifications/**'
+      - 'apps/site/src/lib/stripe-reconciliation.ts'
+      - 'apps/site/src/lib/checkout-account-setup.ts'
+      - 'apps/site/src/lib/ops/durable.ts'
+      - 'apps/site/src/lib/terminal/institutional*.ts'
+      - 'packages/database/prisma/**'
+      - 'tests/postgres/**'
+      - '.github/workflows/transactional-foundations.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: motivefx_foundations_test
+          TZ: UTC
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MOTIVEFX_DISPOSABLE_DB: '1'
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/motivefx_foundations_test?connection_limit=12
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/motivefx_foundations_test?connection_limit=12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pnpm install --frozen-lockfile
+      - run: npm --prefix web ci --include=dev
+      - run: node --test tests/postgres/transactional-foundations.mjs
