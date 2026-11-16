@@ -19,4 +19,4 @@ jobs:
         with:
           node-version: 22
       - name: Test as-of prices, outcome retries, and calibration integrity
-        run: node --experimental-strip-types --test apps/site/scripts/outcome-policy.test.mjs apps/site/scripts/outcome-service.test.mjs
+        run: node --experimental-strip-types --test apps/site/scripts/outcome-policy.test.mjs apps/site/scripts/outcome-service.test.mjs apps/site/scripts/outcome-routes.test.mjs

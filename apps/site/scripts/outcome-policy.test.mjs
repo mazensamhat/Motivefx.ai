@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DAY_MS, OUTCOME_EVALUATOR_VERSION, OUTCOME_SEED_VERSIONS,
-  selectCompletedDailyClose, outcomeDueAt, classifyObservedReturn, summarizeCalibration,
+  selectCompletedDailyClose, outcomeDueAt, classifyObservedReturn, summarizeCalibration, summarizePendingOutcomeCoverage,
 } from '../src/lib/ops/outcome-policy.ts';
 
 const at = Date.parse('2026-09-21T12:00:00Z');
@@ -85,4 +85,37 @@ test('insufficient samples cannot unlock forecast readiness', () => {
   assert.equal(summarizeCalibration(make(99)).forecastReady, false);
   assert.equal(summarizeCalibration(make(100)).sampleReady, true);
   assert.equal(summarizeCalibration(make(100)).forecastReady, false);
+});
+
+
+const diagnostic = overrides => ({
+  evaluatorVersion: 'MARKET_OUTCOME_V4', recordedAtMs: at - 40 * DAY_MS, horizonDays: 30,
+  predictedScore: 70, market: 'crypto', marketEvidence: true, providerEnabled: true, symbolSupported: true, ...overrides,
+});
+for (const [reason, overrides] of [
+  ['ready_for_provider_check', {}],
+  ['not_due', { recordedAtMs: at - DAY_MS }],
+  ['invalid_prediction', { predictedScore: NaN }],
+  ['invalid_prediction', { horizonDays: 0 }],
+  ['market_unverified', { marketEvidence: false }],
+  ['market_unverified', { market: 'unknown' }],
+  ['unsupported_market', { market: 'sports', providerEnabled: false }],
+  ['provider_disabled', { providerEnabled: false }],
+  ['unsupported_symbol', { symbolSupported: false }],
+]) test(`pending diagnostics distinguish ${reason} without inventing an outcome`, () => {
+  const summary = summarizePendingOutcomeCoverage([diagnostic(overrides)], at);
+  const bucket = summary.byVersion.MARKET_OUTCOME_V4;
+  assert.equal(bucket.reasons[reason], 1);
+  assert.equal(Object.values(bucket.reasons).reduce((sum, count) => sum + count, 0), 1);
+});
+
+test('pending diagnostics keep legacy versions separate and include exact due boundary', () => {
+  const summary = summarizePendingOutcomeCoverage([
+    diagnostic({ recordedAtMs: at - 30 * DAY_MS }),
+    diagnostic({ evaluatorVersion: 'LEGACY_SIGNAL_V1', market: 'predictions' }),
+  ], at);
+  assert.equal(summary.sampled, 2);
+  assert.equal(summary.byVersion.MARKET_OUTCOME_V4.pastSnapshotHorizon, 1);
+  assert.equal(summary.byVersion.MARKET_OUTCOME_V4.reasons.ready_for_provider_check, 1);
+  assert.equal(summary.byVersion.LEGACY_SIGNAL_V1.reasons.unsupported_market, 1);
 });
