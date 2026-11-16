@@ -18,7 +18,7 @@ export async function GET() {
     ]);
     const hash = emailHash(user.email), plan = planForUser(user);
     const dailyEnabled = !!(consent?.dailyEmailConsentAt && consent.dailyEmailConfirmedAt && consent.confirmedEmailHash === hash && !consent.emailSuppressedAt && (!consent.dailyEmailRevokedAt || consent.dailyEmailRevokedAt < consent.dailyEmailConsentAt));
-    return Response.json({ state: "available", deliveryActive: notificationSendingEnabled(), verificationAvailable: onboardingActive(), emailVerified: verified?.emailHash === hash, dailyEligible: !!plan.features.motive_daily_email, dailyEnabled, emailSuppressed: !!consent?.emailSuppressedAt, devices }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ state: "available", deliveryActive: notificationSendingEnabled(), verificationAvailable: onboardingActive(), emailVerified: verified?.emailHash === hash, dailyEligible: !!plan.features.motive_daily_email, pushRegistrationAvailable: process.env.MOTIVE_PUSH_REGISTRATION_ENABLED === "true" && !!plan.features.push_notifications, dailyEnabled, emailSuppressed: !!consent?.emailSuppressedAt, devices }, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ state: "unavailable", error: "Preferences are temporarily unavailable." }, { status: 503 }); }
 }
 export async function POST(request: Request) {

@@ -42,6 +42,14 @@ const TIER_RANK: Record<IntelligenceTierId, number> = {
 };
 
 let configured = false;
+let configuredUserId: string | null = null;
+let identityUncertain = false;
+let operationTail: Promise<unknown> = Promise.resolve();
+function exclusive<T>(operation: () => Promise<T>): Promise<T> {
+  const next = operationTail.then(operation);
+  operationTail = next.catch(() => {});
+  return next;
+}
 
 export function isIapConfigured(): boolean {
   // App Store resubmit path: iOS is a free informational reader until ASC IAP
@@ -49,17 +57,14 @@ export function isIapConfigured(): boolean {
   if (Platform.OS === "ios") return false;
   const hasKey = Boolean(ANDROID_API_KEY);
   if (!hasKey) return false;
-  // Prefer explicit flag when set; otherwise enable whenever a key is present.
-  if (process.env.EXPO_PUBLIC_IAP_ENABLED != null && process.env.EXPO_PUBLIC_IAP_ENABLED !== "") {
-    return IAP_ENABLED;
-  }
-  return true;
+  // A public SDK key alone must never activate purchases.
+  return IAP_ENABLED;
 }
 
-export async function configureIap(appUserId?: string | null): Promise<boolean> {
-  if (!isIapConfigured()) return false;
+async function configureIapUnlocked(appUserId?: string | null): Promise<boolean> {
+  if (!isIapConfigured() || !appUserId || identityUncertain) return false;
   if (configured) {
-    if (appUserId) {
+    if (appUserId !== configuredUserId) {
       try {
         await Promise.race([
           Purchases.logIn(appUserId),
@@ -67,8 +72,12 @@ export async function configureIap(appUserId?: string | null): Promise<boolean> 
             setTimeout(() => reject(new Error("iap login timeout")), 4_000);
           }),
         ]);
+        configuredUserId = appUserId;
       } catch {
-        // ignore login races / timeouts — never block the UI thread path
+        // A timed-out native login may finish later. Do not allow another
+        // purchase in this process until a fresh app launch resets the SDK.
+        identityUncertain = true;
+        return false;
       }
     }
     return true;
@@ -87,10 +96,11 @@ export async function configureIap(appUserId?: string | null): Promise<boolean> 
       }),
     ]);
     configured = true;
+    configuredUserId = appUserId;
     return true;
   } catch (e) {
-    console.warn("configureIap failed/timed out", e);
-    // Leave configured=false so a later tap can retry; do not throw.
+    identityUncertain = true;
+    console.warn("Store identity could not be confirmed; restart before retrying.");
     return false;
   }
 }
@@ -104,29 +114,9 @@ function pickPackageForTier(
   tier: IntelligenceTierId
 ): PurchasesPackage | null {
   const productId = productIdForTier(tier);
-  const byProduct = packages.find((p) => p.product.identifier === productId);
-  if (byProduct) return byProduct;
-
-  const hints = [
-    tier,
-    tier.replace("_", ""),
-    tier.replace("_", "."), // ultra_plus → ultra.plus (matches Ultra.Plus case-insensitively below)
-    `$rc_${tier}`,
-    tier === "elite" ? "$rc_annual" : "$rc_monthly",
-    tier === "elite" ? "annual" : "monthly",
-  ];
-  for (const hint of hints) {
-    const hintLower = hint.toLowerCase();
-    const match = packages.find(
-      (p) =>
-        p.identifier === hint ||
-        p.identifier.toLowerCase().includes(hintLower) ||
-        p.product.identifier === productId ||
-        p.product.identifier.toLowerCase() === hintLower
-    );
-    if (match) return match;
-  }
-  return null;
+  // Exact store product identity only. Generic monthly/annual package hints
+  // can charge a different tier when the requested product is missing.
+  return packages.find((pkg) => pkg.product.identifier === productId) ?? null;
 }
 
 function highestActiveTier(customerInfo: CustomerInfo): IntelligenceTierId | null {
@@ -144,7 +134,7 @@ function entitlementForTier(customerInfo: CustomerInfo, tier?: IntelligenceTierI
   return customerInfo.entitlements.active[activeTier] ?? null;
 }
 
-export async function purchaseTier(tier: IntelligenceTierId): Promise<{
+async function purchaseTierUnlocked(tier: IntelligenceTierId, appUserId: string): Promise<{
   ok: boolean;
   customerInfo?: CustomerInfo;
   originalTransactionId?: string;
@@ -152,7 +142,7 @@ export async function purchaseTier(tier: IntelligenceTierId): Promise<{
   tier?: IntelligenceTierId;
   error?: string;
 }> {
-  if (!(await configureIap())) {
+  if (!(await configureIapUnlocked(appUserId))) {
     return { ok: false, error: "In-app purchases are not configured yet." };
   }
 
@@ -174,9 +164,13 @@ export async function purchaseTier(tier: IntelligenceTierId): Promise<{
       };
     }
 
+    if (await Purchases.getAppUserID() !== appUserId) {
+      identityUncertain = true;
+      return { ok: false, error: "Store account identity changed. Restart before retrying." };
+    }
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     const entitlement = entitlementForTier(customerInfo, tier);
-    const active = Boolean(entitlement) || Boolean(highestActiveTier(customerInfo));
+    const active = Boolean(entitlement && entitlement.productIdentifier === pkg.product.identifier);
     if (!active) {
       return {
         ok: false,
@@ -185,16 +179,13 @@ export async function purchaseTier(tier: IntelligenceTierId): Promise<{
       };
     }
 
-    const resolvedTier = highestActiveTier(customerInfo) ?? tier;
+    const resolvedTier = tier;
     const ent = entitlementForTier(customerInfo, resolvedTier);
     return {
       ok: true,
       customerInfo,
       tier: resolvedTier,
-      originalTransactionId:
-        ent?.latestPurchaseDate ||
-        ent?.originalPurchaseDate ||
-        customerInfo.originalAppUserId,
+      originalTransactionId: extractTransactionId(customerInfo) ?? undefined,
       productId: ent?.productIdentifier ?? pkg.product.identifier,
     };
   } catch (e: unknown) {
@@ -209,7 +200,7 @@ export async function purchaseTier(tier: IntelligenceTierId): Promise<{
   }
 }
 
-export async function restorePurchases(): Promise<{
+async function restorePurchasesUnlocked(appUserId: string): Promise<{
   ok: boolean;
   customerInfo?: CustomerInfo;
   originalTransactionId?: string;
@@ -217,10 +208,14 @@ export async function restorePurchases(): Promise<{
   tier?: IntelligenceTierId;
   error?: string;
 }> {
-  if (!(await configureIap())) {
+  if (!(await configureIapUnlocked(appUserId))) {
     return { ok: false, error: "In-app purchases are not configured yet." };
   }
   try {
+    if (await Purchases.getAppUserID() !== appUserId) {
+      identityUncertain = true;
+      return { ok: false, error: "Store account identity changed. Restart before retrying." };
+    }
     const customerInfo = await Purchases.restorePurchases();
     const tier = highestActiveTier(customerInfo);
     const entitlement = entitlementForTier(customerInfo, tier);
@@ -231,7 +226,7 @@ export async function restorePurchases(): Promise<{
       ok: true,
       customerInfo,
       tier,
-      originalTransactionId: entitlement.originalPurchaseDate,
+      originalTransactionId: extractTransactionId(customerInfo) ?? undefined,
       productId: entitlement.productIdentifier,
     };
   } catch (e: unknown) {
@@ -250,9 +245,25 @@ export function extractTransactionId(customerInfo: CustomerInfo): string | null 
     | { storeTransactionId?: string; originalPurchaseDate?: string }
     | undefined;
   if (sub?.storeTransactionId) return sub.storeTransactionId;
-  return entitlement.originalPurchaseDate ?? customerInfo.originalAppUserId ?? null;
+  return null; // Dates and app-user IDs are not store transaction identities.
 }
 
 export function isValidTier(value: string | undefined | null): value is IntelligenceTierId {
-  return Boolean(value && value in APPLE_PRODUCT_IDS);
+  return Boolean(value && Object.hasOwn(APPLE_PRODUCT_IDS, value));
+}
+
+export const configureIap = (userId?: string | null) => exclusive(() => configureIapUnlocked(userId));
+export const purchaseTier = (tier: IntelligenceTierId, userId: string) => exclusive(() => purchaseTierUnlocked(tier, userId));
+export const restorePurchases = (userId: string) => exclusive(() => restorePurchasesUnlocked(userId));
+export const resetIapIdentity = () => exclusive(async () => {
+  if (!configured) return;
+  configuredUserId = null;
+  try {
+    await Promise.race([Purchases.logOut(), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("iap logout timeout")), 4000))]);
+  } catch { identityUncertain = true; }
+});
+
+export function serverEntitlementConfirmed(value: { authoritativeSource?: string; pending?: boolean; tier?: string; subscriptionStatus?: string }, requestedTier?: string | null) {
+  return value.authoritativeSource === "revenuecat_webhook" && value.pending === false &&
+    ["active", "comp"].includes(value.subscriptionStatus ?? "") && isValidTier(value.tier) && value.tier === requestedTier;
 }

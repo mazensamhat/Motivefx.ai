@@ -1,0 +1,23 @@
+name: Native notification and purchase type validation
+on:
+  pull_request:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/native-lifecycle.yml']
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/native-lifecycle.yml']
+permissions:
+  contents: read
+jobs:
+  native-typecheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm --prefix mobile ci --ignore-scripts
+      - run: npm --prefix mobile run typecheck

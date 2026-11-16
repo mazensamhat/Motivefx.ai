@@ -23,6 +23,11 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (process.env.EXPO_PUBLIC_PUSH_ENABLED === "true") {
+      void import("../lib/notifications").then(module => module.refreshNativePush()).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

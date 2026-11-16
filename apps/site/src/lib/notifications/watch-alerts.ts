@@ -15,6 +15,6 @@ export async function queueWatchAlertPush(alert: { id: string; userId: string; t
   });
   await Promise.all(devices.map(device => enqueueNotification({
     userId: alert.userId, channel: "expo_push", eventKey: `alert:${alert.id}`, targetRef: device.id,
-    content: { title: alert.title, body: alert.body?.trim() || "Open MotiveFX to review the evidence behind this alert.", path: "/terminal/" },
+    content: { title: "MotiveFX Watch Agent", body: "New research alert. Open MotiveFX to review the evidence.", path: "/terminal/" },
   }, alert.createdAt.getTime())));
 }

@@ -12,8 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { API_BASE, APP_VERSION, IOS_BUILD_NUMBER, TERMINAL_URL, WEB_BASE } from "../config";
 import { getAccessToken, getRefreshToken, getUserId } from "../lib/auth";
+import { authenticatedFetch } from "../lib/api";
 import { reportNativeClientError } from "../lib/clientTelemetry";
 import { useAuth } from "../context/AuthContext";
+import { PushSettings } from "../components/PushSettings";
 import { colors } from "../theme";
 import {
   configureIap,
@@ -22,6 +24,7 @@ import {
   isValidTier,
   purchaseTier,
   restorePurchases,
+  serverEntitlementConfirmed,
   type IntelligenceTierId,
 } from "../iap";
 
@@ -419,46 +422,21 @@ export function TerminalScreen({
   }, []);
 
   const syncAppleToServer = useCallback(
-    (opts: {
-      originalTransactionId: string;
-      productId?: string | null;
-      tier?: string | null;
-      revenueCatAppUserId?: string | null;
-    }) => {
-      const syncJs = `
-        (async function(){
-          try {
-            var res = await fetch("/api/subscription/apple", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                action: "activate",
-                originalTransactionId: ${JSON.stringify(opts.originalTransactionId)},
-                productId: ${JSON.stringify(opts.productId ?? null)},
-                entitlementId: ${JSON.stringify(opts.tier ?? null)},
-                revenueCatAppUserId: ${JSON.stringify(opts.revenueCatAppUserId ?? null)},
-                entitlementActive: true
-              })
-            });
-            window.dispatchEvent(new CustomEvent("motivefx-iap", {
-              detail: { type: "iap_result", ok: res.ok, tier: ${JSON.stringify(opts.tier ?? null)} }
-            }));
-            if (res.ok) {
-              window.dispatchEvent(new Event("motivefx:entitlements-changed"));
-              window.location.reload();
-            }
-          } catch (e) {
-            window.dispatchEvent(new CustomEvent("motivefx-iap", {
-              detail: { type: "iap_result", ok: false, error: String(e) }
-            }));
-          }
-          true;
-        })();
-      `;
-      webRef.current?.injectJavaScript?.(syncJs);
-    },
-    []
+    async (opts: { originalTransactionId?: string; productId?: string | null; tier?: string | null; revenueCatAppUserId?: string | null }) => {
+      try {
+        const response = await authenticatedFetch(`${API_BASE}/subscription/apple`, {
+          method: "POST", body: JSON.stringify({ action: "activate", ...opts, entitlementId: opts.tier }),
+        });
+        const current = await response.json();
+        const confirmed = response.ok && serverEntitlementConfirmed(current, opts.tier);
+        notifyWeb({ type: "iap_result", ok: confirmed, pending: !confirmed, tier: current.tier });
+        setIapBanner(confirmed ? "Subscription confirmed by the server." : "Store request received. Waiting for server entitlement confirmation.");
+        if (confirmed) webRef.current?.reload?.();
+      } catch {
+        setIapBanner("Store request received. Server confirmation is unavailable; retry Restore later.");
+        notifyWeb({ type: "iap_result", ok: false, pending: true });
+      }
+    }, [notifyWeb]
   );
 
   const freeReaderBillingMessage =
@@ -494,11 +472,10 @@ export function TerminalScreen({
       setIapBusy(true);
       setIapBanner(null);
       try {
-        if (userId) {
-          appUserIdRef.current = userId;
-          await configureIap(userId);
-        }
-        const result = await purchaseTier(tier);
+        const accountId = await getUserId();
+        if (!accountId) { setIapBanner("Sign in before purchasing."); return; }
+        appUserIdRef.current = accountId;
+        const result = await purchaseTier(tier, accountId);
         if (!result.ok || !result.customerInfo) {
           setIapBanner(result.error ?? "Purchase failed.");
           notifyWeb({ type: "iap_result", ok: false, error: result.error });
@@ -506,15 +483,13 @@ export function TerminalScreen({
         }
         const tx =
           extractTransactionId(result.customerInfo) ??
-          result.originalTransactionId ??
-          `rc:${appUserIdRef.current ?? "anon"}:${result.productId ?? tier}`;
-        syncAppleToServer({
+          result.originalTransactionId;
+        await syncAppleToServer({
           originalTransactionId: tx,
           productId: result.productId,
           tier: result.tier ?? tier,
           revenueCatAppUserId: appUserIdRef.current,
         });
-        setIapBanner("Subscription unlocked.");
       } finally {
         setIapBusy(false);
       }
@@ -536,11 +511,10 @@ export function TerminalScreen({
       setIapBusy(true);
       setIapBanner(null);
       try {
-        if (userId) {
-          appUserIdRef.current = userId;
-          await configureIap(userId);
-        }
-        const result = await restorePurchases();
+        const accountId = await getUserId();
+        if (!accountId) { setIapBanner("Sign in before restoring purchases."); return; }
+        appUserIdRef.current = accountId;
+        const result = await restorePurchases(accountId);
         if (!result.ok || !result.customerInfo) {
           setIapBanner(result.error ?? "Restore failed.");
           notifyWeb({ type: "iap_result", ok: false, error: result.error });
@@ -548,15 +522,13 @@ export function TerminalScreen({
         }
         const tx =
           extractTransactionId(result.customerInfo) ??
-          result.originalTransactionId ??
-          `rc:restore:${result.productId ?? "unknown"}`;
-        syncAppleToServer({
+          result.originalTransactionId;
+        await syncAppleToServer({
           originalTransactionId: tx,
           productId: result.productId,
           tier: result.tier,
           revenueCatAppUserId: appUserIdRef.current,
         });
-        setIapBanner("Purchases restored.");
       } finally {
         setIapBusy(false);
       }
@@ -583,9 +555,8 @@ export function TerminalScreen({
             return;
           }
           if (parsed.type === "session" && parsed.userId) {
-            appUserIdRef.current = parsed.userId;
             if (Platform.OS !== "ios") {
-              void configureIap(parsed.userId);
+              void getUserId().then(accountId => accountId ? configureIap(accountId) : false);
             }
             return;
           }
@@ -855,6 +826,7 @@ export function TerminalScreen({
           </Pressable>
         </View>
       ) : null}
+      {isAuthenticated && <PushSettings onOpen={bounceToTerminal} />}
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
