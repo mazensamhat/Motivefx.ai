@@ -107,6 +107,10 @@ model User {
 
   intelPref           UserIntelPref?
 
+  notificationConsent NotificationConsent?
+  notificationDevices NotificationDevice[]
+  notificationDeliveries NotificationDelivery[]
+
   ownedTeams          Team[]              @relation("TeamOwner")
 
   teamMemberships     TeamMember[]
@@ -117,6 +121,65 @@ model User {
 
   @@index([subscriptionStatus])
 
+}
+
+/** Outbound delivery remains disabled until consent/device and provider acceptance are verified. */
+model NotificationConsent {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyEmailConsentAt DateTime?
+  dailyEmailConfirmedAt DateTime?
+  confirmedEmailHash String?
+  dailyEmailRevokedAt DateTime?
+  emailSuppressedAt DateTime?
+  pushConsentAt DateTime?
+  pushRevokedAt DateTime?
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationDevice {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider String @default("expo")
+  token String @unique
+  platform String
+  consentAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, revokedAt])
+}
+
+model NotificationDelivery {
+  key String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel String
+  eventKey String
+  targetRef String
+  contentJson String
+  state String @default("queued")
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  expiresAt DateTime
+  attemptedAt DateTime?
+  providerId String?
+  lastCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state, availableAt])
+  @@index([userId, createdAt])
+  @@index([channel, providerId])
+}
+
+model NotificationReceipt {
+  id String @id
+  provider String
+  eventType String
+  providerId String
+  receivedAt DateTime @default(now())
+  @@index([provider, providerId])
 }
 
 

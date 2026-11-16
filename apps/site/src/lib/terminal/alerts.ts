@@ -56,7 +56,7 @@ export async function upsertAlerts(
   }>
 ) {
   for (const alert of alerts) {
-    await prisma.intelAlert.upsert({
+    const saved = await prisma.intelAlert.upsert({
       where: { userId_alertKey: { userId, alertKey: alert.alertKey } },
       create: {
         userId,
@@ -73,6 +73,15 @@ export async function upsertAlerts(
         confidence: alert.confidence ?? null,
       },
     });
+    if (process.env.MOTIVE_NOTIFICATION_STORAGE_ENABLED === "true") {
+      try {
+        const { queueWatchAlertPush } = await import("../notifications/watch-alerts");
+        await queueWatchAlertPush(saved);
+      } catch {
+        // The existing durable in-app alert must survive an outbound queue outage.
+        console.warn("[notifications] Alert saved; push enqueue unavailable");
+      }
+    }
   }
 }
 
