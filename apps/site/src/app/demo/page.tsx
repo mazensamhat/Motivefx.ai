@@ -99,9 +99,11 @@ export default function DemoPage() {
       <ContentSection title="What you will see">
         <ContentProse>
           <p>
-            Live providers (Finnhub, CoinStats, The Odds API, Polymarket, OpenAI) power panels when keys are
-            configured. Options flow, congress, and sharp-money cards are explicitly{" "}
-            <Link href="/data-sources">demo / simulated</Link> until dedicated vendors are wired.
+            Market panels show available provider observations with source and freshness labels.
+            AI summaries use that evidence. Options flow, congressional trades, and dedicated OTC coverage are{" "}
+            <Link href="/data-sources">demonstration-only</Link> until their source integrations are ready.
+            Bookmaker consensus is a derived comparison of available odds; it does not represent
+            actual betting ticket or money-flow splits.
           </p>
           <p>
             MotiveFX is informational research software — not a broker, exchange, or sportsbook.

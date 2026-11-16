@@ -57,8 +57,8 @@ export const COMPARE_SLUGS = [
   "bloomberg",
 ] as const;
 
-/** Live / configured providers — keep in sync with README + `/api/health` feed keys. */
-export type DataSourceStatus = "live" | "demo" | "infra";
+/** Static integration catalog. These labels do not assert current provider health. */
+export type DataSourceStatus = "integrated" | "derived" | "demo" | "infra";
 
 export type DataSourceEntry = {
   name: string;
@@ -69,36 +69,36 @@ export type DataSourceEntry = {
 export const DATA_SOURCES: DataSourceEntry[] = [
   {
     name: "Finnhub",
-    status: "live",
-    detail: "Equity quotes, insider / Form 4–style filings when FINNHUB_API_KEY is set.",
+    status: "integrated",
+    detail: "Equity quotes and insider filings where provider access and coverage are available. Historical price validation has separate data requirements.",
   },
   {
     name: "CoinStats / CoinGecko",
-    status: "live",
-    detail: "Crypto market data and whale-style volume proxies (CoinStats key optional; CoinGecko fallback).",
+    status: "integrated",
+    detail: "Crypto quotes and market activity. Volume-based activity indicators are proxies, not verified wallet transfers or proof of whale ownership.",
   },
   {
     name: "SharpAPI",
-    status: "live",
+    status: "integrated",
     detail:
-      "Primary sports odds / line board when SHARP_API_KEY is set (free: 12 req/min, DK/FD, ~60s delay). See docs/ODDS_DATA_SOURCES.md.",
+      "Sports odds and line comparisons where event coverage is available. Published odds can be delayed; use the source timestamp when assessing freshness.",
   },
   {
     name: "The Odds API",
-    status: "live",
+    status: "integrated",
     detail:
-      "Backup sports odds when Sharp is missing, empty, or errors. Server-cached ~15 min (tunable 5–15); max 4 major sports per refresh.",
+      "Alternative sports odds coverage. Available events and refresh timing depend on provider access; cached observations retain their source timestamps.",
   },
   {
     name: "Polymarket Gamma API",
-    status: "live",
+    status: "integrated",
     detail:
-      "Primary Predictions board — public events/prices/volume (no API key). Shared ~15 min slate cache. Never uses SharpAPI or The Odds API.",
+      "Public prediction-market events, prices and volume. Market-implied prices are distinct from MotiveFX scores and calibrated forecast probabilities.",
   },
   {
     name: "OpenAI",
-    status: "live",
-    detail: "LLM layer for Why It Matters briefs and Ask Motive AI when OPENAI_API_KEY is set.",
+    status: "integrated",
+    detail: "AI summaries and Ask Motive explanations grounded in available evidence. AI output is not an independent market-data source or a guarantee of accuracy.",
   },
   {
     name: "Stripe",
@@ -116,16 +116,16 @@ export const DATA_SOURCES: DataSourceEntry[] = [
     detail: "Illustrative sample filings — not a live congressional disclosure feed.",
   },
   {
-    name: "Sharp-money / public-vs-money splits",
-    status: "live",
+    name: "Bookmaker consensus",
+    status: "derived",
     detail:
-      "Derived lean from SharpAPI/Odds moneyline consensus (soft vs sharp books when available) — labeled derived, not true ticket splits. Demo Chiefs/Bills slips are never served.",
+      "A comparison derived from available bookmaker moneylines. It does not measure actual ticket counts, betting handle, or public-versus-money splits.",
   },
   {
     name: "Bitquery Polymarket sports",
-    status: "infra",
+    status: "integrated",
     detail:
-      "Optional enrichment (NBA/NFL/esports; cricket only if BITQUERY_CRICKET=true) when BITQUERY_API_KEY is set. Gamma remains primary for Predictions.",
+      "Optional sports-event enrichment where provider access and sport coverage are enabled. Polymarket Gamma remains the primary prediction-market source.",
   },
   {
     name: "Pink-sheet / microcap movers",
