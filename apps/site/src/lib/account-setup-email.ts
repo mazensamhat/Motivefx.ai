@@ -3,14 +3,10 @@ import { SITE } from "@/lib/site-config";
 import { getEmailFrom, getResendApiKey } from "@/lib/email";
 
 /** Secure post-checkout onboarding for users whose Stripe checkout created the account. */
-export async function sendAccountSetupEmail(email: string, token: string): Promise<boolean> {
+export async function sendAccountSetupEmail(email: string, token: string, idempotencyKey?: string): Promise<boolean> {
   const setupUrl = `${getAppUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const apiKey = getResendApiKey();
   if (!apiKey) {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[email] Account setup link for ${email}: ${setupUrl}`);
-      return true;
-    }
     return false;
   }
 
@@ -19,7 +15,9 @@ export async function sendAccountSetupEmail(email: string, token: string): Promi
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
+    signal: AbortSignal.timeout(8000),
     body: JSON.stringify({
       from: getEmailFrom(),
       to: [email],
@@ -34,8 +32,7 @@ export async function sendAccountSetupEmail(email: string, token: string): Promi
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error("[account-setup-email] Resend error:", res.status, body);
+    console.error("[account-setup-email] Provider did not confirm acceptance:", res.status);
     return false;
   }
   return true;
