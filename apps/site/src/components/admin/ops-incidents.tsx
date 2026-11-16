@@ -22,7 +22,7 @@ type Forecast = {
   domain: string;
   title: string;
   reason: string;
-  confidence: number;
+  basis: "observed_telemetry";
   samples: number;
   errorRatePct: number;
   staleRatePct: number;
@@ -34,27 +34,38 @@ export function OpsIncidents() {
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [stats, setStats] = useState({ open: 0, critical: 0, forecastHigh: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [canManage, setCanManage] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch("/api/admin/incidents", { cache: "no-store" });
-      if (res.ok) {
+      if (!res.ok) throw new Error("Incident status is unavailable. Refresh to retry.");
+      {
         const body = (await res.json()) as {
           incidents: Incident[];
           forecasts: Forecast[];
           open: number;
           critical: number;
           forecastHigh: number;
+          canManage: boolean;
         };
         setIncidents(body.incidents);
         setForecasts(body.forecasts ?? []);
+        setCanManage(body.canManage === true);
         setStats({
           open: body.open,
           critical: body.critical,
           forecastHigh: body.forecastHigh ?? 0,
         });
       }
+    } catch {
+      setLoadError("Incident status is unavailable. Refresh to retry.");
+      setCanManage(false);
     } finally {
       setLoading(false);
     }
@@ -65,12 +76,22 @@ export function OpsIncidents() {
   }, [load]);
 
   async function ack(id: string, status: "acknowledged" | "investigating" | "resolved") {
-    await fetch("/api/admin/incidents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ incidentId: id, status }),
-    });
-    await load();
+    if (pendingId || !canManage) return;
+    setPendingId(id);
+    setActionError(null);
+    try {
+      const response = await fetch("/api/admin/incidents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ incidentId: id, status }),
+      });
+      if (!response.ok) throw new Error("Update not confirmed");
+      await load();
+    } catch {
+      setActionError("Incident update was not confirmed. Refresh to check its status before retrying.");
+    } finally {
+      setPendingId(null);
+    }
   }
 
   return (
@@ -83,21 +104,26 @@ export function OpsIncidents() {
           <div>
             <h2>Alerts &amp; Incidents</h2>
             <p>
-              {stats.open} open · {stats.critical} critical · {stats.forecastHigh} high-risk forecast
+              {loading ? "Loading incident status…" : loadError ? "Status unknown" :
+                `${stats.open} active · ${stats.critical} critical · ${stats.forecastHigh} high degradation indicators`}
             </p>
           </div>
-          <button type="button" className="ops-toolbar-btn" onClick={load} disabled={loading}>
+          <button type="button" className="ops-toolbar-btn" onClick={load} disabled={loading || pendingId !== null}>
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
         </div>
       </header>
 
+      {loadError ? <p role="alert" className="ops-muted">{loadError}</p> : null}
+      {actionError ? <p role="alert" className="ops-muted">{actionError}</p> : null}
+      {loading || loadError ? null : <>
       <section className="ops-card">
         <header className="ops-card-header">
-          <h3>Predictive risk</h3>
+          <h3>Observed degradation indicators</h3>
         </header>
+        <p className="ops-muted">Thresholds across at most 500 recent telemetry events over six hours, with at least five samples per domain. These observations are not an outage probability or a full availability report.</p>
         {forecasts.length === 0 ? (
-          <p className="ops-muted">No elevated telemetry risk detected in the recent window.</p>
+          <p className="ops-muted">No sampled domain meets the alert thresholds. Missing or insufficient samples cannot establish health.</p>
         ) : (
           <div className="ops-table-wrap">
             <table className="ops-table">
@@ -106,7 +132,7 @@ export function OpsIncidents() {
                   <th>Risk</th>
                   <th>Domain</th>
                   <th>Evidence</th>
-                  <th>Confidence</th>
+                  <th>Samples</th>
                   <th>Last observed</th>
                 </tr>
               </thead>
@@ -123,7 +149,7 @@ export function OpsIncidents() {
                       <div className="ops-muted" style={{ fontSize: "0.75rem" }}>{f.domain}</div>
                     </td>
                     <td>{f.reason}</td>
-                    <td>{f.confidence}%</td>
+                    <td>{f.samples}</td>
                     <td>{new Date(f.lastObservedAt).toLocaleString()}</td>
                   </tr>
                 ))}
@@ -135,7 +161,7 @@ export function OpsIncidents() {
 
       <section className="ops-card">
         {incidents.length === 0 ? (
-          <p className="ops-muted">No active incidents. All systems clear.</p>
+          <p className="ops-muted">No incident records returned in this view. This is not a complete health certification.</p>
         ) : (
           <div className="ops-table-wrap">
             <table className="ops-table">
@@ -179,6 +205,7 @@ export function OpsIncidents() {
                         <button
                           type="button"
                           className="ops-toolbar-btn"
+                          disabled={!canManage || pendingId !== null}
                           onClick={() => void ack(i.id, "acknowledged")}
                         >
                           Ack
@@ -186,6 +213,7 @@ export function OpsIncidents() {
                         <button
                           type="button"
                           className="ops-toolbar-btn"
+                          disabled={!canManage || pendingId !== null}
                           onClick={() => void ack(i.id, "resolved")}
                         >
                           Resolve
@@ -199,6 +227,7 @@ export function OpsIncidents() {
           </div>
         )}
       </section>
+      </>}
     </section>
   );
 }

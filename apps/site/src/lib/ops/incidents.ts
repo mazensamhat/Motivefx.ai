@@ -1,10 +1,9 @@
 /**
  * Ops incidents desk — materializes Command attention into trackable incidents.
- * Dual-writes to Postgres OpsIncidentRecord.
+ * Materialization and operator acknowledgments await durable persistence.
  */
 
 import { buildCommandAttention, type AttentionSeverity } from "./attention";
-import { recordAudit } from "./audit";
 import { loadIncidents, loadRecentTelemetry, updateIncidentStatus, upsertIncident } from "./durable";
 
 export type IncidentSeverity = "INFO" | "WARNING" | "HIGH" | "CRITICAL";
@@ -40,7 +39,7 @@ export type OpsRiskForecast = {
   domain: string;
   title: string;
   reason: string;
-  confidence: number;
+  basis: "observed_telemetry";
   samples: number;
   errorRatePct: number;
   staleRatePct: number;
@@ -48,11 +47,14 @@ export type OpsRiskForecast = {
 };
 
 export async function forecastOpsRisks(hours = 6): Promise<OpsRiskForecast[]> {
-  const rows = await loadRecentTelemetry(500);
-  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  // Retain the historical function/API name for compatibility. These are
+  // threshold-based observations, not a calibrated prediction of an outage.
+  const rows = await loadRecentTelemetry(500, { strict: true });
+  const now = Date.now();
+  const cutoff = now - hours * 60 * 60 * 1000;
   const recent = rows.filter((row) => {
     const at = Date.parse(row.observedAt);
-    return Number.isFinite(at) && at >= cutoff;
+    return Number.isFinite(at) && at >= cutoff && at <= now;
   });
 
   type Bucket = {
@@ -91,20 +93,16 @@ export async function forecastOpsRisks(hours = 6): Promise<OpsRiskForecast[]> {
 
     const severity: "WARNING" | "HIGH" =
       errorRatePct >= 40 || staleRatePct >= 60 ? "HIGH" : "WARNING";
-    const confidence = Math.min(
-      95,
-      Math.round(45 + Math.min(bucket.samples, 50) * 0.8 + Math.max(errorRatePct, staleRatePct) * 0.3)
-    );
     const display = bucket.domain.replace(/^provider:/, "").replace(/^desk:/, "");
 
     forecasts.push({
       id: `forecast:${bucket.domain}`,
       severity,
       domain: bucket.domain,
-      title: `${display} degradation risk`,
+      title: `${display} observed degradation`,
       reason:
-        `${bucket.samples} telemetry samples in ${hours}h · ${errorRatePct}% errors · ${staleRatePct}% stale/expired`,
-      confidence,
+        `${bucket.samples} sampled events in the last ${hours}h · ${errorRatePct}% errors · ${staleRatePct}% stale/unavailable`,
+      basis: "observed_telemetry",
       samples: bucket.samples,
       errorRatePct,
       staleRatePct,
@@ -114,7 +112,7 @@ export async function forecastOpsRisks(hours = 6): Promise<OpsRiskForecast[]> {
 
   return forecasts.sort((a, b) => {
     if (a.severity !== b.severity) return a.severity === "HIGH" ? -1 : 1;
-    return b.confidence - a.confidence;
+    return Math.max(b.errorRatePct, b.staleRatePct) - Math.max(a.errorRatePct, a.staleRatePct);
   });
 }
 
@@ -122,9 +120,9 @@ export async function listOpsIncidents(): Promise<OpsIncident[]> {
   const attention = await buildCommandAttention();
   const now = attention.generatedAt;
 
-  const live = attention.items
+  const live = await Promise.all(attention.items
     .filter((i) => i.severity !== "ok")
-    .map((item) => {
+    .map(async (item) => {
       const severity = mapSeverity(item.severity);
       const runbook =
         item.domain === "providers"
@@ -132,7 +130,7 @@ export async function listOpsIncidents(): Promise<OpsIncident[]> {
           : item.domain === "market-truth"
             ? "Open Market Truth · inspect contamination · suppress demo"
             : "Investigate via Live Ops and related Ops page";
-      void upsertIncident({
+      await upsertIncident({
         id: item.id,
         severity,
         domain: item.domain,
@@ -155,9 +153,9 @@ export async function listOpsIncidents(): Promise<OpsIncident[]> {
         href: item.href,
         runbook,
       };
-    });
+    }));
 
-  const durable = await loadIncidents(100);
+  const durable = await loadIncidents(100, { strict: true });
   const byId = new Map<string, OpsIncident>();
 
   for (const row of durable) {
@@ -196,26 +194,17 @@ export async function listOpsIncidents(): Promise<OpsIncident[]> {
   return [...byId.values()].sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
 }
 
-export function acknowledgeIncident(input: {
+export async function acknowledgeIncident(input: {
   incidentId: string;
   actorId: string;
   actorEmail: string;
   status?: IncidentStatus;
-}): boolean {
+}): Promise<boolean> {
   const status = input.status ?? "acknowledged";
-  void updateIncidentStatus({
+  return updateIncidentStatus({
     id: input.incidentId,
     status,
-    actorEmail: input.actorEmail,
-  });
-  recordAudit({
     actorId: input.actorId,
     actorEmail: input.actorEmail,
-    action: "ops.incident.acknowledge",
-    targetType: "incident",
-    targetId: input.incidentId,
-    result: "success",
-    after: { status },
   });
-  return true;
 }

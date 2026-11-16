@@ -44,7 +44,7 @@ export async function persistTelemetry(envelope: TelemetryEnvelope): Promise<voi
   }
 }
 
-export async function loadRecentTelemetry(limit = 50): Promise<TelemetryEnvelope[]> {
+export async function loadRecentTelemetry(limit = 50, options: { strict?: boolean } = {}): Promise<TelemetryEnvelope[]> {
   try {
     const rows = await prisma.opsTelemetryEvent.findMany({
       orderBy: { observedAt: "desc" },
@@ -78,6 +78,7 @@ export async function loadRecentTelemetry(limit = 50): Promise<TelemetryEnvelope
       instrumentationErrors: JSON.parse(r.instrumentationJson || "[]") as string[],
     }));
   } catch (e) {
+    if (options.strict) throw e;
     console.warn("[ops/durable] telemetry load failed", e);
     return [];
   }
@@ -494,8 +495,8 @@ export async function upsertIncident(input: {
   source: string;
 }): Promise<void> {
   const now = new Date();
-  try {
-    await prisma.opsIncidentRecord.upsert({
+  await prisma.$transaction(async (tx) => {
+    const row = await tx.opsIncidentRecord.upsert({
       where: { id: input.id },
       create: {
         id: input.id,
@@ -519,38 +520,70 @@ export async function upsertIncident(input: {
         runbook: input.runbook,
       },
     });
-  } catch (e) {
-    console.warn("[ops/durable] incident upsert failed", e);
-  }
+    // A live condition can recur after resolution. Persist the reopened state
+    // rather than displaying it only in the current HTTP response.
+    if (row.status === "resolved") {
+      await tx.opsIncidentRecord.update({
+        where: { id: input.id },
+        data: { status: "open", resolvedAt: null, acknowledgedBy: null, acknowledgedAt: null },
+      });
+    }
+  });
 }
 
 export async function updateIncidentStatus(input: {
   id: string;
-  status: string;
+  status: "open" | "acknowledged" | "investigating" | "resolved";
+  actorId: string;
   actorEmail: string;
-}): Promise<void> {
-  try {
-    await prisma.opsIncidentRecord.update({
+}): Promise<boolean> {
+  // Status and its success audit are one commit. A failed audit must not leave
+  // a status change behind, and concurrent operators need an accurate before.
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "OpsIncidentRecord" WHERE id = ${input.id} FOR UPDATE
+    `;
+    if (!locked.length) return false;
+    const before = await tx.opsIncidentRecord.findUnique({ where: { id: input.id } });
+    if (!before) return false;
+    const now = new Date();
+    await tx.opsIncidentRecord.update({
       where: { id: input.id },
       data: {
         status: input.status,
-        acknowledgedBy: input.actorEmail,
-        acknowledgedAt: new Date(),
-        resolvedAt: input.status === "resolved" ? new Date() : undefined,
+        acknowledgedBy: input.status === "open" ? null : input.actorEmail,
+        acknowledgedAt: input.status === "open" ? null : now,
+        resolvedAt: input.status === "resolved" ? now : null,
       },
     });
-  } catch (e) {
-    console.warn("[ops/durable] incident update failed", e);
-  }
+    await tx.opsAuditEvent.create({
+      data: {
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        action: "ops.incident.acknowledge",
+        capability: "manage_runtime_config",
+        risk: "HIGH",
+        targetType: "incident",
+        targetId: input.id,
+        beforeJson: JSON.stringify({ status: before.status }),
+        afterJson: JSON.stringify({ status: input.status }),
+        result: "success",
+        environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
+        observedAt: now,
+      },
+    });
+    return true;
+  });
 }
 
-export async function loadIncidents(limit = 100) {
+export async function loadIncidents(limit = 100, options: { strict?: boolean } = {}) {
   try {
     return await prisma.opsIncidentRecord.findMany({
       orderBy: { lastSeen: "desc" },
       take: limit,
     });
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     return [];
   }
 }
