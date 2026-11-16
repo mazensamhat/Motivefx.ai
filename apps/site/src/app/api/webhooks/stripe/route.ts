@@ -1,222 +1,62 @@
-import { prisma } from "@motivefx/database";
 import { getStripe } from "@/lib/stripe";
 import { json, serverError } from "@/lib/api";
-import { invalidateUserCache } from "@/lib/load-user";
-import { issuePasswordResetToken } from "@/lib/password-reset";
-import { sendAccountSetupEmail } from "@/lib/account-setup-email";
+import { checkoutMayFulfill, reconcileStripeSubscription, recordStripeRiskEvent, stripeObjectId } from "@/lib/stripe-reconciliation";
+import { sendCheckoutAccountSetup } from "@/lib/checkout-account-setup";
 import type Stripe from "stripe";
-import type { PricingTierId } from "@/lib/tiers";
 
 export const runtime = "nodejs";
-
-async function activateTier(
-  userId: string,
-  tier: PricingTierId,
-  selectedMarkets: string | null,
-  subscriptionId: string,
-  customerId?: string | null
-) {
-  const existing = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { subscriptionStatus: true },
-  });
-  if (existing?.subscriptionStatus === "comp") return;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      intelligenceTier: tier,
-      selectedMarkets,
-      stripeSubscriptionId: subscriptionId,
-      subscriptionStatus: "active",
-      billingProvider: "stripe",
-      appleOriginalTransactionId: null,
-      appleProductId: null,
-      ...(customerId ? { stripeCustomerId: customerId } : {}),
-    },
-  });
-  invalidateUserCache(userId);
-}
-
-async function deactivateTier(userId: string, subscriptionId: string) {
-  const existing = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      subscriptionStatus: true,
-      billingProvider: true,
-      stripeSubscriptionId: true,
-    },
-  });
-  if (existing?.subscriptionStatus === "comp") return;
-  if (existing?.billingProvider !== "stripe") return;
-  if (existing.stripeSubscriptionId !== subscriptionId) return;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      intelligenceTier: "lite",
-      stripeSubscriptionId: null,
-      subscriptionStatus: "none",
-      billingProvider: null,
-    },
-  });
-  invalidateUserCache(userId);
-}
-
-async function resolveUserIdFromSubscription(sub: Stripe.Subscription): Promise<string | null> {
-  if (sub.metadata?.userId) return sub.metadata.userId;
-
-  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
-  if (!customerId) return null;
-
-  const user = await prisma.user.findFirst({
-    where: { stripeCustomerId: customerId },
-    select: { id: true },
-  });
-  return user?.id ?? null;
-}
-
-async function resolveUserIdFromCheckout(session: Stripe.Checkout.Session): Promise<string | null> {
-  if (session.metadata?.userId) return session.metadata.userId;
-
-  const customerId =
-    typeof session.customer === "string" ? session.customer : session.customer?.id;
-  if (!customerId) return null;
-
-  const user = await prisma.user.findFirst({
-    where: { stripeCustomerId: customerId },
-    select: { id: true },
-  });
-  return user?.id ?? null;
-}
-
-function tierFromMetadata(meta: Stripe.Metadata | null | undefined): PricingTierId | null {
-  const tier = meta?.tier;
-  if (
-    tier === "lite" ||
-    tier === "pro" ||
-    tier === "ultra" ||
-    tier === "ultra_plus" ||
-    tier === "elite"
-  ) {
-    return tier;
-  }
-  return null;
-}
-
-async function sendCheckoutAccountSetup(userId: string, checkoutSessionId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true, passwordHash: true },
-  });
-  if (!user || user.passwordHash) return;
-
-  // Stripe retries webhook deliveries. Do not repeatedly invalidate the previous
-  // setup link or send duplicate mail for the same successful checkout session.
-  const alreadySent = await prisma.opsAuditEvent.findFirst({
-    where: {
-      action: "auth.account_setup.sent",
-      targetId: userId,
-      reason: checkoutSessionId,
-      result: "success",
-    },
-    select: { id: true },
-  });
-  if (alreadySent) return;
-
-  const token = await issuePasswordResetToken(userId);
-  const sent = await sendAccountSetupEmail(user.email, token);
-  await prisma.opsAuditEvent.create({
-    data: {
-      actorId: "stripe_webhook",
-      actorEmail: "stripe-webhook@motivefx.local",
-      action: "auth.account_setup.sent",
-      capability: null,
-      risk: "LOW",
-      targetType: "user",
-      targetId: userId,
-      reason: checkoutSessionId,
-      beforeJson: null,
-      afterJson: null,
-      result: sent ? "success" : "failed",
-      environment:
-        process.env.VERCEL_ENV?.trim() || process.env.NODE_ENV?.trim() || "unknown",
-    },
-  });
-  if (!sent) {
-    console.error(`[stripe webhook] Could not send account setup email to user ${userId}`);
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const stripe = getStripe();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-    if (!stripe || !webhookSecret || webhookSecret.includes("...")) {
-      return json({ error: "Stripe webhook not configured" }, 503);
-    }
-
-    const body = await request.text();
+    if (!stripe || !webhookSecret || webhookSecret.includes("...")) return json({ error: "Stripe webhook not configured" }, 503);
     const signature = request.headers.get("stripe-signature");
     if (!signature) return json({ error: "Missing signature" }, 400);
-
+    const body = await request.text();
     let event: Stripe.Event;
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch {
-      return json({ error: "Invalid signature" }, 400);
-    }
+    try { event = stripe.webhooks.constructEvent(body, signature, webhookSecret); }
+    catch { return json({ error: "Invalid signature" }, 400); }
 
     switch (event.type) {
-      case "checkout.session.completed": {
-        const checkoutSession = event.data.object as Stripe.Checkout.Session;
-        const userId = await resolveUserIdFromCheckout(checkoutSession);
-        const subId =
-          typeof checkoutSession.subscription === "string"
-            ? checkoutSession.subscription
-            : checkoutSession.subscription?.id;
-        const customerId =
-          typeof checkoutSession.customer === "string"
-            ? checkoutSession.customer
-            : checkoutSession.customer?.id;
-        const tier = tierFromMetadata(checkoutSession.metadata);
-        const selectedMarkets = checkoutSession.metadata?.selectedMarkets ?? null;
-        if (userId && subId && tier) {
-          await activateTier(userId, tier, selectedMarkets, subId, customerId);
-          await sendCheckoutAccountSetup(userId, checkoutSession.id);
-        }
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        const hint = event.data.object as Stripe.Checkout.Session;
+        const session = await stripe.checkout.sessions.retrieve(hint.id, {}, { timeout: 4000, maxNetworkRetries: 0 });
+        const subId = stripeObjectId(session.subscription);
+        if (!checkoutMayFulfill(session) || !subId) break;
+        const result = await reconcileStripeSubscription(stripe, subId, event.id);
+        if (result.activated) await sendCheckoutAccountSetup(result.userId, session.id);
         break;
       }
       case "customer.subscription.created":
-      case "customer.subscription.updated": {
-        const sub = event.data.object as Stripe.Subscription;
-        const userId = await resolveUserIdFromSubscription(sub);
-        if (!userId) break;
-        const tier = tierFromMetadata(sub.metadata);
-        const selectedMarkets = sub.metadata?.selectedMarkets ?? null;
-        if (sub.status === "active" || sub.status === "trialing") {
-          const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
-          if (tier) {
-            await activateTier(userId, tier, selectedMarkets, sub.id, customerId);
-          }
-        } else if (sub.status === "canceled" || sub.status === "unpaid") {
-          await deactivateTier(userId, sub.id);
-        }
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted":
+      case "customer.subscription.paused":
+      case "customer.subscription.resumed": {
+        const hint = event.data.object as Stripe.Subscription;
+        await reconcileStripeSubscription(stripe, hint.id, event.id);
         break;
       }
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const userId = await resolveUserIdFromSubscription(sub);
-        if (userId) await deactivateTier(userId, sub.id);
+      case "invoice.paid":
+      case "invoice.payment_failed": {
+        const hint = event.data.object as Stripe.Invoice;
+        if (!hint.id) throw new Error("stripe_invoice_id_missing");
+        const invoice = await stripe.invoices.retrieve(hint.id, {}, { timeout: 4000, maxNetworkRetries: 0 });
+        const subId = stripeObjectId(invoice.parent?.subscription_details?.subscription);
+        if (subId) await reconcileStripeSubscription(stripe, subId, event.id);
         break;
       }
-      default:
+      case "charge.dispute.created":
+      case "charge.refunded":
+      case "radar.early_fraud_warning.created":
+        await recordStripeRiskEvent(event);
         break;
+      default: break;
     }
-
     return json({ received: true, status: "success" });
-  } catch (error) {
-    console.error("[api/webhooks/stripe]", error);
+  } catch {
+    // Do not include raw provider objects, customer details or secrets in logs.
+    console.error("[api/webhooks/stripe] reconciliation failed; provider retry required");
     return serverError("Webhook handler failed.");
   }
 }
