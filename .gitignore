@@ -55,5 +55,6 @@ docs/play-support-ticket/*.aab
 .tmp*/
 .tmp-*.json
 .tmp-recording-frames/
+test-results/
 app.json
 
