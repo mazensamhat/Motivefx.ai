@@ -22,10 +22,10 @@ test('missing observations remain unknown while measured zero remains zero',()=>
   assert.throws(()=>metaProfileObservation('instagram','42',{id:'43',followers_count:20}),/did not match/);
 });
 
-function setup(t,channels,response){
+function setup(t,channels,response,previousSnapshot=null){
   const writes=[],requests=[],credentialUpdates=[];
   db.marketingChannel={findMany:async()=>channels};
-  db.socialMetricsSnapshot={findUnique:async()=>null,upsert:args=>{writes.push(args);return Promise.resolve(args);}};
+  db.socialMetricsSnapshot={findUnique:async()=>previousSnapshot,upsert:args=>{writes.push(args);return Promise.resolve(args);}};
   db.socialChannelCredential={update:args=>{credentialUpdates.push(args);return Promise.resolve(args);}};
   db.$transaction=async args=>Promise.all(args);
   const originalFetch=globalThis.fetch;
@@ -55,6 +55,19 @@ test('real company-account observations use bounded authenticated reads and idem
   const raw=JSON.parse(write.create.rawJson);assert.deepEqual(raw.availableMetrics,['followers','postsCount']);
   assert.ok(!write.create.rawJson.includes('test-private-token'));
   assert.equal(state.credentialUpdates[0].data.connectionStatus,'connected');
+});
+
+test('partial provider refreshes preserve prior observed metrics without fabricating omitted fields',async t=>{
+  const facebook={...connected,id:'facebook-motivefx-ai',platform:'Facebook'};
+  const previous={rawJson:JSON.stringify({availableMetrics:['postsCount']})};
+  const state=setup(t,[facebook],new Response(JSON.stringify({id:'42',followers_count:8})),previous);
+  const result=await syncSocialProviders();
+  assert.equal(result.synced,1);assert.equal(state.writes.length,1);
+  const write=state.writes[0];
+  assert.equal(write.update.followers,8);
+  assert.equal(write.update.postsCount,undefined);
+  assert.equal(write.update.impressions,undefined);
+  assert.deepEqual(JSON.parse(write.update.rawJson).availableMetrics,['postsCount','followers']);
 });
 
 test('provider denial preserves earlier observations and records no secret response body',async t=>{
