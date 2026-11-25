@@ -59,6 +59,22 @@ function noteVolOi(note: string, seed: number): number {
   return Number((8 + (seed % 12) + (seed % 10) / 10).toFixed(1));
 }
 
+function isCryptoVolumeProxy(row: Record<string, unknown>): boolean {
+  const blob = `${row.sourceType ?? ""} ${row.note ?? ""} ${row.from ?? ""} ${row.to ?? ""}`.toLowerCase();
+  return (
+    String(row.sourceType ?? "").toUpperCase() === "DERIVED" ||
+    /proxy|not a single whale|24h vol|24h volume/.test(blob)
+  );
+}
+
+function cryptoProxyNote(note: string): string {
+  return note
+    .replace(/\s*\((?:not\s+)?a?\s*single\s+whale\s+tx\)/gi, " (volume proxy)")
+    .replace(/\bwhale\b/gi, "volume")
+    .replace(/\bwallet\b/gi, "market")
+    .replace(/\btransfer\b/gi, "activity");
+}
+
 export function buildAssetDeepDive(
   row: Record<string, unknown>,
   module: BrandModuleId
@@ -180,13 +196,19 @@ export function buildAssetDeepDive(
     }
     case "crypto": {
       const asset = String(row.asset ?? row.symbol ?? "—");
+      const volumeProxy = isCryptoVolumeProxy(row);
+      const note = String(row.note ?? "");
+      const displayNote = volumeProxy ? cryptoProxyNote(note) : note;
       const brief = buildPlainBrief({
         module: "crypto",
         symbol: asset,
+        sourceType: String(row.sourceType ?? ""),
         amountUsd: row.amountUsd != null ? Number(row.amountUsd) : undefined,
         direction: String(row.direction ?? row.side ?? ""),
-        note: String(row.note ?? ""),
-        existingNote: String(row.note ?? ""),
+        from: String(row.from ?? ""),
+        to: String(row.to ?? ""),
+        note: displayNote,
+        existingNote: displayNote,
         seed,
         statusVariant,
         priceLabel: row.price != null ? formatPrice(row.price) : undefined,
@@ -199,16 +221,18 @@ export function buildAssetDeepDive(
         kpis: [
           { label: "Spot reference", value: formatPrice(row.price) },
           {
-            label: "Network activity",
+            label: volumeProxy ? "Market activity" : "Network activity",
             value: `${(1.2 + (seed % 80) / 10).toFixed(1)}x`,
-            hint: "Relative gas / network load (illustrative)",
+            hint: volumeProxy
+              ? "Relative market activity (illustrative)"
+              : "Relative gas / network load (illustrative)",
             highlight: true,
           },
-          { label: "Transfer size", value: formatUsd(row.amountUsd) },
+          { label: volumeProxy ? "Reported volume" : "Transfer size", value: formatUsd(row.amountUsd) },
           {
-            label: "Flow direction",
-            value: String(row.direction ?? row.side ?? "—").toUpperCase(),
-            hint: "Where the coins appear to be moving",
+            label: volumeProxy ? "Source type" : "Flow direction",
+            value: volumeProxy ? "VOLUME PROXY" : String(row.direction ?? row.side ?? "—").toUpperCase(),
+            hint: volumeProxy ? "Not one tracked transaction" : "Where the coins appear to be moving",
             highlight: true,
           },
         ],
@@ -218,9 +242,11 @@ export function buildAssetDeepDive(
         whatItMeans: brief.whatItMeans,
         whatToWatch: brief.whatToWatch,
         signalStack: brief.signalStack,
-        stanceExplain: "Large transfers are volatility context — not buy/sell instructions.",
+        stanceExplain: volumeProxy
+          ? "Trading volume proxies are market-activity context — not tracked transactions or buy/sell instructions."
+          : "Large transfers are volatility context — not buy/sell instructions.",
         scorecard: buildMotiveScorecard(
-          { ...row, symbol: asset, asset, amountUsd: row.amountUsd, direction: row.direction ?? row.side },
+          { ...row, symbol: asset, asset, amountUsd: row.amountUsd, direction: row.direction ?? row.side, note: displayNote },
           "crypto"
         ),
       };

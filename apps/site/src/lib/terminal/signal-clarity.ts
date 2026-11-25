@@ -5,6 +5,7 @@
 export interface OpportunitySignalInput {
   module: string;
   symbol: string;
+  sourceType?: string;
   type?: string;
   volOiRatio?: number;
   premium?: number;
@@ -12,6 +13,8 @@ export interface OpportunitySignalInput {
   volRatio?: number;
   amountUsd?: number;
   direction?: string;
+  from?: string;
+  to?: string;
   yesPct?: number;
   note?: string;
   side?: string;
@@ -75,6 +78,14 @@ function pickFromPool(pool: readonly string[], seed: number, count: number, forc
   return out.slice(0, count);
 }
 
+function isCryptoVolumeProxy(input: OpportunitySignalInput): boolean {
+  const blob = `${input.sourceType ?? ""} ${input.note ?? ""} ${input.from ?? ""} ${input.to ?? ""}`.toLowerCase();
+  return (
+    String(input.sourceType ?? "").toUpperCase() === "DERIVED" ||
+    /proxy|not a single whale|24h vol|24h volume/.test(blob)
+  );
+}
+
 export function pickSignalsForOpportunity(input: OpportunitySignalInput): string[] {
   const sym = (input.symbol || "?").toUpperCase();
   const seed = input.seed ?? hashSym(`${input.module}:${sym}:${input.type ?? ""}:${input.note ?? ""}`);
@@ -101,6 +112,9 @@ export function pickSignalsForOpportunity(input: OpportunitySignalInput): string
   }
 
   if (mod === "crypto") {
+    if (isCryptoVolumeProxy(input)) {
+      return ["Trading volume", "Market activity", "Volume proxy"];
+    }
     const forced: string[] = ["Whale Transfer"];
     const dir = String(input.direction ?? "").toLowerCase();
     if (dir.includes("out")) forced.push("Exchange Outflow");

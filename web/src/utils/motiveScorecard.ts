@@ -291,31 +291,48 @@ function cryptoScorecard(
   const needle = clamp((healthScore - 50) * 2, -90, 90);
   const amt = row.amountUsd != null ? Number(row.amountUsd) : (5 + (seed % 40)) * 1_000_000;
   const crowdBull = clamp(30 + (seed % 50), 20, 80);
+  const proxyBlob = `${row.sourceType ?? ""} ${note} ${row.from ?? ""} ${row.to ?? ""}`.toLowerCase();
+  const volumeProxy =
+    String(row.sourceType ?? "").toUpperCase() === "DERIVED" ||
+    /proxy|not a single whale|24h vol|24h volume/.test(proxyBlob);
+  const displayNote = volumeProxy
+    ? note
+        .replace(/\s*\((?:not\s+)?a?\s*single\s+whale\s+tx\)/gi, " (volume proxy)")
+        .replace(/\bwhale\b/gi, "volume")
+        .replace(/\bwallet\b/gi, "market")
+        .replace(/\btransfer\b/gi, "activity")
+    : note;
 
   return {
     title: `${symbol} Scorecard`,
-    subtitle: "Crypto desk · on-chain & flow context",
+    subtitle: volumeProxy ? "Crypto desk · market activity context" : "Crypto desk · on-chain & flow context",
     health: {
-      label: "Network / flow health",
+      label: volumeProxy ? "Market activity health" : "Network / flow health",
       score: healthScore,
       band,
-      hint: "Relative network load and transfer unusualness — not a token rating.",
+      hint: volumeProxy
+        ? "Relative market-volume activity — not a token rating or address trace."
+        : "Relative network load and transfer unusualness — not a token rating.",
     },
     gauge: {
-      label: "On-chain lean",
+      label: volumeProxy ? "Market activity lean" : "On-chain lean",
       needle,
       bandLabel: leanLabel(band),
-      hint: "Exchange inflow vs outflow style lean for this window.",
+      hint: volumeProxy
+        ? "Volume-proxy context for this window; it does not identify coin movement."
+        : "Exchange inflow vs outflow style lean for this window.",
     },
     sentiment: {
-      label: "Whale context",
+      label: volumeProxy ? "Volume proxy context" : "Whale context",
       lean: band,
       leanLabel: leanLabel(band),
       primaryStat: `$${(amt / 1e6).toFixed(1)}M`,
-      primaryStatLabel: "Transfer in view",
-      secondaryStat: String(row.direction ?? row.side ?? "flow").toUpperCase(),
-      secondaryStatLabel: "Direction",
-      hint: "Large transfers are volatility context — not a buy/sell order.",
+      primaryStatLabel: volumeProxy ? "24h volume in view" : "Transfer in view",
+      secondaryStat: volumeProxy ? "DERIVED" : String(row.direction ?? row.side ?? "flow").toUpperCase(),
+      secondaryStatLabel: volumeProxy ? "Source" : "Direction",
+      hint: volumeProxy
+        ? "Volume proxies are market-activity context — not tracked transactions or buy/sell orders."
+        : "Large transfers are volatility context — not a buy/sell order.",
     },
     crowd: {
       label: "Narrative lean",
@@ -326,24 +343,28 @@ function cryptoScorecard(
     tips: [
       {
         tone: "watch",
-        text: note || `Confirm whether ${symbol} coins moved to/from an exchange before reading pressure.`,
+        text: displayNote || `Confirm whether ${symbol} coins moved to/from an exchange before reading pressure.`,
       },
       { tone: "neutral", text: `Desk attention ${healthScore}/100 on ${symbol} this window.` },
       { tone: "positive", text: "Check a plain-English news summary for the last 24h." },
     ],
     indicators: [
       { label: "Spot reference", value: row.price != null ? `$${Number(row.price).toFixed(2)}` : "—" },
-      { label: "Transfer size", value: `$${(amt / 1e6).toFixed(1)}M` },
+      { label: volumeProxy ? "Reported volume" : "Transfer size", value: `$${(amt / 1e6).toFixed(1)}M` },
       { label: "Gas / activity", value: `${(1.2 + (seed % 80) / 10).toFixed(1)}x` },
       { label: "Dominance lens", value: `${5 + (seed % 40)}% context` },
     ],
-    executiveSummary: `${symbol} scorecard focuses on wallet/exchange flow and network heat so you can tell “something large moved” from “I should trade.” MotiveFX is monitor-only.`,
+    executiveSummary: volumeProxy
+      ? `${symbol} scorecard focuses on trading-volume context and market heat so you can separate broad activity from one tracked transaction. MotiveFX is monitor-only.`
+      : `${symbol} scorecard focuses on wallet/exchange flow and network heat so you can tell “something large moved” from “I should trade.” MotiveFX is monitor-only.`,
     ratings: [
       { label: "Liquidity lens", score: clamp(4 + (seed % 6), 1, 10), max: 10 },
       { label: "Volatility lens", score: clamp(4 + ((seed * 3) % 6), 1, 10), max: 10 },
       { label: "Narrative lens", score: clamp(3 + ((seed * 5) % 7), 1, 10), max: 10 },
     ],
-    dataNote: "On-chain figures use live whale feeds when available; otherwise session heuristics.",
+    dataNote: volumeProxy
+      ? "Volume figures use live market-volume proxies when available; otherwise session heuristics."
+      : "On-chain figures use live whale feeds when available; otherwise session heuristics.",
   };
 }
 
